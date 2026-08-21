@@ -7,7 +7,7 @@ import streamlit as st
 
 from .ui_components import page_footer, page_header, tool_guide
 
-APP_VERSION = "2.0.2"
+APP_VERSION = "2.0.3"
 
 
 REFERENCE_MULTIPLIERS = {
@@ -197,7 +197,8 @@ def _inject_style() -> None:
           *{scrollbar-width:none!important;}*::-webkit-scrollbar{display:none!important;width:0!important;height:0!important;}
           .block-container,[data-testid="stAppViewBlockContainer"],[data-testid="stMainBlockContainer"],.stMainBlockContainer,main .block-container{max-width:none!important;padding:.3cm!important;margin:0!important;}
           [data-testid="stHeader"],[data-testid="stToolbar"],[data-testid="stSidebar"],[data-testid="stStatusWidget"],[data-testid="stAlert"],.stButton,.stDownloadButton,.st-key-rn_guide,.st-key-rn_input_area,.hw-page-head,.hw-page-footer{display:none!important;}
-          .rn-print-head{display:flex!important;align-items:flex-start;justify-content:space-between;gap:1rem;margin:0 0 7mm;padding:0 0 4mm;border-bottom:1px solid #D7E2EB;}
+          [data-testid="stElementContainer"]:has(.hw-page-head),[data-testid="stElementContainer"]:has(.hw-page-footer),[data-testid="stElementContainer"]:has(.st-key-rn_guide),[data-testid="stElementContainer"]:has(.st-key-rn_input_area),[data-testid="stElementContainer"]:has([data-testid="stAlert"]){display:none!important;margin:0!important;padding:0!important;}
+          .rn-print-head{display:flex!important;align-items:flex-start;justify-content:space-between;gap:1rem;margin:0 0 6mm;padding:0 0 3mm;border-bottom:1px solid #D7E2EB;}
           .rn-print-copy{min-width:0}.rn-print-title{color:#16324F;font-size:18pt;font-weight:800;letter-spacing:-.04em;}.rn-print-basis{margin-top:1.5mm;color:#61778A;font-size:9.5pt;}
           .rn-print-brand{display:flex;align-items:center;gap:3mm;color:#16324F;font-size:9pt;font-weight:750;white-space:nowrap;}.rn-print-mark{width:8mm;height:8mm;display:grid;place-items:center;border-radius:2mm;background:#1769DC;color:#FFF;font-weight:850;}.rn-print-divider{width:1px;height:8mm;background:#C7D7E5;}
           .rn-result-hero{margin-top:.35rem!important;break-inside:avoid;}

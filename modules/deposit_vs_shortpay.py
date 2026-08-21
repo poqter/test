@@ -4,7 +4,7 @@ import streamlit as st
 
 from .ui_components import page_footer, page_header, section_intro, tool_guide
 
-APP_VERSION = "2.0.2"
+APP_VERSION = "2.0.3"
 
 
 TAX_RATE = 0.154
@@ -425,6 +425,18 @@ def render_styles() -> None:
                 display: none !important;
             }
 
+            /* 숨긴 화면 요소의 Streamlit 바깥 래퍼와 그 사이 간격까지 제거합니다. */
+            [data-testid="stElementContainer"]:has(.hw-page-head),
+            [data-testid="stElementContainer"]:has(.hw-page-footer),
+            [data-testid="stElementContainer"]:has(.hw-section-head),
+            [data-testid="stElementContainer"]:has([data-testid="stExpander"]),
+            [data-testid="stElementContainer"]:has([data-testid="stForm"]),
+            [data-testid="stElementContainer"]:has([data-testid="stAlert"]) {
+                display: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
             html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"], main {
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
@@ -438,7 +450,7 @@ def render_styles() -> None:
 
             .hw-print-head {
                 display:flex !important; align-items:center; justify-content:space-between; gap:1rem;
-                margin:0 0 7mm; padding:0 0 4mm; border-bottom:1px solid #D7E2EB;
+                margin:0 0 6mm; padding:0 0 3mm; border-bottom:1px solid #D7E2EB;
             }
             .hw-print-title { color:#16324F; font-size:18pt; font-weight:800; letter-spacing:-.04em; }
             .hw-print-brand { display:flex; align-items:center; gap:3mm; color:#16324F; font-size:9pt; font-weight:750; }
