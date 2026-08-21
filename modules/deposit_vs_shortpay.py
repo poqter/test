@@ -4,7 +4,7 @@ import streamlit as st
 
 from .ui_components import page_footer, page_header, section_intro, tool_guide
 
-APP_VERSION = "2.0.1"
+APP_VERSION = "2.0.2"
 
 
 TAX_RATE = 0.154
@@ -391,6 +391,7 @@ def render_styles() -> None:
         .hw-current-rate { color: var(--hw-navy); font-weight: 850; }
 
         .hw-note { margin-top: 14px; color: var(--hw-muted); font-size: 11px; line-height: 1.55; }
+        .hw-print-head { display:none; }
 
         @media (max-width: 680px) {
             .hw-result-title { font-size: 23px; }
@@ -417,13 +418,37 @@ def render_styles() -> None:
         @page { size: A4 portrait; margin: 9mm; }
 
         @media print {
-            header, footer, [data-testid="stSidebar"], [data-testid="stForm"], [data-testid="stExpander"] {
+            header, footer, [data-testid="stSidebar"], [data-testid="stHeader"], [data-testid="stToolbar"],
+            [data-testid="stStatusWidget"], [data-testid="stForm"], [data-testid="stExpander"],
+            [data-testid="stAlert"], .stButton, .stDownloadButton, .hw-page-head, .hw-page-footer,
+            .hw-section-head {
                 display: none !important;
             }
 
-            html, body {
+            html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"], main {
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
+                height: auto !important;
+                max-height: none !important;
+                overflow: visible !important;
+            }
+
+            * { scrollbar-width: none !important; }
+            *::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+
+            .hw-print-head {
+                display:flex !important; align-items:center; justify-content:space-between; gap:1rem;
+                margin:0 0 7mm; padding:0 0 4mm; border-bottom:1px solid #D7E2EB;
+            }
+            .hw-print-title { color:#16324F; font-size:18pt; font-weight:800; letter-spacing:-.04em; }
+            .hw-print-brand { display:flex; align-items:center; gap:3mm; color:#16324F; font-size:9pt; font-weight:750; }
+            .hw-print-mark { width:8mm; height:8mm; display:grid; place-items:center; border-radius:2mm;
+                background:#1769DC; color:#FFF; font-weight:850; }
+            .hw-print-divider { width:1px; height:8mm; background:#C7D7E5; }
+
+            [data-testid="stAppViewBlockContainer"], [data-testid="stMainBlockContainer"],
+            .stMainBlockContainer, main .block-container {
+                max-width:none !important; padding:0 !important; margin:0 !important;
             }
 
             .block-container {
@@ -692,6 +717,13 @@ def run():
     else:
         headline = f"현재 조건에서는 적금 누적 세후이자가 <strong>{format_currency(abs(advantage))} 더 큽니다</strong>"
 
+    st.markdown(
+        '''<div class="hw-print-head">
+          <div class="hw-print-title">적금 vs 단기납 10년 예상 이익 비교</div>
+          <div class="hw-print-brand"><span class="hw-print-mark">H</span><span class="hw-print-divider"></span><span>화랑 WORKSPACE</span></div>
+        </div>''',
+        unsafe_allow_html=True,
+    )
     section_intro("분석 결과", "10년 예상 이익 비교", "같은 월납입금액을 활용했을 때의 예상 결과입니다.")
     st.markdown(
         f"""

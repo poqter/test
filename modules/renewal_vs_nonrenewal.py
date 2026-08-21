@@ -7,7 +7,7 @@ import streamlit as st
 
 from .ui_components import page_footer, page_header, tool_guide
 
-APP_VERSION = "2.0.1"
+APP_VERSION = "2.0.2"
 
 
 REFERENCE_MULTIPLIERS = {
@@ -190,13 +190,23 @@ def _inject_style() -> None:
         .rn-axis-start {left:0;}.rn-axis-end {right:0;}.rn-axis-complete {left:var(--w); transform:translateX(-50%);}
         .rn-panel-copy {min-height:3rem; color:#71889c; font-size:.8rem; line-height:1.55;}
         .rn-note {margin-top:.75rem; color:#71889c; font-size:.79rem; line-height:1.55;}
+        .rn-print-head,.rn-print-section-title{display:none;}
         @media (max-width:760px) {.rn-chart-grid,.rn-metric-grid{grid-template-columns:1fr}.rn-chart-zone{height:220px}}
         @media print {
-          .block-container{max-width:none!important;padding:.3cm!important;}
-          [data-testid="stHeader"],[data-testid="stToolbar"],[data-testid="stSidebar"],[data-testid="stStatusWidget"],.stButton,.st-key-rn_guide,.st-key-rn_input_area{display:none!important;}
+          html,body,.stApp,[data-testid="stAppViewContainer"],[data-testid="stMain"],main{height:auto!important;max-height:none!important;overflow:visible!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+          *{scrollbar-width:none!important;}*::-webkit-scrollbar{display:none!important;width:0!important;height:0!important;}
+          .block-container,[data-testid="stAppViewBlockContainer"],[data-testid="stMainBlockContainer"],.stMainBlockContainer,main .block-container{max-width:none!important;padding:.3cm!important;margin:0!important;}
+          [data-testid="stHeader"],[data-testid="stToolbar"],[data-testid="stSidebar"],[data-testid="stStatusWidget"],[data-testid="stAlert"],.stButton,.stDownloadButton,.st-key-rn_guide,.st-key-rn_input_area,.hw-page-head,.hw-page-footer{display:none!important;}
+          .rn-print-head{display:flex!important;align-items:flex-start;justify-content:space-between;gap:1rem;margin:0 0 7mm;padding:0 0 4mm;border-bottom:1px solid #D7E2EB;}
+          .rn-print-copy{min-width:0}.rn-print-title{color:#16324F;font-size:18pt;font-weight:800;letter-spacing:-.04em;}.rn-print-basis{margin-top:1.5mm;color:#61778A;font-size:9.5pt;}
+          .rn-print-brand{display:flex;align-items:center;gap:3mm;color:#16324F;font-size:9pt;font-weight:750;white-space:nowrap;}.rn-print-mark{width:8mm;height:8mm;display:grid;place-items:center;border-radius:2mm;background:#1769DC;color:#FFF;font-weight:850;}.rn-print-divider{width:1px;height:8mm;background:#C7D7E5;}
           .rn-result-hero{margin-top:.35rem!important;break-inside:avoid;}
           .rn-metric-grid,.rn-chart-grid,.rn-panel,.rn-metric{break-inside:avoid;}
-          [data-testid="stExpander"] details:not([open])>:not(summary){display:block!important;}
+          .rn-print-section-title{display:block!important;margin:5mm 0 2mm;color:#173451;font-size:13pt;font-weight:800;}
+          .st-key-rn_detail_area [data-testid="stExpander"]{border:0!important;box-shadow:none!important;background:transparent!important;}
+          .st-key-rn_detail_area [data-testid="stExpander"] summary{display:none!important;}
+          .st-key-rn_detail_area [data-testid="stExpander"] details>div{display:block!important;padding:0!important;}
+          .st-key-rn_detail_area thead{display:table-header-group!important;}.st-key-rn_detail_area tr{break-inside:avoid;page-break-inside:avoid;}
           .rn-note,.rn-panel-copy,.rn-axis,.rn-bar-age{font-size:10pt!important;}
           .rn-bar-value{font-size:11pt!important;}
           .rn-coverage{font-size:10.5pt!important;}
@@ -290,15 +300,16 @@ def run() -> None:
         "RN",
     )
 
-    tool_guide(
-        "사용 방법 및 비교 기준",
-        "현재 부담과 장래 예상 총보험료를 기준으로 갱신형과 비갱신형을 비교합니다.",
-        [("기본 정보", "고객의 현재 나이와 보장 종료·은퇴 기준을 입력합니다."),
-         ("보험 정보", "갱신형과 비갱신형의 보험료 및 납입조건을 입력합니다."),
-         ("결과 확인", "시나리오를 선택하고 예상 총보험료와 은퇴 후 부담을 확인합니다.")],
-        criteria="비교하려는 비갱신형 보험료와 납입기간을 입력하면 결과가 자동으로 계산됩니다.",
-        caution="인쇄 시 Ctrl+P에서 배율 78을 우선 적용하고 머리글·바닥글과 배경 그래픽을 해제해 주세요.",
-    )
+    with st.container(key="rn_guide"):
+        tool_guide(
+            "사용 방법 및 비교 기준",
+            "현재 부담과 장래 예상 총보험료를 기준으로 갱신형과 비갱신형을 비교합니다.",
+            [("기본 정보", "고객의 현재 나이와 보장 종료·은퇴 기준을 입력합니다."),
+             ("보험 정보", "갱신형과 비갱신형의 보험료 및 납입조건을 입력합니다."),
+             ("결과 확인", "시나리오를 선택하고 예상 총보험료와 은퇴 후 부담을 확인합니다.")],
+            criteria="비교하려는 비갱신형 보험료와 납입기간을 입력하면 결과가 자동으로 계산됩니다.",
+            caution="인쇄 시 Ctrl+P에서 배율 78을 우선 적용하고 머리글·바닥글과 배경 그래픽을 해제해 주세요.",
+        )
 
     with st.container(key="rn_input_area"):
         basic_col, renew_col, fixed_col = st.columns(3, gap="medium")
@@ -382,6 +393,14 @@ def run() -> None:
 
     source = "상담 예상" if method == "간편 시나리오" else ("가입제안서 입력" if method == "가입제안서 직접 입력" else "사용자 설정")
     st.markdown(
+        f'''<div class="rn-print-head">
+          <div class="rn-print-copy"><div class="rn-print-title">갱신형 vs 비갱신형 보험료 비교</div>
+          <div class="rn-print-basis">현재 {current_age}세 · {cycle}년 갱신 · {end_age}세 보장 · 비갱신형 {fixed_years}년납 · {source}</div></div>
+          <div class="rn-print-brand"><span class="rn-print-mark">H</span><span class="rn-print-divider"></span><span>화랑 WORKSPACE</span></div>
+        </div>''',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
         dedent(
             f"""
             <div class="rn-result-hero">
@@ -399,19 +418,21 @@ def run() -> None:
 
     _render_chart(periods, current_age, end_age, fixed_premium, fixed_years)
 
-    with st.expander("갱신 시점별 상세 보험료 보기", expanded=True):
-        detail_rows = []
-        for index, period in enumerate(periods):
-            detail_rows.append(
-                {
-                    "구간": "현재" if index == 0 else f"{index}차 갱신 후",
-                    "연령": f"{period.start_age}~{period.end_age}세",
-                    "월보험료": _won(period.monthly_premium),
-                    "현재 대비": f"{period.cumulative_multiple:.2f}배",
-                    "구간 총액": _won(period.total),
-                }
-            )
-        st.table(pd.DataFrame(detail_rows).set_index("구간"))
+    with st.container(key="rn_detail_area"):
+        st.markdown('<div class="rn-print-section-title">갱신 시점별 상세 보험료</div>', unsafe_allow_html=True)
+        with st.expander("갱신 시점별 상세 보험료 보기", expanded=True):
+            detail_rows = []
+            for index, period in enumerate(periods):
+                detail_rows.append(
+                    {
+                        "구간": "현재" if index == 0 else f"{index}차 갱신 후",
+                        "연령": f"{period.start_age}~{period.end_age}세",
+                        "월보험료": _won(period.monthly_premium),
+                        "현재 대비": f"{period.cumulative_multiple:.2f}배",
+                        "구간 총액": _won(period.total),
+                    }
+                )
+            st.table(pd.DataFrame(detail_rows).set_index("구간"))
 
     retire_renew = sum(
         period.monthly_premium
