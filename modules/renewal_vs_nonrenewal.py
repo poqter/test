@@ -5,7 +5,9 @@ from textwrap import dedent
 import pandas as pd
 import streamlit as st
 
-from .ui_components import page_header
+from .ui_components import page_footer, page_header, tool_guide
+
+APP_VERSION = "2.0.1"
 
 
 REFERENCE_MULTIPLIERS = {
@@ -288,36 +290,15 @@ def run() -> None:
         "RN",
     )
 
-    with st.container(key="rn_guide"):
-        with st.expander("📘 사용방법 및 인쇄 안내", expanded=False):
-            guide_use, guide_print = st.columns(2, gap="large")
-            with guide_use:
-                st.markdown("#### 사용방법")
-                st.markdown(
-                    dedent(
-                        """
-                        1. **기본 정보**에서 고객의 나이와 보장·은퇴 기준을 입력합니다.
-                        2. 갱신형과 비갱신형의 보험료 및 납입조건을 입력합니다.
-                        3. 간편 시나리오 또는 가입제안서 직접 입력을 선택합니다.
-                        
-                        - 비교하려는 비갱신형 보험료와 납입기간을 입력하면 결과가 자동으로 계산됩니다.
-                        """
-                    ).strip()
-                )
-            with guide_print:
-                st.markdown("#### 인쇄방법")
-                st.markdown(
-                    dedent(
-                        """
-                        1. 모든 정보를 입력하고 결과를 확인합니다.
-                        2. 브라우저에서 **Ctrl + P**를 누릅니다.
-                        3. 설정 더 보기를 누릅니다.
-                        4. 배율은 우선 **맞춤설정**을 선택하고 78로 변경합니다.
-                        5. 머리글과 바닥글, 배경 그래픽은 체크 해제 합니다.
-                        """
-                    ).strip()
-                )
-            st.caption("제작자: 박병선 팀장 · 버전 v2.0.0")
+    tool_guide(
+        "사용 방법 및 비교 기준",
+        "현재 부담과 장래 예상 총보험료를 기준으로 갱신형과 비갱신형을 비교합니다.",
+        [("기본 정보", "고객의 현재 나이와 보장 종료·은퇴 기준을 입력합니다."),
+         ("보험 정보", "갱신형과 비갱신형의 보험료 및 납입조건을 입력합니다."),
+         ("결과 확인", "시나리오를 선택하고 예상 총보험료와 은퇴 후 부담을 확인합니다.")],
+        criteria="비교하려는 비갱신형 보험료와 납입기간을 입력하면 결과가 자동으로 계산됩니다.",
+        caution="인쇄 시 Ctrl+P에서 배율 78을 우선 적용하고 머리글·바닥글과 배경 그래픽을 해제해 주세요.",
+    )
 
     with st.container(key="rn_input_area"):
         basic_col, renew_col, fixed_col = st.columns(3, gap="medium")
@@ -459,3 +440,4 @@ def run() -> None:
     else:
         note = "보험업계 평균의 갱신배수 흐름을 참고해 재설계한 상담용 가정입니다."
     st.markdown(f'<div class="rn-note">{html.escape(note)}</div>', unsafe_allow_html=True)
+    page_footer("갱신형 vs 비갱신형", APP_VERSION)
