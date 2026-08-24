@@ -14,7 +14,7 @@ from openpyxl.utils import get_column_letter
 
 from .ui_components import page_footer, page_header, tool_guide
 
-APP_VERSION = "2.14.1"
+APP_VERSION = "2.14.2"
 
 
 DEFAULT_COVERAGES = [
@@ -772,7 +772,7 @@ def _populate_proposal_sheet(
     proposal_total_fill = PatternFill("solid", fgColor="FFFF00")
     for row, label in meta_rows:
         if row <= 6:
-            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=3)
+            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=4)
             ws.cell(row, 1, label)
         else:
             ws.cell(row, 1, f"='보장 분석'!A{row}")
@@ -783,7 +783,11 @@ def _populate_proposal_sheet(
         fill_color = COLORS["header"] if row == 7 or row <= 6 else COLORS["premium"]
         for col in range(1, proposal_end_col + 1):
             cell = ws.cell(row, col)
-            cell.fill = proposal_total_fill if col == 4 else PatternFill("solid", fgColor=fill_color)
+            cell.fill = (
+                proposal_total_fill
+                if col == 4 and row >= 7
+                else PatternFill("solid", fgColor=fill_color)
+            )
             cell.border = THIN_BORDER
             cell.alignment = center
             cell.font = blue_font if row >= 7 and col in (1, 4) else bold_font
