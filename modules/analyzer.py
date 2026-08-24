@@ -14,7 +14,7 @@ from openpyxl.utils import get_column_letter
 
 from .ui_components import page_footer, page_header, tool_guide
 
-APP_VERSION = "2.14.0"
+APP_VERSION = "2.14.1"
 
 
 DEFAULT_COVERAGES = [
@@ -710,7 +710,7 @@ def _populate_proposal_sheet(
 
     proposal_start_col = 5  # E열
     proposal_end_col = 9  # I열
-    coverage_start = 4
+    coverage_start = 11
     output_items = [
         {"label": "일반사망", "display": "일반 사망", "group": "사망"},
         *selected,
@@ -759,6 +759,38 @@ def _populate_proposal_sheet(
     ws.row_dimensions[2].height = 25
     ws.row_dimensions[3].height = 25
 
+    # 보장 분석 시트와 동일하게 계약 기본정보 및 보험료 요약 행을 유지합니다.
+    meta_rows = [
+        (4, "보장기간"),
+        (5, "납입횟수"),
+        (6, "납입주기"),
+        (7, "월보험료"),
+        (8, "납입완료"),
+        (9, "납입예정"),
+        (10, "총보험료"),
+    ]
+    proposal_total_fill = PatternFill("solid", fgColor="FFFF00")
+    for row, label in meta_rows:
+        if row <= 6:
+            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=3)
+            ws.cell(row, 1, label)
+        else:
+            ws.cell(row, 1, f"='보장 분석'!A{row}")
+            ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=3)
+            ws.cell(row, 2, label)
+            ws.cell(row, 4, f"=SUM(E{row}:I{row})")
+
+        fill_color = COLORS["header"] if row == 7 or row <= 6 else COLORS["premium"]
+        for col in range(1, proposal_end_col + 1):
+            cell = ws.cell(row, col)
+            cell.fill = proposal_total_fill if col == 4 else PatternFill("solid", fgColor=fill_color)
+            cell.border = THIN_BORDER
+            cell.alignment = center
+            cell.font = blue_font if row >= 7 and col in (1, 4) else bold_font
+            if row >= 7 and (col == 1 or col >= 4):
+                cell.number_format = '#,##0"원"'
+        ws.row_dimensions[row].height = 25
+
     group_ranges: list[tuple[int, int]] = []
     group_start = coverage_start
     current_group = output_items[0]["group"]
@@ -778,7 +810,7 @@ def _populate_proposal_sheet(
         elif group == "심장\n보장":
             section_color = COLORS["heart"]
 
-        analysis_row = 11 + offset
+        analysis_row = coverage_start + offset
         ws.cell(row, 1, f"='보장 분석'!A{analysis_row}")
         ws.cell(row, 2, group)
         ws.cell(row, 3, item["display"])
@@ -786,7 +818,10 @@ def _populate_proposal_sheet(
 
         for col in range(1, proposal_end_col + 1):
             cell = ws.cell(row, col)
-            cell.fill = PatternFill("solid", fgColor=COLORS["header"] if col == 2 else section_color)
+            if col == 4:
+                cell.fill = proposal_total_fill
+            else:
+                cell.fill = PatternFill("solid", fgColor=COLORS["header"] if col == 2 else section_color)
             cell.border = THIN_BORDER
             cell.alignment = center
             cell.font = blue_font if col in (1, 4) else bold_font
@@ -802,6 +837,8 @@ def _populate_proposal_sheet(
         _set_outline(ws, start, end, 1, proposal_end_col, MEDIUM_SIDE)
 
     _set_outline(ws, 2, 3, 1, proposal_end_col, MEDIUM_SIDE)
+    _set_outline(ws, 4, 6, 1, proposal_end_col, MEDIUM_SIDE)
+    _set_outline(ws, 7, 10, 1, proposal_end_col, MEDIUM_SIDE)
     _set_vertical_borders(ws, 2, coverage_end, 1, proposal_end_col, MEDIUM_SIDE)
     _set_outline(ws, 2, coverage_end, 1, proposal_end_col, THICK_SIDE)
 
