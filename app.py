@@ -17,7 +17,6 @@ from modules import (
     remodeling,
     renewal_vs_nonrenewal,
     summer,
-    work_library,
 )
 from modules.ui_components import inject_global_styles
 
@@ -69,12 +68,12 @@ inject_pretendard_font()
 
 # 공지는 이 목록만 수정하면 로그인 화면에 반영됩니다.
 NOTICE = {
-    "date": "2026.08.25",
-    "title": "화랑 WORKSPACE 업무 허브가 새롭게 정리되었습니다.",
+    "date": "2026.08.22",
+    "title": "화랑 WORKSPACE 디자인이 새롭게 정리되었습니다.",
     "items": [
-        "기능과 업무 자료를 한 번에 찾는 통합검색을 추가했습니다.",
-        "즐겨찾기와 업무 자료실로 자주 쓰는 업무에 더 빠르게 접근할 수 있습니다.",
-        "사업부 일정은 사이드바에서 노션 월간 일정으로 바로 연결됩니다.",
+        "모든 기능의 화면 구성과 안내 형식을 하나의 기준으로 통일했습니다.",
+        "고객 상담과 실적 관리 도구는 업무 목적별로 구분되어 있습니다.",
+        "각 기능의 사용 방법과 적용 기준은 접힌 안내에서 확인할 수 있습니다.",
         "기존 계산식과 데이터 처리 방식은 그대로 유지됩니다.",
     ],
     "important": "비밀번호 또는 이용 권한은 박병선에게 문의해 주세요.",
@@ -143,12 +142,6 @@ APP_DEFINITIONS = {
         "description": "생보·손보 예시표에서 상품별 수수료율을 찾아 예상 수당을 계산합니다.",
         "action": "수수료 계산 시작", "run": commission_calculator.run,
     },
-    "work_library": {
-        "name": "업무 자료실", "icon": "▤", "code": "WL", "category": "업무 지원",
-        "badge": {"text": "NEW", "tone": "new"},
-        "description": "업무 절차·전산 매뉴얼·영업 자료를 통합검색합니다.",
-        "action": "자료 검색 시작", "run": work_library.run,
-    },
 }
 
 
@@ -166,7 +159,6 @@ HOME_ICONS = {
     "summer": '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9L7 7M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg>',
     "manager_results": '<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V6M16 20V3M22 20H2"/><path d="M4 8l5-4 5 2 6-5"/><path d="M17 1h3v3"/></svg>',
     "commission_calculator": '<svg viewBox="0 0 24 24"><path d="M4 7h16v13H4z"/><path d="M8 7V4h8v3M4 11h16"/><path d="M9 15h6M12 13v4"/></svg>',
-    "work_library": '<svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>',
 }
 
 
@@ -179,7 +171,6 @@ USER_PERMISSIONS = {
         "insurer_portal": True,
         "convention": True, "summer": True, "manager_results": True,
         "commission_calculator": True,
-        "work_library": True,
     },
     "Manager1": {
         "insurance_claim_guide": True,
@@ -189,7 +180,6 @@ USER_PERMISSIONS = {
         "insurer_portal": True,
         "convention": True, "summer": True, "manager_results": True,
         "commission_calculator": True,
-        "work_library": True,
     },
     "Basic": {
         "insurance_claim_guide": True,
@@ -199,7 +189,6 @@ USER_PERMISSIONS = {
         "insurer_portal": True,
         "convention": True, "summer": True, "manager_results": False,
         "commission_calculator": False,
-        "work_library": True,
     },
     "Crew": {
         "insurance_claim_guide": True,
@@ -209,7 +198,6 @@ USER_PERMISSIONS = {
         "insurer_portal": True,
         "convention": True, "summer": True, "manager_results": False,
         "commission_calculator": False,
-        "work_library": True,
     },
     "Dream": {
         "insurance_claim_guide": True,
@@ -219,7 +207,6 @@ USER_PERMISSIONS = {
         "insurer_portal": True,
         "convention": True, "summer": True, "manager_results": False,
         "commission_calculator": False,
-        "work_library": True,
     },
 }
 
@@ -343,19 +330,25 @@ def render_sidebar(allowed_ids: list[str]) -> None:
         st.markdown(
             textwrap.dedent('''
             <style>
-            .hw-side-brand-signature{display:flex;align-items:center;gap:.72rem;margin:.05rem 0 .8rem;padding:.8rem;
-                border:1px solid #D9E6F1;border-radius:.9rem;background:linear-gradient(145deg,#FFFFFF,#F3F8FF)}
-            .hw-side-brand-mark{flex:0 0 2.35rem;width:2.35rem;height:2.35rem;display:grid;place-items:center;border-radius:.7rem;
-                background:#1769DC;color:#FFF;box-shadow:0 6px 15px rgba(23,105,220,.2);font-size:1rem;font-weight:850}
-            .hw-side-brand-title{display:block;color:#17334B;font-size:.92rem;font-weight:800;letter-spacing:-.025em;white-space:nowrap}
-            .hw-side-brand-title b{color:#1769DC}.hw-side-brand-credit{margin:.12rem 0 0!important;color:#6C8192;font-size:.6rem!important}
-            .hw-side-section{margin:1rem .15rem .35rem;color:#6D8191;font-size:.65rem;font-weight:850;letter-spacing:.08em}
-            [data-testid="stSidebar"] .stButton button,[data-testid="stSidebar"] .stLinkButton a{justify-content:flex-start!important;
-                min-height:2.55rem!important;border-radius:.72rem!important;font-size:.78rem!important}
+            .hw-side-brand-signature { display:flex; align-items:center; gap:.72rem; margin:.08rem 0 .4rem;
+                padding:.72rem .75rem; border:1px solid rgba(94,142,207,.2); border-radius:.82rem;
+                background:linear-gradient(145deg,rgba(255,255,255,.74),rgba(238,246,255,.72));
+                box-shadow:0 6px 18px rgba(27,64,93,.055); }
+            .hw-side-brand-mark { flex:0 0 2.35rem; width:2.35rem; height:2.35rem; display:flex;
+                align-items:center; justify-content:center; border-radius:.68rem;
+                background:linear-gradient(145deg,#2F73E0,#205CC3); color:#FFFFFF;
+                box-shadow:0 5px 12px rgba(37,99,217,.2); font-size:1rem; font-weight:850; }
+            .hw-side-brand-copy { display:flex; flex-direction:column; min-width:0; gap:.16rem; }
+            .hw-side-brand-title { color:#17334B; font-size:.91rem; line-height:1.2; font-weight:800;
+                letter-spacing:-.025em; white-space:nowrap; }
+            .hw-side-brand-title b { color:#2563D9; font-weight:850; }
+            .hw-side-brand-credit { margin:0 !important; padding:0 !important; color:#667D91;
+                font-size:.61rem !important; line-height:1.3 !important; letter-spacing:0; white-space:nowrap; }
+            .hw-side-brand-credit b { color:#294A67; font-weight:800; }
             </style>
             <div class="hw-side-brand-signature">
               <span class="hw-side-brand-mark">H</span>
-              <div>
+              <div class="hw-side-brand-copy">
                 <span class="hw-side-brand-title">화랑 <b>WORKSPACE</b></span>
                 <p class="hw-side-brand-credit">Planned &amp; Built by <b>박병선</b></p>
               </div>
@@ -363,34 +356,29 @@ def render_sidebar(allowed_ids: list[str]) -> None:
             '''),
             unsafe_allow_html=True,
         )
+        st.caption("필요한 업무를 선택하세요.")
+
         home_active = st.session_state["active_app"] == "home"
-        if st.button("⌂  홈", key="nav_home", type="primary" if home_active else "secondary", use_container_width=True):
+        if st.button("🏠  홈", key="nav_home", type="primary" if home_active else "secondary", use_container_width=True):
             navigate("home")
 
-        for category in ("고객 상담", "실적 관리", "업무 지원"):
+        for category in ("고객 상담", "실적 관리"):
             category_apps = [app_id for app_id in allowed_ids if APP_DEFINITIONS[app_id]["category"] == category]
             if not category_apps:
                 continue
-            st.markdown(f'<div class="hw-side-section">{category}</div>', unsafe_allow_html=True)
+            st.markdown(f"#### {category}")
             for app_id in category_apps:
                 app = APP_DEFINITIONS[app_id]
                 active = st.session_state["active_app"] == app_id
                 if st.button(f"{app['icon']}  {app['name']}", key=f"nav_{app_id}", type="primary" if active else "secondary", use_container_width=True):
                     navigate(app_id)
 
-        st.markdown('<div class="hw-side-section">외부 업무</div>', unsafe_allow_html=True)
-        st.link_button(
-            "▣  사업부 일정  ↗",
-            "https://app.notion.com/p/24d1c9a298c780808dc1f8d9503c3cd5",
-            use_container_width=True,
-            help="노션 월간 일정을 새 탭에서 엽니다.",
-        )
         st.divider()
         st.caption(f"접속 계정 · {st.session_state['login_user']}")
         with st.expander("최근 공지"):
             st.caption(NOTICE["date"])
             st.markdown(f"**{NOTICE['title']}**")
-        if st.button("⇥  로그아웃", key="logout", use_container_width=True):
+        if st.button("🚪로그아웃", key="logout", use_container_width=True):
             logout()
 
 
@@ -431,17 +419,40 @@ def render_home(allowed_ids: list[str]) -> None:
     st.markdown(
         """
         <style>
-        .hw-command-head{display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;margin:.15rem 0 1.1rem}
-        .hw-command-kicker{color:#1769DC;font-size:.68rem;font-weight:850;letter-spacing:.11em}
-        .hw-command-title{margin:.3rem 0 0;color:#10283D;font-size:2rem;font-weight:820;letter-spacing:-.055em}
-        .hw-command-user{color:#607789;font-size:.78rem}.hw-command-search-note{margin:-.35rem 0 1.1rem;color:#748899;font-size:.75rem}
-        .hw-route{min-height:8.8rem;padding:1.2rem;border:1px solid #D5E3EE;border-radius:1rem;background:#FFF;position:relative;overflow:hidden}
-        .hw-route-primary{background:linear-gradient(135deg,#EAF3FF,#FBFDFF);border-color:#C8DCF2}
-        .hw-route-label{color:#52758A;font-size:.64rem;font-weight:850;letter-spacing:.09em}.hw-route-title{margin:1.05rem 0 .3rem;color:#10283D;font-size:1.25rem;font-weight:820}
-        .hw-route-copy{color:#687E90;font-size:.75rem;line-height:1.5}.hw-route-mark{position:absolute;right:-1.5rem;top:-2.2rem;width:7rem;height:7rem;border:1px solid rgba(23,105,220,.14);border-radius:50%}
-        .hw-home-section{margin:1.8rem 0 .7rem}.hw-home-section b{display:block;color:#10283D;font-size:1.25rem}.hw-home-section span{color:#667D8F;font-size:.78rem}
-        .hw-search-result{padding:.75rem .9rem;border-left:3px solid #1769DC;background:#F7FAFD;margin:.35rem 0;border-radius:0 .65rem .65rem 0}
-        .hw-search-result b{color:#18364D;font-size:.84rem}.hw-search-result span{display:block;color:#6A8192;font-size:.73rem;margin-top:.2rem}
+        [class*="st-key-home_intro"] { margin:0 0 1.15rem !important; padding:1.12rem 1.35rem !important;
+            position:relative; overflow:hidden;
+            background:
+                radial-gradient(circle at 88% -20%,rgba(55,116,230,.15),transparent 38%),
+                radial-gradient(circle at 58% 135%,rgba(70,175,201,.08),transparent 34%),
+                linear-gradient(135deg,#FFFFFF 0%,#F8FBFF 58%,#F2F7FE 100%);
+            border:1px solid #D3E1F0; border-top-color:#B8D2F7; border-radius:1.08rem;
+            box-shadow:0 14px 34px rgba(24,55,85,.08),inset 0 1px 0 rgba(255,255,255,.95); }
+        [class*="st-key-home_intro"]::before { content:""; position:absolute; z-index:0; top:0; left:2rem;
+            width:7.5rem; height:2px; border-radius:0 0 999px 999px;
+            background:linear-gradient(90deg,#2563EB,#57B6CC); opacity:.88; }
+        [class*="st-key-home_intro"]::after { content:""; position:absolute; z-index:0; right:-2.8rem; top:-3.8rem;
+            width:10rem; height:10rem; border:1px solid rgba(86,135,209,.12); border-radius:50%;
+            box-shadow:0 0 0 1.7rem rgba(95,145,220,.035); pointer-events:none; }
+        [class*="st-key-home_intro"] > div { position:relative; z-index:1; }
+        .hw-home-greeting { display:flex; align-items:center; gap:1rem; min-height:3.45rem; }
+        .hw-home-avatar { flex:0 0 3.35rem; width:3.35rem; height:3.35rem; display:flex; align-items:center;
+            justify-content:center; border:1px solid rgba(80,137,225,.3); border-radius:.92rem;
+            background:linear-gradient(145deg,#FFFFFF 0%,#EAF2FF 100%); color:#2563D9;
+            box-shadow:0 7px 18px rgba(37,99,217,.11),inset 0 1px 0 #FFFFFF; }
+        .hw-home-avatar svg { width:1.8rem; height:1.8rem; fill:none; stroke:currentColor; stroke-width:1.75;
+            stroke-linecap:round; filter:drop-shadow(0 2px 3px rgba(37,99,217,.12)); }
+        .hw-home-copy { display:flex; flex-direction:column; justify-content:center; gap:.28rem; min-width:0; }
+        .hw-home-copy h1 { margin:0 !important; padding:0 !important; color:#10283D !important;
+            font-size:1.48rem !important; line-height:1.22 !important; font-weight:800 !important;
+            letter-spacing:-.035em !important; }
+        .hw-home-copy p { margin:0 !important; padding:0 !important; color:#64798C;
+            font-size:.84rem !important; line-height:1.4 !important; letter-spacing:-.012em; }
+        .hw-category-head { margin:1rem 0 .62rem !important; padding:0 !important; }
+        .hw-category-head h2 { margin:0 0 .18rem !important; padding:0 !important; color:#10283D !important;
+            font-size:1.48rem !important; line-height:1.25 !important; font-weight:800 !important;
+            letter-spacing:-.035em !important; }
+        .hw-category-head p { margin:0 !important; padding:0 !important; color:#5F7486;
+            font-size:.86rem !important; line-height:1.45 !important; }
         [class*="st-key-locked_card_"] { background-color:#F2F5F7 !important; opacity:.72;
             border:1px dashed #B8C7D2 !important; border-radius:.95rem !important; position:relative; min-height:10.65rem; }
         [class*="st-key-available_card_"] { min-height:10.65rem; position:relative; overflow:visible;
@@ -480,7 +491,11 @@ def render_home(allowed_ids: list[str]) -> None:
         .hw-card-lock { position:absolute; z-index:4; top:.88rem; right:.88rem; padding:.25rem .55rem;
             border-radius:999px; background:#E5EAEE; color:#697A87; font-size:.6rem; font-weight:750; }
         [class*="st-key-locked_card_"] .hw-corner-badge { display:none; }
-        .hw-home-footer { display:flex; align-items:center; justify-content:center; gap:.75rem;margin:2.15rem 0 .45rem;padding:1.05rem 1.25rem;border-top:1px solid #D9E5F1;text-align:left; }
+        .hw-home-footer { display:flex; align-items:center; justify-content:center; gap:.75rem;
+            margin:2.15rem 0 .45rem; padding:1.05rem 1.25rem;
+            border:1px solid #D9E5F1; border-radius:.95rem;
+            background:linear-gradient(135deg,rgba(255,255,255,.96),rgba(244,249,255,.96));
+            box-shadow:0 8px 24px rgba(27,64,93,.055); text-align:left; }
         .hw-footer-mark { flex:0 0 2.35rem; width:2.35rem; height:2.35rem; display:flex;
             align-items:center; justify-content:center; border-radius:.7rem;
             background:linear-gradient(145deg,#2F73E0,#205CC3); color:#FFFFFF;
@@ -492,83 +507,40 @@ def render_home(allowed_ids: list[str]) -> None:
         .hw-footer-credit { margin:0 !important; padding:0 !important; color:#697E91;
             font-size:.72rem !important; line-height:1.35 !important; letter-spacing:.01em; }
         .hw-footer-credit b { color:#2B4861; font-weight:800; }
-        @media(max-width:900px){.hw-tool-desc{margin-left:0}.hw-tool-heading{padding-right:3.3rem}}
+        @media(max-width:900px){
+            .hw-tool-desc{margin-left:0}.hw-tool-heading{padding-right:3.3rem}
+        }
         @media(max-width:650px){
-            .hw-command-title{font-size:1.55rem}.hw-command-head{align-items:flex-start;flex-direction:column}.hw-tool-desc{min-height:auto}
+            [class*="st-key-home_intro"]{padding:.9rem !important}.hw-home-greeting{margin-bottom:.35rem}
+            .hw-tool-desc{min-height:auto}.hw-category-head{margin-top:1.2rem !important}
         }
         </style>
         """,
         unsafe_allow_html=True,
     )
-    st.markdown(f'''<div class="hw-command-head"><div><div class="hw-command-kicker">HWARANG WORKSPACE</div><div class="hw-command-title">무엇을 처리할까요?</div></div><div class="hw-command-user">{user} · 오늘 필요한 업무를 바로 시작하세요.</div></div>''', unsafe_allow_html=True)
-    query = st.text_input("통합 업무 검색", placeholder="기능, 업무, 보험회사, 매뉴얼, 영업 자료를 검색하세요", label_visibility="collapsed", key="home_global_search")
-    st.markdown('<div class="hw-command-search-note">예: 보장분석 · KB 가상계좌 · CI보험 · 보험금 청구 · 수수료</div>', unsafe_allow_html=True)
+    with st.container(key="home_intro"):
+        account_col, search_col = st.columns([1.15, 1], gap="large")
+        with account_col:
+            st.markdown(
+                f'''<div class="hw-home-greeting">
+                  <span class="hw-home-avatar"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 22v-2a7 7 0 0114 0v2"/></svg></span>
+                  <div class="hw-home-copy"><h1>안녕하세요, {user}님</h1><p>오늘 필요한 업무를 빠르게 시작해 보세요.</p></div>
+                </div>''',
+                unsafe_allow_html=True,
+            )
+        with search_col:
+            insurer_portal.render_home_quick_search()
 
-    if query.strip():
-        needle = query.strip().lower().replace("실비", "실손").replace("보분", "보장분석").replace("가계좌", "가상계좌")
-        app_results = []
-        for app_id, app in APP_DEFINITIONS.items():
-            haystack = " ".join((app["name"], app["description"], app["action"], app["category"])).lower()
-            if all(token in haystack for token in needle.split()):
-                app_results.append(app_id)
-        library_results = work_library.quick_search(query, 6)
-        st.markdown('<div class="hw-home-section"><b>검색 결과</b><span>프로그램과 업무 자료를 함께 찾았습니다.</span></div>', unsafe_allow_html=True)
-        if not app_results and not library_results:
-            st.info("일치하는 결과가 없습니다. 보험회사명이나 더 짧은 업무 용어로 검색해 주세요.")
-        if app_results:
-            st.caption(f"프로그램 · {len(app_results)}건")
-            for app_id in app_results:
-                app = APP_DEFINITIONS[app_id]
-                cols = st.columns([5, 1.2])
-                with cols[0]:
-                    st.markdown(f'<div class="hw-search-result"><b>{app["name"]}</b><span>{app["description"]}</span></div>', unsafe_allow_html=True)
-                with cols[1]:
-                    if st.button("실행  →", key=f"search_app_{app_id}", disabled=app_id not in allowed_ids, use_container_width=True):
-                        navigate(app_id)
-        if library_results:
-            st.caption(f"업무 자료 · {len(library_results)}건")
-            for index, item in enumerate(library_results):
-                cols = st.columns([5, 1.2])
-                with cols[0]:
-                    st.markdown(f'<div class="hw-search-result"><b>{item.title}</b><span>{item.group} · {item.summary}</span></div>', unsafe_allow_html=True)
-                with cols[1]:
-                    st.link_button("원본  ↗", item.url, use_container_width=True)
-    else:
-        route_cols = st.columns(3, gap="medium")
-        performance_target = next(
-            (app_id for app_id in allowed_ids if APP_DEFINITIONS[app_id]["category"] == "실적 관리"),
-            "commission_calculator",
-        )
-        routes = [
-            ("CUSTOMER CONSULTING", "고객 상담", "분석·비교·제안·청구 안내", "analyzer", True),
-            ("PERFORMANCE", "실적·정산", "수수료와 개인·조직 실적 확인", performance_target, False),
-            ("KNOWLEDGE HUB", "자료·매뉴얼", "업무 절차와 상담자료 검색", "work_library", False),
-        ]
-        for column, (label, title, copy, target, primary) in zip(route_cols, routes):
-            with column:
-                st.markdown(f'<div class="hw-route {"hw-route-primary" if primary else ""}"><span class="hw-route-mark"></span><div class="hw-route-label">{label}</div><div class="hw-route-title">{title}</div><div class="hw-route-copy">{copy}</div></div>', unsafe_allow_html=True)
-                if st.button(f"{title} 시작  →", key=f"route_{target}", disabled=target not in allowed_ids, use_container_width=True):
-                    navigate(target)
-
-        st.markdown('<div class="hw-home-section"><b>전체 업무 도구</b><span>즐겨찾기 또는 업무 분류에서 필요한 기능을 선택하세요.</span></div>', unsafe_allow_html=True)
-        favorite_ids = [app_id for app_id in ("analyzer", "commission_calculator", "insurance_claim_guide") if app_id in APP_DEFINITIONS]
-        favorite_tab, all_tab, consulting_tab, performance_tab = st.tabs(["★ 즐겨찾기", "전체", "고객 상담", "실적 관리"])
-
-        def render_app_grid(app_ids: list[str]) -> None:
-            for start in range(0, len(app_ids), 3):
-                columns = st.columns(3, gap="medium")
-                for column, app_id in zip(columns, app_ids[start:start + 3]):
-                    with column:
-                        render_app_card(app_id, app_id in allowed_ids)
-
-        with favorite_tab:
-            render_app_grid(favorite_ids)
-        with all_tab:
-            render_app_grid(list(APP_DEFINITIONS))
-        with consulting_tab:
-            render_app_grid([app_id for app_id, app in APP_DEFINITIONS.items() if app["category"] == "고객 상담"])
-        with performance_tab:
-            render_app_grid([app_id for app_id, app in APP_DEFINITIONS.items() if app["category"] == "실적 관리"])
+    for category in ("고객 상담", "실적 관리"):
+        category_apps = [app_id for app_id in APP_DEFINITIONS if APP_DEFINITIONS[app_id]["category"] == category]
+        description = "고객 설명과 상담자료 제작에 필요한 도구입니다." if category == "고객 상담" else "개인·조직 실적과 행사 달성 현황을 확인합니다."
+        st.markdown(f'<div class="hw-category-head"><h2>{category}</h2><p>{description}</p></div>', unsafe_allow_html=True)
+        for start in range(0, len(category_apps), 3):
+            row_apps = category_apps[start:start + 3]
+            columns = st.columns(3, gap="medium")
+            for column, app_id in zip(columns, row_apps):
+                with column:
+                    render_app_card(app_id, app_id in allowed_ids)
 
     st.markdown(
         '''<div class="hw-home-footer">

@@ -19,7 +19,6 @@ _PAGE_ICONS = {
     "매니저 업적 환산": '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3.5 20v-2a5.5 5.5 0 0111 0v2M15 11l2 2 4-5"/></svg>',
     "컨벤션 계산기": '<svg viewBox="0 0 24 24"><path d="M8 4h8v4a4 4 0 01-8 0zM8 6H4v2a4 4 0 004 4M16 6h4v2a4 4 0 01-4 4M12 12v5M8 21h8M9 17h6"/></svg>',
     "썸머 계산기": '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>',
-    "업무 자료실": '<svg viewBox="0 0 24 24"><path d="M4 6h6l2 2h8v11H4z"/><path d="M8 12h8M8 16h5"/></svg>',
 }
 
 
