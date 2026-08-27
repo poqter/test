@@ -742,8 +742,9 @@ def _populate_proposal_sheet(
     center = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
     ws.merge_cells("A1:D1")
+    age_text = f" (보험연령:{data['age']}세)" if data["age"] else ""
     title_customer_name = re.sub(r"님$", "", str(data["customer_name"] or "OOO").strip()) or "OOO"
-    ws["A1"] = f"{title_customer_name}님의 보장 제안서"
+    ws["A1"] = f"{title_customer_name}님의 보장 제안서{age_text}"
     ws["A1"].font = Font(name="나눔고딕", size=14, bold=True)
     ws["A1"].alignment = Alignment(horizontal="center", vertical="bottom")
     ws.row_dimensions[1].height = 82
@@ -875,6 +876,18 @@ def _populate_proposal_sheet(
     ws.column_dimensions["D"].width = 18
     for col in range(proposal_start_col, proposal_end_col + 1):
         ws.column_dimensions[get_column_letter(col)].width = 18
+
+    # 첫 행의 직접 입력 영역은 보장 분석 시트와 동일하게
+    # 하단 정렬과 굵은 글씨를 사용합니다.
+    for col in range(proposal_start_col, proposal_end_col + 1):
+        cell = ws.cell(1, col)
+        alignment = copy(cell.alignment)
+        alignment.vertical = "bottom"
+        cell.alignment = alignment
+        font = copy(cell.font)
+        font.name = "나눔고딕"
+        font.bold = True
+        cell.font = font
 
     # 다운로드 엑셀의 모든 셀 글꼴을 나눔고딕으로 통일하되,
     # 크기·굵기·색상 등 기존 글꼴 속성은 그대로 유지합니다.
