@@ -1,4 +1,5 @@
 import base64
+import hmac
 import textwrap
 from pathlib import Path
 
@@ -19,13 +20,18 @@ from modules import (
     summer,
 )
 from modules.ui_components import inject_global_styles
+from modules.workspace_v2 import (
+    inject_workspace_v2_styles,
+    render_home as render_v2_home,
+    render_sidebar as render_v2_sidebar,
+)
 
 
 st.set_page_config(
     page_title="화랑WORKSPACE",
     page_icon="🧰",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="auto",
 )
 
 inject_global_styles()
@@ -64,17 +70,18 @@ def inject_pretendard_font() -> None:
 
 
 inject_pretendard_font()
+inject_workspace_v2_styles()
 
 
 # 공지는 이 목록만 수정하면 로그인 화면에 반영됩니다.
 NOTICE = {
-    "date": "2026.08.22",
-    "title": "화랑 WORKSPACE 디자인이 새롭게 정리되었습니다.",
+    "date": "2026.09.21",
+    "title": "테스트 서버 정상화 · 새 홈 화면 1차 적용",
     "items": [
-        "모든 기능의 화면 구성과 안내 형식을 하나의 기준으로 통일했습니다.",
-        "고객 상담과 실적 관리 도구는 업무 목적별로 구분되어 있습니다.",
-        "각 기능의 사용 방법과 적용 기준은 접힌 안내에서 확인할 수 있습니다.",
-        "기존 계산식과 데이터 처리 방식은 그대로 유지됩니다.",
+        "누락된 글꼴·보험사 로고·화면 설정을 복구했습니다.",
+        "새 홈에서 업무 목적별 바로가기와 도구 검색을 이용할 수 있습니다.",
+        "PC·모바일 가독성과 탐색 메뉴를 개선했습니다.",
+        "기존 12개 도구를 연결하고 보장분석·썸머 엑셀 보완 사항을 반영했습니다.",
     ],
     "important": "비밀번호 또는 이용 권한은 박병선에게 문의해 주세요.",
     "contact_url": "https://open.kakao.com/o/sFxdv4Rf",
@@ -83,60 +90,72 @@ NOTICE = {
 
 APP_DEFINITIONS = {
     "analyzer": {
+        "group": "보장 분석", "keywords": ("보장분석", "증권", "고객용", "엑셀"),
         "name": "보장 분석 도우미", "icon": "📑", "code": "BA", "category": "고객 상담",
         "badge": {"text": "BEST", "tone": "best"},
         "description": "보험사 보장분석 자료를 고객용 양식으로 변환합니다.", "action": "보장 분석 시작", "run": analyzer.run,
     },
     "remodeling": {
+        "group": "리모델링·비교", "keywords": ("보험료", "변경안", "리모델링"),
         "name": "보험 리모델링", "icon": "🔁", "code": "RM", "category": "고객 상담",
         "badge": {"text": "NEW", "tone": "new"},
         "description": "변경안을 비교하고 고객용 엑셀 자료를 만듭니다.", "action": "리모델링 시작", "run": remodeling.run,
     },
     "deposit_vs_shortpay": {
+        "group": "리모델링·비교", "keywords": ("저축", "적금", "단기납", "환급"),
         "name": "적금 vs 단기납", "icon": "💰", "code": "DS", "category": "고객 상담",
         "badge": {"text": "UPDATE", "tone": "update"},
         "description": "10년 기준 적금과 단기납의 예상 결과를 비교합니다.", "action": "비교 계산 시작", "run": deposit_vs_shortpay.run,
     },
     "renewal_vs_nonrenewal": {
+        "group": "리모델링·비교", "keywords": ("갱신보험료", "총납입", "갱신형", "비갱신형"),
         "name": "갱신 vs 비갱신", "icon": "📊", "code": "RN", "category": "고객 상담",
         "badge": {"text": "UPDATE", "tone": "update"},
         "description": "보험료 변동을 반영해 장기 총납입액을 비교합니다.", "action": "보험료 비교 시작", "run": renewal_vs_nonrenewal.run,
     },
     "inheritance_tax": {
+        "group": "재무·세금", "keywords": ("상속세", "상속", "재산", "납부재원"),
         "name": "상속세 계산기", "icon": "🧾", "code": "IT", "category": "고객 상담",
         "badge": {"text": "NEW", "tone": "new"},
         "description": "예상 상속세와 부족한 현금성 납부재원을 계산합니다.", "action": "상속세 계산 시작", "run": inheritance_tax.run,
     },
     "insurer_portal": {
+        "group": "업무 지원", "keywords": ("전산", "원수사", "보험사", "포털"),
         "name": "원수사 전산 포털", "icon": "↗", "code": "IP", "category": "고객 상담",
         "badge": {"text": "NEW", "tone": "new"},
         "description": "생명·손해보험사 원수사 전산을 한 화면에서 연결합니다.", "action": "전산 포털 열기", "run": insurer_portal.run,
     },
     "insurance_claim_guide": {
+        "group": "보험금 청구", "keywords": ("청구서류", "진단서", "보험금", "안내문"),
         "name": "보험금 청구 가이드", "icon": "📋", "code": "CG", "category": "고객 상담",
         "badge": {"text": "NEW", "tone": "new"},
         "description": "청구 항목별 필요서류를 안내하고 보장분석 PDF에서 관련 담보를 찾습니다.",
         "action": "청구 가이드 시작", "run": insurance_claim_guide.run,
     },
     "silson_generation_comparison": {
+        "group": "리모델링·비교", "keywords": ("실손", "실비", "세대", "입원"),
         "name": "실손보험 세대 비교", "icon": "🩺", "code": "SC", "category": "고객 상담",
         "badge": {"text": "NEW", "tone": "new"},
         "description": "현재 가입 실손과 5세대 실손의 보험료와 입원 보장을 비교합니다.",
         "action": "실손 세대 비교 시작", "run": silson_generation_comparison.run,
     },
     "convention": {
+        "group": "실적 관리", "keywords": ("실적", "달성", "컨벤션", "환산"),
         "name": "컨벤션 계산기", "icon": "🏆", "code": "CV", "category": "실적 관리",
         "description": "계약 실적을 환산하고 컨벤션 달성 여부를 확인합니다.", "action": "컨벤션 계산 시작", "run": convention.run,
     },
     "summer": {
+        "group": "실적 관리", "keywords": ("실적", "썸머", "업적", "여름"),
         "name": "썸머 계산기", "icon": "🌞", "code": "SU", "category": "실적 관리",
         "description": "7·8월 업적을 반영해 썸머 업적을 계산합니다.", "action": "썸머 실적 계산", "run": summer.run,
     },
     "manager_results": {
+        "group": "실적 관리", "keywords": ("지점", "매니저", "조직", "환산"),
         "name": "매니저 업적 환산", "icon": "📈", "code": "MR", "category": "실적 관리",
         "description": "지점 실적 환산금액을 집계합니다.", "action": "매니저 실적 확인", "run": manager_results.run,
     },
     "commission_calculator": {
+        "group": "실적 관리", "keywords": ("수당", "수수료", "예시표", "수수료율"),
         "name": "수수료 계산기", "icon": "💼", "code": "CC", "category": "실적 관리",
         "badge": {"text": "NEW", "tone": "new"},
         "description": "생보·손보 예시표에서 상품별 수수료율을 찾아 예상 수당을 계산합니다.",
@@ -290,13 +309,22 @@ def render_login() -> bool:
     with login_col:
         st.markdown("### 로그인")
         st.write("발급받은 비밀번호를 입력해 주세요.")
-        with st.form("login_form", clear_on_submit=False):
+        with st.form("login_form", clear_on_submit=True):
             password = st.text_input("비밀번호", type="password", placeholder="비밀번호 입력")
             submitted = st.form_submit_button("로그인", type="primary", use_container_width=True)
 
         if submitted:
-            passwords = dict(st.secrets["passwords"])
-            matched_user = next((name for name, saved in passwords.items() if password == saved), None)
+            try:
+                passwords = dict(st.secrets["passwords"])
+            except (FileNotFoundError, KeyError, TypeError, ValueError):
+                st.error("로그인 설정이 준비되지 않았습니다. 관리자에게 테스트 서버의 passwords 설정 확인을 요청해 주세요.")
+                return False
+            matched_user = next(
+                (name for name, saved in passwords.items()
+                 if name in USER_PERMISSIONS and isinstance(saved, str) and saved
+                 and password and hmac.compare_digest(password.encode("utf-8"), saved.encode("utf-8"))),
+                None,
+            )
             if matched_user:
                 st.session_state["password_correct"] = True
                 st.session_state["login_user"] = matched_user
@@ -316,6 +344,10 @@ def allowed_app_ids() -> list[str]:
 
 
 def navigate(app_id: str) -> None:
+    # 버튼 노출뿐 아니라 이동 시점에도 권한을 재검사합니다.
+    if app_id != "home" and app_id not in allowed_app_ids():
+        st.warning("이 도구를 사용할 권한이 없습니다.")
+        return
     st.session_state["active_app"] = app_id
     st.rerun()
 
@@ -565,9 +597,9 @@ def main() -> None:
         st.session_state["active_app"] = "home"
         active_app = "home"
 
-    render_sidebar(allowed_ids)
+    render_v2_sidebar(allowed_ids, APP_DEFINITIONS, navigate, logout, NOTICE)
     if active_app == "home":
-        render_home(allowed_ids)
+        render_v2_home(allowed_ids, APP_DEFINITIONS, HOME_ICONS, navigate, NOTICE)
     else:
         APP_DEFINITIONS[active_app]["run"]()
 

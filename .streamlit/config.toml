@@ -4,3 +4,7 @@ primaryColor = "#1769DC"
 backgroundColor = "#FFFFFF"
 secondaryBackgroundColor = "#F6F9FC"
 textColor = "#16324F"
+baseFontSize = 16
+
+[browser]
+gatherUsageStats = false
