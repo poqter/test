@@ -721,6 +721,9 @@ def run():
     refund_rate = values["refund_rate"]
 
     deposit = calculate_deposit(monthly, annual_rate)
+    with st.expander('현재 결과에 반영된 조건', expanded=True):
+        st.write(f'월 {monthly:,.0f}만원 · 적금 연 {annual_rate:.1f}% · 단기납 {pay_years}년납 · 10년 환급률 {refund_rate:.1f}%')
+        st.caption('표시 결과는 마지막으로 비교 버튼을 누른 조건입니다. 입력을 변경한 뒤에는 다시 비교해 주세요. 두 방식의 총 납입기간은 다를 수 있습니다.')
     shortpay = calculate_shortpay(monthly, pay_years, refund_rate)
     advantage = shortpay["refund_gain"] - deposit["ten_year_interest"]
 

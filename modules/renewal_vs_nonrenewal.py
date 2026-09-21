@@ -386,6 +386,9 @@ def run() -> None:
     saving = renew_future - fixed_total
     highest = max((period.monthly_premium for period in periods), default=0)
     fixed_end_age = current_age + fixed_pay_years
+    with st.expander('비교 가정과 납입기간 확인', expanded=True):
+        st.write(f'현재 {current_age}세 → {end_age}세 · 갱신주기 {cycle}년 · 비갱신 납입 {fixed_pay_years}년')
+        st.caption('미래 보험료는 선택한 시나리오 또는 입력값입니다. 현재 보장과 신규 계약의 지급조건·심사·면책 차이는 이 보험료 계산에 포함되지 않습니다.')
 
     if saving >= 0:
         result_text = f'비갱신형 전환 시 예상 보험료를 <span class="rn-result-value">약 {_won(saving)} 절감</span>할 수 있습니다.'

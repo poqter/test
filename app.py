@@ -18,6 +18,7 @@ from modules import (
     remodeling,
     renewal_vs_nonrenewal,
     summer,
+    quick_calculators, consultation_helper, comparison_builder, education_center,
 )
 from modules.ui_components import inject_global_styles
 from modules.workspace_v2 import (
@@ -29,7 +30,7 @@ from modules.workspace_v2 import (
 
 st.set_page_config(
     page_title="화랑WORKSPACE",
-    page_icon="🧰",
+    page_icon="H",
     layout="wide",
     initial_sidebar_state="auto",
 )
@@ -76,12 +77,12 @@ inject_workspace_v2_styles()
 # 공지는 이 목록만 수정하면 로그인 화면에 반영됩니다.
 NOTICE = {
     "date": "2026.09.21",
-    "title": "테스트 서버 정상화 · 새 홈 화면 1차 적용",
+    "title": "Signature 디자인 · 신규 상담 도구 추가",
     "items": [
-        "누락된 글꼴·보험사 로고·화면 설정을 복구했습니다.",
-        "새 홈에서 업무 목적별 바로가기와 도구 검색을 이용할 수 있습니다.",
-        "PC·모바일 가독성과 탐색 메뉴를 개선했습니다.",
-        "기존 12개 도구를 연결하고 보장분석·썸머 엑셀 보완 사항을 반영했습니다.",
+        "네이비·아이보리·골드 공통 디자인과 원수사 홈 검색을 적용했습니다.",
+        "간편 계산기·상담 지원·비교표 제작·교육센터 4개 페이지를 추가했습니다.",
+        "원수사 포털에 공식기관·연락처·서식과 기준일 안내를 통합했습니다.",
+        "기존 도구에 작업 순서·검토 항목·입력 상태 유지 보완을 적용했습니다.",
     ],
     "important": "비밀번호 또는 이용 권한은 박병선에게 문의해 주세요.",
     "contact_url": "https://open.kakao.com/o/sFxdv4Rf",
@@ -163,6 +164,22 @@ APP_DEFINITIONS = {
     },
 }
 
+# 신규 기능은 네 개의 묶음 도구로 연결합니다.
+for _id,_name,_group,_desc,_keywords,_run in (
+    ("quick_calculators","간편 계산기","계산·상품 비교","보험나이부터 필요 보장액까지 6가지 계산을 한곳에서 확인합니다.",("보험나이","상령일","총납입","비상자금","납입면제"),quick_calculators.run),
+    ("consultation_helper","상담 지원 도구","상담·보장·청구","상담 질문·설명 스크립트·문자·요약을 준비합니다.",("문자","생애주기","질문","상담요약","스크립트"),consultation_helper.run),
+    ("comparison_builder","고객용 비교표 제작기","상담·보장·청구","원하는 항목으로 비교표를 만들고 Excel·PDF로 전달합니다.",("비교표","워터마크","설명문","변경안"),comparison_builder.run),
+    ("education_center","교육·체크리스트 센터","교육·체크리스트","용어·체크리스트·상담 연습과 청구 퀴즈를 제공합니다.",("교육","용어","설명의무","퀴즈","신입","FAQ"),education_center.run),
+):
+    APP_DEFINITIONS[_id]={"name":_name,"group":_group,"category":_group,"description":_desc,"keywords":_keywords,"run":_run,"icon":"","code":_id[:2].upper(),"action":"도구 열기"}
+for _id in ("analyzer","remodeling","insurance_claim_guide"):
+    APP_DEFINITIONS[_id]["group"]="상담·보장·청구"
+for _id in ("deposit_vs_shortpay","renewal_vs_nonrenewal","inheritance_tax","silson_generation_comparison"):
+    APP_DEFINITIONS[_id]["group"]="계산·상품 비교"
+for _id in ("convention","summer","manager_results","commission_calculator"):
+    APP_DEFINITIONS[_id]["group"]="실적·수수료"
+APP_DEFINITIONS["insurer_portal"].update(group="원수사·공식자료",name="원수사·공식자료 포털",description="보험사 전산·연락처·서식과 공식기관 자료를 찾습니다.",keywords=("전산","원수사","보험사","서식","공공사이트","콜센터","포털"))
+
 
 # 홈 카드용 아이콘입니다. 외부 이미지나 추가 패키지 없이 동일한 모양으로 표시됩니다.
 HOME_ICONS = {
@@ -228,6 +245,12 @@ USER_PERMISSIONS = {
         "commission_calculator": False,
     },
 }
+
+# 기존 권한은 그대로 두고 신규 일반 상담·교육 도구를 등록 계정에 제공합니다.
+for _permissions in USER_PERMISSIONS.values():
+    for _new_id in ("quick_calculators","consultation_helper","comparison_builder","education_center"):
+        _permissions[_new_id]=True
+
 
 
 def initialize_state() -> None:
@@ -348,7 +371,11 @@ def navigate(app_id: str) -> None:
     if app_id != "home" and app_id not in allowed_app_ids():
         st.warning("이 도구를 사용할 권한이 없습니다.")
         return
+    from modules.workbench import save_page_draft
+    save_page_draft(st.session_state.get("active_app", "home"))
     st.session_state["active_app"] = app_id
+    if app_id != "home":
+        st.session_state["sig_recent"]=[app_id]+[key for key in st.session_state.get("sig_recent",[]) if key!=app_id][:3]
     st.rerun()
 
 
@@ -592,6 +619,7 @@ def main() -> None:
         st.stop()
 
     allowed_ids = allowed_app_ids()
+    st.session_state['ws_allowed_ids'] = allowed_ids
     active_app = st.session_state.get("active_app", "home")
     if active_app != "home" and active_app not in allowed_ids:
         st.session_state["active_app"] = "home"
@@ -601,7 +629,12 @@ def main() -> None:
     if active_app == "home":
         render_v2_home(allowed_ids, APP_DEFINITIONS, HOME_ICONS, navigate, NOTICE)
     else:
+        from modules.workbench import restore_page_draft, render_workbench
+        restore_page_draft(active_app)
+        render_workbench(active_app, APP_DEFINITIONS, allowed_ids, navigate)
         APP_DEFINITIONS[active_app]["run"]()
+        # Re-apply brand tokens after legacy modules' local styles.
+        inject_workspace_v2_styles()
 
 
 if __name__ == "__main__":

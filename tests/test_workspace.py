@@ -15,7 +15,7 @@ APP_IDS = (
     "analyzer", "remodeling", "deposit_vs_shortpay", "renewal_vs_nonrenewal",
     "inheritance_tax", "insurer_portal", "insurance_claim_guide",
     "silson_generation_comparison", "convention", "summer", "manager_results",
-    "commission_calculator",
+    "commission_calculator", "quick_calculators", "consultation_helper", "comparison_builder", "education_center",
 )
 
 
@@ -78,14 +78,14 @@ class WorkspaceTests(unittest.TestCase):
             with self.subTest(user=user):
                 at = app_for(user)
                 self.assert_clean(at)
-                self.assertEqual(len([b for b in at.button if b.key.startswith("v2_launch_tool_")]), 12)
+                self.assertEqual(len([b for b in at.button if b.key.startswith("v2_launch_all_")]), len(at.session_state["ws_allowed_ids"]))
 
     def test_search_and_empty_result(self):
         at = app_for()
         at.text_input(key="v2_global_search").set_value("청구서류").run()
         self.assert_clean(at)
-        self.assertEqual(len([b for b in at.button if b.key.startswith("v2_launch_tool_")]), 1)
-        at.button(key="v2_launch_tool_insurance_claim_guide").click().run()
+        self.assertEqual(len([b for b in at.button if b.key.startswith("v2_launch_search_")]), 1)
+        at.button(key="v2_launch_search_insurance_claim_guide").click().run()
         self.assert_clean(at)
         self.assertEqual(at.session_state["active_app"], "insurance_claim_guide")
         at.button(key="v2_nav_home").click().run()
@@ -98,14 +98,14 @@ class WorkspaceTests(unittest.TestCase):
             at = app_for("Basic", route)
             self.assert_clean(at)
             self.assertEqual(at.session_state["active_app"], "home")
-            self.assertTrue(at.button(key="v2_launch_tool_commission_calculator").disabled)
+            self.assertNotIn("v2_launch_all_commission_calculator", [b.key for b in at.button])
         at = app_for("Basic")
-        self.assertFalse(at.button(key="v2_launch_tool_analyzer").disabled)
+        self.assertFalse(at.button(key="v2_launch_all_analyzer").disabled)
 
     def test_rapid_repeated_navigation(self):
         at = app_for()
         for _ in range(3):
-            at.button(key="v2_launch_task_analysis").click().run()
+            at.button(key="v2_launch_quick_analyzer").click().run()
             self.assert_clean(at)
             at.button(key="v2_nav_home").click().run()
             self.assert_clean(at)

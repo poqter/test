@@ -305,6 +305,10 @@ def run() -> None:
         "↗",
     )
 
+    from .official_resources import render_resources
+    if render_resources(LIFE_INSURERS + NON_LIFE_INSURERS, CUSTOMER_CENTER_NUMBERS):
+        return
+    render_home_quick_search()
     st.markdown(
         """
         <style>

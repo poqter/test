@@ -499,6 +499,11 @@ def run() -> None:
     total_medical = sum(medical.values())
     current_payout, current_burden = calculate(medical, rates)
     fifth_payout, fifth_burden = calculate(medical, FIFTH_RATES)
+    with st.expander('보험료와 보장 차이 함께 보기', expanded=True):
+        st.dataframe([{'비교항목':'월 보험료','현재 (원)': current_premium,'비교안 (원)': fifth_premium},
+                      {'비교항목':'예상 보험금','현재 (원)':current_payout,'비교안 (원)':fifth_payout},
+                      {'비교항목':'예상 본인부담','현재 (원)':current_burden,'비교안 (원)':fifth_burden}], hide_index=True,use_container_width=True)
+        st.caption('기존 모듈의 비교 가정을 사용합니다. 실제 상품·세대별 적용 기준과 제안서 조건을 확인한 뒤 활용하세요.')
 
     k1, k2, k3 = st.columns(3)
     k1.metric("총 의료비", won(total_medical))

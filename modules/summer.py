@@ -1401,6 +1401,8 @@ def run():
     blocking_issues, condition_issues, _ = find_data_issues(candidate_df)
     initial_review_mask = blocking_issues.ne("") | condition_issues.ne("")
     initial_review = candidate_df[initial_review_mask].copy()
+    from modules.workbench import dataset_overview
+    dataset_overview(raw, candidate_df, excluded_df, initial_review, '썸머')
 
     if not initial_review.empty:
         initial_review["확인사항"] = blocking_issues.loc[initial_review.index]

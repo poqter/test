@@ -110,7 +110,6 @@ def autosize_columns_fast(ws, df: pd.DataFrame, padding=5, max_width=45):
 
 
 # ── 데이터 로딩 ───────────────────────────────────────────────
-@st.cache_data(show_spinner=False)
 def load_df_from_bytes(file_bytes: bytes) -> pd.DataFrame:
     columns_needed = [
         "수금자명",
@@ -322,7 +321,6 @@ def classify_insurance_type(ins_series: pd.Series) -> pd.Series:
     return np.where(is_nonlife, "손해보험", "생명보험")
 
 
-@st.cache_data(show_spinner=False)
 def compute_manager_score(df_valid: pd.DataFrame) -> pd.DataFrame:
     df = df_valid.copy()
 
@@ -800,6 +798,8 @@ def run():
     candidate_df, excluded_df = exclude_contracts(raw)
     initial_issues = find_critical_issues(candidate_df)
     initial_review = candidate_df[initial_issues.ne("")].copy()
+    from modules.workbench import dataset_overview
+    dataset_overview(raw, candidate_df, excluded_df, initial_review, '매니저')
 
     if not initial_review.empty:
         initial_review["확인사항"] = initial_issues.loc[initial_review.index]

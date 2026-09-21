@@ -1433,6 +1433,10 @@ def run() -> None:
 
     section_intro("고객 안내자료", "문자 안내문과 PDF")
     default_message = make_customer_message(selected_docs, st.session_state.get("cg_customer_name", ""))
+    with st.expander('선택된 준비서류 한눈에 보기', expanded=True):
+        st.write(f'선택한 청구 유형 {len(effective_claims)}개 · 준비서류 {len(selected_docs)}개')
+        for document in selected_docs:
+            st.write('• ' + document.name)
     st.caption("선택한 필요서류에 따라 자동으로 갱신됩니다. 복사한 뒤 카카오톡이나 문자에서 필요한 내용을 추가해 주세요.")
     render_copyable_message(default_message)
 

@@ -669,6 +669,10 @@ def run() -> None:
 
     section_intro("분석 결과", "자동 계산 결과", "입력한 보험료와 납입기간을 기준으로 자동 계산됩니다.")
     t = combined(people)
+    with st.expander('변경 전후 금액을 같은 기준으로 확인', expanded=True):
+        st.dataframe([{'비교항목': '월 보험료', '기존안 (원)': t['old_monthly'], '변경안 (원)': t['after_monthly'], '차이 (원)': t['after_monthly']-t['old_monthly']},
+                      {'비교항목': '납입 예정 총액', '기존안 (원)': t['old_total'], '변경안 (원)': t['after_total'], '차이 (원)': t['after_total']-t['old_total']}], hide_index=True, use_container_width=True)
+        st.caption('금액 차이는 보장 우열을 의미하지 않습니다. 해지·감액 계약의 손실과 신규 심사·면책·감액 조건을 함께 확인하세요.')
     a, b, c = st.columns(3)
     labels = (["월 보험료 변화", "변경 후 월 보험료", "납입 예정 총액 변화"] if count == 1 else
               ["합산 월 보험료 변화", "변경 후 합산 월 보험료", "납입 예정 총액 변화"])

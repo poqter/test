@@ -320,7 +320,6 @@ def _extract_sheet(
     return results, warnings
 
 
-@st.cache_data(show_spinner=False)
 def parse_commission_workbook(file_bytes: bytes, source_type: str) -> tuple[list[dict], list[str]]:
     """예시표의 저장된 계산 결과를 읽습니다. 원본 파일은 변경하지 않습니다."""
     formula_book = load_workbook(io.BytesIO(file_bytes), data_only=False, read_only=False)
@@ -799,7 +798,6 @@ def _condition_option_label(
     )
 
 
-@st.cache_data(show_spinner=False)
 def parse_holding_workbook(file_bytes: bytes) -> list[dict]:
     """보유계약 장기 파일을 읽습니다. 잘못된 dimension=A1 파일도 처리합니다."""
     wb = load_workbook(io.BytesIO(file_bytes), data_only=True, read_only=False)
@@ -1230,7 +1228,6 @@ def _auto_candidate(holding: dict, products: list[ProductRate]) -> ProductRate |
     return None
 
 
-@st.cache_data(show_spinner=False)
 def _analyze_product_links(
     holdings: list[dict], product_rows: list[dict]
 ) -> dict[str, dict[str, Any]]:
@@ -1794,6 +1791,9 @@ def run() -> None:
     )
     st.session_state["commission_payout_rate"] = payout_rate_percent
     payout_rate = payout_rate_percent / 100
+    with st.expander('적용 지급률 확인', expanded=True):
+        st.metric('현재 계산 지급률', f'{payout_rate_percent:g}%')
+        st.caption('예시표의 회사별 수수료율에 이 지급률을 적용합니다. 상품·납입기간·예시표 기준월이 계약과 일치하는지 확인하세요.')
     holding_file = st.file_uploader(
         "보유계약관리 장기 엑셀", type=["xlsx"], key="commission_holding_file",
         help="계약상태가 정상이고 수수료표 기준월과 같은 계약을 우선 분석합니다.",

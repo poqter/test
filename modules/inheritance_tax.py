@@ -1160,6 +1160,9 @@ def run():
     liquid_funds = max(0, available_cash) + max(0, death_benefit) + max(0, other_liquidity)
     tax_due = result.estimated_tax_due
     funding_gap = liquid_funds - tax_due
+    st.download_button('세액·납부재원 요약 내려받기',
+        f'화랑 WORKSPACE · 입력 가정 기반 요약\n예상 상속세: {tax_due:,.0f}원\n현금성 재원: {liquid_funds:,.0f}원\n부족액: {max(0,-funding_gap):,.0f}원\n실제 신고세액 확정 자료가 아닙니다.'.encode('utf-8-sig'),
+        'inheritance_funding_summary.txt', key='it_summary_download')
 
     st.divider()
     st.subheader("한눈에 보는 결과")

@@ -1043,6 +1043,11 @@ def run() -> None:
 
     selected_labels: list[str] = []
     if parsed:
+        with st.expander('인식된 계약과 고객정보 확인', expanded=True):
+            st.write(f"고객: {parsed['customer_name']} · 보험나이: {parsed['age']} · 계약 {len(parsed['contracts'])}개")
+            st.dataframe([{'보험사': c['company'], '상품': c['product'], '월보험료': c['monthly'], '보장기간': c['coverage_period']} for c in parsed['contracts']], hide_index=True, use_container_width=True)
+            if any(not c['company'] or not c['product'] or c['monthly'] == 0 for c in parsed['contracts']):
+                st.info('회사·상품명이 비어 있거나 보험료가 0인 계약이 있습니다. 완납 여부와 원본을 확인하세요.')
         available_labels = [item["label"] for item in parsed["coverages"]]
         default_labels = [label for label in available_labels if label in set(DEFAULT_COVERAGES)]
 
