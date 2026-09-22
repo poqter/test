@@ -16,6 +16,8 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 
+from .session_store import commit_input, reset_page
+
 CHECKED = "2026-09-21"
 SOURCES = {
     "보험나이": "https://www.cardif.co.kr/customer-center/보험나이-만나이.do",
@@ -25,6 +27,11 @@ SOURCES = {
     "AIA 청구서식": "https://www.aia.co.kr/ko/customer-support/customer-guide/forms/claims.html",
     "iM라이프 청구서식": "https://www.imlifeins.co.kr/BB/BB_D030.do",
     "설명 참고": "https://carinfo.knia.or.kr/lmxsrv/law/lawFullContent.do?SEQ=4&SEQ_HISTORY=9",
+}
+
+_PREFIX_PAGES = {
+    "a_": "quick_calculators", "b_": "consultation_helper",
+    "c_": "comparison_builder", "e_": "education_center", "f_": "insurer_portal",
 }
 
 
@@ -41,10 +48,17 @@ def field(kind, label, key, value=None, **kwargs):
         st.session_state[ui] = st.session_state[key]
     def remember():
         st.session_state[key] = st.session_state[ui]
+        page = next((page for prefix, page in _PREFIX_PAGES.items() if key.startswith(prefix)), None)
+        if page:
+            commit_input(page, key, st.session_state[ui])
     return getattr(st, kind)(label, key=ui, on_change=remember, **kwargs)
 
 
 def clear_namespace(prefix):
+    page = _PREFIX_PAGES.get(prefix)
+    if page:
+        reset_page(page)
+        return
     for key in list(st.session_state):
         if key.startswith(prefix) or key.startswith("_ws_" + prefix):
             del st.session_state[key]

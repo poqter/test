@@ -68,6 +68,7 @@ class WorkspaceTests(unittest.TestCase):
             with self.subTest(app_id=app_id):
                 at = app_for(page=app_id)
                 self.assert_clean(at)
+                self.assertFalse(at.error, [e.value for e in at.error])
                 self.assertEqual(at.session_state["active_app"], app_id)
                 at.button(key="v2_nav_home").click().run()
                 self.assert_clean(at)
@@ -78,6 +79,7 @@ class WorkspaceTests(unittest.TestCase):
             with self.subTest(user=user):
                 at = app_for(user)
                 self.assert_clean(at)
+                self.assertFalse(at.error, [e.value for e in at.error])
                 self.assertEqual(len([b for b in at.button if b.key.startswith("v2_launch_all_")]), len(at.session_state["ws_allowed_ids"]))
 
     def test_search_and_empty_result(self):

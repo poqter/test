@@ -78,13 +78,11 @@ def run():
     elif mode=="상담유형별 권장 도구":
         subject=st.selectbox("상담 유형",list(GUIDES),key="e_type")
         name,app_id,desc=GUIDES[subject]; st.subheader(name); st.write(desc)
-        from modules.workbench import save_page_draft
+        from modules.navigation import navigate
         # Page rights are supplied by the app router, never bypassed here.
         if app_id in st.session_state.get('ws_allowed_ids', []):
             if st.button('추천 도구 열기',key='e_recommended_go',type='primary'):
-                save_page_draft('education_center')
-                st.session_state['active_app']=app_id
-                st.rerun()
+                navigate(app_id)
         else:
             st.caption('이 도구의 사용 권한은 계정 설정을 따릅니다.')
     elif mode in ("신입 FP 상담 시뮬레이션","보험금 청구 사례 퀴즈"):

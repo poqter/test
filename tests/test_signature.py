@@ -18,7 +18,9 @@ def opened(page='home',role='Admin'):
     return at.run()
 
 class SignatureTests(unittest.TestCase):
-    def clean(self,at): self.assertEqual([e.message for e in at.exception],[])
+    def clean(self,at):
+        self.assertEqual([e.message for e in at.exception],[])
+        self.assertEqual([e.value for e in at.error],[])
 
     def test_age_boundaries(self):
         self.assertEqual(age_result(date(1990,4,23),date(2026,10,22))[1],36)
@@ -52,7 +54,7 @@ class SignatureTests(unittest.TestCase):
         at=opened('remodeling')
         at.text_input(key='rm_consultant').set_value('가상 담당').run()
         at.button(key='v2_nav_home').click().run()
-        at.button(key='v2_launch_quick_remodeling').click().run();self.clean(at)
+        at.button(key='v2_nav_remodeling').click().run();self.clean(at)
         self.assertEqual(at.text_input(key='rm_consultant').value,'가상 담당')
 
     def test_portal_search_and_reset(self):
@@ -73,9 +75,12 @@ class SignatureTests(unittest.TestCase):
 
     def test_reset_popup(self):
         at=opened('quick_calculators')
+        at.session_state['a_synthetic_reset_value']='가상 입력'
         at.button(key='wb_reset').click().run();self.clean(at)
         at.button(key='wb_reset_confirm').click().run();self.clean(at)
         self.assertEqual(at.session_state['login_user'],'Admin')
+        self.assertEqual(at.session_state['active_app'],'home')
+        self.assertNotIn('a_synthetic_reset_value',at.session_state.filtered_state)
 
     def test_education_dialog_and_navigation(self):
         at=opened('education_center')

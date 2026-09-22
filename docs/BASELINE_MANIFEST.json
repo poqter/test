@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "baseline": {
+    "archive": "hwarang_workspace_signature_test.zip",
+    "sha256": "a9adde24e1d46c6b7450ae329803acfb3fbf96b99a2d8794ae22afd92ecd7961",
+    "file_count": 61,
+    "python_file_count": 26,
+    "test_count": 21
+  },
+  "privacy": {
+    "staff_roster_source": "modules/summer.py",
+    "staff_roster_entry_count": 24,
+    "values_included": false,
+    "note": "Only hashes and counts are recorded; roster names and codes are excluded."
+  },
+  "source_sha256": {
+    "app.py": "5ae1a447072198e1b9db0b54cf51190bf955b0e36bf831d3d7bf8a8a1972e4e0",
+    "modules/__init__.py": "d4181a5cf39c0198710c53bec22df7a0700bf5cc0285fd7980a210c4ed905fdf",
+    "modules/analyzer.py": "241faf178abe8b8f11bf73b225f9d498c009556ecb015d96e2052ec6e5c696a0",
+    "modules/commission_calculator.py": "fdae2e34d6f4ab747a6d2f0ca252f360dde3b97774060d2fbfe2fe1d7d4e2a5b",
+    "modules/comparison_builder.py": "19375d06bc645084a62a520bfdb992c15d611dbbe149a614e50adb5b5acba457",
+    "modules/consultation_helper.py": "6b2ac84b77a3ac1748f62db9cd478d79ba3fce7885d9e146752084d416a3941b",
+    "modules/convention.py": "8d8656f35fd853e4d8a215fe1d89050240c0194c98c63ab017103a2bf891e51f",
+    "modules/deposit_vs_shortpay.py": "8b03137112d5f5360e46951a4e2e25c807a4fcb3c41e3b9dc62638be4b829a7e",
+    "modules/education_center.py": "2739848e709b45ff415c68900fc4d9f0faab2a0a0289402d64fd932110b7acd8",
+    "modules/inheritance_tax.py": "004803c69c001a38cfe06dc1ff1bd09372c079bf5bbde118d9da8b99460bacef",
+    "modules/insurance_claim_guide.py": "1b502a6deef809ad3e6b6127446ed20bf56bf8a286b3e99e570a2d2912b4d587",
+    "modules/insurer_portal.py": "353013059cb5a7d8ce062ebfb054a7fa8bb1721adad7fd988a3f08b33f4e6634",
+    "modules/manager_results.py": "d7ba9f47dee0a209812e73a8f82b30b0441d70c69ba8db03641ebf772d2b00db",
+    "modules/official_resources.py": "7ad42d1d47b218be366bfcebce82d1c441b6339d10eff3f1c8b10ae7ea19054a",
+    "modules/quick_calculators.py": "36126b9ea623342f0ae36d4bf7352198cfcfde4e62349679593b5c59d83a0154",
+    "modules/remodeling.py": "9acd21ca51693e6046e752080728b340990d0fd6bfd9c6b58fd6fe15149a5f18",
+    "modules/renewal_vs_nonrenewal.py": "0bbc02e88a1c83e745a14670b25850663fa6facb1f6a5a6bb40c857966262ce7",
+    "modules/signature_theme.py": "702987ab67c27f4c0fd82b64704a8f50909e26e1220ede43f3f437c4eadae71e",
+    "modules/silson_generation_comparison.py": "e7b9d18194e75ad5d87fd9d844e5a4f8dd42136dd212b246ca5791b2d7cf122d",
+    "modules/summer.py": "52cc574409050a66871b2b74f62b0cbffcd524897d213e896c28ef1e01770f4a",
+    "modules/ui_components.py": "b65d820ff409dbb119d607ba1ea6c051d1242f5d79299012da6a0d01f8817309",
+    "modules/workbench.py": "cf5ce1a18d1cac8b1938ef22964eddd7174267c7c3eb1823c57a8e928d66cbc9",
+    "modules/workspace_tools.py": "fc6c77e584e5c607ef8b725055753786ba95fb8fc94cc7d5c11fe77e571816ed",
+    "modules/workspace_v2.py": "947ce9538c9f16136128a7f3efbca92649f63a975157efa56623b1de32448219",
+    "tests/test_signature.py": "4d48c6c85b24b36358d1ddfa83921a5c8e528493ca039639717cc971b729c8b0",
+    "tests/test_workspace.py": "9b71e83e84e586e1e71d76dda5031408f1af333e7fd6b840d4465eb70dc74795"
+  },
+  "business_module_ast": {
+    "modules/analyzer.py": {"module": "8e33d04d4394f08085b85a7dccf9e42ed191c86efe7cc07cec780a81e1e6afe5", "functions": "27c0baf667765aef9bf1734699781d434ba8a5eee02c66a2cbcc3f9e3a134722", "constants": "0d435216b7aaf4218a01b7f50308bbf506b1470e31391593879cfecfc7250710"},
+    "modules/remodeling.py": {"module": "4959d94b2356c12ef2a7df26bc5fe7f828a6c95c26e8891a5bf7de46d34a9a1f", "functions": "d647bbc6888cd9ac3333117a328009bec62e07afb28ce5205f32d03e0b0e544e", "constants": "748dfe8c41016a03b985b2e970deacc4a67e4db63c929077b95b49ca687a45f5"},
+    "modules/deposit_vs_shortpay.py": {"module": "9e92204e14e3a4d24843b34f782e838a076dc25f06abb86c9e29242f8a2da96d", "functions": "9baa921bc838361d06763dba5b22552c301ff90992049a89a87ab5847ef55894", "constants": "50639b9b4cafe966b150f8300ad071230b96ea8c4278f344c96e7058ec95766a"},
+    "modules/renewal_vs_nonrenewal.py": {"module": "250edf160746ca54bb03dc7fd9de94beffff4f41fd66c15c952014f3bf99b73c", "functions": "7fc299ec67ad8e11a43ffa222acff417c128ef92247b609901623514db15841a", "constants": "3090a42d9fcf23ccaa334ef30f08eaa8d4a6d05c86728f48699b954fb02bb1b3"},
+    "modules/inheritance_tax.py": {"module": "f2131ef63eedeba0da06a7d492209bd3fdd72c5cb90d7ed5efb905f4123c925e", "functions": "1bb88dca6d90017f3f394dcfab6de9453886b3387f3b71608cac12dc12f4c023", "constants": "0aadac545c520722ecdffd9f6f5f881f96785aa1e201250ce401758fdee8d3a0"},
+    "modules/insurance_claim_guide.py": {"module": "decdad9739205e7d19fe12aed62abb193489a2e0d1b6f651274b7f10bef6873c", "functions": "1107720d5059716688f38daf537e0d112f9a47dc4c7e3172283a66ae03ed8be1", "constants": "df301e409a5136f73f33df0a8d4b3034f2dee6d2f5fa04f1e958e4143fa9828e"},
+    "modules/silson_generation_comparison.py": {"module": "b296e7c3d0185c32d3a67a83e914b000119a4dd6aa9b86b6e2f6c92dd0feb1b3", "functions": "7f55670f361065a62e326120b98ef9629eb5f0bf9fd922136697b3c8afd9e894", "constants": "42da9a97242d8cb32f224d83566fd3327be6dda99f738bf765cdcc7153d532f9"},
+    "modules/convention.py": {"module": "b686e939f4a6379d4a5c6f51a19a537f965343f97b857747d8a73b7709fd27c4", "functions": "49819a0ea19be5f5e952be448b2f1cdfaa24e57c1f26dac3153e8ccf44125811", "constants": "caf242087fd410651ded7eac3eb07ea14bccb4f6bb82773f34eabec3fb525ad4"},
+    "modules/summer.py": {"module": "077bc6b6f881dbd5a399233f0d11aa12220d50734fb83dc0b91a946ce1f89f23", "functions": "f3103bd3b4cf459217bf06d9399caec8227669a25e89001f2185c7bca3299cf4", "constants": "c431d7c7dfbeddde6ef372d35c7ea4bbf673f2bab456a346fcb3a1c247834773"},
+    "modules/manager_results.py": {"module": "b7f1aa388fdd96ae6c0425bcf54462900003059e24b6b06cef1d0bf6e7028423", "functions": "87158bab1eda58248494dc5c62851f6f722bf4bff9f57c64dd9ac745bf002159", "constants": "ce22d84065b5dc0849aae789241b061b1b94f99df56f0a227356d277bda39b47"},
+    "modules/commission_calculator.py": {"module": "1bfcc67b37c1010cbe5fd3f6291f24eeb3cebab39db939aaec30b630914978f6", "functions": "cca7f203910c6affc564ca4cbc071c0c315df11f786f1e87d85a396d7d1b6ca1", "constants": "0fe4cb57f289233e79d3ca77b04cf9892326940766b6810b7db8fb0c91450d5d"},
+    "modules/insurer_portal.py": {"module": "b35b11a0ba6b667dcd197bfbb3603d02ccfa42b5340126e22c3be904ded3ac99", "functions": "fd5e0c135ad28aafa8a7d9bfc8c7f85f5acf65f94c0c7b8a0ec084f40800c7ae", "constants": "b9def627ee3aed79183ae45233ddeee785a1ee97c2feda7ed86b9b7c92587a6c"}
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "fixture_policy": "synthetic-only",
+  "source": "authoritative-baseline",
+  "independent_checks": {
+    "total_premium": {
+      "input": {"monthly": 10, "total_months": 240, "paid_months": 12},
+      "expected": [2400, 120, 2280]
+    },
+    "deposit_simple_interest": {
+      "input": {"monthly_won": 100000, "annual_rate_percent": 3},
+      "expected_first_year_gross_won": 19500,
+      "expected_first_year_net_won": 16497,
+      "expected_ten_year_net_won": 164970
+    }
+  },
+  "legacy_observations": {
+    "analysis_workbook_sheets": ["보장 분석", "보장 제안서"],
+    "notes": "Expected values use synthetic inputs and contain no staff roster values. Full business-rule coverage remains staged."
+  }
+}
