@@ -15,7 +15,7 @@ APP_IDS = (
     "analyzer", "remodeling", "deposit_vs_shortpay", "renewal_vs_nonrenewal",
     "inheritance_tax", "insurer_portal", "insurance_claim_guide",
     "silson_generation_comparison", "convention", "summer", "manager_results",
-    "commission_calculator", "quick_calculators", "consultation_helper", "comparison_builder", "education_center",
+    "commission_calculator", "quick_calculators", "consultation_helper", "comparison_builder", "customer_materials", "education_center",
 )
 
 

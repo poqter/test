@@ -12,7 +12,7 @@ EXPECTED_IDS = {
     "inheritance_tax", "insurer_portal", "insurance_claim_guide",
     "silson_generation_comparison", "convention", "summer", "manager_results",
     "commission_calculator", "quick_calculators", "consultation_helper",
-    "comparison_builder", "education_center",
+    "comparison_builder", "customer_materials", "education_center",
 }
 ROOT = Path(__file__).resolve().parents[1]
 BUSINESS_MODULES = (

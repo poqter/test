@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 
 CONTENT_FILES = {
+    "customer_material_templates": {"templates": dict},
     "consultation_topics": {"lifecycles": dict, "questions": list, "goals": list, "visits": list},
     "consultation_scripts": {"scripts": dict, "reactions": dict},
     "message_templates": {"intros": dict, "messages": dict},

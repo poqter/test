@@ -32,6 +32,7 @@ SOURCES = {
 _PREFIX_PAGES = {
     "a_": "quick_calculators", "b_": "consultation_helper",
     "c_": "comparison_builder", "e_": "education_center", "f_": "insurer_portal",
+    "d_": "customer_materials",
 }
 
 
@@ -48,6 +49,10 @@ def field(kind, label, key, value=None, **kwargs):
         st.session_state[ui] = st.session_state[key]
     def remember():
         st.session_state[key] = st.session_state[ui]
+        if key.startswith('a_'):
+            st.session_state['a_review_token'] = None
+        if key.startswith('d_'):
+            st.session_state['d_review'] = None
         page = next((page for prefix, page in _PREFIX_PAGES.items() if key.startswith(prefix)), None)
         if page:
             commit_input(page, key, st.session_state[ui])

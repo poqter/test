@@ -19,6 +19,7 @@ LEGACY_PREFIXES: dict[str, tuple[str, ...]] = {
     "quick_calculators": ("a_",),
     "consultation_helper": ("b_",),
     "comparison_builder": ("c_",),
+    "customer_materials": ("d_",),
     "education_center": ("e_",),
     "insurer_portal": ("f_", "home_insurer_"),
     "convention": ("convention_",),
@@ -34,6 +35,8 @@ _SKIP_TOKENS = (
     "file", "upload", "editor", "_run", "_download", "_add_", "_remove_",
     "_delete_", "_generate_", "_apply_", "_reset", "_restore_", "_clear_",
     "_example", "cg_claim_", "_select_all", "_select_default", "_select_none",
+    "_open", "_preview", "_approve", "_confirm", "_cancel", "_move_",
+    "_help", "_calculate", "_recheck", "_claim_link", "_make_",
 )
 _AUTH_KEYS = frozenset({"password_correct", "login_user", "active_app"})
 
