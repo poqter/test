@@ -46,7 +46,7 @@ GROUPS: Final[tuple[GroupSpec, ...]] = (
 
 APPS: Final[tuple[AppSpec, ...]] = (
     AppSpec("consultation_helper", "상담·제안서 스튜디오", "consultation", "상담 준비부터 요약·고객 전달문·제안서 PDF까지 정리합니다.", ("문자", "생애주기", "질문", "상담요약", "스크립트", "제안서", "PDF"), "modules.consultation_helper", icon_key="consultation", order=10, source_status="stage3"),
-    AppSpec("quick_calculators", "간편 계산기", "calculators", "보험나이부터 필요 보장액까지 6가지 계산을 확인합니다.", ("보험나이", "상령일", "총납입", "비상자금", "납입면제"), "modules.quick_calculators", icon_key="calculator", order=20, source_status="stage1"),
+    AppSpec("quick_calculators", "재무·보험 계산기", "calculators", "보험·생활·미래 준비를 위한 13개 계산과 검토용 자료를 만듭니다.", ("보험나이", "상령일", "총납입", "비상자금", "납입면제", "교육자금", "은퇴", "저축", "물가", "부채"), "modules.quick_calculators", icon_key="calculator", order=20, source_status="stage4"),
     AppSpec("deposit_vs_shortpay", "적금 vs 단기납", "calculators", "10년 기준 적금과 단기납의 예상 결과를 비교합니다.", ("저축", "적금", "단기납", "환급"), "modules.deposit_vs_shortpay", icon_key="compare", order=30),
     AppSpec("renewal_vs_nonrenewal", "갱신 vs 비갱신", "calculators", "보험료 변동을 반영해 장기 총납입액을 비교합니다.", ("갱신보험료", "총납입", "갱신형", "비갱신형"), "modules.renewal_vs_nonrenewal", icon_key="compare", order=40),
     AppSpec("inheritance_tax", "상속세 계산기", "calculators", "예상 상속세와 부족한 현금성 납부재원을 계산합니다.", ("상속세", "상속", "재산", "납부재원"), "modules.inheritance_tax", icon_key="tax", order=50),
