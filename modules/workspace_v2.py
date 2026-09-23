@@ -125,10 +125,17 @@ _HOME_TOPICS = (
 
 def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice: dict[str, object]) -> None:
     allowed = set(allowed_ids)
-    st.markdown('''<div class="hw-new-hero"><div class="hw-new-kicker">HWARANG WORKSPACE</div>
-      <div class="hw-new-hero-content"><small>YOUR WORK, MADE CLEAR</small>
-      <h1>일의 시작을<br>더 가볍게.</h1>
-      <p>고객 상담부터 실적 관리까지, 지금 필요한 업무를 선택하세요.</p></div></div>''', unsafe_allow_html=True)
+    with st.container(key="hw_home_hero"):
+        st.markdown('<div class="hw-new-hero-marker" aria-hidden="true"></div><div class="hw-new-kicker">HWARANG WORKSPACE</div>', unsafe_allow_html=True)
+        hero_left, hero_right = st.columns([1.13, 1], gap="large", vertical_alignment="center")
+        with hero_left:
+            st.markdown('''<div class="hw-new-hero-content"><small>YOUR WORK, MADE CLEAR</small>
+              <h1>일의 시작을<br>더 가볍게.</h1>
+              <p>고객 상담부터 실적 관리까지, 지금 필요한 업무를 선택하세요.</p></div>''', unsafe_allow_html=True)
+        if "insurer_portal" in allowed:
+            with hero_right, st.container(key="hw_portal_search"):
+                st.markdown('<div class="hw-portal-heading"><span>INSURER PORTAL</span><strong>원수사 바로 검색</strong><p>보험사명·별칭·대표번호로 전산과 연락처를 찾으세요.</p></div>', unsafe_allow_html=True)
+                render_home_quick_search()
     labels = [topic[0] for topic in _HOME_TOPICS if any(item in allowed for item in topic[4])]
     if not labels:
         st.info("이용할 수 있는 도구가 없습니다.")
@@ -137,10 +144,6 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
         st.session_state["hw_home_topic"] = labels[0]
     choice = st.segmented_control("업무 선택", labels, key="hw_home_topic", label_visibility="collapsed")
     selected = next(topic for topic in _HOME_TOPICS if topic[0] == choice)
-    if "insurer_portal" in allowed:
-        with st.container(key="hw_portal_search"):
-            st.markdown('<div class="hw-portal-heading"><span>INSURER PORTAL</span><strong>원수사 바로 검색</strong><p>보험사명·별칭·대표번호로 전산과 연락처를 찾으세요.</p></div>', unsafe_allow_html=True)
-            render_home_quick_search()
     _, eyebrow, title, detail, ids = selected
     apps = [APP_BY_ID[item] for item in ids if item in allowed]
     st.markdown(f'<div class="hw-topic-heading"><small>{html.escape(eyebrow)}</small><h2>{html.escape(title)}</h2><p>{html.escape(detail)}</p></div>', unsafe_allow_html=True)

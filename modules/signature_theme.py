@@ -90,6 +90,22 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible{
 [class*="st-key-hw_portal_search"] input{background:#f7fbfd!important;border:1px solid #cddde7!important}
 [class*="st-key-hw_portal_search"] .ip-home-result{background:#f8fbfd!important;border-color:#dce8ef!important}
 @media(max-width:768px){.stApp:has(.hw-auth-bg) [data-testid="stAppViewContainer"]:before{width:110vw;height:60vh}.hw-new-hero{padding-bottom:72px}[class*="st-key-hw_portal_search"]{padding:18px!important}}
+
+/* Home: target actual Streamlit wrappers; the earlier .stApp selector missed its main surface. */
+body:has(.hw-new-hero-marker) .stApp,body:has(.hw-new-hero-marker) [data-testid="stAppViewContainer"],body:has(.hw-new-hero-marker) [data-testid="stMain"],body:has(.hw-new-hero-marker) [data-testid="stMainBlockContainer"],body:has(.hw-new-hero-marker) section[data-testid="stMain"]{background:#eef4f8!important}
+body:has(.hw-new-hero-marker) [data-testid="stHeader"]{background:#eef4f8ed!important}
+[class*="st-key-hw_home_hero"]{position:relative;overflow:hidden;border-radius:22px 22px 0 0;background:radial-gradient(circle at 86% 5%,#396984 0%,#1b425e 35%,#102e48 75%,#0b253b 100%)!important;padding:29px 36px 72px!important;box-shadow:0 18px 40px #173b531e}
+[class*="st-key-hw_home_hero"] .hw-new-kicker{color:#a8c9da!important}
+[class*="st-key-hw_home_hero"] .hw-new-hero-content{margin-top:12px!important}
+[class*="st-key-hw_home_hero"] .hw-new-hero-content h1{color:#fff!important;font-size:clamp(29px,3.4vw,44px)!important;line-height:1.26!important}
+[class*="st-key-hw_home_hero"] .hw-new-hero-content p{color:#c7dce7!important;font-size:15px!important}
+[class*="st-key-hw_portal_search"]{margin:16px 0 0!important;padding:22px!important;background:#f8fcff!important;border:1px solid #ffffffb8!important;border-radius:17px!important;box-shadow:0 18px 38px #061b2b38!important;min-height:145px}
+[class*="st-key-hw_home_hero"] .hw-portal-heading strong{font-size:19px;color:#163b55}
+[class*="st-key-hw_home_hero"] .hw-portal-heading p{font-size:13px!important}
+[class*="st-key-hw_home_hero"] .ip-home-result{padding:8px 10px!important;margin:5px 0!important;min-height:48px!important}
+body:has(.hw-new-hero-marker) [data-testid="stSegmentedControl"]{position:relative;margin-top:-48px;padding:0 17px;z-index:2}
+body:has(.hw-new-hero-marker) [data-testid="stSegmentedControl"] button[aria-checked="true"],body:has(.hw-new-hero-marker) [data-testid="stSegmentedControl"] button[aria-pressed="true"]{background:#eef4f8!important;color:#143852!important}
+@media(max-width:800px){[class*="st-key-hw_home_hero"]{padding:22px 18px 67px!important}[class*="st-key-hw_home_hero"] [data-testid="stHorizontalBlock"]{flex-wrap:wrap!important}[class*="st-key-hw_home_hero"] [data-testid="stColumn"]{min-width:100%!important}[class*="st-key-hw_portal_search"]{margin:7px 0 0!important}body:has(.hw-new-hero-marker) [data-testid="stSegmentedControl"]{margin-top:-44px;padding:0 8px}}
 '''
 
 def inject_signature_styles():
