@@ -1,4 +1,8 @@
-# 화랑 WORKSPACE · Stage 5 고객 전달자료
+# 화랑 WORKSPACE · Stage 7 원수사·공식자료 포털
+
+Stage 7은 홈 검색과 포털 목록을 단일 JSON으로 통합하고, 분류·즐겨찾기·연락처 상세 팝업·공식자료 검색·출처와 확인일 표시를 개편했습니다. `STAGE7_RELEASE_NOTES.md`를 먼저 확인하세요. `data/portal_catalog.json`을 반드시 함께 적용해야 합니다.
+
+Stage 6는 Stage 5 전체 프로젝트에 교육 콘텐츠 JSON 분리, 용어 분류·즐겨찾기, 오답 복습·세션 학습 기록, 체크리스트 메모·출력, 수동 연구노트를 반영했습니다. 최신 변경과 검증 결과는 `STAGE6_RELEASE_NOTES.md`를 확인하세요. `data/education_content.json`도 반드시 배포에 포함합니다. 아래 설명은 이전 단계 이력입니다.
 
 Stage 5는 Stage 4 전체 프로젝트에 비교표 편집 개선과 9종 고객자료 제작기를 추가했습니다. 현재 17개 업무 페이지이며 기존 역할의 접근 범위에 고객자료 제작기를 추가했습니다. 최신 변경·검증 결과는 `STAGE5_RELEASE_NOTES.md`를 확인하세요. 아래 Stage 4 이하 설명은 개발 이력입니다.
 
@@ -27,7 +31,7 @@ Stage 2는 기존 16개 업무 도구와 5개 역할 권한을 유지하면서 �
 ## 테스트 서버에 적용
 
 1. 기존 프로젝트를 별도로 백업합니다.
-2. ZIP의 `app.py`, `modules`, `assets`, `data`, `.streamlit/config.toml`, `requirements.txt`를 테스트 저장소의 같은 위치에 반영합니다. `data`의 4개 기본 문구 JSON도 반드시 함께 반영하세요. 검증을 위해 `tests`와 `docs`도 함께 보관합니다.
+2. ZIP의 `app.py`, `modules`, `assets`, `data`, `.streamlit/config.toml`, `requirements.txt`를 테스트 저장소의 같은 위치에 반영합니다. `data`의 모든 JSON도 반드시 함께 반영하세요. 검증을 위해 `tests`와 `docs`도 함께 보관합니다.
 3. 기존 프로젝트에서 사용하는 `.streamlit/secrets.toml`은 별도로 유지합니다.
 4. `streamlit run app.py`로 실행합니다.
 

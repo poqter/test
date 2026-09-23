@@ -36,7 +36,7 @@ _SKIP_TOKENS = (
     "_delete_", "_generate_", "_apply_", "_reset", "_restore_", "_clear_",
     "_example", "cg_claim_", "_select_all", "_select_default", "_select_none",
     "_open", "_preview", "_approve", "_confirm", "_cancel", "_move_",
-    "_help", "_calculate", "_recheck", "_claim_link", "_make_",
+    "_help", "_calculate", "_recheck", "_claim_link", "_make_", "_submit", "_retry", "_recommended_go",
 )
 _AUTH_KEYS = frozenset({"password_correct", "login_user", "active_app"})
 
