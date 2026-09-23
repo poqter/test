@@ -74,20 +74,19 @@ def render_notice() -> None:
 def render_login() -> bool:
     if st.session_state["password_correct"]:
         return True
-    st.markdown(
-        """<div class="hw-login-brand"><span class="hw-logo">H</span><div><strong>화랑 <b>WORKSPACE</b></strong><small>Insurance Consulting Support</small></div></div>
-        <div class="hw-login-hero"><div class="hw-login-copy"><span class="hw-login-kicker"><i></i>HWARANG BUSINESS WORKSPACE</span>
-        <h1><span class="hw-title-top">보험 업무의 복잡함을,</span><em class="hw-title-accent">더 간단하게.</em></h1>
-        <p>상담자료 제작부터 실적 관리까지 필요한 업무를 한곳에서 이용하세요.</p></div></div>""",
-        unsafe_allow_html=True,
-    )
-    login_col, notice_col = st.columns([1, 1.15], gap="large")
+    st.markdown('<div class="hw-auth-bg" aria-hidden="true"></div>', unsafe_allow_html=True)
+    st.markdown('<div class="hw-auth-brand"><span>H</span> 화랑 <strong>WORKSPACE</strong></div>', unsafe_allow_html=True)
+    copy_col, login_col = st.columns([1.18, 1], gap="large", vertical_alignment="center")
+    with copy_col:
+        st.markdown('''<div class="hw-auth-copy"><span>HWARANG WORKSPACE</span>
+        <h1>일의 흐름을<br>하나로 연결하다.</h1>
+        <p>상담과 관리에 필요한 도구를 한 공간에.</p><i></i></div>''', unsafe_allow_html=True)
     with login_col:
-        st.markdown("### 로그인")
-        st.write("발급받은 비밀번호를 입력해 주세요.")
-        with st.form("login_form", clear_on_submit=True):
-            password = st.text_input("비밀번호", type="password", placeholder="비밀번호 입력")
-            submitted = st.form_submit_button("로그인", type="primary", use_container_width=True)
+        with st.container(key="hw_auth_card"):
+            st.markdown('<div class="hw-auth-card-heading"><small>WELCOME BACK</small><h2>로그인</h2><p>비밀번호를 입력해 시작하세요.</p></div>', unsafe_allow_html=True)
+            with st.form("login_form", clear_on_submit=True):
+                password = st.text_input("비밀번호", type="password", placeholder="비밀번호 입력")
+                submitted = st.form_submit_button("워크스페이스 시작 →", type="primary", use_container_width=True)
         if submitted:
             try:
                 passwords = dict(st.secrets["passwords"])
@@ -106,8 +105,7 @@ def render_login() -> bool:
                 st.rerun()
             else:
                 st.error("입력한 비밀번호를 확인해 주세요.")
-    with notice_col:
-        render_notice()
+    st.markdown('<div class="hw-auth-footer">Planned &amp; Built by 박병선 팀장</div>', unsafe_allow_html=True)
     return False
 
 

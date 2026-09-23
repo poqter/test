@@ -63,8 +63,8 @@ def usage_dialog() -> None:
 def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logout: Callable[..., object], notice: dict[str, object]) -> None:
     allowed = set(allowed_ids)
     with st.sidebar:
-        st.markdown('<div class="sig-brand"><span class="sig-mark">H</span><div><strong>HWARANG</strong><small>WORKSPACE</small></div></div>', unsafe_allow_html=True)
-        if st.button("홈", key="v2_nav_home", use_container_width=True, type="primary" if st.session_state.get("active_app") == "home" else "secondary"):
+        st.markdown('<div class="sig-brand"><span class="sig-mark">H</span><div><strong>화랑</strong><small>WORKSPACE</small></div></div>', unsafe_allow_html=True)
+        if st.button("⌂  홈", key="v2_nav_home", use_container_width=True, type="primary" if st.session_state.get("active_app") == "home" else "secondary"):
             navigate("home")
         query = st.text_input("기능 빠른 검색", placeholder="상령일, 문자, 실손…", key="sig_nav_search").strip().lower()
         matched_ids = {app.id for app, _mode in _matches(query, allowed)} if query else allowed
@@ -110,48 +110,58 @@ def _grid(items: list[tuple[AppSpec, str | None]], navigate: Callable[..., objec
                 _tool_card(app, navigate, prefix, mode)
 
 
+# Home tabs only change the visible tool set; registered destinations and permissions stay authoritative.
+_HOME_TOPICS = (
+    ("고객 상담", "CUSTOMER CONSULTING", "고객 상담을 준비하세요", "보장을 살펴보고, 고객에게 맞는 제안을 정리합니다.",
+     ("analyzer", "remodeling", "consultation_helper", "comparison_builder", "customer_materials", "insurance_claim_guide")),
+    ("보험 비교 · 계산", "COMPARE & CALCULATE", "선택지를 명확하게 비교하세요", "보장과 숫자를 나란히 놓고 판단할 수 있습니다.",
+     ("silson_generation_comparison", "quick_calculators", "deposit_vs_shortpay", "renewal_vs_nonrenewal", "inheritance_tax")),
+    ("실적 관리", "PERFORMANCE MANAGEMENT", "업무 결과를 한눈에 확인하세요", "실적과 수수료를 정리하고 흐름을 살펴봅니다.",
+     ("convention", "summer", "manager_results", "commission_calculator")),
+    ("자료 · 교육", "RESOURCES & LEARNING", "업무 자료를 찾아보세요", "원수사 정보와 교육 자료를 한곳에서 확인합니다.",
+     ("insurer_portal", "education_center")),
+)
+
+
 def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice: dict[str, object]) -> None:
     allowed = set(allowed_ids)
-    st.markdown(
-        f'<div class="sig-intro"><div class="sig-eyebrow">HWARANG WORKSPACE · {date.today():%Y.%m.%d}</div>'
-        '<h1>오늘의 상담을 더 명료하게.</h1><p>현재 접속에서 필요한 도구를 찾고 업무를 이어가세요.</p></div>',
-        unsafe_allow_html=True,
-    )
-    query = st.text_input("화랑 도구 검색", key="v2_global_search", placeholder="보험나이, 상담 문자, 비교표, 청구서류…").strip().lower()
-    if query:
-        matches = _matches(query, allowed)
-        st.subheader(f"검색 결과 · {len(matches)}개")
-        if not matches:
-            st.info("관련 도구가 없습니다. 더 짧은 단어로 검색하세요.")
-        _grid(matches, navigate, "search")
-    if "insurer_portal" in allowed:
-        with st.container(border=True):
+    st.markdown('''<div class="hw-new-hero"><div class="hw-new-kicker">HWARANG WORKSPACE</div>
+      <div class="hw-new-hero-content"><small>YOUR WORK, MADE CLEAR</small>
+      <h1>일의 시작을<br>더 가볍게.</h1>
+      <p>고객 상담부터 실적 관리까지, 지금 필요한 업무를 선택하세요.</p></div></div>''', unsafe_allow_html=True)
+    labels = [topic[0] for topic in _HOME_TOPICS if any(item in allowed for item in topic[4])]
+    if not labels:
+        st.info("이용할 수 있는 도구가 없습니다.")
+        return
+    if st.session_state.get("hw_home_topic") not in labels:
+        st.session_state["hw_home_topic"] = labels[0]
+    choice = st.segmented_control("업무 선택", labels, key="hw_home_topic", label_visibility="collapsed")
+    selected = next(topic for topic in _HOME_TOPICS if topic[0] == choice)
+    _, eyebrow, title, detail, ids = selected
+    apps = [APP_BY_ID[item] for item in ids if item in allowed]
+    st.markdown(f'<div class="hw-topic-heading"><small>{html.escape(eyebrow)}</small><h2>{html.escape(title)}</h2><p>{html.escape(detail)}</p></div>', unsafe_allow_html=True)
+    if apps:
+        feature, *remaining = apps
+        with st.container(key="hw_feature_card"):
+            st.markdown(f'<div class="hw-feature-label">추천 시작 도구</div><div class="hw-feature-title">{html.escape(feature.label)}</div><p class="hw-feature-desc">{html.escape(feature.description)}</p>', unsafe_allow_html=True)
+            if st.button(f"{feature.label} 시작하기 ↗", key="hw_feature_launch", type="primary"):
+                navigate(feature.id)
+        for start in range(0, len(remaining), 2):
+            for column, app in zip(st.columns(2, gap="medium"), remaining[start:start + 2]):
+                with column, st.container(key=f"hw_home_card_{app.id}"):
+                    st.markdown(f'<div class="hw-home-card-title">{html.escape(app.label)}</div><p class="hw-home-card-desc">{html.escape(app.description)}</p>', unsafe_allow_html=True)
+                    if st.button("도구 열기 ↗", key="hw_home_launch_" + app.id):
+                        navigate(app.id)
+    with st.expander("전체 도구 검색 · 원수사 바로 검색", expanded=False):
+        query = st.text_input("화랑 도구 검색", key="v2_global_search", placeholder="보험나이, 상담 문자, 비교표, 청구서류…").strip().lower()
+        if query:
+            matches = _matches(query, allowed)
+            st.caption(f"검색 결과 · {len(matches)}개")
+            if matches:
+                _grid(matches, navigate, "search")
+            else:
+                st.info("관련 도구가 없습니다. 더 짧은 단어로 검색하세요.")
+        if "insurer_portal" in allowed:
             st.subheader("원수사 바로 검색")
             render_home_quick_search()
-            st.caption("보험사명과 별칭으로 전산·대표 연락처를 찾습니다. 화랑 도구 검색과 별도입니다.")
-    if not query:
-        st.subheader("빠른 시작")
-        quick_ids = ("consultation_helper", "quick_calculators", "analyzer", "comparison_builder")
-        _grid([(APP_BY_ID[app_id], None) for app_id in quick_ids if app_id in allowed], navigate, "quick")
-        recent = [app_id for app_id in st.session_state.get("hw.ui.recent", st.session_state.get("sig_recent", [])) if app_id in allowed][:4]
-        if recent:
-            st.subheader("최근 사용한 도구")
-            for column, app_id in zip(st.columns(len(recent)), recent):
-                if column.button(APP_BY_ID[app_id].label, key="sig_recent_" + app_id, use_container_width=True):
-                    navigate(app_id)
-        st.subheader("센터별 도구")
-        for group in GROUPS:
-            apps = _group_apps(group.id, allowed)
-            if not apps:
-                continue
-            with st.expander(f"{group.label} · {len(apps)}", expanded=False):
-                st.caption(group.description)
-                _grid([(app, None) for app in apps], navigate, "all")
-    st.divider()
-    st.caption(f"{notice['date']} · {notice['title']} · 변경 내용을 확인하세요.")
-    update_col, privacy_col = st.columns(2)
-    if update_col.button("변경 내용 보기", key="sig_home_notice", use_container_width=True):
-        notice_dialog(notice)
-    if privacy_col.button("자료 이용 안내", key="sig_home_privacy", use_container_width=True):
-        usage_dialog()
-    st.markdown('<div class="sig-footer">HWARANG WORKSPACE · Test Server<br>Planned &amp; Built by 박병선 팀장</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hw-new-footer">화랑 WORKSPACE · Planned &amp; Built by 박병선 팀장</div>', unsafe_allow_html=True)
