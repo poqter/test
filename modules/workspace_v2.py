@@ -137,6 +137,10 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
         st.session_state["hw_home_topic"] = labels[0]
     choice = st.segmented_control("업무 선택", labels, key="hw_home_topic", label_visibility="collapsed")
     selected = next(topic for topic in _HOME_TOPICS if topic[0] == choice)
+    if "insurer_portal" in allowed:
+        with st.container(key="hw_portal_search"):
+            st.markdown('<div class="hw-portal-heading"><span>INSURER PORTAL</span><strong>원수사 바로 검색</strong><p>보험사명·별칭·대표번호로 전산과 연락처를 찾으세요.</p></div>', unsafe_allow_html=True)
+            render_home_quick_search()
     _, eyebrow, title, detail, ids = selected
     apps = [APP_BY_ID[item] for item in ids if item in allowed]
     st.markdown(f'<div class="hw-topic-heading"><small>{html.escape(eyebrow)}</small><h2>{html.escape(title)}</h2><p>{html.escape(detail)}</p></div>', unsafe_allow_html=True)
@@ -152,7 +156,7 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
                     st.markdown(f'<div class="hw-home-card-title">{html.escape(app.label)}</div><p class="hw-home-card-desc">{html.escape(app.description)}</p>', unsafe_allow_html=True)
                     if st.button("도구 열기 ↗", key="hw_home_launch_" + app.id):
                         navigate(app.id)
-    with st.expander("전체 도구 검색 · 원수사 바로 검색", expanded=False):
+    with st.expander("전체 도구 검색", expanded=False):
         query = st.text_input("화랑 도구 검색", key="v2_global_search", placeholder="보험나이, 상담 문자, 비교표, 청구서류…").strip().lower()
         if query:
             matches = _matches(query, allowed)
@@ -161,7 +165,4 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
                 _grid(matches, navigate, "search")
             else:
                 st.info("관련 도구가 없습니다. 더 짧은 단어로 검색하세요.")
-        if "insurer_portal" in allowed:
-            st.subheader("원수사 바로 검색")
-            render_home_quick_search()
     st.markdown('<div class="hw-new-footer">화랑 WORKSPACE · Planned &amp; Built by 박병선 팀장</div>', unsafe_allow_html=True)

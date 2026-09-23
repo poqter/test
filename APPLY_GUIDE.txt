@@ -1,12 +1,9 @@
-화랑 WORKSPACE 12단계 테스트 버전 화면 패치
+화랑 WORKSPACE 로그인·홈 화면 보완 패치
 
-기준: hwarang_workspace_stage12_test_release.zip
+기준: 직전 hwarang_login_home_patch_stage12.zip을 적용한 12단계 테스트 서버
 
-기존 프로젝트의 동일한 경로에 아래 세 파일을 덮어씁니다.
-- app.py: 로그인 화면
-- modules/workspace_v2.py: 홈 화면·사이드바
-- modules/signature_theme.py: 색상·레이아웃·전환 효과
+modules/workspace_v2.py, modules/signature_theme.py 두 파일을 같은 경로에 덮어씁니다. app.py는 직전 패치 버전을 유지합니다.
 
-기존 전체 ZIP을 먼저 별도로 보관하고, 해당 파일만 교체한 뒤 테스트 서버를 재시작하세요. 다른 코드·assets·requirements·secrets 설정은 기존 것을 유지합니다.
-홈 카테고리별 도구는 현재 계정의 허용 범위에서만 표시됩니다. 원수사 바로 검색은 홈의 전체 도구 검색 안에 있습니다.
-확인: 로그인 성공/오류, 카테고리 전환, 각 카드 이동, 사이드바 검색/로그아웃, 원수사 검색, 모바일 폭, 동작 줄이기 설정.
+변경: 로그인 가운데 은은한 음영; 홈 바탕과 네이비 연결색; 원수사 바로 검색을 홈에 상시 노출. 원수사 포털 접근 권한이 있는 계정에만 표시됩니다.
+
+확인: 로그인 화면, 홈 네 카테고리, 원수사 검색어 입력 후 결과·전산 링크, 사이드바·기능 이동.
