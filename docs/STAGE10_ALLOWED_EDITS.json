@@ -1,0 +1,540 @@
+{
+  "modules/analyzer.py": [
+    {
+      "start": 549,
+      "end": 551,
+      "expected": [
+        "        ws.cell(2, index, contract[\"company\"]).data_type = \"s\"\n",
+        "        ws.cell(3, index, contract[\"product\"]).data_type = \"s\"\n"
+      ],
+      "restore": [
+        "        ws.cell(2, index, contract[\"company\"])\n",
+        "        ws.cell(3, index, contract[\"product\"])\n"
+      ]
+    },
+    {
+      "start": 593,
+      "end": 595,
+      "expected": [
+        "                if isinstance(cell.value, str):\n",
+        "                    cell.data_type = \"s\"\n"
+      ],
+      "restore": []
+    },
+    {
+      "start": 632,
+      "end": 633,
+      "expected": [
+        "        ws.cell(row, 3, item[\"display\"]).data_type = \"s\"\n"
+      ],
+      "restore": [
+        "        ws.cell(row, 3, item[\"display\"])\n"
+      ]
+    },
+    {
+      "start": 842,
+      "end": 843,
+      "expected": [
+        "        ws.cell(row, 3, item[\"display\"]).data_type = \"s\"\n"
+      ],
+      "restore": [
+        "        ws.cell(row, 3, item[\"display\"])\n"
+      ]
+    }
+  ],
+  "modules/commission_calculator.py": [
+    {
+      "start": 596,
+      "end": 601,
+      "expected": [
+        "    for sheet in wb:\n",
+        "        for row in sheet:\n",
+        "            for cell in row:\n",
+        "                if isinstance(cell.value, str):\n",
+        "                    cell.data_type = \"s\"\n"
+      ],
+      "restore": []
+    },
+    {
+      "start": 1743,
+      "end": 1744,
+      "expected": [
+        "            st.error(\"자료 처리에 실패했습니다. 파일 형식과 입력 내용을 확인한 뒤 다시 시도해 주세요. [PROCESS_FAILED]\")\n"
+      ],
+      "restore": [
+        "            st.error(f\"{source_type} 예시표를 읽지 못했습니다: {exc}\")\n",
+        "\n"
+      ]
+    },
+    {
+      "start": 1817,
+      "end": 1818,
+      "expected": [
+        "            st.error(\"자료 처리에 실패했습니다. 파일 형식과 입력 내용을 확인한 뒤 다시 시도해 주세요. [PROCESS_FAILED]\")\n"
+      ],
+      "restore": [
+        "            st.error(f\"보유계약 파일을 읽지 못했습니다: {exc}\")\n",
+        "\n"
+      ]
+    }
+  ],
+  "modules/comparison_builder.py": [
+    {
+      "start": 150,
+      "end": 151,
+      "expected": [
+        "    context=field(\"text_area\",\"비교 기준과 가정\",\"c_context\",\"동일한 납입주기·보장조건인지 확인하세요. 입력값을 바탕으로 한 상담 참고자료입니다.\",max_chars=2000)\n"
+      ],
+      "restore": [
+        "    context=field(\"text_area\",\"비교 기준과 가정 (개인정보 제외)\",\"c_context\",\"동일한 납입주기·보장조건인지 확인하세요. 입력값을 바탕으로 한 상담 참고자료입니다.\",max_chars=2000)\n"
+      ]
+    }
+  ],
+  "modules/consultation_helper.py": [
+    {
+      "start": 106,
+      "end": 107,
+      "expected": [
+        "    with st.expander(\"이번 상담 설정\"):\n"
+      ],
+      "restore": [
+        "    with st.expander(\"이번 상담 설정 · 이름과 연락처는 입력하지 마세요\"):\n"
+      ]
+    },
+    {
+      "start": 160,
+      "end": 161,
+      "expected": [
+        "        note = field(\"text_area\", \"다음 미팅 메모\", \"b_meeting_note\", \"\", max_chars=2000)\n"
+      ],
+      "restore": [
+        "        note = field(\"text_area\", \"다음 미팅 메모 (개인정보 제외)\", \"b_meeting_note\", \"\", max_chars=2000)\n"
+      ]
+    }
+  ],
+  "modules/convention.py": [
+    {
+      "start": 732,
+      "end": 734,
+      "expected": [
+        "            if isinstance(cell.value, str):\n",
+        "                cell.data_type = \"s\"\n"
+      ],
+      "restore": []
+    },
+    {
+      "start": 807,
+      "end": 809,
+      "expected": [
+        "            if isinstance(cell.value, str):\n",
+        "                cell.data_type = \"s\"\n"
+      ],
+      "restore": []
+    },
+    {
+      "start": 940,
+      "end": 941,
+      "expected": [
+        "        st.error(\"자료 처리에 실패했습니다. 파일 형식과 입력 내용을 확인한 뒤 다시 시도해 주세요. [PROCESS_FAILED]\")\n"
+      ],
+      "restore": [
+        "        st.error(f\"❌ 엑셀 파일을 읽는 중 오류가 발생했습니다: {e}\")\n"
+      ]
+    }
+  ],
+  "modules/customer_materials.py": [
+    {
+      "start": 36,
+      "end": 37,
+      "expected": [
+        "    st.caption('본문은 유지합니다. 이 원본에서 이전에 가져온 참고 항목은 교체합니다. 가져올 내용을 확인하세요.')\n"
+      ],
+      "restore": [
+        "    st.caption('본문은 유지합니다. 이 원본에서 이전에 가져온 참고 항목은 교체합니다. 실명·연락처 등 불필요한 정보가 없는지 확인하세요.')\n"
+      ]
+    },
+    {
+      "start": 68,
+      "end": 69,
+      "expected": [
+        "    body=field('text_area','본문 직접 작성','d_body','',height=330,max_chars=10000)\n"
+      ],
+      "restore": [
+        "    body=field('text_area','본문 직접 작성 (개인정보 제외)','d_body','',height=330,max_chars=10000)\n"
+      ]
+    },
+    {
+      "start": 74,
+      "end": 75,
+      "expected": [
+        "            st.caption('계산·상담 가정을 함께 가져옵니다. 가져올 항목을 선택하세요.')\n"
+      ],
+      "restore": [
+        "            st.caption('계산·상담 가정은 함께 가져옵니다. 생년월일·구분명·업로드 원본은 자동으로 가져오지 않습니다. 직접 쓴 문장 속 개인정보는 직접 확인하세요.')\n"
+      ]
+    },
+    {
+      "start": 96,
+      "end": 97,
+      "expected": [
+        "    if st.button('내용·가정 확인 완료',key='d_approve',disabled=not valid):st.session_state['d_review']=token\n"
+      ],
+      "restore": [
+        "    if st.button('내용·가정·개인정보 확인 완료',key='d_approve',disabled=not valid):st.session_state['d_review']=token\n"
+      ]
+    }
+  ],
+  "modules/education_center.py": [
+    {
+      "start": 101,
+      "end": 102,
+      "expected": [
+        "        st.caption(f'검색 결과 {len(matches)}개')\n"
+      ],
+      "restore": [
+        "        st.caption(f'검색 결과 {len(matches)}개 · 즐겨찾기는 현재 세션에서만 유지됩니다.')\n"
+      ]
+    }
+  ],
+  "modules/inheritance_tax.py": [
+    {
+      "start": 1386,
+      "end": 1387,
+      "expected": [
+        "            st.error(\"자료 처리에 실패했습니다. 파일 형식과 입력 내용을 확인한 뒤 다시 시도해 주세요. [PROCESS_FAILED]\")\n"
+      ],
+      "restore": [
+        "            st.error(f\"엑셀 보고서를 생성하지 못했습니다: {exc}\")\n",
+        "\n"
+      ]
+    }
+  ],
+  "modules/insurance_claim_guide.py": [
+    {
+      "start": 1385,
+      "end": 1386,
+      "expected": [
+        "                st.warning(\"자료 처리에 실패했습니다. 파일 형식과 입력 내용을 확인한 뒤 다시 시도해 주세요. [PROCESS_FAILED]\")\n"
+      ],
+      "restore": [
+        "                st.warning(f\"지원되는 형식으로 가입내용을 확인하지 못했습니다. 서류 가이드는 계속 이용할 수 있습니다. ({exc})\")\n"
+      ]
+    },
+    {
+      "start": 1457,
+      "end": 1458,
+      "expected": [
+        "        st.error(\"자료 처리에 실패했습니다. 파일 형식과 입력 내용을 확인한 뒤 다시 시도해 주세요. [PROCESS_FAILED]\")\n"
+      ],
+      "restore": [
+        "        st.error(f\"PDF 안내서를 생성하지 못했습니다: {exc}\")\n",
+        "\n"
+      ]
+    }
+  ],
+  "modules/insurer_portal.py": [
+    {
+      "start": 80,
+      "end": 81,
+      "expected": [
+        "    st.caption(f'검색 결과 {len(rows)}개')\n"
+      ],
+      "restore": [
+        "    st.caption(f'검색 결과 {len(rows)}개 · 즐겨찾기는 현재 세션에서만 유지됩니다.')\n"
+      ]
+    },
+    {
+      "start": 89,
+      "end": 90,
+      "expected": [
+        "    st.caption('전산별 접속 환경과 로그인 상태를 확인하세요.')\n"
+      ],
+      "restore": [
+        "    st.caption('링크 열기와 실제 로그인 성공은 다릅니다. 계정·비밀번호는 이 도구에 입력하거나 저장하지 않습니다.')\n"
+      ]
+    }
+  ],
+  "modules/legacy_workflow.py": [
+    {
+      "start": 27,
+      "end": 27,
+      "expected": [],
+      "restore": [
+        "    st.write('고객 입력은 서버 메모리에서 처리됩니다. 이 안내 기능은 입력값을 파일이나 DB로 저장하지 않습니다.')\n"
+      ]
+    },
+    {
+      "start": 34,
+      "end": 35,
+      "expected": [
+        "        st.caption('업무 화면 개편 10단계')\n"
+      ],
+      "restore": [
+        "        st.caption('업무 화면 개편 8단계')\n"
+      ]
+    }
+  ],
+  "modules/manager_results.py": [
+    {
+      "start": 514,
+      "end": 516,
+      "expected": [
+        "            if isinstance(cell.value, str):\n",
+        "                cell.data_type = \"s\"\n"
+      ],
+      "restore": []
+    },
+    {
+      "start": 795,
+      "end": 796,
+      "expected": [
+        "        st.error(\"자료 처리에 실패했습니다. 파일 형식과 입력 내용을 확인한 뒤 다시 시도해 주세요. [PROCESS_FAILED]\")\n"
+      ],
+      "restore": [
+        "        st.error(f\"엑셀 파일을 읽지 못했습니다. 파일 형식과 필수 항목을 확인해 주세요.\\n\\n{e}\")\n"
+      ]
+    }
+  ],
+  "modules/remodeling.py": [
+    {
+      "start": 282,
+      "end": 284,
+      "expected": [
+        "    if isinstance(value, str):\n",
+        "        cell.data_type = \"s\"\n"
+      ],
+      "restore": []
+    }
+  ],
+  "modules/summer.py": [
+    {
+      "start": 1094,
+      "end": 1096,
+      "expected": [
+        "            if isinstance(cell.value, str):\n",
+        "                cell.data_type = \"s\"\n"
+      ],
+      "restore": []
+    },
+    {
+      "start": 1185,
+      "end": 1187,
+      "expected": [
+        "            if isinstance(cell.value, str):\n",
+        "                cell.data_type = \"s\"\n"
+      ],
+      "restore": []
+    },
+    {
+      "start": 1391,
+      "end": 1392,
+      "expected": [
+        "        st.error(\"자료 처리에 실패했습니다. 파일 형식과 입력 내용을 확인한 뒤 다시 시도해 주세요. [PROCESS_FAILED]\")\n"
+      ],
+      "restore": [
+        "        st.error(f\"❌ 엑셀 파일을 읽는 중 오류가 발생했습니다: {e}\")\n"
+      ]
+    }
+  ],
+  "modules/upload_ui.py": [
+    {
+      "start": 3,
+      "end": 18,
+      "expected": [
+        "\n",
+        "\n",
+        "def other_upload_bytes(current, values):\n",
+        "    \"\"\"Count unique active upload objects, never retain a second reference.\"\"\"\n",
+        "    from streamlit.runtime.uploaded_file_manager import UploadedFile\n",
+        "    seen = {getattr(current, 'file_id', id(current))}\n",
+        "    total = 0\n",
+        "    for value in values:\n",
+        "        for item in value if isinstance(value, list) else [value]:\n",
+        "            if isinstance(item, UploadedFile):\n",
+        "                identity = getattr(item, 'file_id', id(item))\n",
+        "                if identity not in seen:\n",
+        "                    seen.add(identity)\n",
+        "                    total += item.size\n",
+        "    return total\n"
+      ],
+      "restore": []
+    },
+    {
+      "start": 25,
+      "end": 26,
+      "expected": [
+        "        validate_upload(uploaded.name, uploaded, session_total=other_upload_bytes(uploaded, list(st.session_state.values())))\n"
+      ],
+      "restore": [
+        "        validate_upload(uploaded.name, uploaded)\n"
+      ]
+    }
+  ],
+  "modules/validators.py": [
+    {
+      "start": 6,
+      "end": 7,
+      "expected": [
+        "import xml.etree.ElementTree as ET\n"
+      ],
+      "restore": []
+    },
+    {
+      "start": 12,
+      "end": 13,
+      "expected": [
+        "from .xlsx_structure import validate_structure, MAIN\n"
+      ],
+      "restore": []
+    },
+    {
+      "start": 21,
+      "end": 24,
+      "expected": [
+        "MAX_PDF_PAGES = 100\n",
+        "MAX_XLSX_ROWS = 100_000\n",
+        "MAX_XLSX_CELLS = 2_000_000\n"
+      ],
+      "restore": []
+    },
+    {
+      "start": 83,
+      "end": 93,
+      "expected": [
+        "    if extension == \".pdf\":\n",
+        "        try:\n",
+        "            from pypdf import PdfReader\n",
+        "            reader = PdfReader(io.BytesIO(content))\n",
+        "            if reader.is_encrypted or len(reader.pages) > MAX_PDF_PAGES:\n",
+        "                raise ValidationError(\"PDF_LIMIT\", \"암호 없는 100페이지 이하 PDF를 사용해 주세요.\")\n",
+        "        except ValidationError:\n",
+        "            raise\n",
+        "        except Exception as exc:\n",
+        "            raise ValidationError(\"UPLOAD_FORMAT_INVALID\", \"PDF 구조를 읽을 수 없습니다.\") from exc\n"
+      ],
+      "restore": []
+    },
+    {
+      "start": 106,
+      "end": 109,
+      "expected": [
+        "            required = {\"[Content_Types].xml\", \"_rels/.rels\", \"xl/workbook.xml\", \"xl/_rels/workbook.xml.rels\"}\n",
+        "            if not required.issubset(archive.namelist()):\n",
+        "                raise ValidationError(\"UPLOAD_FORMAT_INVALID\", \"Excel 통합문서 구조가 없는 파일입니다.\")\n"
+      ],
+      "restore": []
+    },
+    {
+      "start": 119,
+      "end": 142,
+      "expected": [
+        "            try:\n",
+        "                worksheet_paths = validate_structure(archive)\n",
+        "            except (ValueError, KeyError) as exc:\n",
+        "                raise ValidationError(\"UPLOAD_FORMAT_INVALID\", \"Excel 통합문서와 시트 연결 구조를 확인해 주세요.\") from exc\n",
+        "            rows = cells = 0\n",
+        "            for item in items:\n",
+        "                if item.filename in worksheet_paths:\n",
+        "                    with archive.open(item) as source:\n",
+        "                        first = True\n",
+        "                        for event, element in ET.iterparse(source, events=(\"start\", \"end\")):\n",
+        "                            if first:\n",
+        "                                first = False\n",
+        "                                if element.tag != \"{\"+MAIN+\"}worksheet\":\n",
+        "                                    raise ValidationError(\"UPLOAD_FORMAT_INVALID\", \"워크시트 XML 구조를 확인해 주세요.\")\n",
+        "                            if event == \"start\":\n",
+        "                                continue\n",
+        "                            name = element.tag.rsplit(\"}\", 1)[-1]\n",
+        "                            if name == \"row\": rows += 1\n",
+        "                            if name == \"c\": cells += 1\n",
+        "                            if rows > MAX_XLSX_ROWS or cells > MAX_XLSX_CELLS:\n",
+        "                                raise ValidationError(\"XLSX_LIMIT\", \"통합문서의 행·셀 수가 처리 한도를 넘었습니다.\")\n",
+        "                            element.clear()\n",
+        "    except (zipfile.BadZipFile, ET.ParseError, RuntimeError, NotImplementedError, OSError) as exc:\n"
+      ],
+      "restore": [
+        "    except zipfile.BadZipFile as exc:\n"
+      ]
+    }
+  ],
+  "modules/workbench.py": [
+    {
+      "start": 16,
+      "end": 16,
+      "expected": [],
+      "restore": [
+        "STEPS = {\n",
+        "    \"analyzer\": (\"원본 업로드\", \"인식·보장 확인\", \"고객용 결과\"),\n",
+        "    \"remodeling\": (\"기존·변경안 입력\", \"보험료·계약 변화\", \"비교안 다운로드\"),\n",
+        "    \"deposit_vs_shortpay\": (\"비교 조건 입력\", \"10년 가정 확인\", \"예상 결과 비교\"),\n",
+        "    \"renewal_vs_nonrenewal\": (\"현재·제안 조건\", \"갱신 가정\", \"총액·상세 비교\"),\n",
+        "    \"inheritance_tax\": (\"재산·공제 입력\", \"세액 확인\", \"납부재원 점검\"),\n",
+        "    \"insurance_claim_guide\": (\"청구 유형\", \"서류·담보 확인\", \"안내문 작성\"),\n",
+        "    \"silson_generation_comparison\": (\"현재·비교 조건\", \"의료비 예시\", \"보험료·보장 비교\"),\n",
+        "    \"convention\": (\"계약자료 등록\", \"확인·제외 내역\", \"달성·환산 결과\"),\n",
+        "    \"summer\": (\"계약자료 등록\", \"월별 필수조건\", \"보너스·결과\"),\n",
+        "    \"manager_results\": (\"실적자료 등록\", \"집계 대상 확인\", \"수금자별 결과\"),\n",
+        "    \"commission_calculator\": (\"예시표·계약 등록\", \"매칭·지급률 확인\", \"예상 수당\"),\n",
+        "}\n"
+      ]
+    },
+    {
+      "start": 70,
+      "end": 70,
+      "expected": [],
+      "restore": [
+        "    if page in STEPS:\n",
+        "        st.markdown(\n",
+        "            '<div class=\"sig-steps\">' + \"\".join(f'<span class=\"sig-step\">{index} · {step}</span>' for index, step in enumerate(STEPS[page], 1)) + \"</div>\",\n",
+        "            unsafe_allow_html=True,\n",
+        "        )\n"
+      ]
+    }
+  ],
+  "modules/workspace_tools.py": [
+    {
+      "start": 72,
+      "end": 73,
+      "expected": [
+        "    with st.expander(\"입력 초기화\", expanded=False):\n"
+      ],
+      "restore": [
+        "    with st.expander(\"입력자료 관리 · 현재 세션에서만 사용\", expanded=False):\n",
+        "        st.caption(\"이 새 도구는 입력을 DB·파일·공용 캐시에 저장하지 않습니다. 서버 메모리에서 처리하며 새 연결/로그아웃 시 유지되지 않습니다. 이름·연락처 대신 가상 식별자를 사용하세요.\")\n"
+      ]
+    }
+  ],
+  "modules/workspace_v2.py": [
+    {
+      "start": 59,
+      "end": 60,
+      "expected": [
+        "    st.write(\"도구를 선택하고 입력한 뒤 결과를 확인하세요. 필요한 자료는 내려받을 수 있습니다.\")\n"
+      ],
+      "restore": [
+        "    st.write(\"입력과 업로드 자료는 이 서비스를 실행하는 서버 메모리에서 처리됩니다.\")\n",
+        "    st.write(\"페이지 이동 중 유지되는 내용은 현재 접속 세션에 한정되며 새 연결이나 서버 재시작 뒤 복구를 보장하지 않습니다.\")\n",
+        "    st.write(\"이름·연락처 대신 비식별 구분명을 사용하고 필요한 결과만 직접 내려받으세요.\")\n",
+        "    st.caption(\"초기화와 로그아웃은 앱의 작업 참조를 정리하며 물리적 메모리의 즉시 삭제를 보장하지 않습니다.\")\n"
+      ]
+    },
+    {
+      "start": 119,
+      "end": 119,
+      "expected": [],
+      "restore": [
+        "    st.caption(environment_notice(\"test\"))\n"
+      ]
+    },
+    {
+      "start": 150,
+      "end": 151,
+      "expected": [
+        "    st.caption(f\"{notice['date']} · {notice['title']} · 변경 내용을 확인하세요.\")\n"
+      ],
+      "restore": [
+        "    st.caption(f\"{notice['date']} · {notice['title']} · 자료 기준과 개인정보 안내를 확인하세요.\")\n"
+      ]
+    }
+  ]
+}

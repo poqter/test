@@ -14,19 +14,6 @@ from .session_store import (
 )
 
 
-STEPS = {
-    "analyzer": ("원본 업로드", "인식·보장 확인", "고객용 결과"),
-    "remodeling": ("기존·변경안 입력", "보험료·계약 변화", "비교안 다운로드"),
-    "deposit_vs_shortpay": ("비교 조건 입력", "10년 가정 확인", "예상 결과 비교"),
-    "renewal_vs_nonrenewal": ("현재·제안 조건", "갱신 가정", "총액·상세 비교"),
-    "inheritance_tax": ("재산·공제 입력", "세액 확인", "납부재원 점검"),
-    "insurance_claim_guide": ("청구 유형", "서류·담보 확인", "안내문 작성"),
-    "silson_generation_comparison": ("현재·비교 조건", "의료비 예시", "보험료·보장 비교"),
-    "convention": ("계약자료 등록", "확인·제외 내역", "달성·환산 결과"),
-    "summer": ("계약자료 등록", "월별 필수조건", "보너스·결과"),
-    "manager_results": ("실적자료 등록", "집계 대상 확인", "수금자별 결과"),
-    "commission_calculator": ("예시표·계약 등록", "매칭·지급률 확인", "예상 수당"),
-}
 
 
 def save_page_draft(page: str) -> None:
@@ -81,11 +68,6 @@ def render_workbench(page: str, allowed: list[str], navigate) -> None:
             st.caption("일부 기존 입력은 페이지 안에서만 유지됩니다. 파일 선택은 다시 열 때 복원되지 않을 수 있습니다.")
         if st.button("전체 작업 초기화 열기", key="wb_reset_all"):
             reset_all_dialog()
-    if page in STEPS:
-        st.markdown(
-            '<div class="sig-steps">' + "".join(f'<span class="sig-step">{index} · {step}</span>' for index, step in enumerate(STEPS[page], 1)) + "</div>",
-            unsafe_allow_html=True,
-        )
 
 
 def dataset_overview(raw, candidates, excluded, review, label):

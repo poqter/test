@@ -12,6 +12,7 @@ from typing import Iterable
 import pandas as pd
 import pdfplumber
 import streamlit as st
+from .upload_ui import guarded_upload
 import streamlit.components.v1 as components
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
@@ -1365,7 +1366,7 @@ def run() -> None:
     section_intro("선택사항", "보장분석 PDF로 관련 담보도 확인하기")
     with st.expander("보장분석 PDF 첨부"):
         st.caption("첨부하지 않아도 서류 안내와 문자 안내문을 이용할 수 있습니다.")
-        uploaded = st.file_uploader("프로보장분석 PDF 선택", type=["pdf"], key="cg_uploader")
+        uploaded = guarded_upload("프로보장분석 PDF 선택", type=["pdf"], key="cg_uploader")
     parsed = st.session_state.get("cg_parsed_pdf")
     if uploaded:
         pdf_bytes = uploaded.getvalue()
@@ -1382,7 +1383,7 @@ def run() -> None:
             except Exception as exc:
                 st.session_state.pop("cg_parsed_pdf", None)
                 parsed = None
-                st.warning(f"지원되는 형식으로 가입내용을 확인하지 못했습니다. 서류 가이드는 계속 이용할 수 있습니다. ({exc})")
+                st.warning("자료 처리에 실패했습니다. 파일 형식과 입력 내용을 확인한 뒤 다시 시도해 주세요. [PROCESS_FAILED]")
     elif st.session_state.get("cg_pdf_hash"):
         st.session_state.pop("cg_pdf_hash", None)
         st.session_state.pop("cg_parsed_pdf", None)
@@ -1454,8 +1455,7 @@ def run() -> None:
         if include_accident and accident_narrative.strip():
             st.caption("작성한 사고경위가 안내문 PDF에 포함됩니다.")
     except Exception as exc:
-        st.error(f"PDF 안내서를 생성하지 못했습니다: {exc}")
-
+        st.error("자료 처리에 실패했습니다. 파일 형식과 입력 내용을 확인한 뒤 다시 시도해 주세요. [PROCESS_FAILED]")
     st.divider()
     st.caption("이 가이드는 보장분석 자료와 선택한 청구 항목을 기준으로 관련 담보와 준비서류를 안내합니다. 실제 지급 여부와 추가서류는 가입 약관 및 보험회사의 심사 결과에 따라 달라질 수 있습니다.")
     page_footer("보험금 청구 가이드", GUIDE_VERSION)

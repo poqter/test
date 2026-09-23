@@ -1,0 +1,11 @@
+{
+  "tests": 104,
+  "passed": true,
+  "seconds": 84.918,
+  "roster_unchanged": true,
+  "R-01": "fixed and verified",
+  "R-02": "reproduction rejected; structural tests passed",
+  "R-03": "48 dependency versions pinned; clean install blocked by network policy",
+  "actual_browser_check": "not performed",
+  "deployed": false
+}

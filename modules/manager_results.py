@@ -1,4 +1,5 @@
 import streamlit as st
+from .upload_ui import guarded_upload
 import pandas as pd
 from io import BytesIO
 from openpyxl import Workbook
@@ -511,6 +512,8 @@ def write_table(
                 column=c_idx,
                 value=value,
             )
+            if isinstance(cell.value, str):
+                cell.data_type = "s"
             cell.alignment = Alignment(
                 horizontal="center",
                 vertical="center",
@@ -773,7 +776,7 @@ def run():
         )
 
     section_intro("입력", "계약자료 불러오기", "매니저 업적으로 환산할 계약 목록 엑셀 파일을 등록해 주세요.")
-    uploaded_file = st.file_uploader(
+    uploaded_file = guarded_upload(
         "📂 계약 목록 Excel 파일 업로드 (.xlsx)",
         type=["xlsx"],
     )
@@ -790,7 +793,7 @@ def run():
     try:
         raw = load_df_from_bytes(file_bytes).copy()
     except Exception as e:
-        st.error(f"엑셀 파일을 읽지 못했습니다. 파일 형식과 필수 항목을 확인해 주세요.\n\n{e}")
+        st.error("자료 처리에 실패했습니다. 파일 형식과 입력 내용을 확인한 뒤 다시 시도해 주세요. [PROCESS_FAILED]")
         return
 
     raw["_원본행번호"] = raw.index + 2

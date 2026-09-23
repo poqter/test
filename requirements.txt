@@ -1,3 +1,4 @@
+-c constraints.txt
 streamlit==1.61.0
 starlette==0.47.3
 pandas>=2.0
@@ -6,3 +7,4 @@ openpyxl>=3.1
 Pillow>=10.0
 pdfplumber>=0.11
 reportlab>=4.2
+pypdf>=5.0

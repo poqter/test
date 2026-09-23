@@ -78,7 +78,7 @@ def run():
     group=field('selectbox','보험사 구분','f_group','전체',options=['전체','기본 포털','생명보험','손해보험'])
     rows=filter_insurers(data['insurers'],query,group)
     if mode=='즐겨찾기':rows=[r for r in rows if st.session_state.get('f_favorite_'+r['slug'],False)]
-    st.caption(f'검색 결과 {len(rows)}개 · 즐겨찾기는 현재 세션에서만 유지됩니다.')
+    st.caption(f'검색 결과 {len(rows)}개')
     recent=st.session_state.get('f_recent_details',[])
     names={r['slug']:r['name'] for r in data['insurers']}
     if recent:st.caption('최근 상세 확인: '+' · '.join(names[s] for s in recent if s in names))
@@ -87,4 +87,4 @@ def run():
         from .official_resources import resource_cards
         st.subheader('청구·보상 공식 안내')
         resource_cards([r for r in data['resources'] if r['group']=='청구·보상'])
-    st.caption('링크 열기와 실제 로그인 성공은 다릅니다. 계정·비밀번호는 이 도구에 입력하거나 저장하지 않습니다.')
+    st.caption('전산별 접속 환경과 로그인 상태를 확인하세요.')

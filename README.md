@@ -1,50 +1,18 @@
-# 화랑 WORKSPACE · Stage 7 원수사·공식자료 포털
+# 화랑 WORKSPACE · 12단계 테스트 서버 배포 후보
 
-Stage 7은 홈 검색과 포털 목록을 단일 JSON으로 통합하고, 분류·즐겨찾기·연락처 상세 팝업·공식자료 검색·출처와 확인일 표시를 개편했습니다. `STAGE7_RELEASE_NOTES.md`를 먼저 확인하세요. `data/portal_catalog.json`을 반드시 함께 적용해야 합니다.
+**먼저 `01_DEPLOY_GUIDE_KO.md`를 확인하세요.**
 
-Stage 6는 Stage 5 전체 프로젝트에 교육 콘텐츠 JSON 분리, 용어 분류·즐겨찾기, 오답 복습·세션 학습 기록, 체크리스트 메모·출력, 수동 연구노트를 반영했습니다. 최신 변경과 검증 결과는 `STAGE6_RELEASE_NOTES.md`를 확인하세요. `data/education_content.json`도 반드시 배포에 포함합니다. 아래 설명은 이전 단계 이력입니다.
+11단계 수정 후 재감사본 전체를 포함합니다. 보장분석 상품명 문자 출력, XLSX 내부 연결 검사, 의존성 버전 고정이 반영돼 있습니다. 직원 명단과 보너스 매칭은 그대로 유지하며 화면의 개인정보 안내는 제거한 상태입니다.
 
-Stage 5는 Stage 4 전체 프로젝트에 비교표 편집 개선과 9종 고객자료 제작기를 추가했습니다. 현재 17개 업무 페이지이며 기존 역할의 접근 범위에 고객자료 제작기를 추가했습니다. 최신 변경·검증 결과는 `STAGE5_RELEASE_NOTES.md`를 확인하세요. 아래 Stage 4 이하 설명은 개발 이력입니다.
+- 실행 파일: `app.py`
+- 의존성: `requirements.txt` + `constraints.txt`를 함께 반영
+- 설정: `.streamlit/config.toml` 포함, 기존 로그인 secrets 유지
+- 자동 검사: `python -m unittest discover -s tests`
+- 실행: `python -m streamlit run app.py`
+- 파일 검증 목록: `RELEASE_MANIFEST.json`
+- 상세 수정/검사 기록: `STAGE11_RECHECK.md`
+- 현재 패키지 범위: `STAGE12_RELEASE_NOTES.md`
 
-Stage 4는 Stage 3 전체 프로젝트에 총 13개 계산 모드와 검토 후 TXT·Excel·PDF 출력을 반영한 테스트 작업본입니다. 변경 범위와 적용 절차는 `STAGE4_RELEASE_NOTES.md`를 확인하세요. 기존 상담·제안서 스튜디오는 포함되어 있습니다.
+현재 검사 환경에서 104개 테스트가 통과한 코드입니다. 새 환경 설치 및 실제 PC·모바일 육안 검사는 완료되지 않았습니다. 본 ZIP은 테스트 서버용이며 실제 서버에 자동 배포하지 않습니다.
 
-Stage 3는 Stage 2 전체 프로젝트에 상담 준비·진행·요약·제안서 흐름을 연결한 테스트 작업본입니다. 기존 상담 6개 모드를 유지하고 제안서·PDF 모드를 추가했습니다. 이번 변경과 검증 범위는 `STAGE3_RELEASE_NOTES.md`를 확인하세요. 아래 Stage 2 설명은 공통 기반의 이력입니다.
-
-Stage 2는 기존 16개 업무 도구와 5개 역할 권한을 유지하면서 페이지 레지스트리, 권한 재검사형 이동, 세션 상태·초기화, 개인정보 기본값, 입력 방어 검증, 공통 홈·사이드바·테마를 정리한 테스트 작업본입니다. 기존 계산기는 유지하며, 고객자료 페이지나 확장 계산기를 이번 단계에서 추가로 구현하지 않았습니다.
-
-주요 공통 모듈은 `modules/app_registry.py`, `navigation.py`, `session_store.py`, `privacy_guard.py`, `validators.py`입니다. 업무 페이지 모듈은 실행할 때만 import합니다. 알 수 없거나 권한 없는 경로는 홈으로 돌아갑니다.
-
-현재 상태 API는 연결된 신규 입력과 페이지 이동 시 수집되는 명시적 기존 키에 적용됩니다. 모든 기존 페이지의 입력·결과가 공통 revision 방식으로 전환된 것은 아닙니다. 업로드 위젯 표시 복원도 보장하지 않습니다. 파일 형식·용량 검증 유틸은 마련했지만 기존 parser 전체 연결은 후속 페이지 단계입니다.
-
-직원 식별 명단은 원본 `summer.py`에 그대로 있습니다. 값은 매니페스트와 합성 테스트에 복사하지 않았으며 이 작업본을 개인정보 없는 공개 배포본으로 취급하면 안 됩니다.
-
-기존 계산·판정·파일 처리 로직을 유지하면서 로그인, 통합 홈, 사이드바와 전체 업무 기능에 화랑 WORKSPACE 공통 디자인을 적용한 배포용 프로젝트입니다.
-
-## 파일 구성
-
-- `app.py`: 로그인, 계정 권한, 통합 홈과 프로그램 이동
-- `modules/ui_components.py`: 공통 색상, 글꼴, 단색 아이콘, 안내 카드, 기능 헤더와 하단 정보
-- `modules/*.py`: 고객 상담·실적 관리·업무 지원 기능
-- `assets/`: Pretendard 글꼴과 보험회사 로고
-- `requirements.txt`: 배포에 필요한 Python 패키지
-
-## 테스트 서버에 적용
-
-1. 기존 프로젝트를 별도로 백업합니다.
-2. ZIP의 `app.py`, `modules`, `assets`, `data`, `.streamlit/config.toml`, `requirements.txt`를 테스트 저장소의 같은 위치에 반영합니다. `data`의 모든 JSON도 반드시 함께 반영하세요. 검증을 위해 `tests`와 `docs`도 함께 보관합니다.
-3. 기존 프로젝트에서 사용하는 `.streamlit/secrets.toml`은 별도로 유지합니다.
-4. `streamlit run app.py`로 실행합니다.
-
-계정 비밀번호는 기존과 동일하게 `st.secrets["passwords"]`에서 불러옵니다.
-
-의존성 설치 후 일반 검증 명령: `python -m unittest discover -s tests -v`
-
-개발 환경 재현 명령과 상세 결과는 `TEST_RELEASE_NOTES.md`를 참고합니다. 운영 서버에는 이번 파일을 자동 반영하지 않습니다. 롤백은 백업한 이전 테스트 저장소 파일로 되돌린 뒤 재시작하는 방식입니다.
-
-Stage 4의 최신 검증 결과는 `STAGE4_RELEASE_NOTES.md`를 기준으로 합니다. 실제 브라우저 PC·모바일 육안검사는 미검증이며 AppTest가 이를 대체하지 않습니다. 상담 PDF 및 계산 PDF는 별도로 렌더링해 확인했습니다.
-
-## 브랜드 적용 기준
-
-- 프로그램 화면: `Planned & Built by 박병선 팀장`
-- 고객용 PDF·엑셀: `H │ 화랑 WORKSPACE`
-- 기능별 버전과 업데이트 날짜는 각 기능에서 개별 관리합니다.
+이전 단계 문서는 개발 이력입니다. 현재 적용 절차와 검증 상태는 이 README 및 위 안내 파일을 기준으로 합니다.

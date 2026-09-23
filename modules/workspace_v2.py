@@ -57,10 +57,7 @@ def notice_dialog(notice: dict[str, object]) -> None:
 
 @st.dialog("작업자료와 이용 안내")
 def usage_dialog() -> None:
-    st.write("입력과 업로드 자료는 이 서비스를 실행하는 서버 메모리에서 처리됩니다.")
-    st.write("페이지 이동 중 유지되는 내용은 현재 접속 세션에 한정되며 새 연결이나 서버 재시작 뒤 복구를 보장하지 않습니다.")
-    st.write("이름·연락처 대신 비식별 구분명을 사용하고 필요한 결과만 직접 내려받으세요.")
-    st.caption("초기화와 로그아웃은 앱의 작업 참조를 정리하며 물리적 메모리의 즉시 삭제를 보장하지 않습니다.")
+    st.write("도구를 선택하고 입력한 뒤 결과를 확인하세요. 필요한 자료는 내려받을 수 있습니다.")
 
 
 def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logout: Callable[..., object], notice: dict[str, object]) -> None:
@@ -120,7 +117,6 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
         '<h1>오늘의 상담을 더 명료하게.</h1><p>현재 접속에서 필요한 도구를 찾고 업무를 이어가세요.</p></div>',
         unsafe_allow_html=True,
     )
-    st.caption(environment_notice("test"))
     query = st.text_input("화랑 도구 검색", key="v2_global_search", placeholder="보험나이, 상담 문자, 비교표, 청구서류…").strip().lower()
     if query:
         matches = _matches(query, allowed)
@@ -152,7 +148,7 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
                 st.caption(group.description)
                 _grid([(app, None) for app in apps], navigate, "all")
     st.divider()
-    st.caption(f"{notice['date']} · {notice['title']} · 자료 기준과 개인정보 안내를 확인하세요.")
+    st.caption(f"{notice['date']} · {notice['title']} · 변경 내용을 확인하세요.")
     update_col, privacy_col = st.columns(2)
     if update_col.button("변경 내용 보기", key="sig_home_notice", use_container_width=True):
         notice_dialog(notice)

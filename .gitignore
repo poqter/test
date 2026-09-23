@@ -7,3 +7,12 @@ __pycache__/
 .venv
 venv/
 .streamlit/secrets.toml
+
+# Stage 12 additional local exclusions
+.env.*
+!.env.example
+.venv/
+.venv_*/
+*.py[cod]
+.pytest_cache/
+*.log

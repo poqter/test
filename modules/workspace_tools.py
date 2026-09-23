@@ -70,8 +70,7 @@ def clear_namespace(prefix):
 
 
 def session_notice(prefix):
-    with st.expander("입력자료 관리 · 현재 세션에서만 사용", expanded=False):
-        st.caption("이 새 도구는 입력을 DB·파일·공용 캐시에 저장하지 않습니다. 서버 메모리에서 처리하며 새 연결/로그아웃 시 유지되지 않습니다. 이름·연락처 대신 가상 식별자를 사용하세요.")
+    with st.expander("입력 초기화", expanded=False):
         st.button("이 도구 입력 초기화", key="clear_" + prefix, on_click=clear_namespace, args=(prefix,))
 
 

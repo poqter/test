@@ -19,6 +19,9 @@ def page_header(category: str, title: str, description: str, icon: str) -> None:
         unsafe_allow_html=True,
     )
 
+    from .legacy_workflow import render_workflow
+    render_workflow(st.session_state.get("active_app", ""))
+
 
 def tool_guide(title: str, introduction: str, steps: list[tuple[str, str]], criteria: str = "", caution: str = "") -> None:
     with st.expander(title, expanded=False):

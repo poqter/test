@@ -1384,8 +1384,7 @@ def run():
                 use_container_width=True,
             )
         except Exception as exc:
-            st.error(f"엑셀 보고서를 생성하지 못했습니다: {exc}")
-
+            st.error("자료 처리에 실패했습니다. 파일 형식과 입력 내용을 확인한 뒤 다시 시도해 주세요. [PROCESS_FAILED]")
     st.info(
         "상담용 예상치입니다. 실제 신고 시 상속관계, 재산평가, 사전증여 내역과 공제 요건을 별도로 확인해야 합니다."
     )

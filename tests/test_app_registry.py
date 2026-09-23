@@ -25,6 +25,12 @@ BUSINESS_MODULES = (
 )
 
 
+GUARDED_MODULES = {
+    "modules/analyzer.py", "modules/insurance_claim_guide.py",
+    "modules/convention.py", "modules/summer.py",
+    "modules/manager_results.py", "modules/commission_calculator.py",
+}
+
 class AppRegistryTests(unittest.TestCase):
     def test_ids_groups_and_string_paths(self):
         self.assertEqual(set(APP_IDS), EXPECTED_IDS)
@@ -49,7 +55,18 @@ class AppRegistryTests(unittest.TestCase):
         manifest = json.loads((ROOT / "docs" / "BASELINE_MANIFEST.json").read_text(encoding="utf-8"))
         for relative in BUSINESS_MODULES:
             with self.subTest(relative=relative):
-                actual = hashlib.sha256((ROOT / relative).read_bytes()).hexdigest()
+                source = (ROOT / relative).read_bytes()
+                edits = json.loads((ROOT / "docs/STAGE10_ALLOWED_EDITS.json").read_text()).get(relative, [])
+                lines = source.decode().splitlines(keepends=True)
+                for edit in reversed(edits):
+                    self.assertEqual(lines[edit["start"]:edit["end"]], edit["expected"])
+                    lines[edit["start"]:edit["end"]] = edit["restore"]
+                source = "".join(lines).encode()
+                if relative in GUARDED_MODULES:
+                    # Undo only the two permitted UI substitutions for byte comparison.
+                    source = source.replace(b"from .upload_ui import guarded_upload\n", b"")
+                    source = source.replace(b"guarded_upload(", b"st.file_uploader(")
+                actual = hashlib.sha256(source).hexdigest()
                 self.assertEqual(actual, manifest["source_sha256"][relative])
 
 

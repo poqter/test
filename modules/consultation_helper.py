@@ -104,7 +104,7 @@ def run():
     checks = load_content("checklists")
     page_header("상담·제안서", "상담·제안서 스튜디오", "준비 → 상담 → 요약 → 제안서. 직접 검토한 내용으로 전달자료를 만드세요.", "CH")
     session_notice("b_")
-    with st.expander("이번 상담 설정 · 이름과 연락처는 입력하지 마세요"):
+    with st.expander("이번 상담 설정"):
         field("selectbox", "상담 구분", "b_visit", "첫 상담", options=topics["visits"])
         field("selectbox", "상담 목표", "b_goal", "보장 점검", options=topics["goals"])
         field("text_input", "상담 구분명 (선택 · 예: 상담 A)", "b_alias", "", max_chars=40)
@@ -158,7 +158,7 @@ def run():
     elif mode == "다음 미팅":
         items = checks["next_meeting"]
         completed = checklist(items, "meeting")
-        note = field("text_area", "다음 미팅 메모 (개인정보 제외)", "b_meeting_note", "", max_chars=2000)
+        note = field("text_area", "다음 미팅 메모", "b_meeting_note", "", max_chars=2000)
         output = "\n".join(("완료: " if item in completed else "미완료: ") + item for item in items) + "\n\n" + note
         st.download_button("미팅 체크리스트 내려받기", output.encode("utf-8-sig"), "next_meeting.txt", key="b_meeting_download")
     else:

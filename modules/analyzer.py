@@ -7,6 +7,7 @@ from io import BytesIO
 
 import openpyxl
 import streamlit as st
+from .upload_ui import guarded_upload
 from openpyxl import Workbook
 from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -546,8 +547,8 @@ def _populate_analysis_sheet(
                 cell.font = bold_font
 
     for index, contract in enumerate(contracts, start=4):
-        ws.cell(2, index, contract["company"])
-        ws.cell(3, index, contract["product"])
+        ws.cell(2, index, contract["company"]).data_type = "s"
+        ws.cell(3, index, contract["product"]).data_type = "s"
         ws.cell(2, index).font = Font(name="나눔고딕", size=10, bold=True, color=COLORS["black"])
         ws.cell(3, index).font = Font(name="나눔고딕", size=9, bold=True)
     ws.row_dimensions[2].height = 25
@@ -590,6 +591,8 @@ def _populate_analysis_sheet(
                 cell.font = blue_font
             else:
                 cell.value = contract[key]
+                if isinstance(cell.value, str):
+                    cell.data_type = "s"
             if row >= 7:
                 cell.number_format = '#,##0"원"'
                 if not (row == 7 and _to_number(contract["monthly"]) == 0):
@@ -627,7 +630,7 @@ def _populate_analysis_sheet(
         last_contract_col = get_column_letter(last_col)
         ws.cell(row, 1, f"=SUM(D{row}:{last_contract_col}{row})")
         ws.cell(row, 2, group)
-        ws.cell(row, 3, item["display"])
+        ws.cell(row, 3, item["display"]).data_type = "s"
         for index, value in enumerate(item["values"], start=4):
             ws.cell(row, index, value)
 
@@ -837,7 +840,7 @@ def _populate_proposal_sheet(
         analysis_row = coverage_start + offset
         ws.cell(row, 1, f"='보장 분석'!A{analysis_row}")
         ws.cell(row, 2, group)
-        ws.cell(row, 3, item["display"])
+        ws.cell(row, 3, item["display"]).data_type = "s"
         ws.cell(row, 4, f"=SUM(E{row}:I{row})")
 
         for col in range(1, proposal_end_col + 1):
@@ -1017,7 +1020,7 @@ def run() -> None:
     )
 
     st.markdown("### ✦ 전체 보장분석 원본")
-    uploaded_main = st.file_uploader(
+    uploaded_main = guarded_upload(
         "전체 보장내용이 포함된 컨설팅보장분석.xlsx 파일을 업로드하세요",
         type=["xlsx"],
         key="analyzer_v2_main_file",

@@ -34,7 +34,7 @@ def install_import(payload):
 @st.dialog('선택한 항목 가져오기',width='large')
 def import_dialog(payload):
     st.text(payload_text(payload))
-    st.caption('본문은 유지합니다. 이 원본에서 이전에 가져온 참고 항목은 교체합니다. 실명·연락처 등 불필요한 정보가 없는지 확인하세요.')
+    st.caption('본문은 유지합니다. 이 원본에서 이전에 가져온 참고 항목은 교체합니다. 가져올 내용을 확인하세요.')
     if not is_current(payload,st.session_state):
         st.warning('원본이 변경되었습니다. 다시 선택해 주세요.')
         return
@@ -66,13 +66,13 @@ def run():
         st.info('필요서류는 기존 보험금 청구 가이드에서 확인합니다. 이 도구에 별도 서류 규칙을 복사하지 않습니다.')
         st.button('보험금 청구 가이드 열기',key='d_claim_link',on_click=navigate,args=('insurance_claim_guide',))
     title=field('text_input','자료 제목','d_title','고객 전달자료',max_chars=100)
-    body=field('text_area','본문 직접 작성 (개인정보 제외)','d_body','',height=330,max_chars=10000)
+    body=field('text_area','본문 직접 작성','d_body','',height=330,max_chars=10000)
     with st.expander('상담·계산 결과에서 필요한 항목만 가져오기'):
         source=st.selectbox('원본 도구',['consultation_helper','quick_calculators'],format_func=lambda s:'상담 요약' if s=='consultation_helper' else '계산 결과',key='d_source')
         value=candidate(source,st.session_state)
         if value:
             selected=st.multiselect('가져올 항목',list(value['fields']),default=[],key='d_selection_'+source)
-            st.caption('계산·상담 가정은 함께 가져옵니다. 생년월일·구분명·업로드 원본은 자동으로 가져오지 않습니다. 직접 쓴 문장 속 개인정보는 직접 확인하세요.')
+            st.caption('계산·상담 가정을 함께 가져옵니다. 가져올 항목을 선택하세요.')
             if st.button('선택 항목 미리보기',key='d_import_open',disabled=not selected):
                 import_dialog(selected_payload(source,selected,st.session_state))
         else:st.info('원본 도구에서 현재 결과의 검토 확인을 마친 뒤 이용할 수 있습니다.')
@@ -94,7 +94,7 @@ def run():
     if len(final)>22000:st.warning('전체 문서는 22,000자 이내로 작성해 주세요.')
     if st.button('전달자료 미리보기',key='d_preview',disabled=not final.strip()):preview(title,final)
     token=fingerprint([title,final,stale,date.today().isoformat()])
-    if st.button('내용·가정·개인정보 확인 완료',key='d_approve',disabled=not valid):st.session_state['d_review']=token
+    if st.button('내용·가정 확인 완료',key='d_approve',disabled=not valid):st.session_state['d_review']=token
     if valid and st.session_state.get('d_review')==token:
         prepared=date.today().isoformat()
         content=title+'\n작성일 '+prepared+'\n\n'+final+'\n\n'+NOTE

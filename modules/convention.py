@@ -1,4 +1,5 @@
 import streamlit as st
+from .upload_ui import guarded_upload
 import pandas as pd
 import numpy as np
 import os
@@ -729,6 +730,8 @@ def write_table(ws, df_for_sheet: pd.DataFrame, start_row: int = 1, name_suffix:
     for r_idx, row in enumerate(dataframe_to_rows(df_for_sheet, index=False, header=True), start_row):
         for c_idx, value in enumerate(row, 1):
             cell = ws.cell(row=r_idx, column=c_idx, value=value)
+            if isinstance(cell.value, str):
+                cell.data_type = "s"
             cell.alignment = Alignment(horizontal="center", vertical="center")
 
     end_col_letter = ws.cell(row=start_row, column=max(df_for_sheet.shape[1], 1)).column_letter
@@ -802,6 +805,8 @@ def write_totals_block(ws, dfin: pd.DataFrame, start_row: int):
     for i, row_data in enumerate(rows, start=start_row):
         for j, value in enumerate(row_data, start=1):
             cell = ws.cell(row=i, column=j, value=value)
+            if isinstance(cell.value, str):
+                cell.data_type = "s"
             cell.alignment = Alignment(horizontal="center", vertical="center")
             cell.border = thin_border
 
@@ -919,7 +924,7 @@ def run():
         )
 
     section_intro("입력", "계약자료 불러오기", "컨벤션 실적을 계산할 보유계약 엑셀 파일을 등록해 주세요.")
-    uploaded_file = st.file_uploader("📂 컨벤션 계산용 Excel 파일 업로드 (.xlsx)", type=["xlsx"])
+    uploaded_file = guarded_upload("📂 컨벤션 계산용 Excel 파일 업로드 (.xlsx)", type=["xlsx"])
 
     if not uploaded_file:
         st.info("📤 계약 목록 Excel 파일(.xlsx)을 업로드해주세요.")
@@ -933,7 +938,7 @@ def run():
     try:
         raw = load_df(BytesIO(file_bytes)).copy()
     except Exception as e:
-        st.error(f"❌ 엑셀 파일을 읽는 중 오류가 발생했습니다: {e}")
+        st.error("자료 처리에 실패했습니다. 파일 형식과 입력 내용을 확인한 뒤 다시 시도해 주세요. [PROCESS_FAILED]")
         return
 
     missing = check_required_columns(raw)

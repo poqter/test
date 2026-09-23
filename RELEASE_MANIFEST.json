@@ -1,0 +1,608 @@
+{
+  "release": "stage12-test-candidate",
+  "date": "2026-09-23",
+  "base_sha256": "b85ad2ae2e7d185efab82f44983d71b1de18bb7730bbe2a8549a060f071bb6a3",
+  "runtime_unchanged_from_base": true,
+  "files": [
+    {
+      "path": ".gitignore",
+      "size": 188,
+      "sha256": "4260be4378aa8a7846447896ecc6bb2e1f4498989d285cad457c3c6a5c28988f"
+    },
+    {
+      "path": ".streamlit/config.toml",
+      "size": 273,
+      "sha256": "da65cfa4274e5c9c07fb063e3f65c8fa2af4f5ceeb07e7461509a71b66962aa9"
+    },
+    {
+      "path": "01_DEPLOY_GUIDE_KO.md",
+      "size": 8198,
+      "sha256": "b4e1b729c6a4a1773568816846b4307102000a4ca3878b16e24e905920c2672e"
+    },
+    {
+      "path": "FEATURE_MATRIX.md",
+      "size": 5045,
+      "sha256": "455809697e0e9199dfd27260f731e4f8fc60b63c89e0e9f334f2a72ccfd341eb"
+    },
+    {
+      "path": "README.md",
+      "size": 1242,
+      "sha256": "cc4eaea7544b254a67fd53768bdad32061859be5288e668616d2737300f73317"
+    },
+    {
+      "path": "STAGE10_RELEASE_NOTES.md",
+      "size": 5032,
+      "sha256": "69a3bb9e74e332a14fde3439c30f8580dd14be710c7259a530532d46fb37598c"
+    },
+    {
+      "path": "STAGE11_RECHECK.md",
+      "size": 5144,
+      "sha256": "d5c64ce363d6f3487f89a37eb6cb2e9d46aa90263f207ef3b3c64324d56b7055"
+    },
+    {
+      "path": "STAGE12_RELEASE_NOTES.md",
+      "size": 2055,
+      "sha256": "47cc7a226648f4216a0443320f216fb644eb7e2a1b1f3a70ddcad74a4eea0667"
+    },
+    {
+      "path": "STAGE3_RELEASE_NOTES.md",
+      "size": 4858,
+      "sha256": "ecadf61022dc49bcbb1ef58599a2bcde9087de287e3547bcfd70c97ea8fe10ab"
+    },
+    {
+      "path": "STAGE4_RELEASE_NOTES.md",
+      "size": 5814,
+      "sha256": "18d265dc914a9e0c4ee7e7fe9bcb32305849587f62f94b5edcecaf3c42162df5"
+    },
+    {
+      "path": "STAGE5_RELEASE_NOTES.md",
+      "size": 6042,
+      "sha256": "3a36e1e0bcf40865a977c1374b81a6efb0b9b52d483eb826408f272b09c3aa8f"
+    },
+    {
+      "path": "STAGE6_RELEASE_NOTES.md",
+      "size": 5038,
+      "sha256": "07c321abdfe149d6fd40c65370288ad2bab22fc9743ebee4c4e95b2b363a4391"
+    },
+    {
+      "path": "STAGE7_RELEASE_NOTES.md",
+      "size": 4588,
+      "sha256": "1833c778110feb7ba7f514fbc26a2557fb089aa24d500ac2af7929869a0d217f"
+    },
+    {
+      "path": "STAGE8_RELEASE_NOTES.md",
+      "size": 4784,
+      "sha256": "c0b70634629ad1f667cbc8705102402400f5c5239db8a059288283d937f832e6"
+    },
+    {
+      "path": "TEST_RELEASE_NOTES.md",
+      "size": 6395,
+      "sha256": "e8b30c309273c9c64df62ea13ad658a3e244179ecc99cfab7ec91bf38c21856a"
+    },
+    {
+      "path": "app.py",
+      "size": 5757,
+      "sha256": "e743631eb0bc527a9a254edfca6e7ead569b63148bff8b3e088a036efdd67986"
+    },
+    {
+      "path": "assets/fonts/PretendardVariable.ttf",
+      "size": 6739336,
+      "sha256": "3090ccde0442bb347aa7685d9ba8b17436a60682df6e8f92a9a670de14056e22"
+    },
+    {
+      "path": "assets/insurer_logos/abl_life.png",
+      "size": 2177,
+      "sha256": "f2b6b29a65cad81ba7f102530df540d7267d447ce116bef41d03f1b01063d369"
+    },
+    {
+      "path": "assets/insurer_logos/aig_insurance.png",
+      "size": 3332,
+      "sha256": "ca920ab65c8b155259ce655da804c89f8301424ba2260182541b1d3b295cb385"
+    },
+    {
+      "path": "assets/insurer_logos/bnp_cardif_life.png",
+      "size": 4066,
+      "sha256": "aab1821de3ae97e1c0635254cf9d22f87bd3627bd42e5d123c72354b6f173fb2"
+    },
+    {
+      "path": "assets/insurer_logos/db_insurance.png",
+      "size": 4636,
+      "sha256": "7aa0bf24e335a3bc9b6f6243fab05f28bff1289b0b00f44bfd898c10fc1ffc74"
+    },
+    {
+      "path": "assets/insurer_logos/db_life.png",
+      "size": 4636,
+      "sha256": "7aa0bf24e335a3bc9b6f6243fab05f28bff1289b0b00f44bfd898c10fc1ffc74"
+    },
+    {
+      "path": "assets/insurer_logos/hana_insurance.png",
+      "size": 2763,
+      "sha256": "bc3f37afa1dcbfe01f58708ee4256eec9123142ec1dcf5fb2f5cf597ce992493"
+    },
+    {
+      "path": "assets/insurer_logos/hanwha_general.png",
+      "size": 7294,
+      "sha256": "fdd59a128bca612d7d0de060f024d4346bbda33133bcfb50c5ebdd77841fe2f5"
+    },
+    {
+      "path": "assets/insurer_logos/hanwha_life.png",
+      "size": 6811,
+      "sha256": "572bb6bc11bb7f2c812987caa9ae2fe9dd28b68b985d62b32dc7bc97f5d79df8"
+    },
+    {
+      "path": "assets/insurer_logos/heungkuk_fire.png",
+      "size": 2852,
+      "sha256": "8d516234b38de45686e9b2b27752b2fc5dbdddcea983e3fa50525ed70339b987"
+    },
+    {
+      "path": "assets/insurer_logos/heungkuk_life.png",
+      "size": 3459,
+      "sha256": "9f8ba078e506a5d2e4f7bf7e0fc7f09644f6178354a841502fadf174292ce701"
+    },
+    {
+      "path": "assets/insurer_logos/hyundai_marine.png",
+      "size": 1695,
+      "sha256": "3647dd0fe5ae58f88e5e59ac9ebfd41a893b61ac82e8e4c592e6027fab671279"
+    },
+    {
+      "path": "assets/insurer_logos/ibk_pension.png",
+      "size": 6517,
+      "sha256": "7c51cc1aae634fdbc32b6c430e8beb3142331694f887d57bc3cbd90ada576106"
+    },
+    {
+      "path": "assets/insurer_logos/kb_insurance.png",
+      "size": 6812,
+      "sha256": "26fcf7ed8eecffa493a9232ec1093e175693d524cc4d642613fd60372fe8a7bd"
+    },
+    {
+      "path": "assets/insurer_logos/kb_life.png",
+      "size": 3198,
+      "sha256": "d5f227612343a10d71222c9139401dcbe0477db4afbd0cb31d339ba6b8b1c21e"
+    },
+    {
+      "path": "assets/insurer_logos/kdb_life.png",
+      "size": 4352,
+      "sha256": "e9c7ec7f774cc45bd55cf7e4cbefda616b0101b9465da5d3d2dae15043d679f8"
+    },
+    {
+      "path": "assets/insurer_logos/kyobo_life.png",
+      "size": 2968,
+      "sha256": "e2232fc2e20b3edfbd0f1abb26dda7ec45d1ad359f61402d21c59b8aecda4eda"
+    },
+    {
+      "path": "assets/insurer_logos/lina_life.png",
+      "size": 1864,
+      "sha256": "c7d0581f309cee9baa1f7c85549e2e2085be7d9768e7c3f28276bbd395d78783"
+    },
+    {
+      "path": "assets/insurer_logos/logo_sources.csv",
+      "size": 4431,
+      "sha256": "c4a1cdaff5606cc3cf872e15b51b22ea33a62c8a75e2a10bc0fc925a09094669"
+    },
+    {
+      "path": "assets/insurer_logos/lotte_insurance.png",
+      "size": 2072,
+      "sha256": "548de104f6aeaf4b3a4114cecfbea02769641b7e915d0d3f087378cab1a6626f"
+    },
+    {
+      "path": "assets/insurer_logos/meritz_fire.png",
+      "size": 1701,
+      "sha256": "f5bdefe0e5da92eab066932008dcc6f3676aee657f8d3f25e08249f071cb41fc"
+    },
+    {
+      "path": "assets/insurer_logos/metlife.png",
+      "size": 2433,
+      "sha256": "bc5f7d0e5f29e13bf623fe44b1aa78f58cfedb25ae02d25d1582b41842c03beb"
+    },
+    {
+      "path": "assets/insurer_logos/mg_insurance.png",
+      "size": 2027,
+      "sha256": "ac5f9aafaa48f9a9caf700abfe9fd3e45fcc9e050cae303a3fd7c9667272970c"
+    },
+    {
+      "path": "assets/insurer_logos/miraeasset_life.png",
+      "size": 3179,
+      "sha256": "bfca4ea6f113afb1a70b69413d3c9933fae12f3f18334797977a98821d996845"
+    },
+    {
+      "path": "assets/insurer_logos/nh_life.png",
+      "size": 5164,
+      "sha256": "1f8632a5a9ae6de476db29654ca4b736a99d38f736e559eef9be4f1375593ff0"
+    },
+    {
+      "path": "assets/insurer_logos/samsung_fire.png",
+      "size": 2103,
+      "sha256": "35bc0e51eca3deb3323b336ad293d1f8a4d594e42db0fa909fb0ebb8ba3a2103"
+    },
+    {
+      "path": "assets/insurer_logos/samsung_life.png",
+      "size": 3438,
+      "sha256": "0522342e6ac1ce8de3218a53437c54269489a39a1ee8c074908e9caa7980f2ec"
+    },
+    {
+      "path": "assets/insurer_logos/shinhan_life.png",
+      "size": 2256,
+      "sha256": "f8b9ad0082d6e2441b5960d35dec483dbf842c9b9551e0e9ac9b465ba5e97b7d"
+    },
+    {
+      "path": "assets/insurer_logos/tongyang_life.png",
+      "size": 1496,
+      "sha256": "fa395c2d028129c6d06239949260f43f904462267aacde1e2fcd936bb3ccf82f"
+    },
+    {
+      "path": "constraints.txt",
+      "size": 904,
+      "sha256": "52b076956c8f96a0a5a462223b1a8d572814c884da68be8fae463168fa933732"
+    },
+    {
+      "path": "data/checklists.json",
+      "size": 1071,
+      "sha256": "ede29a75a4d5c07761a6dfd2836ce1dcc41b6c61202bd7f8458a0d8bfe901603"
+    },
+    {
+      "path": "data/consultation_scripts.json",
+      "size": 1861,
+      "sha256": "09568b7356e6267eb27f88a366e59c52c25de5e64254b1ab5b62de6916255f87"
+    },
+    {
+      "path": "data/consultation_topics.json",
+      "size": 1571,
+      "sha256": "0b0cf7760cb1365684be270bacaea435044950540e110c1c5d1ac95bee4e286e"
+    },
+    {
+      "path": "data/customer_material_templates.json",
+      "size": 2545,
+      "sha256": "1c38c070a1ae34f930379f4796ac8f13d692232cd2032d56be3238116b5c6a33"
+    },
+    {
+      "path": "data/education_content.json",
+      "size": 10743,
+      "sha256": "9a50afc9c65086695de9b8b6b767c0ce218d902117c19e9be95c660422a7eda6"
+    },
+    {
+      "path": "data/message_templates.json",
+      "size": 1927,
+      "sha256": "6113dc3110cdda5529e90d13d9f72839c528e6dc051d480fc616e042b14c7f8b"
+    },
+    {
+      "path": "data/portal_catalog.json",
+      "size": 22191,
+      "sha256": "e0ae424299cad5d4fe1ba29d789c7c63d1e0b3dca3cbf1099bb823c5a507908e"
+    },
+    {
+      "path": "docs/BASELINE_MANIFEST.json",
+      "size": 6483,
+      "sha256": "638ccf2a94dc3d9b2c2bdf283e6f40b5b444fb99230f5b59dba2e6c043d3f8d5"
+    },
+    {
+      "path": "docs/STAGE10_ALLOWED_EDITS.json",
+      "size": 19435,
+      "sha256": "61619e428f2549126a922b1b1f124e075b65ea03ef2cee3d6d3661d046d678e2"
+    },
+    {
+      "path": "docs/STAGE2_STATUS.md",
+      "size": 1819,
+      "sha256": "4f8e678463dfb4759ae0737b494f7a0a9eef8cd5ccad4a4d1407977f274d0996"
+    },
+    {
+      "path": "docs/STAGE7_PORTAL_BASELINE.json",
+      "size": 3549,
+      "sha256": "c1839ce20163d9e9fa612839a1e2ca3ad36b353bc9c8be9c9ff82c72b27ae6c2"
+    },
+    {
+      "path": "docs/STAGE7_SOURCE_AUDIT.md",
+      "size": 6508,
+      "sha256": "6d5a4cce2c1ba2738dc93c447556d187a009d5a7e0cc77682869364e84107254"
+    },
+    {
+      "path": "docs/STAGE8_CHECKLIST.md",
+      "size": 1163,
+      "sha256": "e42b5c79bb81b9bf29bdb9e0876d8ef109d53fcddcd8fd7198e412a6513d1888"
+    },
+    {
+      "path": "docs/recheck/limit_probe.json",
+      "size": 85,
+      "sha256": "7a178bf524d77fa675a94deb4a4af91b4ac1184015ae34dff5ac8796d91ff346"
+    },
+    {
+      "path": "docs/recheck/output_probe.json",
+      "size": 334,
+      "sha256": "0e6711d2f0f1d05c0f8c0ddf762075846bf823cf651f26bf394ff8f97af947f4"
+    },
+    {
+      "path": "docs/recheck/summary.json",
+      "size": 325,
+      "sha256": "178901257a32439c61a21218c77b1bbf6e326af8ed675ad7e3771237743f2139"
+    },
+    {
+      "path": "modules/__init__.py",
+      "size": 60,
+      "sha256": "d4181a5cf39c0198710c53bec22df7a0700bf5cc0285fd7980a210c4ed905fdf"
+    },
+    {
+      "path": "modules/analyzer.py",
+      "size": 96073,
+      "sha256": "c6d68c78d3a89edc21c3d02474bc32d6524db712133bc55a8f400ade5a441151"
+    },
+    {
+      "path": "modules/app_registry.py",
+      "size": 8997,
+      "sha256": "0bd3557d934d623d62135fc2525c413a2d9445cee64fc6b7d4581b6e3aebe023"
+    },
+    {
+      "path": "modules/calculator_catalog.py",
+      "size": 5931,
+      "sha256": "733e95aea29f696c77ac7ba92cd53cfd166891ee3c71c764359b4655e9d26447"
+    },
+    {
+      "path": "modules/calculator_center.py",
+      "size": 6151,
+      "sha256": "392f373062ac2a367285b04b7c7159bd073ff6f98cdc84768477a1e53a1af96b"
+    },
+    {
+      "path": "modules/calculator_core.py",
+      "size": 4607,
+      "sha256": "89bf5966a52d52eb415ca3a061bd8d005f8094848a16f9f440e2a7395c70433d"
+    },
+    {
+      "path": "modules/calculator_exports.py",
+      "size": 2801,
+      "sha256": "70df949246fea1bda92ebd5f8581af5fd7408237caf4705fe244c83caedf2585"
+    },
+    {
+      "path": "modules/commission_calculator.py",
+      "size": 101055,
+      "sha256": "76c0d7997ef923ae49a54ad432ac8362f852d724d959d78688993135a2d087a5"
+    },
+    {
+      "path": "modules/comparison_builder.py",
+      "size": 12111,
+      "sha256": "9683691ee9450fee5cc3f6e44618293a5d74976018babbce7867a684d99e864a"
+    },
+    {
+      "path": "modules/consultation_documents.py",
+      "size": 5086,
+      "sha256": "1799e022243bdc5824ed1bde00c7ebd1af06816bdf026534c923ec6ffdcb8e7e"
+    },
+    {
+      "path": "modules/consultation_helper.py",
+      "size": 11797,
+      "sha256": "4c0ec58db999463a4ae63fb2c6acfeecbf20b1d41a9ab1c4af20907bacbcad26"
+    },
+    {
+      "path": "modules/content_repository.py",
+      "size": 1479,
+      "sha256": "dd5ba9d67b680ce1ed839b8ed3bd36189427482c9afa972d49d4b9d37a246b96"
+    },
+    {
+      "path": "modules/convention.py",
+      "size": 39834,
+      "sha256": "67f2e020ddaeb807ad50d64748f86701583bbc8d7c662de57067f6e9c745da5f"
+    },
+    {
+      "path": "modules/customer_materials.py",
+      "size": 6748,
+      "sha256": "56dd0bfb6876e1d6b803a182aa20efac2dfd6dd1895dbbde7182bb73da31397f"
+    },
+    {
+      "path": "modules/deposit_vs_shortpay.py",
+      "size": 32071,
+      "sha256": "8b03137112d5f5360e46951a4e2e25c807a4fcb3c41e3b9dc62638be4b829a7e"
+    },
+    {
+      "path": "modules/education_center.py",
+      "size": 11297,
+      "sha256": "f518c2c3bf00cfefea118ff03c23782aa829b0a9b3010c6a006666b8f9caaf6d"
+    },
+    {
+      "path": "modules/education_content.py",
+      "size": 3808,
+      "sha256": "a06eacf962ac7a3a81281970aea5ca649391dee36383c08b549a8833a5ebf852"
+    },
+    {
+      "path": "modules/inheritance_tax.py",
+      "size": 67447,
+      "sha256": "d66917382bf22a9eb0a6b8dbd9d70228e738036226d8b32a20cdca2dee307bce"
+    },
+    {
+      "path": "modules/insurance_claim_guide.py",
+      "size": 82313,
+      "sha256": "ac9c963fc1b7d3b7bea06dee03e8cd64dbb7de7b018482d1ccab1d4edf3054be"
+    },
+    {
+      "path": "modules/insurer_portal.py",
+      "size": 6114,
+      "sha256": "a733953c70ce034c951c9be0d8016445edb2d937c1c523fb89f1d9526e7d45f7"
+    },
+    {
+      "path": "modules/legacy_workflow.py",
+      "size": 7110,
+      "sha256": "be1be9f4c0f4d1b77c557ed5b882560d7d07dcbbe4e6a7040ae1b0b4372ca345"
+    },
+    {
+      "path": "modules/manager_results.py",
+      "size": 31816,
+      "sha256": "5ab73d4e2356f1f940224466e39c26e61872be21b9655e38b599bd0862950db8"
+    },
+    {
+      "path": "modules/material_transfer.py",
+      "size": 3553,
+      "sha256": "f543e33a656d383ba62139c375b494816ab52adf9b1fbbefd25e8222e0e34110"
+    },
+    {
+      "path": "modules/navigation.py",
+      "size": 3061,
+      "sha256": "739a9e6e5a168b3e11ad6ea6cab7f764bc6796cb0c6a4d53f19cf048ddb2b36b"
+    },
+    {
+      "path": "modules/official_resources.py",
+      "size": 4278,
+      "sha256": "4025d84c4c8dff6ced18797944cc8fbc05c3871193180fd701279893bd979df0"
+    },
+    {
+      "path": "modules/portal_repository.py",
+      "size": 3919,
+      "sha256": "f4874f952a3c038ccf1b86b1d4ab700d08e22c77f24d987a3094d735b8eff041"
+    },
+    {
+      "path": "modules/privacy_guard.py",
+      "size": 2427,
+      "sha256": "bf6ed31f748bd762f35a3a866bd11fd8d1f60299301026e135df7b4466db77e0"
+    },
+    {
+      "path": "modules/quick_calculators.py",
+      "size": 1620,
+      "sha256": "830890d3640b81bb6f49a2c41f817fd3015a0dfaa27d4189b9ddc0ccf621db5a"
+    },
+    {
+      "path": "modules/remodeling.py",
+      "size": 35886,
+      "sha256": "019b5cd9e792d0aaeccf2e1b2929a362e10dc801190c0e05a6d036f168e4a1b4"
+    },
+    {
+      "path": "modules/renewal_vs_nonrenewal.py",
+      "size": 26928,
+      "sha256": "0bbc02e88a1c83e745a14670b25850663fa6facb1f6a5a6bb40c857966262ce7"
+    },
+    {
+      "path": "modules/session_store.py",
+      "size": 9477,
+      "sha256": "07e95899af59e2b868644f145ccc6f157dc20a6f024a1cbb2413b0fa96549cc4"
+    },
+    {
+      "path": "modules/signature_theme.py",
+      "size": 9283,
+      "sha256": "3ecf55cfcf24bb36e739f961cbbb3d23286f2f473b36a1182434387dec09a312"
+    },
+    {
+      "path": "modules/silson_generation_comparison.py",
+      "size": 38085,
+      "sha256": "e7b9d18194e75ad5d87fd9d844e5a4f8dd42136dd212b246ca5791b2d7cf122d"
+    },
+    {
+      "path": "modules/summer.py",
+      "size": 67531,
+      "sha256": "1639de73310a3228389d7ea83fe7223cf92759673113513c2e6f26a413670aa2"
+    },
+    {
+      "path": "modules/ui_components.py",
+      "size": 2749,
+      "sha256": "5736dffcc7b17ef3f610da91bda5d816fceaa0f6671abf273e5880d92b262329"
+    },
+    {
+      "path": "modules/upload_ui.py",
+      "size": 1395,
+      "sha256": "8e8fd803c50329dbdc92912505207ee2a5da088a6d351dd47769807376c5c471"
+    },
+    {
+      "path": "modules/validators.py",
+      "size": 6850,
+      "sha256": "c885ad9953312bfafa022f2e52aad648654fe4ecffed9c8d2ce41b465a5f71a4"
+    },
+    {
+      "path": "modules/workbench.py",
+      "size": 3846,
+      "sha256": "0f14351a348601e738c8440fa2c02f5d5045a0c742160d24d823a5be1bc3b910"
+    },
+    {
+      "path": "modules/workspace_tools.py",
+      "size": 6932,
+      "sha256": "637041286b876da72758ba3d29cf37e523312f84c648a849d3fbb09f5d4d8044"
+    },
+    {
+      "path": "modules/workspace_v2.py",
+      "size": 8804,
+      "sha256": "51e5fbede67b2982ce324c27c115f4c1c7fdc9ad704cb8442a200cf52ce010e9"
+    },
+    {
+      "path": "modules/xlsx_structure.py",
+      "size": 3554,
+      "sha256": "bf215469b71fc6edaadd908d76c7612b2ce64c35797ec6f71d7d69d4b244c42f"
+    },
+    {
+      "path": "requirements.txt",
+      "size": 149,
+      "sha256": "2b0b417a2c05aecc99e9c41367f6b9d9229d261e1c084052487c92ee0546dc23"
+    },
+    {
+      "path": "tests/fixture_factory.py",
+      "size": 731,
+      "sha256": "18e5f3e3f95f3b17116850750f44eac81f6cc97fb2d1742095682c04d620b202"
+    },
+    {
+      "path": "tests/fixtures/legacy_expected.json",
+      "size": 743,
+      "sha256": "d53d802ab135dbbbd82d0b307e738154c659f2055241bbb6527986c1b43120c2"
+    },
+    {
+      "path": "tests/test_app_registry.py",
+      "size": 3673,
+      "sha256": "44a594619e01afda73fbbbefa1dcd107d568b45804737c8e4c31b4c74d3a874c"
+    },
+    {
+      "path": "tests/test_calculator_center.py",
+      "size": 7537,
+      "sha256": "123bfbfa7d9d4c697412237d92177fa4350c5826d85aa7ec117227b87938bb90"
+    },
+    {
+      "path": "tests/test_consultation_studio.py",
+      "size": 6059,
+      "sha256": "b7e060f6d85003859376b82c22055a3c07e572950b3ee183aec5338e01f61d3c"
+    },
+    {
+      "path": "tests/test_customer_materials.py",
+      "size": 8297,
+      "sha256": "3ddcf9a3355436874631b2db6c8b997c9e1b6d053149e95e7c01c906303e7aad"
+    },
+    {
+      "path": "tests/test_education_center.py",
+      "size": 7426,
+      "sha256": "d5592784608215dd99dd1de8c01682b6c2da711a5ce2889210740ba8bb1e1444"
+    },
+    {
+      "path": "tests/test_legacy_boundaries.py",
+      "size": 1975,
+      "sha256": "8f04f0c5b27b4eac262b4297ce7fcd81290079c2dbed4ac84976d5b7c4695c8e"
+    },
+    {
+      "path": "tests/test_legacy_workflow.py",
+      "size": 2425,
+      "sha256": "77f70cf85d21c0312c2e02235fbd83c7acbd0fcf51e260793a4046d426d13c46"
+    },
+    {
+      "path": "tests/test_navigation.py",
+      "size": 3752,
+      "sha256": "ccfee4a966e1ec212eb64342cd8ce63f17cf365906f04f6e85721c7eb4de5a66"
+    },
+    {
+      "path": "tests/test_portal_center.py",
+      "size": 3484,
+      "sha256": "48f720d41e475e8cd230bd18e033fec84c1960770fd5323c3f215e9d834095a0"
+    },
+    {
+      "path": "tests/test_privacy_rules.py",
+      "size": 2135,
+      "sha256": "8cd5c1c8678b2eba270c8757df68779553dcd0cc270a7d4a655fc36badd42df6"
+    },
+    {
+      "path": "tests/test_release_recheck.py",
+      "size": 3746,
+      "sha256": "666cca4304aeb74d16309a98a11e7f58fb305e299214e75a3f842b8afa036b25"
+    },
+    {
+      "path": "tests/test_signature.py",
+      "size": 6244,
+      "sha256": "e1c81e8375486d8c29b05e49f68f951853535ef06950d39d2baba8d7449971fe"
+    },
+    {
+      "path": "tests/test_stage10_fixes.py",
+      "size": 3098,
+      "sha256": "b7804ba9f73f8c9d8ce5be2de1e1f774abf505184120ef371b29dbfa8239fbac"
+    },
+    {
+      "path": "tests/test_workspace.py",
+      "size": 7151,
+      "sha256": "96c347e86a6489515e65e66b204ab5c4496e4f94cb7a3514fd749add7e7ee272"
+    }
+  ]
+}

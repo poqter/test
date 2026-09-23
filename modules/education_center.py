@@ -99,7 +99,7 @@ def run():
         favorites=field('checkbox','즐겨찾기만 보기','e_favorites_only',False)
         matches=search_terms(data['terms'],query,category)
         if favorites:matches=[item for item in matches if st.session_state.get('e_favorite_'+item['id'],False)]
-        st.caption(f'검색 결과 {len(matches)}개 · 즐겨찾기는 현재 세션에서만 유지됩니다.')
+        st.caption(f'검색 결과 {len(matches)}개')
         if not matches:st.info('일치하는 용어가 없습니다. 검색어·분류·즐겨찾기 조건을 확인하세요.')
         for item in matches:
             with st.expander(item['title'],expanded=bool(query)):

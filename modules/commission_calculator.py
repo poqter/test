@@ -12,6 +12,7 @@ from difflib import SequenceMatcher
 from typing import Any
 
 import streamlit as st
+from .upload_ui import guarded_upload
 from .ui_components import page_footer, page_header, section_intro
 
 APP_VERSION = "1.0.1"
@@ -593,6 +594,11 @@ def _make_excel(
         review_ws.auto_filter.ref = review_ws.dimensions
 
     output = io.BytesIO()
+    for sheet in wb:
+        for row in sheet:
+            for cell in row:
+                if isinstance(cell.value, str):
+                    cell.data_type = "s"
     wb.save(output)
     return output.getvalue()
 
@@ -1712,10 +1718,10 @@ def run() -> None:
     section_intro("입력", "수수료 자료 불러오기", "생보·손보 수수료 예시표를 먼저 등록해 주세요.")
 
     with st.expander("① 수수료 예시표 불러오기", expanded=True):
-        life_file = st.file_uploader(
+        life_file = guarded_upload(
             "생보 수수료 예시표", type=["xlsx"], key="commission_life_file"
         )
-        nonlife_file = st.file_uploader(
+        nonlife_file = guarded_upload(
             "손보 수수료 예시표", type=["xlsx"], key="commission_nonlife_file"
         )
 
@@ -1735,8 +1741,7 @@ def run() -> None:
             parse_warnings.extend(warnings)
             reference_months[source_type] = _month_from_filename(uploaded.name)
         except Exception as exc:
-            st.error(f"{source_type} 예시표를 읽지 못했습니다: {exc}")
-
+            st.error("자료 처리에 실패했습니다. 파일 형식과 입력 내용을 확인한 뒤 다시 시도해 주세요. [PROCESS_FAILED]")
     if all_products:
         insurer_count = len({product.insurer for product in all_products})
         month_text = " · ".join(
@@ -1794,7 +1799,7 @@ def run() -> None:
     with st.expander('적용 지급률 확인', expanded=True):
         st.metric('현재 계산 지급률', f'{payout_rate_percent:g}%')
         st.caption('예시표의 회사별 수수료율에 이 지급률을 적용합니다. 상품·납입기간·예시표 기준월이 계약과 일치하는지 확인하세요.')
-    holding_file = st.file_uploader(
+    holding_file = guarded_upload(
         "보유계약관리 장기 엑셀", type=["xlsx"], key="commission_holding_file",
         help="계약상태가 정상이고 수수료표 기준월과 같은 계약을 우선 분석합니다.",
     )
@@ -1810,8 +1815,7 @@ def run() -> None:
             holdings = parse_holding_workbook(holding_file.getvalue())
         except Exception as exc:
             holdings = []
-            st.error(f"보유계약 파일을 읽지 못했습니다: {exc}")
-
+            st.error("자료 처리에 실패했습니다. 파일 형식과 입력 내용을 확인한 뒤 다시 시도해 주세요. [PROCESS_FAILED]")
         st.session_state["commission_import_collectors"] = list(dict.fromkeys(
             _clean_text(holding.get("collector", ""))
             for holding in holdings if _clean_text(holding.get("collector", ""))

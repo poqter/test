@@ -280,6 +280,8 @@ def _merge(ws, address: str, value: object, *, fill: str | None = None, color: s
     ws.merge_cells(address)
     cell = ws[address.split(":")[0]]
     cell.value = value
+    if isinstance(value, str):
+        cell.data_type = "s"
     cell.font = Font(name="맑은 고딕", size=size, bold=bold, color=color)
     cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True, shrink_to_fit=True)
     if fill:

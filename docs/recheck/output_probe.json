@@ -1,0 +1,18 @@
+{
+  "analyzer_product": {
+    "cell": "D3",
+    "value": "=2+2",
+    "type": "s"
+  },
+  "intended_formula": {
+    "cell": "A7",
+    "value": "=SUM(D7:D7)",
+    "type": "f"
+  },
+  "numeric_amount": {
+    "cell": "D7",
+    "value": 100000
+  },
+  "dummy_xml_archive_passes_precheck": false,
+  "dummy_xml_archive_parser_accepts": false
+}

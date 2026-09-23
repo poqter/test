@@ -148,7 +148,7 @@ def run():
     if st.session_state.get('c_template_visible'):
         template_dialog()
     title=field("text_input","자료 제목","c_title","변경 전후 비교",max_chars=100)
-    context=field("text_area","비교 기준과 가정 (개인정보 제외)","c_context","동일한 납입주기·보장조건인지 확인하세요. 입력값을 바탕으로 한 상담 참고자료입니다.",max_chars=2000)
+    context=field("text_area","비교 기준과 가정","c_context","동일한 납입주기·보장조건인지 확인하세요. 입력값을 바탕으로 한 상담 참고자료입니다.",max_chars=2000)
     st.caption("숫자와 0은 미입력과 구분합니다. 기간은 10년·120개월처럼 입력할 수 있습니다. 비율 차이는 %p입니다. 빈 항목명은 제외하며 최대 40행입니다. 기본값은 가상 예시입니다.")
     st.session_state.setdefault("c_rows",pd.DataFrame(ordered_rows(DEFAULT_ROWS)))
     records=st.session_state['c_rows'].fillna('').to_dict('records')
