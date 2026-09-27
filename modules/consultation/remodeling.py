@@ -172,13 +172,16 @@ def _money_input(label: str, key: str, help_text: str | None = None) -> int:
     raw = st.text_input(label, key=key, placeholder="예: 694,580", help=help_text)
     value = money(raw)
     if raw:
-        st.caption(f"{value:,}원")
+        if re.fullmatch(r"[0-9]+", raw.strip().replace(",", "")):
+            st.caption(f"{value:,}원")
+        else:
+            st.error("금액은 0 이상의 정수로 입력하세요. 예: 120,000")
     return value
 
 
 def render_plan_inputs(person_no: int) -> list[NewPlan]:
     count_key = f"rm_plan_count_{person_no}"
-    count = _state_count(count_key, 4)
+    count = _state_count(count_key, 1)
     plans: list[NewPlan] = []
     for i in range(count):
         title = clean(st.session_state.get(f"rm_plan_name_{person_no}_{i}")) or f"신규 보험 {i+1}"
@@ -187,12 +190,12 @@ def render_plan_inputs(person_no: int) -> list[NewPlan]:
             with c1:
                 name = st.text_input("보험 또는 보장 구성명", key=f"rm_plan_name_{person_no}_{i}", placeholder="예: 암·뇌·심장 진단비")
             with c2:
-                premium = st.text_input("월 보험료", key=f"rm_plan_premium_{person_no}_{i}", placeholder="예: 128,589")
+                premium = st.text_input("신규 월 보험료 (원)", key=f"rm_plan_premium_{person_no}_{i}", placeholder="예: 128,589")
             c3, c4 = st.columns([1.3, 1])
             years = 20
             months = 0
             with c3:
-                years = st.selectbox("납입기간", [5, 10, 15, 20, 25, 30], index=3, format_func=lambda x: f"{x}년", key=f"rm_plan_years_{person_no}_{i}")
+                years = st.selectbox("보험료 납입기간", [5, 10, 15, 20, 25, 30], index=3, format_func=lambda x: f"{x}년", key=f"rm_plan_years_{person_no}_{i}")
             with c4:
                 custom = st.checkbox("개월 수 직접 입력", key=f"rm_plan_custom_on_{person_no}_{i}")
             if custom:
@@ -218,7 +221,7 @@ def render_contract_inputs(person_no: int) -> list[ExistingContract]:
     count = _state_count(count_key, 2)
     result: list[ExistingContract] = []
     for i in range(count):
-        with st.expander(f"기존 계약 {i+1}", expanded=i == 0):
+        with st.expander(f"기존 계약 {i+1} · {clean(st.session_state.get(f'rm_contract_company_{person_no}_{i}')) or '보험회사 입력'}", expanded=i == 0):
             a, b = st.columns(2)
             with a:
                 company = st.text_input("보험회사", key=f"rm_contract_company_{person_no}_{i}")
@@ -229,7 +232,7 @@ def render_contract_inputs(person_no: int) -> list[ExistingContract]:
                     st.session_state[action_key] = "변경"
                 action = st.selectbox("처리 방향", CONTRACT_ACTIONS, key=action_key)
                 detail = st.text_input(
-                    "변경 내용",
+                    f"{action} 관련 내용",
                     key=f"rm_contract_detail_{person_no}_{i}",
                     placeholder=ACTION_HELP.get(action, "처리 내용을 구체적으로 입력해 주세요."),
                 )
@@ -247,27 +250,34 @@ def render_contract_inputs(person_no: int) -> list[ExistingContract]:
 
 
 def render_person_inputs(person_no: int) -> Person:
-    st.subheader(f"고객 {person_no}")
     name = st.text_input("고객명", key=f"rm_name_{person_no}", placeholder="예: 홍길동")
-    a, b = st.columns(2)
-    with a:
-        old_monthly = _money_input("기존 월 보험료", f"rm_old_monthly_{person_no}")
-        old_total = _money_input("기존 납입 예정 총액", f"rm_old_total_{person_no}")
-    with b:
-        retained_monthly = _money_input("유지하는 기존 보험료", f"rm_retained_monthly_{person_no}")
-        retained_total = _money_input("유지 보험의 남은 확정 납입 예정 총액", f"rm_retained_total_{person_no}", "사용자가 확인한 합계 금액을 직접 입력합니다.")
-    st.markdown("#### 새롭게 가입하는 보험")
-    plans = render_plan_inputs(person_no)
-    coverage = st.text_area("새롭게 확보되는 핵심 보장", key=f"rm_coverage_{person_no}", placeholder="예: 암·뇌·심장 진단비 보완 · 주요 치료비 강화", height=75)
-    st.markdown("#### 기존 계약별 처리 계획")
-    contracts = render_contract_inputs(person_no)
-    person = Person(clean(name), old_monthly, old_total, retained_monthly, retained_total, plans, clean(coverage), contracts)
-    st.info(
-        f"신규 보험료 합계 {person.new_plan_monthly:,}원  ·  "
-        f"변경 후 월 보험료 {person.after_monthly:,}원  ·  "
-        f"변경 후 납입 예정 총액 {person.after_total:,}원"
-    )
-    return person
+    def summary(field):
+        raw = str(st.session_state.get(f"rm_{field}_{person_no}", "")).strip()
+        return won(money(raw)) if raw else "입력 전"
+    with st.expander(f"01 · 현재 보험 — 월 {summary('old_monthly')}", expanded=True):
+        st.caption("변경하기 전, 기존 보험 전체의 합계를 입력하세요.")
+        old_monthly = _money_input("기존 월 보험료 합계 (원)", f"rm_old_monthly_{person_no}", "현재 가입한 보험의 월 보험료를 모두 합한 금액입니다.")
+        old_total = _money_input("기존 납입 예정 총액 (원)", f"rm_old_total_{person_no}", "기존 기능과 동일한 기준으로 확인한 납입 예정 총액을 입력하세요.")
+    with st.expander(f"02 · 변경 계획 — 남는 월 보험료 {summary('retained_monthly')}", expanded=True):
+        st.caption("기존 계약의 처리 계획을 기록한 뒤, 변경 후 남는 기존 보험료 합계를 입력하세요.")
+        contracts = render_contract_inputs(person_no)
+        st.info("유지·감액·해지 선택은 처리 계획입니다. 선택만으로 보험료가 자동 변경되지는 않습니다.")
+        retained_monthly = _money_input("변경 후 남는 기존 월 보험료 (원)", f"rm_retained_monthly_{person_no}", "유지할 보험과 감액 후 남는 보험료의 합계입니다. 신규 보험료는 제외하며, 남는 보험이 없다면 0을 입력하세요.")
+        retained_total = _money_input("유지 보험의 남은 확정 납입 예정 총액 (원)", f"rm_retained_total_{person_no}", "사용자가 확인한 합계를 직접 입력합니다. 남은 금액이 없으면 0을 입력하세요.")
+    with st.expander("03 · 새롭게 가입할 보험", expanded=True):
+        st.caption("앞에서 입력한 기존 보험료는 다시 포함하지 않습니다. 납입기간은 보장기간이 아닌 보험료를 낼 기간입니다.")
+        no_new = st.checkbox("신규로 가입할 보험이 없습니다", key=f"rm_no_new_{person_no}")
+        if no_new:
+            # Preserve hidden widget values when the user temporarily switches this option.
+            for key in list(st.session_state):
+                if key.startswith((f"rm_plan_name_{person_no}_", f"rm_plan_premium_{person_no}_", f"rm_plan_years_{person_no}_", f"rm_plan_custom_on_{person_no}_", f"rm_plan_months_{person_no}_")):
+                    st.session_state[key] = st.session_state[key]
+            plans = []
+            st.caption("신규 보험료 합계는 0원으로 반영됩니다.")
+        else:
+            plans = render_plan_inputs(person_no)
+        coverage = st.text_area("새롭게 확보되는 핵심 보장", key=f"rm_coverage_{person_no}", placeholder="예: 암·뇌·심장 진단비 보완 · 주요 치료비 강화", height=75)
+    return Person(clean(name), old_monthly, old_total, retained_monthly, retained_total, plans, clean(coverage), contracts)
 
 
 # ---------------- Excel ----------------
@@ -628,19 +638,86 @@ def render_preview(people: list[Person]) -> None:
         _preview_person(people[1])
 
 
+def _amount_status(key: str) -> bool:
+    raw = str(st.session_state.get(key, "")).strip().replace(",", "")
+    return bool(re.fullmatch(r"[0-9]+", raw))
+
+
+def _input_status(person_no: int) -> dict[str, bool]:
+    flags = {field: _amount_status(f"rm_{field}_{person_no}") for field in
+             ("old_monthly", "old_total", "retained_monthly", "retained_total")}
+    if st.session_state.get(f"rm_no_new_{person_no}"):
+        flags["plans"] = True
+    else:
+        active = []
+        for i in range(int(st.session_state.get(f"rm_plan_count_{person_no}", 1))):
+            name = clean(st.session_state.get(f"rm_plan_name_{person_no}_{i}"))
+            raw = str(st.session_state.get(f"rm_plan_premium_{person_no}_{i}", "")).strip()
+            if name or raw:
+                active.append(bool(name) and _amount_status(f"rm_plan_premium_{person_no}_{i}"))
+        flags["plans"] = bool(active) and all(active)
+    return flags
+
+
+def _render_live_summary(people: list[Person], statuses: list[dict]) -> None:
+    st.markdown("### 실시간 비교 요약")
+    st.caption("입력 후 Enter를 누르거나 다른 칸을 선택하면 반영됩니다.")
+    options = [f"고객 {i+1} · {p.name or '이름 입력 전'}" for i, p in enumerate(people)]
+    if len(people) > 1:
+        choice = st.radio("비교 대상", ["합산"] + options, key="rm_summary_person")
+        indices = list(range(len(people))) if choice == "합산" else [options.index(choice)]
+    else:
+        indices = [0]
+    selected = [people[i] for i in indices]
+    flags = [statuses[i] for i in indices]
+    t = combined(selected)
+    ready = lambda *fields: all(all(f[k] for k in fields) for f in flags)
+    shown = lambda value, ok: won(value) if ok else "입력 전"
+    om, ot = ready("old_monthly"), ready("old_total")
+    am, at = ready("retained_monthly", "plans"), ready("retained_total", "plans")
+    st.markdown(f"**{' · '.join(p.name or '고객' for p in selected)}**")
+    st.table([
+        {"항목": "월 보험료", "기존": shown(t['old_monthly'], om), "변경 후": shown(t['after_monthly'], am)},
+        {"항목": "납입 예정 총액", "기존": shown(t['old_total'], ot), "변경 후": shown(t['after_total'], at)},
+    ])
+    st.metric("월 보험료 변화", change_amount(t['old_monthly'], t['after_monthly']) if om and am else "입력 전")
+    st.caption("남는 기존 보험료 + 신규 보험료 = 변경 후 월 보험료")
+    st.write("남는 기존 보험료: " + shown(sum(p.retained_monthly for p in selected), ready("retained_monthly")))
+    st.write("신규 보험료: " + shown(sum(p.new_plan_monthly for p in selected), ready("plans")))
+    st.metric("납입 예정 총액 변화", change_amount(t['old_total'], t['after_total']) if ot and at else "입력 전")
+    st.caption("처리 방향만 선택해도 금액이 바뀌지는 않습니다. 금액 차이는 보장 우열을 의미하지 않습니다.")
+
+
+def _remodeling_page_style() -> None:
+    st.markdown("""<style>
+    .st-key-rm_live_summary {background:#fff;border:1px solid #dbe4ef;border-top:3px solid #2866b9;border-radius:14px;padding:20px;}
+    .st-key-rm_guided_inputs {min-width:0;}
+    .st-key-rm_guided_inputs [data-testid="stExpander"] {margin-bottom:10px;}
+    .st-key-rm_workspace [data-testid="stTable"] td,.st-key-rm_workspace [data-testid="stTable"] th {font-size:13px!important;overflow-wrap:anywhere;}
+    .st-key-rm_workspace [data-testid="stTable"] td:not(:first-child) {text-align:right;font-variant-numeric:tabular-nums;}
+    @media(min-width:641px) {
+      .st-key-rm_workspace>[data-testid="stHorizontalBlock"],
+      .st-key-rm_workspace>[data-testid="stVerticalBlock"]>[data-testid="stHorizontalBlock"] {flex-wrap:nowrap!important;align-items:flex-start!important;}
+      .st-key-rm_workspace>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"],
+      .st-key-rm_workspace>[data-testid="stVerticalBlock"]>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"] {min-width:0!important;}
+      .st-key-rm_workspace>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]:first-child,
+      .st-key-rm_workspace>[data-testid="stVerticalBlock"]>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]:first-child {flex:1.6 1 0!important;width:auto!important;}
+      .st-key-rm_workspace>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]:last-child,
+      .st-key-rm_workspace>[data-testid="stVerticalBlock"]>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]:last-child {flex:1 1 0!important;width:auto!important;position:sticky;top:5rem;}
+    }
+    @media(max-width:640px) {
+      .st-key-rm_workspace [data-testid="stHorizontalBlock"] {flex-wrap:wrap!important;}
+      .st-key-rm_workspace [data-testid="stColumn"] {min-width:100%!important;width:100%!important;position:static!important;}
+    }
+    @media(prefers-reduced-motion:reduce) {.st-key-rm_workspace *{transition:none!important;animation:none!important;}}
+    </style>""", unsafe_allow_html=True)
+
+
 def run() -> None:
-    page_header("고객 상담", APP_TITLE, "고객별 기존 계약 처리 계획과 새로운 보장 구성을 작성해 엑셀로 내려받습니다.", "RM")
-    tool_guide(
-        "사용 방법 및 작성 기준",
-        "기존 계약의 처리 계획과 새롭게 구성할 보험을 고객별 비교안으로 정리합니다.",
-        [("상담 정보", "대상 인원·상담일·담당자를 입력합니다."),
-         ("고객별 작성", "신규 보험과 기존 계약별 유지·감액·해지 등의 계획을 작성합니다."),
-         ("결과 확인", "자동 계산 결과와 미리보기를 검토한 뒤 엑셀을 내려받습니다.")],
-        criteria="월 보험료와 납입 예정 총액은 입력한 보험료·납입기간을 기준으로 자동 계산됩니다.",
-    )
-    with st.container(key="hw_surface_remodeling_0"):
-        st.caption("01 · 상담 정보와 계약 구성")
-        section_intro("공통 정보", "상담 기본정보", "대상 인원과 상담 정보를 먼저 확인해 주세요.")
+    _remodeling_page_style()
+    page_header("고객 상담", APP_TITLE, "왼쪽에서 순서대로 입력하고, 오른쪽에서 변경 전후를 확인하세요.", "RM")
+    with st.container(key="hw_surface_remodeling_info"):
+        st.markdown("### 상담 기본정보")
         c1, c2, c3, c4 = st.columns([.85, 1, 1.15, 1])
         with c1:
             count = int(st.selectbox("대상 인원", [1, 2], format_func=lambda x: f"{x}명", key="rm_count"))
@@ -649,63 +726,58 @@ def run() -> None:
         with c3:
             consultant = st.text_input("담당자", key="rm_consultant", placeholder="예: 박병선")
         with c4:
-            st.markdown('<div style="height:1.78rem"></div>', unsafe_allow_html=True)
             if st.button("예시 데이터 입력", use_container_width=True):
+                for i in range(1, count + 1):
+                    st.session_state[f"rm_no_new_{i}"] = False
                 load_example(count)
                 st.rerun()
-
-        section_intro("상세 입력", "고객별 리모델링 내용", "신규 보험과 기존 계약의 처리 계획을 구체적으로 작성해 주세요.")
-        people: list[Person] = []
-        tabs = st.tabs([f"고객 {i}" for i in range(1, count+1)])
-        for i, tab in enumerate(tabs, 1):
-            with tab:
-                people.append(render_person_inputs(i))
-        if count == 2:
-            shared = st.checkbox("두 고객의 핵심 보장을 하나로 묶어 표시", key="rm_shared_coverage")
-            if shared:
-                shared_text = st.text_area("공통 핵심 보장", key="rm_shared_coverage_text", height=75)
-                for p in people:
-                    p.coverage = clean(shared_text)
-        display_names = [re.sub(r"님$", "", clean(p.name)) or "OOO" for p in people]
-        default_title = " · ".join(f"{name}님" for name in display_names) + " 보험 리모델링 비교안"
-        custom_title = st.text_input("자료 제목 (선택)", key="rm_title", placeholder=default_title)
-        effective_title = clean(custom_title) or default_title
-
-    with st.container(key="hw_surface_remodeling_1"):
-        st.caption("02 · 변경 결과 · 고객자료")
-        section_intro("분석 결과", "자동 계산 결과", "입력한 보험료와 납입기간을 기준으로 자동 계산됩니다.")
-        t = combined(people)
-        with st.expander('변경 전후 금액을 같은 기준으로 확인', expanded=True):
-            st.dataframe([{'비교항목': '월 보험료', '기존안 (원)': t['old_monthly'], '변경안 (원)': t['after_monthly'], '차이 (원)': t['after_monthly']-t['old_monthly']},
-                          {'비교항목': '납입 예정 총액', '기존안 (원)': t['old_total'], '변경안 (원)': t['after_total'], '차이 (원)': t['after_total']-t['old_total']}], hide_index=True, use_container_width=True)
-            st.caption('금액 차이는 보장 우열을 의미하지 않습니다. 해지·감액 계약의 손실과 신규 심사·면책·감액 조건을 함께 확인하세요.')
-        a, b, c = st.columns(3)
-        labels = (["월 보험료 변화", "변경 후 월 보험료", "납입 예정 총액 변화"] if count == 1 else
-                  ["합산 월 보험료 변화", "변경 후 합산 월 보험료", "납입 예정 총액 변화"])
-        a.metric(labels[0], change_amount(t["old_monthly"], t["after_monthly"]), change_rate(t["old_monthly"], t["after_monthly"]) or None)
-        b.metric(labels[1], won(t["after_monthly"]))
-        c.metric(labels[2], change_amount(t["old_total"], t["after_total"]), change_rate(t["old_total"], t["after_total"]) or None)
-        missing = [f"고객 {i+1} 이름" for i, p in enumerate(people) if not p.name]
-        if not clean(consultant):
-            missing.append("담당자")
-        if missing:
-            st.warning("미입력 항목: " + ", ".join(missing) + " · 확인용 파일은 그대로 다운로드할 수 있습니다.")
-
-        section_intro("미리보기", "리모델링 비교안 미리보기", "다운로드할 자료의 핵심 내용을 실시간으로 확인할 수 있습니다.")
-        render_preview(people)
-
-        excel = create_excel(people, effective_title, consultation_date, clean(consultant))
-        filename_people = "_".join(f"{safe_filename(name)}님" for name in display_names)
-        base = f"{filename_people}_보험리모델링_비교안_{date.today():%Y%m%d}"
-        section_intro("다운로드", "엑셀 다운로드", "미리보기 내용을 확인한 뒤 고객 상담용 엑셀을 내려받아 주세요.")
-        st.download_button(
-            "엑셀로 다운로드",
-            excel,
-            f"{base}.xlsx",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
-            type="primary",
-        )
+    with st.container(key="rm_workspace"):
+        left, right = st.columns([1.6, 1], gap="large")
+        with left, st.container(key="rm_guided_inputs"):
+            people = []
+            tabs = st.tabs([f"고객 {i}" for i in range(1, count + 1)])
+            for i, tab in enumerate(tabs, 1):
+                with tab:
+                    people.append(render_person_inputs(i))
+            if count == 2:
+                shared = st.checkbox("두 고객의 핵심 보장을 하나로 묶어 표시", key="rm_shared_coverage")
+                if shared:
+                    shared_text = st.text_area("공통 핵심 보장", key="rm_shared_coverage_text", height=75)
+                    for person in people:
+                        person.coverage = clean(shared_text)
+            display_names = [re.sub(r"님$", "", clean(p.name)) or "OOO" for p in people]
+            default_title = " · ".join(f"{name}님" for name in display_names) + " 보험 리모델링 비교안"
+            custom_title = st.text_input("자료 제목 (선택)", key="rm_title", placeholder=default_title)
+            effective_title = clean(custom_title) or default_title
+        statuses = [_input_status(i) for i in range(1, count + 1)]
+        with right, st.container(key="rm_live_summary"):
+            _render_live_summary(people, statuses)
+    with st.container(key="hw_surface_remodeling_output"):
+        st.markdown("### 고객용 비교안 · 다운로드")
+        ready = all(all(flags.values()) for flags in statuses)
+        if not ready:
+            st.info("아직 입력하지 않았거나 확인이 필요한 금액이 있습니다. 0원인 항목은 0을 입력하고, 신규 가입이 없다면 ‘신규로 가입할 보험이 없습니다’를 선택하세요.")
+            for i, flags in enumerate(statuses, 1):
+                names = {"old_monthly": "기존 월 보험료", "old_total": "기존 납입 예정 총액", "retained_monthly": "남는 기존 월 보험료", "retained_total": "유지 보험의 남은 총액", "plans": "신규 보험명·보험료 또는 신규 가입 없음 선택"}
+                missing = [names[k] for k, ok in flags.items() if not ok]
+                if missing:
+                    st.caption(f"고객 {i} 확인: " + " · ".join(missing))
+        else:
+            missing = [f"고객 {i+1} 이름" for i, p in enumerate(people) if not p.name]
+            if not clean(consultant):
+                missing.append("담당자")
+            if missing:
+                st.warning("미입력 항목: " + ", ".join(missing) + " · 확인용 파일은 그대로 다운로드할 수 있습니다.")
+            render_preview(people)
+            excel = create_excel(people, effective_title, consultation_date, clean(consultant))
+            filename_people = "_".join(f"{safe_filename(name)}님" for name in display_names)
+            base = f"{filename_people}_보험리모델링_비교안_{date.today():%Y%m%d}"
+            st.download_button("엑셀로 다운로드", excel, f"{base}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, type="primary")
+    tool_guide("사용 방법 및 작성 기준", "현재 보험 → 변경 계획 → 신규 보험 순서로 작성하세요.",
+        [("현재 보험", "변경 전 보험료와 납입 예정 총액을 입력합니다."),
+         ("변경 계획", "계약별 처리 방향과 변경 후 남는 기존 보험료를 입력합니다."),
+         ("신규 보험", "새로 가입하는 보험의 보험료와 납입기간을 입력합니다.")],
+        criteria="월 보험료와 납입 예정 총액은 기존 계산식으로 계산합니다. 계약 처리 방향은 금액과 별도로 입력합니다.")
     page_footer("보험 리모델링", APP_VERSION)
 
 
