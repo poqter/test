@@ -999,6 +999,47 @@ def _render_personal_selector(
     return selected
 
 
+def _inject_analyzer_page_styles() -> None:
+    """Local presentation only; does not alter parsing or workbook output."""
+    st.markdown("""
+    <style>
+    .st-key-analyzer_page_inputs, .st-key-analyzer_page_results {
+        background: #fff; border: 1px solid #dfe6ef; border-radius: 16px;
+        padding: 24px; margin-bottom: 20px; box-shadow: 0 3px 12px #21344b04;
+    }
+    .st-key-analyzer_page_inputs h3, .st-key-analyzer_page_results h3 {
+        font-size: 1.16rem !important; letter-spacing: -.025em;
+        margin-bottom: 16px;
+    }
+    .st-key-analyzer_page_inputs [data-testid="stFileUploader"] {
+        background: #f5f8fd; border: 1px dashed #aebfd5;
+        border-radius: 12px; padding: 12px;
+    }
+    .st-key-analyzer_page_inputs [role="radiogroup"] {gap: 12px; flex-wrap: wrap;}
+    .st-key-analyzer_page_inputs [role="radiogroup"] label {
+        border: 1px solid #d4deec; border-radius: 10px; padding: 12px 18px;
+        background: #fff; transition: background .18s, border-color .18s;
+    }
+    .st-key-analyzer_page_inputs [role="radiogroup"] label:has(input:checked) {
+        background: #eff5ff; border-color: #3673cc;
+    }
+    .st-key-analyzer_page_results [data-testid="stMetric"] {padding: 12px 0;}
+    .st-key-analyzer_page_inputs button:hover,
+    .st-key-analyzer_page_results button:hover {transform: none !important;}
+    @media(max-width: 760px) {
+        .st-key-analyzer_page_inputs, .st-key-analyzer_page_results {padding: 16px;}
+        .st-key-analyzer_page_inputs [data-testid="stHorizontalBlock"] {flex-wrap: wrap;}
+        .st-key-analyzer_page_inputs [data-testid="stColumn"] {
+            width: 100% !important; flex: 1 1 100% !important; min-width: 0 !important;
+        }
+    }
+    @media(prefers-reduced-motion: reduce) {
+        .st-key-analyzer_page_inputs *, .st-key-analyzer_page_results * {transition: none !important;}
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+
 def run() -> None:
     page_header(
         "고객 상담",
@@ -1007,28 +1048,17 @@ def run() -> None:
         "▤",
     )
 
-    tool_guide(
-        "사용 방법 및 출력 기준",
-        "전체 보장분석 엑셀을 고객 상담용 보장표로 자동 정리합니다.",
-        [
-            ("원본 업로드", "전체 보장내용이 포함된 컨설팅보장분석.xlsx 파일을 등록합니다."),
-            ("분석 방식 선택", "간편모드는 기본 보장을 적용하고, 개인모드는 출력 항목을 직접 선택합니다."),
-            ("결과 확인", "생성된 상담용 보장표를 확인하고 엑셀로 내려받습니다."),
-        ],
-        criteria="- A3 세로형, 너비 1페이지·높이 자동 맞춤으로 생성됩니다.\n- 페이지 하단에 현재 페이지와 전체 페이지 번호가 표시됩니다.",
-        caution="필요한 경우 엑셀 인쇄 화면에서 방향·배율·페이지 나누기를 조정할 수 있습니다.",
-    )
-
-    from modules.shared.page_layouts import work_panels
-    _ui_0, _ui_1 = work_panels("analyzer")
-    with _ui_0:
-        st.caption("01 · 자료와 분석 조건")
-        st.markdown("### ✦ 전체 보장분석 원본")
-        uploaded_main = guarded_upload(
-            "전체 보장내용이 포함된 컨설팅보장분석.xlsx 파일을 업로드하세요",
-            type=["xlsx"],
-            key="analyzer_v2_main_file",
-        )
+    _inject_analyzer_page_styles()
+    with st.container(key="analyzer_page_inputs"):
+        st.markdown("### 01 · 자료와 분석 설정")
+        upload_column, mode_column = st.columns([1.05, 1], gap="large")
+        with upload_column:
+            st.markdown("**전체 보장분석 원본**")
+            uploaded_main = guarded_upload(
+                "전체 보장내용이 포함된 컨설팅보장분석.xlsx 파일을 업로드하세요",
+                type=["xlsx"],
+                key="analyzer_v2_main_file",
+            )
 
         parsed = None
         parse_error = None
@@ -1040,17 +1070,20 @@ def run() -> None:
                 parse_error = exc
                 st.error(str(exc))
 
-        st.markdown("### ✦ 분석 방식 선택")
-        mode = st.radio(
-            "분석 방식을 선택하세요",
-            ["간편모드", "개인모드"],
-            horizontal=True,
-            key="analyzer_v2_mode",
-        )
+        with mode_column:
+            st.markdown("**분석 방식**")
+            mode = st.radio(
+                "분석 방식을 선택하세요",
+                ["간편모드", "개인모드"],
+                horizontal=True,
+                key="analyzer_v2_mode",
+            )
+
+            st.caption("간편모드는 업로드 후 자동 생성합니다. 개인모드는 출력 항목을 선택한 뒤 실행합니다.")
 
         selected_labels: list[str] = []
         if parsed:
-            with st.expander('인식된 계약과 고객정보 확인', expanded=True):
+            with st.expander('인식된 계약과 고객정보 확인', expanded=False):
                 st.write(f"고객: {parsed['customer_name']} · 보험나이: {parsed['age']} · 계약 {len(parsed['contracts'])}개")
                 st.dataframe([{'보험사': c['company'], '상품': c['product'], '월보험료': c['monthly'], '보장기간': c['coverage_period']} for c in parsed['contracts']], hide_index=True, use_container_width=True)
                 if any(not c['company'] or not c['product'] or c['monthly'] == 0 for c in parsed['contracts']):
@@ -1086,7 +1119,7 @@ def run() -> None:
                 or (current_error and current_error.get("signature") == signature)
             )
         else:
-            st.markdown("### ✦ 보장 분석 실행")
+            st.markdown("**선택한 항목으로 분석**")
             should_generate = st.button(
                 "보장 분석 시작",
                 type="primary",
@@ -1095,8 +1128,8 @@ def run() -> None:
                 key="analyzer_v2_run",
             )
 
-    with _ui_1:
-        st.caption("02 · 분석 결과 · 다운로드")
+    with st.container(key="analyzer_page_results"):
+        st.markdown("### 02 · 분석 결과 및 다운로드")
         if should_generate:
             st.session_state.pop("analyzer_v2_result", None)
             st.session_state.pop("analyzer_v2_error", None)
@@ -1129,8 +1162,6 @@ def run() -> None:
 
         result = st.session_state.get("analyzer_v2_result")
         if result and result.get("signature") == signature:
-            st.divider()
-            st.markdown("### ✦ 분석 결과 및 다운로드")
             st.success("보장 분석이 완료되었습니다.")
             col1, col2, col3 = st.columns(3)
             col1.metric("고객명", result["customer_name"])
@@ -1145,6 +1176,22 @@ def run() -> None:
                 use_container_width=True,
                 key="analyzer_v2_download",
             )
+
+        elif not error or error.get("signature") != signature:
+            st.info("원본 파일을 업로드하면 결과를 확인할 수 있습니다." if not uploaded_main else "출력할 보장항목을 확인하고 보장 분석을 시작하세요.")
+
+    tool_guide(
+        "사용 방법 및 출력 기준",
+        "전체 보장분석 엑셀을 고객 상담용 보장표로 자동 정리합니다.",
+        [
+            ("원본 업로드", "전체 보장내용이 포함된 컨설팅보장분석.xlsx 파일을 등록합니다."),
+            ("분석 방식 선택", "간편모드는 기본 보장을 적용하고, 개인모드는 출력 항목을 직접 선택합니다."),
+            ("결과 확인", "생성된 상담용 보장표를 확인하고 엑셀로 내려받습니다."),
+        ],
+        criteria="- A3 세로형, 너비 1페이지·높이 자동 맞춤으로 생성됩니다.\n- 페이지 하단에 현재 페이지와 전체 페이지 번호가 표시됩니다.",
+        caution="필요한 경우 엑셀 인쇄 화면에서 방향·배율·페이지 나누기를 조정할 수 있습니다.",
+    )
+
 
     page_footer("보장 분석 도우미", APP_VERSION)
 
