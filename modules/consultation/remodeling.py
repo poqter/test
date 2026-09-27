@@ -172,15 +172,36 @@ def _editor_focus(section):
     st.session_state["rm_editor_focus"] = section
 
 
+def _valid_amount_text(raw: object) -> bool:
+    text = str(raw).strip()
+    return bool(re.fullmatch(r"(?:[0-9]+|[0-9]{1,3}(?:,[0-9]{3})+)(?:\s*원)?", text))
+
+
+def _format_amount_state(key: str) -> None:
+    raw = st.session_state.get(key, '')
+    if _valid_amount_text(raw):
+        formatted = won(money(raw))
+        if raw != formatted:
+            st.session_state[key] = formatted
+
+
+def _amount_changed(key: str, section: str) -> None:
+    _format_amount_state(key)
+    _editor_focus(section)
+
+
+def _money_text_input(label: str, key: str, section: str, placeholder: str, help_text=None) -> str:
+    _format_amount_state(key)
+    raw = st.text_input(label, key=key, placeholder=placeholder, help=help_text,
+                        on_change=_amount_changed, args=(key, section))
+    if raw.strip() and not _valid_amount_text(raw):
+        st.error('금액은 0 이상의 정수로 입력하세요. 예: 321,542원')
+    return raw
+
+
 def _money_input(label: str, key: str, help_text: str | None = None) -> int:
-    raw = st.text_input(label, key=key, placeholder="예: 694,580", help=help_text, on_change=_editor_focus, args=("totals" if "total" in key else "monthly",))
-    value = money(raw)
-    if raw:
-        if re.fullmatch(r"[0-9]+", raw.strip().replace(",", "")):
-            st.caption(f"{value:,}원")
-        else:
-            st.error("금액은 0 이상의 정수로 입력하세요. 예: 120,000")
-    return value
+    raw = _money_text_input(label, key, 'totals' if 'total' in key else 'monthly', '예: 694,580원', help_text)
+    return money(raw)
 
 
 def render_plan_inputs(person_no: int) -> list[NewPlan]:
@@ -194,7 +215,7 @@ def render_plan_inputs(person_no: int) -> list[NewPlan]:
             with c1:
                 name = st.text_input("보험 또는 보장 구성명", key=f"rm_plan_name_{person_no}_{i}", on_change=_editor_focus, args=("plans",), placeholder="예: 암·뇌·심장 진단비")
             with c2:
-                premium = st.text_input("신규 월 보험료 (원)", key=f"rm_plan_premium_{person_no}_{i}", on_change=_editor_focus, args=("plans",), placeholder="예: 128,589")
+                premium = _money_text_input("신규 월 보험료 (원)", f"rm_plan_premium_{person_no}_{i}", "plans", "예: 128,589원")
             c3, c4 = st.columns([1.3, 1])
             years = 20
             months = 0
@@ -224,26 +245,67 @@ def render_plan_inputs(person_no: int) -> list[NewPlan]:
     return [p for p in plans if p.name or p.monthly]
 
 
+def _contract_suggestion(company, rows):
+    row = next((r for r in rows if r['name'] == clean(company)), None)
+    return row.get('phone', '') if row else ''
+
+
+def _contract_detail_edited(suffix):
+    st.session_state['rm_contract_custom_'+suffix] = True
+
+
+def _replace_contract_suggestion(suffix, suggestion):
+    st.session_state['rm_contract_detail_'+suffix] = suggestion
+    st.session_state['rm_contract_auto_'+suffix] = suggestion
+    st.session_state['rm_contract_custom_'+suffix] = False
+
+
 def render_contract_inputs(person_no: int) -> list[ExistingContract]:
     count_key = f"rm_contract_count_{person_no}"
     count = _state_count(count_key, 2)
     result: list[ExistingContract] = []
+    from modules.resources.portal_repository import load_catalog
+    catalog, _ = load_catalog()
+    insurers = [r for r in catalog['insurers'] if r['group'] != '기본 포털']
+    names = [r['name'] for r in insurers]
     for i in range(count):
         with st.expander(f"기존 계약 {i+1} · {clean(st.session_state.get(f'rm_contract_company_{person_no}_{i}')) or '보험회사 입력'}", expanded=i == 0):
             a, b = st.columns(2)
             with a:
-                company = st.text_input("보험회사", key=f"rm_contract_company_{person_no}_{i}")
+                company_key = f"rm_contract_company_{person_no}_{i}"
+                options = list(names)
+                saved_company = st.session_state.get(company_key)
+                if saved_company and saved_company not in options:
+                    options.append(saved_company)
+                company = st.selectbox("보험회사", options, index=None, key=company_key,
+                                       placeholder="보험사명을 입력해 검색·선택하세요", accept_new_options=True)
+                company = company or '' 
                 product = st.text_input("상품명", key=f"rm_contract_product_{person_no}_{i}")
             with b:
                 action_key = f"rm_contract_action_{person_no}_{i}"
                 if st.session_state.get(action_key) not in CONTRACT_ACTIONS:
                     st.session_state[action_key] = "변경"
                 action = st.selectbox("처리 방향", CONTRACT_ACTIONS, key=action_key)
-                detail = st.text_input(
-                    f"{action} 관련 내용",
-                    key=f"rm_contract_detail_{person_no}_{i}",
-                    placeholder=ACTION_HELP.get(action, "처리 내용을 구체적으로 입력해 주세요."),
+                suffix = f'{person_no}_{i}'
+                detail_key = 'rm_contract_detail_'+suffix
+                auto_key = 'rm_contract_auto_'+suffix
+                custom_key = 'rm_contract_custom_'+suffix
+                suggestion = _contract_suggestion(company, insurers)
+                current = st.session_state.get(detail_key, '')
+                previous = st.session_state.get(auto_key)
+                if not st.session_state.get(custom_key, False) and (not current or current == previous):
+                    st.session_state[detail_key] = suggestion
+                    st.session_state[auto_key] = suggestion
+                detail = st.text_area(
+                    '처리 안내 내용', key=detail_key, height=110,
+                    placeholder='보험사를 선택하면 고객센터 번호가 입력됩니다.',
+                    on_change=_contract_detail_edited, args=(suffix,),
+                    help='고객센터 번호와 처리 내용을 자유롭게 수정할 수 있습니다. 처리 방향을 바꿔도 문구는 자동 작성되지 않습니다.',
                 )
+                if suggestion and detail != suggestion:
+                    st.caption('직접 작성한 내용을 유지했습니다. 아래 버튼을 누르면 현재 보험사의 고객센터 번호로 교체합니다.')
+                    st.button('고객센터 번호 다시 넣기', key='rm_contract_restore_'+suffix,
+                              on_click=_replace_contract_suggestion, args=(suffix, suggestion))
             result.append(ExistingContract(clean(company), clean(product), action, clean(detail)))
     a, b = st.columns(2)
     with a:
@@ -259,24 +321,31 @@ def render_contract_inputs(person_no: int) -> list[ExistingContract]:
 
 def render_person_inputs(person_no: int) -> Person:
     name = st.text_input("고객명", key=f"rm_name_{person_no}", placeholder="예: 홍길동")
-    with st.expander("월 보험료 비교", expanded=True):
-        old_monthly = _money_input("기존 월 보험료 합계 (원)", f"rm_old_monthly_{person_no}")
-        retained_monthly = _money_input("변경 후 남는 기존 월 보험료 (원)", f"rm_retained_monthly_{person_no}", "유지·감액 후 남는 기존 보험료입니다. 신규 보험료는 아래에서 합산합니다.")
-    with st.expander("새롭게 가입하는 보험", expanded=True):
-        no_new = st.checkbox("신규로 가입할 보험이 없습니다", key=f"rm_no_new_{person_no}")
+    with st.container(border=True):
+        st.markdown('#### ① 현재 가입 상태')
+        old_monthly = _money_input('기존 월 보험료 합계 (원)', f'rm_old_monthly_{person_no}')
+        old_total = _money_input('기존 납입 예정 총액 (원)', f'rm_old_total_{person_no}')
+    with st.container(border=True):
+        st.markdown('#### ② 변경 후 유지할 보험')
+        st.caption('기존 보험 중 유지하거나 감액한 뒤 남는 금액입니다. 신규 보험은 다음 단계에서 입력합니다.')
+        retained_monthly = _money_input('변경 후 남는 기존 월 보험료 (원)', f'rm_retained_monthly_{person_no}')
+        retained_total = _money_input('유지 보험의 남은 확정 납입 예정 총액 (원)', f'rm_retained_total_{person_no}')
+    with st.container(border=True):
+        st.markdown('#### ③ 새롭게 가입할 보험')
+        no_new = st.checkbox('신규로 가입할 보험이 없습니다', key=f'rm_no_new_{person_no}')
         if no_new:
             for key in list(st.session_state):
-                if key.startswith((f"rm_plan_name_{person_no}_", f"rm_plan_premium_{person_no}_", f"rm_plan_years_{person_no}_", f"rm_plan_custom_on_{person_no}_", f"rm_plan_months_{person_no}_")):
+                if key.startswith((f'rm_plan_name_{person_no}_', f'rm_plan_premium_{person_no}_', f'rm_plan_years_{person_no}_', f'rm_plan_custom_on_{person_no}_', f'rm_plan_months_{person_no}_', f'rm_coverage_{person_no}')):
                     st.session_state[key] = st.session_state[key]
             plans = []
+            coverage = ''
         else:
             plans = render_plan_inputs(person_no)
-        st.caption("첫 장 표시 한도: 1명 상담 5건, 2명 상담 고객별 4건. 초과하면 다운로드 전에 안내합니다.")
-    with st.expander("핵심 보장 설명", expanded=False):
-        coverage = st.text_area("신규 가입안의 핵심 보장", key=f"rm_coverage_{person_no}", on_change=_editor_focus, args=("coverage",), placeholder="예: 암·뇌·심장 진단비 보완", height=100)
-    with st.expander("납입 예정 총액", expanded=False):
-        old_total = _money_input("기존 납입 예정 총액 (원)", f"rm_old_total_{person_no}")
-        retained_total = _money_input("유지 보험의 남은 확정 납입 예정 총액 (원)", f"rm_retained_total_{person_no}", "확인한 합계를 입력하세요. 신규 보험 총액은 보험료와 납입기간으로 계산합니다.")
+            st.markdown('**핵심 보장 설명 · 선택**')
+            coverage = st.text_area('신규 가입안의 핵심 보장', key=f'rm_coverage_{person_no}',
+                                   on_change=_editor_focus, args=('coverage',),
+                                   placeholder='예: 암·뇌·심장 진단비 보완', height=100)
+        st.caption('첫 장 표시 한도: 1명 상담 5건, 2명 상담 고객별 4건. 신규 보험의 납입 총액은 보험료와 납입기간으로 계산합니다.')
     return Person(clean(name), old_monthly, old_total, retained_monthly, retained_total, plans, clean(coverage), [])
 
 
@@ -639,8 +708,7 @@ def render_preview(people: list[Person]) -> None:
 
 
 def _amount_status(key: str) -> bool:
-    raw = str(st.session_state.get(key, "")).strip().replace(",", "")
-    return bool(re.fullmatch(r"[0-9]+", raw))
+    return _valid_amount_text(st.session_state.get(key, ""))
 
 
 def _input_status(person_no: int) -> dict[str, bool]:
@@ -657,6 +725,46 @@ def _input_status(person_no: int) -> dict[str, bool]:
                 active.append(bool(name) and _amount_status(f"rm_plan_premium_{person_no}_{i}"))
         flags["plans"] = bool(active) and all(active)
     return flags
+
+
+def _missing_requirements(person_no: int) -> list[tuple[str, str]]:
+    missing = []
+    for field, label in [('old_monthly','기존 월 보험료 합계'), ('retained_monthly','변경 후 남는 기존 월 보험료'),
+                         ('old_total','기존 납입 예정 총액'), ('retained_total','유지 보험의 남은 확정 납입 예정 총액')]:
+        key = f'rm_{field}_{person_no}'
+        if not _amount_status(key):
+            reason = '미입력' if not str(st.session_state.get(key, '')).strip() else '금액 형식 확인'
+            missing.append((key, label+' · '+reason))
+    if not st.session_state.get(f'rm_no_new_{person_no}'):
+        active = [i for i in range(int(st.session_state.get(f'rm_plan_count_{person_no}', 1)))
+                  if clean(st.session_state.get(f'rm_plan_name_{person_no}_{i}')) or
+                     str(st.session_state.get(f'rm_plan_premium_{person_no}_{i}', '')).strip()]
+        for i in active or [0]:
+            name_key = f'rm_plan_name_{person_no}_{i}'
+            premium_key = f'rm_plan_premium_{person_no}_{i}'
+            if not clean(st.session_state.get(name_key)):
+                missing.append((name_key, f'신규 보험 {i+1} · 보험 또는 보장 구성명 미입력'))
+            if not _amount_status(premium_key):
+                reason = '미입력' if not str(st.session_state.get(premium_key, '')).strip() else '금액 형식 확인'
+                missing.append((premium_key, f'신규 보험 {i+1} · 월 보험료 '+reason))
+    return missing
+
+
+def _show_download_requirements(count: int) -> None:
+    groups = [(i, _missing_requirements(i)) for i in range(1, count+1)]
+    keys = [key for _, rows in groups for key, _ in rows]
+    if not keys:
+        return
+    # Widget keys identify the exact fields, including customers on another tab.
+    selectors = ','.join(f'.st-key-rm_workspace .st-key-{key} [data-testid="stTextInputRootElement"]' for key in keys)
+    st.markdown('<style>'+selectors+'{border:2px solid #c88a35!important;background:#fffaf1!important;box-shadow:0 0 0 2px #c88a3512!important}</style>', unsafe_allow_html=True)
+    st.warning(f'엑셀 다운로드 전 {len(keys)}개 입력란을 확인해 주세요. 해당 입력란을 주황색 테두리로 표시했습니다.')
+    for i, rows in groups:
+        if rows:
+            st.markdown(f'**고객 {i} · 보완할 항목**')
+            for _, label in rows:
+                st.markdown('• '+label)
+    st.caption('해당 금액이 없으면 0을 입력하세요. 신규 가입이 없으면 ‘신규로 가입할 보험이 없습니다’를 선택하세요. 핵심 보장 설명과 기존 계약 정리표는 선택 사항입니다.')
 
 
 def _render_live_summary(people: list[Person], statuses: list[dict]) -> None:
@@ -692,6 +800,10 @@ def _remodeling_page_style() -> None:
     st.markdown("""<style>
     .st-key-rm_live_summary {background:#fff;border:1px solid #dbe4ef;border-top:3px solid #2866b9;border-radius:14px;padding:20px;}
     .st-key-rm_guided_inputs {min-width:0;}
+    .st-key-rm_workspace input::placeholder,
+    .st-key-rm_workspace textarea::placeholder {color:#8a9caf!important;-webkit-text-fill-color:#8a9caf!important;opacity:1!important;font-weight:400!important;}
+    .st-key-rm_workspace input:not(:placeholder-shown),
+    .st-key-rm_workspace textarea:not(:placeholder-shown) {color:#18334f!important;-webkit-text-fill-color:#18334f!important;}
     .st-key-rm_guided_inputs [data-testid="stExpander"] {margin-bottom:10px;}
     .st-key-rm_workspace [data-testid="stTable"] td,.st-key-rm_workspace [data-testid="stTable"] th {font-size:13px!important;overflow-wrap:anywhere;}
     .st-key-rm_workspace [data-testid="stTable"] td:not(:first-child) {text-align:right;font-variant-numeric:tabular-nums;}
@@ -873,10 +985,7 @@ def run() -> None:
             if overflow:
                 st.error(f"첫 장 표시 한도 초과: {', '.join(overflow)}. 고객별 {limit}건 이내로 정리해야 모든 신규 보험이 첫 장에 표시됩니다.")
             if not ready:
-                names = {"old_monthly":"기존 월 보험료", "old_total":"기존 납입 예정 총액", "retained_monthly":"남는 기존 월 보험료", "retained_total":"유지 보험의 남은 총액", "plans":"신규 보험명·보험료 또는 신규 가입 없음 선택"}
-                for i,f in enumerate(flags,1):
-                    missing = [names[k] for k,ok in f.items() if not ok]
-                    if missing: st.caption(f"고객 {i} 확인: " + ' · '.join(missing))
+                _show_download_requirements(count)
             st.caption(f"출력 구성: {len(wb.sheetnames)}개 시트 · 첫 번째 비교안 A4 가로 한 장")
             filename_people = '_'.join(f"{safe_filename(n)}님" for n in display_names)
             st.download_button("엑셀 다운로드", excel, f"{filename_people}_보험리모델링_비교안_{date.today():%Y%m%d}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", type="primary", use_container_width=True, disabled=not ready or bool(overflow))
