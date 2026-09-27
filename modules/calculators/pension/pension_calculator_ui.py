@@ -55,6 +55,7 @@ def run():
         saved,r=stored[:2]
         stamp=stored[2] if len(stored)>2 else '이전 계산'
         labels.update(expense_future='생활비 은퇴시점 가치 여부',adjust='조기·연기 조정 적용',direct='예상자산 직접 입력',extra='추가 월 저축액',extra_years='추가 저축기간',delay='시작 지연기간')
+        labels.update(direct='예상자산 직접 입력 (오늘 가치·원)',extra='추가 월 저축액 (오늘 가치·원)',extra_years='추가 저축기간 (년)',delay='시작 지연기간 (년)',income='연간 총급여 (원)',existing_pension='기존 연금저축 연 납입액 (원)',existing_irp='기존 IRP 연 납입액 (원)',extra_pension_annual='추가 납입액 중 연금저축 연 배분액 (원)')
         from modules.calculators.calculator_exports import build_exports
         export_fields=[(labels.get(k,k),v,'입력',None) for k,v in saved.items()]
         text,csv_data=build_exports('연금계산기',export_fields,list(saved.values()),r,stamp)
@@ -66,7 +67,9 @@ def run():
             for k,v in r.display().items():st.metric(k,v)
             st.line_chart([{'나이':float(x['나이']),'현재 계획 잔액':float(x['현재 계획 잔액']),'추가 납입 후 잔액':float(x['추가 납입 후 잔액'])} for x in r.rows],x='나이',y=['현재 계획 잔액','추가 납입 후 잔액'])
             for note in r.assumptions:st.caption(note)
-            st.download_button('결과 저장',text,file_name='연금계산_고객용.txt')
+            from modules.calculators.result_pdf import build_result_pdf
+            pdf = build_result_pdf('연금계산기', [(labels.get(k,k), v) for k,v in saved.items()], r, stamp)
+            st.download_button('결과 PDF 저장',pdf,file_name='연금계산_결과보고서.pdf',mime='application/pdf')
         with advisor:
             st.write(r.formula)
             st.caption('국민연금 개시연령·조기/연기 비율: 국민연금공단 안내 대조 2026-09-26.')

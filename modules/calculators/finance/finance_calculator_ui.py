@@ -143,8 +143,9 @@ def render_result(name,result,calculated_on,args,prefix):
         if result.rows and '총 자금' in result.rows[0]:
             st.line_chart([{'경과 연수':r['경과 연수'],'총 자금':float(r['총 자금']),'납입 원금':float(r['납입 원금'])} for r in result.rows],x='경과 연수',y=['총 자금','납입 원금'])
         st.caption('입력한 수익률과 조건에 따른 예상치입니다.')
-        summary=name+'\n계산일: '+calculated_on+'\n'+'\n'.join(f'{k}: {v}' for k,v in display.items())+'\n\n계산에 사용한 입력\n'+'\n'.join(f'{k}: {v}' for k,v in input_rows(args))+'\n\n산식: '+result.formula+'\n\n'+'\n'.join(result.assumptions)
-        st.download_button('결과 저장',summary.encode('utf-8-sig'),name+'_고객용.txt','text/plain',key=prefix+'_customer_export')
+        from modules.calculators.result_pdf import build_result_pdf
+        pdf = build_result_pdf(name, input_rows(args), result, calculated_on)
+        st.download_button('결과 PDF 저장',pdf,name+'_결과보고서.pdf','application/pdf',key=prefix+'_customer_export')
     with advisor:
         st.caption('계산일: '+calculated_on)
         st.write(result.formula)

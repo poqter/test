@@ -68,7 +68,9 @@ def run(name, fields=None, calculator=None, caption=None):
             st.subheader(name)
             for k,v in display.items():st.metric(k,v)
             for note in result.assumptions:st.caption(note)
-            st.download_button('결과 저장',text,file_name=name+'_고객용.txt',mime='text/plain',key=name+'_customer')
+            from modules.calculators.result_pdf import build_result_pdf
+            pdf = build_result_pdf(name, [(f'{f[0]} ({f[2]})', v) for f,v in zip(fields[name],args)], result, stamp)
+            st.download_button('결과 PDF 저장',pdf,file_name=name+'_결과보고서.pdf',mime='application/pdf',key=name+'_customer')
         with advisor:
             st.write(result.formula)
             st.caption('계산 시각: '+stamp)

@@ -137,7 +137,10 @@ def render_if_requested():
     from modules.shared.ui_components import inject_global_styles
     with st.container(key='hw_task_page'):
         st.markdown('<div class="hw-task-marker hw-calculator-only" aria-hidden="true"></div>', unsafe_allow_html=True)
-        result = _render_requested()
+        with st.container(key='hw_calc_paper'):
+            result = _render_requested()
     # Reapply the shared palette after any calculator-specific legacy styling.
     inject_global_styles()
+    from modules.calculators.dedicated_theme import apply
+    apply()
     return result
