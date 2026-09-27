@@ -1118,7 +1118,7 @@ def run() -> None:
                 (current_result and current_result.get("signature") == signature)
                 or (current_error and current_error.get("signature") == signature)
             )
-        else:
+        elif mode == "개인모드":
             st.markdown("**선택한 항목으로 분석**")
             should_generate = st.button(
                 "보장 분석 시작",

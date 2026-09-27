@@ -61,6 +61,13 @@ body:has(.hw-task-marker) [data-testid="stMainBlockContainer"]{max-width:1480px!
 .st-key-hw_task_page [style*="background-color: #fff8e1"]{background-color:#f0f8fb!important;border-color:#a9cddd!important}
 .st-key-hw_task_page [style*="background-color: #f3ecff"]{background-color:#f3f6fc!important;border-color:#c5d4eb!important}
 
+/* Task-only compact chrome; home and sign-in keep their approved appearance. */
+.st-key-hw_task_page .st-key-hw_task_toolbar{padding:8px 12px!important;border-radius:10px!important;margin-bottom:6px!important}
+.st-key-hw_task_page .st-key-hw_task_toolbar [data-testid="stVerticalBlock"]{gap:.25rem!important}
+.st-key-hw_task_page .st-key-hw_task_toolbar button{min-height:38px!important}
+.st-key-hw_task_page [data-testid="stCaptionContainer"] p{color:#566b84!important;font-size:13px!important;opacity:1!important}
+.st-key-hw_task_page [data-testid="stTextArea"] textarea{border:1px solid #ccd7e5!important;border-radius:10px!important}
+
 '''
 
 def inject_task_styles():

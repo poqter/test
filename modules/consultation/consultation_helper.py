@@ -109,7 +109,15 @@ def run():
             field("selectbox", "상담 목표", "b_goal", "보장 점검", options=topics["goals"])
             field("text_input", "상담 구분명 (선택 · 예: 상담 A)", "b_alias", "", max_chars=40)
             st.caption("구분명은 기본적으로 출력하지 않습니다. 본문에 직접 입력한 정보는 출력에 포함됩니다.")
-        mode = st.radio("준비할 내용", MODES, horizontal=True, key="b_mode")
+        stages = {"상담 준비": ["생애주기 주제", "핵심 질문"],
+                  "상담 진행": ["단계별 스크립트", "다음 미팅"],
+                  "고객 전달자료": ["상황별 메시지", "상담 요약", "제안서·PDF"]}
+        if "b_work_stage" not in st.session_state:
+            st.session_state["b_work_stage"] = next((k for k,v in stages.items() if st.session_state.get("b_mode") in v), "상담 준비")
+        stage = st.radio("지금 할 업무", list(stages), horizontal=True, key="b_work_stage")
+        if st.session_state.get("b_mode") not in stages[stage]:
+            st.session_state["b_mode"] = stages[stage][0]
+        mode = st.radio("작업 선택", stages[stage], horizontal=True, key="b_mode")
     with st.container(key="hw_surface_consultation_helper_1"):
         st.caption("02 · 상담 내용 작성 · 검토")
         if mode == "생애주기 주제":

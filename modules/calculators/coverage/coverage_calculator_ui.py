@@ -17,19 +17,33 @@ def run(name, fields=None, calculator=None, caption=None):
         st.caption("01 · 조건 입력")
         with st.form('coverage_'+name):
             values=[]
-            for i,(label,default,unit,maximum) in enumerate(fields[name]):
-                if unit=='선택':
-                    value=st.selectbox(label,maximum,index=maximum.index(default),key=f'cov_{name}_{i}')
-                elif unit=='날짜':
-                    from datetime import date
-                    value=st.date_input(label,value=date.fromisoformat(default),min_value=date(1900,1,1),max_value=date(2100,12,31),key=f'cov_{name}_{i}')
-                elif unit=='문자':
-                    value=st.text_input(label,value=default,max_chars=maximum,key=f'cov_{name}_{i}')
-                elif unit in ('%','명(연평균)'):
-                    value=st.number_input(f'{label} ({unit})',min_value=0.0,max_value=float(maximum),value=float(default),step=0.01 if unit=='명(연평균)' else 0.1,key=f'cov_{name}_{i}')
-                else:
-                    value=st.number_input(f'{label} ({unit})',min_value=0,max_value=maximum,value=default,step=10000 if unit=='원' else 1,key=f'cov_{name}_{i}')
-                values.append(value)
+            entries = fields[name]
+            if name == '상속세계산기':
+                sections = [("재산 · 채무 · 사전증여", 0, 9), ("가족 관계 · 배우자 공제", 9, 19),
+                            ("금융재산 · 기타 공제", 19, 30), ("납부재원 · 추가 과세 조건", 30, len(entries))]
+            elif len(entries) > 12:
+                sections = [(f"입력 조건 {j//8+1} · {entries[j][0]}", j, min(j+8,len(entries))) for j in range(0,len(entries),8)]
+            else:
+                sections = [("기본 입력", 0, len(entries))]
+            for section_index, (title, start, end) in enumerate(sections):
+                if start >= len(entries): continue
+                changed = sum(str(st.session_state.get(f'cov_{name}_{i}', entries[i][1])) != str(entries[i][1]) for i in range(start,min(end,len(entries))))
+                label_text = title + (f" · 기본값과 다른 항목 {changed}개" if changed else " · 기본값")
+                with st.expander(label_text, expanded=section_index == 0 or len(sections)==1):
+                    for i in range(start,min(end,len(entries))):
+                        label,default,unit,maximum = entries[i]
+                        if unit=='선택':
+                            value=st.selectbox(label,maximum,index=maximum.index(default),key=f'cov_{name}_{i}')
+                        elif unit=='날짜':
+                            from datetime import date
+                            value=st.date_input(label,value=date.fromisoformat(default),min_value=date(1900,1,1),max_value=date(2100,12,31),key=f'cov_{name}_{i}')
+                        elif unit=='문자':
+                            value=st.text_input(label,value=default,max_chars=maximum,key=f'cov_{name}_{i}')
+                        elif unit in ('%','명(연평균)'):
+                            value=st.number_input(f'{label} ({unit})',min_value=0.0,max_value=float(maximum),value=float(default),step=0.01 if unit=='명(연평균)' else 0.1,key=f'cov_{name}_{i}')
+                        else:
+                            value=st.number_input(f'{label} ({unit})',min_value=0,max_value=maximum,value=default,step=10000 if unit=='원' else 1,key=f'cov_{name}_{i}')
+                        values.append(value)
             submitted=st.form_submit_button('계산하기')
         result_key='coverage_result_'+name
         if submitted:

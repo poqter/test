@@ -120,8 +120,12 @@ def compare_rows(records):
             except ValueError as exc: raise ValueError(f"{index}행 {label}: {exc}")
             diff=right-left
             suffix="%p" if kind=="비율(%)" else unit
-            delta=f"{diff:+,.2f}{suffix}"
-            sentence=f"{label}: {left:,.2f} → {right:,.2f}, 차이 {delta}."
+            if kind == "금액" and unit == "원" and left == left.to_integral_value() and right == right.to_integral_value():
+                delta = f"{diff:+,.0f}원"
+                sentence = f"{label}: {left:,.0f}원 → {right:,.0f}원, 차이 {delta}."
+            else:
+                delta=f"{diff:+,.2f}{suffix}"
+                sentence=f"{label}: {left:,.2f} → {right:,.2f}, 차이 {delta}."
         else: raise ValueError(f"{index}행의 유형을 선택하세요.")
         rows.append([label,kind,unit,before,after,delta,note]); summary.append(sentence)
     return rows,summary
@@ -141,26 +145,24 @@ def replace_explanation(value,signature):
 
 
 def run():
-    page_header("리모델링·비교","범용 비교표 제작","보험료·보장·조건을 같은 기준으로 직접 비교하고 설명자료로 내보냅니다.","CB")
+    page_header("리모델링·비교","고객용 비교표 제작기","보험료·보장·조건을 같은 기준으로 직접 비교하고 설명자료로 내보냅니다.","CB")
     session_notice("c_")
     with st.container(key="hw_surface_comparison_builder_0"):
         st.caption("01 · 비교 항목 작성")
-        if st.button("시작 양식 선택",key="c_template_open"):
-            st.session_state['c_template_visible']=True
+        st.markdown("**어떤 비교표를 만들까요?**")
+        starters = st.columns(3)
+        for col, option in zip(starters, ["보험 조건 비교", "월 지출 비교", "빈 비교표"]):
+            if col.button(option, key="c_start_"+option, use_container_width=True):
+                st.session_state["c_template_choice"] = option
+                st.session_state["c_template_visible"] = True
         if st.session_state.get('c_template_visible'):
             template_dialog()
         title=field("text_input","자료 제목","c_title","변경 전후 비교",max_chars=100)
         context=field("text_area","비교 기준과 가정","c_context","동일한 납입주기·보장조건인지 확인하세요. 입력값을 바탕으로 한 상담 참고자료입니다.",max_chars=2000)
-        st.caption("숫자와 0은 미입력과 구분합니다. 기간은 10년·120개월처럼 입력할 수 있습니다. 비율 차이는 %p입니다. 빈 항목명은 제외하며 최대 40행입니다. 기본값은 가상 예시입니다.")
+        with st.expander("입력 방법 · 단위 안내"):
+            st.caption("숫자와 0은 미입력과 구분합니다. 기간은 10년·120개월처럼 입력할 수 있습니다. 비율 차이는 %p입니다. 빈 항목명은 제외하며 최대 40행입니다. 기본값은 가상 예시입니다.")
         st.session_state.setdefault("c_rows",pd.DataFrame(ordered_rows(DEFAULT_ROWS)))
         records=st.session_state['c_rows'].fillna('').to_dict('records')
-        st.button('항목 추가',key='c_add_row',disabled=len(records)>=40,on_click=row_action,args=('add',))
-        if records:
-            selected=st.selectbox('순서를 바꿀 항목',list(range(len(records))),format_func=lambda i:f"{i+1}. {records[i].get('항목','')}",key='c_selected_row')
-            cols=st.columns(3)
-            cols[0].button('위로',key='c_move_up',disabled=selected==0,on_click=row_action,args=('up',selected))
-            cols[1].button('아래로',key='c_move_down',disabled=selected==len(records)-1,on_click=row_action,args=('down',selected))
-            cols[2].button('선택 항목 삭제',key='c_delete_row',on_click=row_action,args=('delete',selected))
         editor_key=f'c_editor_{st.session_state.get("c_editor_revision",0)}'
         if editor_key not in st.session_state:
             st.session_state["c_base"]=st.session_state["c_rows"].copy()
@@ -173,6 +175,13 @@ def run():
             "변경 후":st.column_config.TextColumn(max_chars=500),
             "확인 메모":st.column_config.TextColumn(max_chars=500),
         })
+        st.button('항목 추가',key='c_add_row',disabled=len(records)>=40,on_click=row_action,args=('add',))
+        if records:
+            selected=st.selectbox('순서를 바꿀 항목',list(range(len(records))),format_func=lambda i:f"{i+1}. {records[i].get('항목','')}",key='c_selected_row')
+            cols=st.columns(3)
+            cols[0].button('위로',key='c_move_up',disabled=selected==0,on_click=row_action,args=('up',selected))
+            cols[1].button('아래로',key='c_move_down',disabled=selected==len(records)-1,on_click=row_action,args=('down',selected))
+            cols[2].button('선택 항목 삭제',key='c_delete_row',on_click=row_action,args=('delete',selected))
         # Widget deletion on navigation must not remove the durable, session-local draft.
         try: rows,summary=compare_rows(edited.fillna("").to_dict("records"))
         except ValueError as exc:

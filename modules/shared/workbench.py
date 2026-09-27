@@ -49,24 +49,27 @@ def _reset_all_and_home() -> None:
 
 def render_workbench(page: str, allowed: list[str], navigate) -> None:
     with st.container(key="hw_task_toolbar"):
-        back, related, reset = st.columns([1, 2, 1])
-        if back.button("← 홈으로", key="wb_home"):
+        home, jump, reset, more = st.columns([1, 2.3, 1.4, .8])
+        if home.button("← 홈", key="wb_home", use_container_width=True):
             navigate("home")
         choices = [app_id for app_id in allowed if app_id != page]
-        with related:
-            selected = st.selectbox("다른 도구로 이동", choices, index=None, format_func=lambda app_id: APP_BY_ID[app_id].label, placeholder="도구 선택", key="wb_jump")
-            if selected and st.button("선택한 도구 열기", key="wb_jump_go"):
-                navigate(selected)
-        if reset.button("이 도구만 초기화", key="wb_reset"):
+        def jump_to_selected():
+            target = st.session_state.get("wb_jump")
+            if target:
+                # navigation callback starts a full run automatically.
+                navigate(target, rerun=lambda: None)
+        jump.selectbox("다른 도구로 이동", choices, index=None,
+            format_func=lambda app_id: APP_BY_ID[app_id].label,
+            placeholder="다른 도구로 이동", key="wb_jump", label_visibility="collapsed",
+            on_change=jump_to_selected)
+        if reset.button("이 도구만 초기화", key="wb_reset", use_container_width=True):
             reset_page_dialog(page)
-        with st.expander("작업 상태와 초기화 범위", expanded=False):
+        with more.popover("도움말", use_container_width=True):
             result = get_result(page)
             if result:
-                state = "다시 계산 필요" if result.get("stale") else "최근 계산 결과와 현재 입력이 일치합니다."
-                st.caption(state)
-            else:
-                st.caption("일부 기존 입력은 페이지 안에서만 유지됩니다. 파일 선택은 다시 열 때 복원되지 않을 수 있습니다.")
-            if st.button("전체 작업 초기화 열기", key="wb_reset_all"):
+                st.caption("입력이 변경되어 다시 계산해야 합니다." if result.get("stale") else "최근 계산 결과가 있습니다.")
+            st.caption("이 도구만 초기화는 현재 도구에 적용됩니다. 전체 초기화는 모든 작업을 비웁니다.")
+            if st.button("전체 작업 초기화", key="wb_reset_all"):
                 reset_all_dialog()
 
 
