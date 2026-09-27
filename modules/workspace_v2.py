@@ -133,19 +133,19 @@ _HOME_EMOJI = {"analysis": "🛡️", "consultation": "💬", "calculator": "�
 def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice: dict[str, object]) -> None:
     allowed = set(allowed_ids)
     with st.container(key="hw_dashboard"):
-        st.markdown('<div class="hw-dashboard-marker"></div><div class="hw-dash-kicker">HWARANG WORKSPACE</div><h1>오늘의 업무, 여기서 시작하세요.</h1><p class="hw-dash-subtitle">필요한 도구를 쉽고 빠르게 찾아보세요.</p>', unsafe_allow_html=True)
+        st.markdown('<div class="hw-dashboard-marker"></div>', unsafe_allow_html=True)
+        with st.container(key="hw_home_welcome"):
+            welcome, portal = st.columns([1.1, 1], gap="large", vertical_alignment="center")
+            with welcome:
+                st.markdown('<div class="hw-welcome-copy"><span>HWARANG WORKSPACE</span><h1>오늘의 업무를 시작해 볼까요?</h1><p>상담부터 관리까지, 필요한 도구를 한곳에서.</p></div>', unsafe_allow_html=True)
+            if "insurer_portal" in allowed:
+                with portal:
+                    st.markdown('<div class="hw-dash-search-label">원수사 포털 검색</div>', unsafe_allow_html=True)
+                    render_home_quick_search()
         if "analyzer" in allowed:
             with st.container(key="hw_mobile_quick"):
                 if st.button("🛡️ 보장 분석 시작 →", key="hw_feature_launch", use_container_width=True):
                     navigate("analyzer")
-        if "insurer_portal" in allowed:
-            with st.container(key="hw_portal_row"):
-                portal_intro, portal_search = st.columns([1, 1.3], gap="large", vertical_alignment="center")
-                with portal_intro:
-                    st.markdown('<h2>원수사 포털</h2><p class="hw-dash-subtitle">보험사 전산 바로 찾기</p>', unsafe_allow_html=True)
-                with portal_search:
-                    st.markdown('<div class="hw-dash-search-label">보험사 검색</div>', unsafe_allow_html=True)
-                    render_home_quick_search()
         work_title, work_search = st.columns([1, 1.3], gap="large", vertical_alignment="center")
         with work_title:
             st.subheader("어떤 도구가 필요하세요?")
@@ -175,11 +175,12 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
             st.caption(selected[2])
         if not items:
             st.info("검색 결과가 없습니다. 다른 업무명으로 검색해 보세요.")
-        for start in range(0, len(items), 2):
-            for column, (app, mode) in zip(st.columns(2, gap="medium"), items[start:start + 2]):
-                with column, st.container(key=f"hw_dash_tool_{app.id}"):
-                    emoji = _HOME_EMOJI.get(app.icon_key, "📁")
-                    if st.button(f"{emoji}  {app.label}  ↗", key="hw_home_launch_" + app.id, use_container_width=True):
-                        navigate(app.id, mode)
-                    st.markdown(f'<p class="hw-dash-tool-desc">{html.escape(app.description)}</p>', unsafe_allow_html=True)
+        with st.container(key="hw_tool_grid"):
+            for start in range(0, len(items), 3):
+                for column, (app, mode) in zip(st.columns(3, gap="medium"), items[start:start + 3]):
+                    with column, st.container(key=f"hw_dash_tool_{app.id}"):
+                        emoji = _HOME_EMOJI.get(app.icon_key, "📁")
+                        st.markdown(f'<div class="hw-tool-heading"><span class="hw-tool-symbol">{emoji}</span><h3>{html.escape(app.label)}</h3></div><p class="hw-dash-tool-desc">{html.escape(app.description)}</p>', unsafe_allow_html=True)
+                        if st.button("시작하기 →", key="hw_home_launch_" + app.id, use_container_width=True):
+                            navigate(app.id, mode)
         st.markdown('<div class="hw-dash-footer">Planned &amp; Built by 박병선 팀장 · 보험 업무의 복잡함, 더 간단하게.</div>', unsafe_allow_html=True)
