@@ -75,37 +75,38 @@ def render_login() -> bool:
     if st.session_state["password_correct"]:
         return True
     st.markdown('<div class="hw-auth-bg" aria-hidden="true"></div>', unsafe_allow_html=True)
-    st.markdown('<div class="hw-auth-brand"><span>H</span> 화랑 <strong>WORKSPACE</strong></div>', unsafe_allow_html=True)
-    copy_col, login_col = st.columns([1.18, 1], gap="large", vertical_alignment="center")
-    with copy_col:
-        st.markdown('''<div class="hw-auth-copy"><span>HWARANG WORKSPACE</span>
-        <h1>일의 흐름을<br>하나로 연결하다.</h1>
-        <p>상담과 관리에 필요한 도구를 한 공간에.</p><i></i></div>''', unsafe_allow_html=True)
-    with login_col:
-        with st.container(key="hw_auth_card"):
-            st.markdown('<div class="hw-auth-card-heading"><small>WELCOME BACK</small><h2>로그인</h2><p>비밀번호를 입력해 시작하세요.</p></div>', unsafe_allow_html=True)
-            with st.form("login_form", clear_on_submit=True):
-                password = st.text_input("비밀번호", type="password", placeholder="비밀번호 입력")
-                submitted = st.form_submit_button("워크스페이스 시작 →", type="primary", use_container_width=True)
-        if submitted:
-            try:
-                passwords = dict(st.secrets["passwords"])
-            except (FileNotFoundError, KeyError, TypeError, ValueError):
-                st.error("로그인 설정이 준비되지 않았습니다. 관리자에게 테스트 서버의 passwords 설정 확인을 요청해 주세요.")
-                return False
-            matched_user = next(
-                (name for name, saved in passwords.items() if name in USER_PERMISSIONS and isinstance(saved, str)
-                 and saved and password and hmac.compare_digest(password.encode("utf-8"), saved.encode("utf-8"))),
-                None,
-            )
-            if matched_user:
-                st.session_state["password_correct"] = True
-                st.session_state["login_user"] = matched_user
-                st.session_state["active_app"] = "home"
-                st.rerun()
-            else:
-                st.error("입력한 비밀번호를 확인해 주세요.")
-    st.markdown('<div class="hw-auth-footer">Planned &amp; Built by 박병선 팀장</div>', unsafe_allow_html=True)
+    with st.container(key="hw_auth_shell"):
+        st.markdown('<div class="hw-auth-brand"><span>H</span> 화랑 <strong>WORKSPACE</strong></div>', unsafe_allow_html=True)
+        copy_col, login_col = st.columns([1.18, 1], gap="large", vertical_alignment="center")
+        with copy_col:
+            st.markdown('''<div class="hw-auth-copy"><span>HWARANG WORKSPACE</span>
+            <h1>보험 업무의 복잡함,<br>더 간단하게.</h1>
+            <p>상담과 관리에 필요한 도구를 한 공간에.</p><i></i></div>''', unsafe_allow_html=True)
+        with login_col:
+            with st.container(key="hw_auth_card"):
+                st.markdown('<div class="hw-auth-card-heading"><small>WELCOME BACK</small><h2>로그인</h2><p>비밀번호를 입력해 시작하세요.</p></div>', unsafe_allow_html=True)
+                with st.form("login_form", clear_on_submit=True):
+                    password = st.text_input("비밀번호", type="password", placeholder="비밀번호 입력")
+                    submitted = st.form_submit_button("워크스페이스 시작 →", type="primary", use_container_width=True)
+            if submitted:
+                try:
+                    passwords = dict(st.secrets["passwords"])
+                except (FileNotFoundError, KeyError, TypeError, ValueError):
+                    st.error("로그인 설정이 준비되지 않았습니다. 관리자에게 테스트 서버의 passwords 설정 확인을 요청해 주세요.")
+                    return False
+                matched_user = next(
+                    (name for name, saved in passwords.items() if name in USER_PERMISSIONS and isinstance(saved, str)
+                     and saved and password and hmac.compare_digest(password.encode("utf-8"), saved.encode("utf-8"))),
+                    None,
+                )
+                if matched_user:
+                    st.session_state["password_correct"] = True
+                    st.session_state["login_user"] = matched_user
+                    st.session_state["active_app"] = "home"
+                    st.rerun()
+                else:
+                    st.error("입력한 비밀번호를 확인해 주세요.")
+        st.markdown('<div class="hw-auth-footer">Planned &amp; Built by 박병선 팀장</div>', unsafe_allow_html=True)
     return False
 
 

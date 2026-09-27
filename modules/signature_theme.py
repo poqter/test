@@ -106,6 +106,22 @@ body:has(.hw-new-hero-marker) [data-testid="stHeader"]{background:#eef4f8ed!impo
 body:has(.hw-new-hero-marker) [data-testid="stSegmentedControl"]{position:relative;margin-top:-48px;padding:0 17px;z-index:2}
 body:has(.hw-new-hero-marker) [data-testid="stSegmentedControl"] button[aria-checked="true"],body:has(.hw-new-hero-marker) [data-testid="stSegmentedControl"] button[aria-pressed="true"]{background:#eef4f8!important;color:#143852!important}
 @media(max-width:800px){[class*="st-key-hw_home_hero"]{padding:22px 18px 67px!important}[class*="st-key-hw_home_hero"] [data-testid="stHorizontalBlock"]{flex-wrap:wrap!important}[class*="st-key-hw_home_hero"] [data-testid="stColumn"]{min-width:100%!important}[class*="st-key-hw_portal_search"]{margin:7px 0 0!important}body:has(.hw-new-hero-marker) [data-testid="stSegmentedControl"]{margin-top:-44px;padding:0 8px}}
+
+/* Login working surface: scoped to the login only. */
+.stApp:has(.hw-auth-bg) [data-testid="stAppViewContainer"]:before{display:none!important}
+.stApp:has(.hw-auth-bg) [data-testid="stMainBlockContainer"]{max-width:1220px!important;min-height:100svh;padding:48px 24px!important}
+.st-key-hw_auth_shell{position:relative;padding:32px 36px!important;border:1px solid rgba(168,220,233,.24)!important;border-top-color:rgba(204,239,244,.38)!important;border-radius:26px!important;background:linear-gradient(125deg,rgba(63,108,144,.26),rgba(18,48,75,.62) 52%,rgba(7,26,47,.82))!important;box-shadow:0 28px 70px rgba(0,9,22,.42),0 6px 18px rgba(0,9,22,.24),inset 0 1px 0 rgba(220,249,255,.12),inset 0 -1px 0 rgba(0,8,20,.3)!important;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.st-key-hw_auth_shell .hw-auth-brand{margin-bottom:40px}
+.st-key-hw_auth_shell .hw-auth-footer{margin-top:52px;color:#b9d0df}
+.st-key-hw_auth_card [data-testid="stTextInput"] [data-baseweb="input"]{background:#edf3f8!important;border:2px solid #829caf!important;border-radius:11px!important;min-height:52px;box-shadow:inset 0 2px 4px rgba(16,45,68,.06)!important;transition:border-color .16s ease,box-shadow .16s ease}
+.st-key-hw_auth_card [data-testid="stTextInput"] [data-baseweb="base-input"]{background:transparent!important}
+.st-key-hw_auth_card [data-testid="stTextInput"] input{background:transparent!important;color:#142d44!important;font-size:16px!important;caret-color:#087f8c}
+.st-key-hw_auth_card [data-testid="stTextInput"] input::placeholder{color:#536d83!important;opacity:1}
+.st-key-hw_auth_card [data-testid="stTextInput"] [data-baseweb="input"]:hover{border-color:#456d8b!important}
+.st-key-hw_auth_card [data-testid="stTextInput"] [data-baseweb="input"]:focus-within{border-color:#087f8c!important;box-shadow:0 0 0 3px rgba(8,127,140,.19)!important}
+.st-key-hw_auth_card [data-testid="stTextInput"] button{color:#244d69!important;background:transparent!important}
+@media(max-width:768px){.stApp:has(.hw-auth-bg) [data-testid="stMainBlockContainer"]{padding:24px 12px!important}.st-key-hw_auth_shell{padding:24px 18px!important;border-radius:20px!important}.st-key-hw_auth_shell .hw-auth-brand{margin-bottom:16px}.st-key-hw_auth_shell .hw-auth-footer{margin-top:26px}.st-key-hw_auth_shell [data-testid="stHorizontalBlock"]{flex-wrap:wrap!important}.st-key-hw_auth_shell [data-testid="stColumn"]{min-width:100%!important}.st-key-hw_auth_card{padding:24px!important}}
+@media(prefers-reduced-motion:reduce){.st-key-hw_auth_card [data-testid="stTextInput"] [data-baseweb="input"]{transition:none}}
 '''
 
 def inject_signature_styles():
