@@ -750,50 +750,56 @@ def _editor_excel(people, title, consultation_date, consultant, include_detail):
     return output, wb
 
 
-def _workbook_preview(ws, draft=False):
-    """Render actual workbook cells and merged ranges; not a print-engine screenshot."""
-    merges = {}
-    covered = set()
-    for area in ws.merged_cells.ranges:
-        merges[(area.min_row, area.min_col)] = (area.max_row-area.min_row+1, area.max_col-area.min_col+1)
-        for row in range(area.min_row, area.max_row+1):
-            for col in range(area.min_col, area.max_col+1):
-                if (row, col) != (area.min_row, area.min_col): covered.add((row, col))
-    widths = [ws.column_dimensions[get_column_letter(c)].width or 8 for c in range(1, ws.max_column+1)]
-    parts = ['<div class="rm-workbook"><table><colgroup>']
-    parts += [f'<col style="width:{w/sum(widths)*100:.3f}%">' for w in widths]
-    parts.append('</colgroup>')
-    for row in ws.iter_rows():
-        parts.append('<tr>')
-        for cell in row:
-            if (cell.row, cell.column) in covered: continue
-            rowspan, colspan = merges.get((cell.row,cell.column),(1,1))
-            fill = cell.fill.fgColor
-            bg = '#'+str(fill.rgb)[-6:] if cell.fill.patternType == 'solid' and fill.type == 'rgb' else '#ffffff'
-            color = '#'+str(cell.font.color.rgb)[-6:] if cell.font.color and cell.font.color.type == 'rgb' else '#263b54'
-            size = max(10, min(22, (cell.font.sz or 10)*1.05))
-            raw_value = str(cell.value if cell.value is not None else '')
-            if draft and (re.search(r"[0-9][0-9,]*원", raw_value) or '%' in raw_value):
-                raw_value = "입력 확인 중"
-            value = html.escape(raw_value).replace('\n','<br>')
-            focus = st.session_state.get("rm_editor_focus", "")
-            r, c = cell.row, cell.column
-            two = ws.max_row > 27
-            region = {
-                "title": r <= 3,
-                "monthly": 5 <= r <= 6 or (10 <= r <= 11 if two else 8 <= r <= 12 and c <= 8),
-                "plans": 13 <= r <= 19 if two else 8 <= r <= 15 and c >= 11,
-                "coverage": 21 <= r <= 23 if two else 17 <= r <= 19 and c >= 11,
-                "totals": 25 <= r <= 28 if two else (14 <= r <= 17 and c <= 8) or 21 <= r <= 24,
-            }
-            accent = "box-shadow:inset 0 1px #7ca9e6,inset 0 -1px #7ca9e6;" if ws.title == "리모델링 비교안" and region.get(focus, False) else ""
-            parts.append(f'<td rowspan="{rowspan}" colspan="{colspan}" style="{accent}background:{bg};color:{color};font-size:{size}px;font-weight:{700 if cell.font.bold else 400}">{value}</td>')
-        parts.append('</tr>')
-    parts.append('</table></div>')
-    if draft:
-        st.info("작성 중인 비교안입니다. 금액 입력을 완료하면 비교 금액이 표시되고 다운로드할 수 있습니다.")
-    st.markdown(''.join(parts), unsafe_allow_html=True)
-    st.caption("생성된 엑셀의 셀 내용·병합·색상을 표시합니다. 글꼴과 인쇄 배율에 따른 줄바꿈은 실제 엑셀과 다를 수 있습니다.")
+def _simple_report_preview(people, flags, title, consultation_date, consultant):
+    st.markdown(f"#### {html.escape(title)}")
+    for i, (person, status) in enumerate(zip(people, flags), 1):
+        if len(people) > 1:
+            st.markdown(f"**고객 {i} · {html.escape(person.name or '이름 입력 전')}**")
+        monthly_ready = status["retained_monthly"] and status["plans"]
+        total_ready = status["retained_total"] and status["plans"]
+        show = lambda amount, ready: won(amount) if ready else "입력 전"
+        st.table([
+            {"월 보험료": "기존", "금액": show(person.old_monthly, status['old_monthly'])},
+            {"월 보험료": "남는 기존 보험료", "금액": show(person.retained_monthly, status['retained_monthly'])},
+            {"월 보험료": "신규 보험료", "금액": show(person.new_plan_monthly, status['plans'])},
+            {"월 보험료": "변경 후", "금액": show(person.after_monthly, monthly_ready)},
+        ])
+        if monthly_ready and status['old_monthly'] and person.old_monthly > person.after_monthly:
+            st.success(f"월 {person.old_monthly - person.after_monthly:,}원 감소")
+        st.markdown("**신규 보험 구성**")
+        if person.plans:
+            st.table([{"보험·보장 구성": plan.name or "이름 입력 전",
+                       "월 보험료": won(plan.monthly) if status['plans'] else "입력 확인 중",
+                       "납입기간": f"{plan.months}개월"} for plan in person.plans])
+        elif status['plans']:
+            st.caption("신규 가입 없음")
+        else:
+            st.caption("신규 보험 입력 전")
+        st.markdown("**핵심 보장 설명**")
+        st.text(person.coverage or "설명 입력 전")
+        st.markdown("**납입 예정 총액**")
+        st.table([{"기존": show(person.old_total, status['old_total']),
+                   "변경 후": show(person.after_total, total_ready)}])
+        if total_ready and status['old_total'] and person.old_total > person.after_total:
+            st.caption(f"납입 예정 총액 {person.old_total - person.after_total:,}원 감소")
+        if i < len(people): st.divider()
+    if len(people) > 1:
+        t = combined(people)
+        ready = all(f['retained_monthly'] and f['plans'] for f in flags)
+        st.metric("합산 변경 후 월 보험료", won(t['after_monthly']) if ready else "입력 전")
+    st.caption(f"상담일 {consultation_date:%Y.%m.%d} · 담당자 {consultant or '입력 전'}")
+
+
+def _simple_contract_preview(people):
+    for i, person in enumerate(people, 1):
+        st.markdown(f"**고객 {i} · {html.escape(person.name or '이름 입력 전')}**")
+        if not person.contracts:
+            st.caption("입력된 계약 정리 내용이 없습니다.")
+        for contract in person.contracts:
+            with st.container(border=True):
+                st.text(f"{contract.company or '보험회사 입력 전'} · {contract.product or '상품명 입력 전'}")
+                st.markdown(f"**처리 방향: {html.escape(contract.action)}**")
+                st.text(contract.detail or "전달 내용 입력 전")
 
 
 def run() -> None:
@@ -851,11 +857,15 @@ def run() -> None:
         overflow = [p.name or f"고객 {i+1}" for i,p in enumerate(people) if len(p.plans)>limit]
         excel, wb = _editor_excel(people, effective_title, consultation_date, clean(consultant), include_detail)
         with right, st.container(key="rm_live_summary"):
-            st.markdown("### 출력 미리보기")
+            st.markdown("### 약식 미리보기")
             st.caption("입력 후 Enter 또는 다른 입력칸을 선택하면 갱신됩니다.")
             previews = st.tabs(wb.sheetnames)
-            for name,tab in zip(wb.sheetnames,previews):
-                with tab: _workbook_preview(wb[name], draft=not ready)
+            with previews[0]:
+                _simple_report_preview(people, flags, effective_title, consultation_date, clean(consultant))
+            if include_detail:
+                with previews[1]:
+                    _simple_contract_preview(people)
+            st.caption("입력 내용 확인용 요약입니다. 다운로드 엑셀의 서식은 기존과 동일합니다.")
             if overflow:
                 st.error(f"첫 장 표시 한도 초과: {', '.join(overflow)}. 고객별 {limit}건 이내로 정리해야 모든 신규 보험이 첫 장에 표시됩니다.")
             if not ready:
