@@ -17,15 +17,35 @@ def render_home_quick_search():
     if issues:st.caption('일부 포털 항목을 확인해야 합니다. 포털의 기준일 화면을 참고하세요.')
     if not query:return
     rows=filter_insurers(data['insurers'],query)
-    st.markdown('''<style>.ip-home-result{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff;border:1px solid #d9dce3;border-radius:14px;padding:14px 16px;margin:8px 0;flex-wrap:wrap}.ip-home-result a{color:#17233c!important;font-size:1.05rem;font-weight:700;text-decoration:none}.ip-home-result span{font-size:1rem;color:#465266}.ip-home-result small{display:block;font-size:.9rem;color:#666}</style>''',unsafe_allow_html=True)
-    if not rows:st.info('일치하는 보험사가 없습니다. 이름·별칭·번호로 다시 검색해 주세요.')
+    if not rows:
+        st.info('일치하는 보험사가 없습니다. 이름·별칭·번호로 다시 검색해 주세요.')
+        return
+    cards = []
     for row in rows[:6]:
-        name=html.escape(row['name']);url=html.escape(safe_url(row['url']),quote=True)
-        phone=html.escape(row['phone'] or '기본 포털')
-        status='번호 확인 '+row['phone_verified_at'] if row.get('phone_verified_at') else '번호 재확인 필요' if row['phone'] else '접속 미검증'
-        if row.get('notice'):status+=' · 전산 주소 재확인 필요'
-        st.markdown(f'<div class="ip-home-result"><a href="{url}" target="_blank" rel="noopener noreferrer">{name} ↗</a><span>{phone}<small>{html.escape(status)}</small></span></div>',unsafe_allow_html=True)
-    if len(rows)>6:st.caption(f'검색 결과 {len(rows)}개 중 6개 표시 · 전체 결과는 원수사·공식자료 포털에서 확인하세요.')
+        name = html.escape(row['name'])
+        url = html.escape(safe_url(row['url']), quote=True)
+        main = row['group'] == '기본 포털'
+        logo = '<span class="hw-home-portal-mark">H</span>' if main else _logo(row)
+        detail = '<span class="hw-home-portal-badge">기본 포털</span>' if main else html.escape(row['phone'] or '')
+        cards.append(f'<a class="hw-home-portal-row" href="{url}" target="_blank" rel="noopener noreferrer" aria-label="{name} 전산 열기 새 탭"><span class="hw-home-portal-logo">{logo}</span><strong>{name}</strong><span class="hw-home-portal-meta">{detail}</span><span class="hw-home-portal-arrow" aria-hidden="true">↗</span></a>')
+    st.markdown("""<style>
+    .hw-home-portal-results{display:grid;gap:7px;margin:3px 0 0}
+    .hw-home-portal-results .hw-home-portal-row{display:flex;align-items:center;gap:11px;box-sizing:border-box;min-height:56px;padding:8px 11px;border:1px solid #d9e5f1;border-radius:13px;background:#fff;color:#173b59!important;text-decoration:none!important;transition:background-color .16s,border-color .16s}
+    .hw-home-portal-row:hover{background:#f5f9ff!important;border-color:#9dbfe4!important}
+    .hw-home-portal-row:focus-visible{outline:3px solid #2867c5;outline-offset:2px}
+    .hw-home-portal-logo{display:grid;place-items:center;flex:0 0 38px;height:38px;border:1px solid #e3ecf5;border-radius:10px;background:#fbfdff;overflow:hidden}
+    .hw-home-portal-logo img{width:30px;height:30px;object-fit:contain}
+    .hw-home-portal-mark{display:grid;place-items:center;width:38px;height:38px;background:linear-gradient(130deg,#1769de,#10969c);color:#fff;font-size:16px;font-weight:750}
+    .hw-home-portal-row strong{font-size:14px!important;line-height:1.4!important;flex:1;min-width:0;word-break:keep-all;overflow-wrap:anywhere}
+    .hw-home-portal-meta{font-size:12px!important;font-weight:650;color:#6b849a;white-space:nowrap}
+    .hw-home-portal-badge{display:inline-block;padding:4px 8px;border-radius:12px;background:#edf4ff;color:#1769df;font-size:11px;font-weight:700}
+    .hw-home-portal-arrow{font-size:12px;color:#7894af}
+    @media(max-width:420px){.hw-home-portal-results .hw-home-portal-row{gap:8px;padding:8px}.hw-home-portal-row strong{font-size:13px!important}.hw-home-portal-meta{font-size:11px!important}}
+    @media(prefers-reduced-motion:reduce){.hw-home-portal-row{transition:none!important}}
+    </style><div class="hw-home-portal-results">""" + ''.join(cards) + '</div>', unsafe_allow_html=True)
+    if len(rows)>6:
+        st.caption(f'검색 결과 {len(rows)}개 중 6개 표시 · 전체 결과는 원수사·공식자료 포털에서 확인하세요.')
+
 
 
 
