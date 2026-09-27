@@ -19,13 +19,18 @@ def restore_page_draft(page: str) -> None:
 def reset_page_dialog(page: str) -> None:
     st.write("현재 도구에서 연결된 입력·계산 결과·업로드 참조를 비우고 홈으로 이동합니다. 다른 도구와 로그인 상태는 유지됩니다.")
     st.caption("다시 열면 새 작업으로 시작합니다. 필요한 결과는 먼저 내려받으세요.")
-    st.button("이 도구만 초기화", type="primary", key="wb_reset_confirm", on_click=_reset_page_and_home, args=(page,))
+    if st.button("이 도구만 초기화", type="primary", key="wb_reset_confirm"):
+        _reset_page_and_home(page)
+        # Dialog interactions rerun only the fragment; redraw the entire app.
+        st.rerun(scope="app")
 
 
 @st.dialog("전체 작업 초기화")
 def reset_all_dialog() -> None:
     st.write("모든 도구의 입력·계산 결과·업로드 참조를 초기화합니다. 로그인 상태는 유지됩니다.")
-    st.button("전체 작업 초기화", type="primary", key="wb_reset_all_confirm", on_click=_reset_all_and_home)
+    if st.button("전체 작업 초기화", type="primary", key="wb_reset_all_confirm"):
+        _reset_all_and_home()
+        st.rerun(scope="app")
 
 
 def _reset_page_and_home(page: str) -> None:
