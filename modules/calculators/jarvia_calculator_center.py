@@ -157,18 +157,10 @@ def run(run_legacy):
     page_header('재무·보험 계산', '재무·보험 계산기', '업무별 계산기와 고객용 결과를 확인하세요', 'QC')
     if notice:
         st.session_state['jc_open'] = st.session_state.get('jc_selected')
+    from modules.calculators.catalog_browser import render_catalog, back_to_catalog
     active = st.session_state.get('jc_open')
     if active:
-        if st.button('← 계산기 목록', key='jc_back_catalog'):
-            st.session_state.pop('jc_open', None)
-            st.rerun()
-        group, query = '전체', ''
-    else:
-        cols = st.columns([1, 2])
-        group = cols[0].selectbox('분야', ['전체', *GROUPS], key='jc_group')
-        query = cols[1].text_input('계산기 검색', key='jc_search', placeholder='예: 연금, 증여, 보험료').strip().casefold()
-    available = [(name, description) for name,(category,description) in ITEMS.items()
-                 if (group == '전체' or group == category) and (not query or query in name.casefold() or query in description.casefold())]
+        st.button('← 계산기 목록', key='jc_back_catalog', on_click=back_to_catalog)
     from modules.calculators.pension.retirement_models import NAMES as RETIREMENT_NAMES
     from modules.calculators.tax.personal_tax_models import NAMES as PERSONAL_TAX_NAMES
     implemented = set(FIELDS) | {'연금계산기','주택연금계산기','은퇴저축계산기','연금 인출순서계산기','퇴직금계산기'} | set(RETIREMENT_NAMES)
@@ -207,21 +199,9 @@ def run(run_legacy):
     implemented.update(('성실신고 대상판정계산기','법인 4대보험계산기','법인세 중간예납계산기'))
     implemented.update(('개인사업자·법인 비교계산기','가지급금 정밀진단계산기','DC부담금 한도계산기'))
     implemented.update(('법인세계산기','인정이자계산기','임원퇴직금 한도계산기'))
-    ready = [name for name,_ in available if name in implemented]
+    ready = [name for name in ITEMS if name in implemented]
     if not active:
-        st.caption('계산기를 선택한 뒤 열기를 누르면 조건 입력 화면으로 이동합니다.')
-        if ready:
-            selected = st.selectbox('계산기 선택', ready, index=None, placeholder='사용할 계산기를 선택하세요', key='jc_selected')
-            if selected:
-                st.info(ITEMS[selected][1])
-            if st.button('선택한 계산기 열기', type='primary', key='jc_open_selected', disabled=selected is None):
-                st.session_state['jc_open'] = selected
-                st.rerun()
-        else:
-            st.info('검색 결과가 없습니다. 다른 검색어나 분야를 선택하세요.')
-        if st.button('보험 기본·생활자금 계산 열기', key='jc_open_basic'):
-            st.session_state['jc_open'] = '__basic__'
-            st.rerun()
+        render_catalog(ITEMS, GROUPS, implemented)
         return
     if active == '__basic__':
         run_legacy()
