@@ -806,9 +806,9 @@ def run() -> None:
     _remodeling_page_style()
     st.markdown("""<style>
       .st-key-rm_workspace>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]:first-child,
-      .st-key-rm_workspace>[data-testid="stVerticalBlock"]>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]:first-child {flex:0.8 1 0!important;}
+      .st-key-rm_workspace>[data-testid="stVerticalBlock"]>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]:first-child {flex:1.65 1 0!important;}
       .st-key-rm_workspace>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]:last-child,
-      .st-key-rm_workspace>[data-testid="stVerticalBlock"]>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]:last-child {flex:1.2 1 0!important;position:static;}
+      .st-key-rm_workspace>[data-testid="stVerticalBlock"]>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]:last-child {flex:1 1 0!important;position:static;}
       .rm-workbook{background:#fff;padding:14px;border:1px solid #dce4ef;box-shadow:0 4px 18px #20344b10;overflow-x:auto;}
       .rm-workbook table{table-layout:fixed;width:100%;border-collapse:collapse;min-width:420px;}
       .rm-workbook td{padding:7px 3px!important;text-align:center;vertical-align:middle;overflow-wrap:anywhere;border:1px solid #e5eaf1;line-height:1.45;}
@@ -823,7 +823,7 @@ def run() -> None:
             load_example(count)
             st.rerun()
     with st.container(key="rm_workspace"):
-        left, right = st.columns([.8, 1.2], gap="large")
+        left, right = st.columns([1.65, 1], gap="large")
         with left, st.container(key="rm_guided_inputs"):
             first, second = st.tabs(["① 리모델링 비교안", "② 기존 계약 정리표 · 선택"])
             with first:
@@ -857,7 +857,7 @@ def run() -> None:
         overflow = [p.name or f"고객 {i+1}" for i,p in enumerate(people) if len(p.plans)>limit]
         excel, wb = _editor_excel(people, effective_title, consultation_date, clean(consultant), include_detail)
         with right, st.container(key="rm_live_summary"):
-            st.markdown("### 약식 미리보기")
+            st.markdown("### 미리보기")
             st.caption("입력 후 Enter 또는 다른 입력칸을 선택하면 갱신됩니다.")
             previews = st.tabs(wb.sheetnames)
             with previews[0]:
