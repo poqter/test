@@ -67,9 +67,11 @@ def run():
             for k,v in r.display().items():st.metric(k,v)
             st.line_chart([{'나이':float(x['나이']),'현재 계획 잔액':float(x['현재 계획 잔액']),'추가 납입 후 잔액':float(x['추가 납입 후 잔액'])} for x in r.rows],x='나이',y=['현재 계획 잔액','추가 납입 후 잔액'])
             for note in r.assumptions:st.caption(note)
-            from modules.calculators.result_pdf import build_result_pdf
-            pdf = build_result_pdf('연금계산기', [(labels.get(k,k), v) for k,v in saved.items()], r, stamp)
-            st.download_button('결과 PDF 저장',pdf,file_name='연금계산_결과보고서.pdf',mime='application/pdf')
+            from modules.calculators.result_pdf import build_result_pdf, pdf_section_options
+            pdf_options = pdf_section_options('pp_pdf_scope')
+            if any(pdf_options.values()):
+                pdf = build_result_pdf('연금계산기', [(labels.get(k,k), v) for k,v in saved.items()], r, stamp, **pdf_options)
+                st.download_button('결과 PDF 저장',pdf,file_name='연금계산_결과보고서.pdf',mime='application/pdf')
         with advisor:
             st.write(r.formula)
             st.caption('국민연금 개시연령·조기/연기 비율: 국민연금공단 안내 대조 2026-09-26.')

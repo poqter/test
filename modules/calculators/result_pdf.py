@@ -22,7 +22,9 @@ def value_text(value):
     return str(value)
 
 
-def build_result_pdf(name, inputs, result, stamp):
+def build_result_pdf(name, inputs, result, stamp, *, include_results=True, include_inputs=True, include_basis=True):
+    if not any((include_results, include_inputs, include_basis)):
+        raise ValueError("PDF에 포함할 항목을 하나 이상 선택해주세요.")
     font = 'HwarangReport'
     if font not in pdfmetrics.getRegisteredFontNames():
         pdfmetrics.registerFont(TTFont(font, str(Path(__file__).resolve().parents[2] / 'assets/fonts/PretendardVariable.ttf')))
@@ -46,12 +48,20 @@ def build_result_pdf(name, inputs, result, stamp):
         t=Table(data,colWidths=[width*.43,width*.57],hAlign='LEFT',repeatRows=0)
         t.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP'),('BACKGROUND',(0,0),(-1,-1),colors.HexColor('#edf4f9') if highlight else colors.white),('ROWBACKGROUNDS',(0,0),(-1,-1),[colors.HexColor('#edf4f9'),colors.HexColor('#f4f8fb')] if highlight else [colors.white,colors.HexColor('#f7f9fc')]),('LINEBELOW',(0,0),(-1,-1),.4,colors.HexColor('#dce5ef')),('LEFTPADDING',(0,0),(-1,-1),12),('RIGHTPADDING',(0,0),(-1,-1),12),('TOPPADDING',(0,0),(-1,-1),10),('BOTTOMPADDING',(0,0),(-1,-1),10)]))
         story.append(t)
-    story.append(p('01  핵심 결과',heading));table(list(result.display().items()),True)
-    story.append(p('02  계산에 사용한 입력',heading));table(inputs)
-    story.append(p('03  산출 근거 및 적용 조건',heading))
-    story.append(p(result.formula));story.append(Spacer(1,9))
-    for note in result.assumptions:
-        story.append(p('• '+str(note)));story.append(Spacer(1,5))
+    section = 0
+    def section_heading(title):
+        nonlocal section
+        section += 1
+        story.append(p(f'{section:02d}  {title}',heading))
+    if include_results:
+        section_heading('핵심 결과');table(list(result.display().items()),True)
+    if include_inputs:
+        section_heading('계산에 사용한 입력');table(inputs)
+    if include_basis:
+        section_heading('산출 근거 및 적용 조건')
+        story.append(p(result.formula));story.append(Spacer(1,9))
+        for note in result.assumptions:
+            story.append(p('• '+str(note)));story.append(Spacer(1,5))
     def page(canvas, doc):
         canvas.saveState();w,h=A4
         canvas.setFillColor(navy);canvas.rect(0,h-13*mm,w,13*mm,fill=1,stroke=0)
@@ -61,3 +71,16 @@ def build_result_pdf(name, inputs, result, stamp):
         canvas.restoreState()
     doc.build(story,onFirstPage=page,onLaterPages=page)
     return buf.getvalue()
+
+
+def pdf_section_options(key):
+    import streamlit as st
+    st.caption('PDF에 포함할 내용')
+    options = {
+        'include_results': st.checkbox('핵심 결과', value=True, key=key+'_results'),
+        'include_inputs': st.checkbox('입력 내용', value=False, key=key+'_inputs'),
+        'include_basis': st.checkbox('산출 근거 및 적용 조건', value=False, key=key+'_basis'),
+    }
+    if not any(options.values()):
+        st.info('PDF에 포함할 항목을 하나 이상 선택해주세요.')
+    return options
