@@ -22,6 +22,7 @@ _ICONS = {
     "compare": '<svg viewBox="0 0 24 24"><path d="M7 5h13M17 2l3 3-3 3M17 19H4M7 16l-3 3 3 3"/></svg>',
     "remodeling": '<svg viewBox="0 0 24 24"><path d="M20 7h-5V2M20 7a8 8 0 10 0 10"/></svg>',
     "tax": '<svg viewBox="0 0 24 24"><path d="M6 3h12v18H6zM9 8h6M9 12h2M13 12h2M9 16h6"/></svg>',
+    "claim": '<svg viewBox="0 0 24 24"><path d="M6 3h12v18H6zM9 8h6M9 13l2 2 4-4"/></svg>',
     "medical": '<svg viewBox="0 0 24 24"><path d="M12 3l8 3v5c0 5-3 8-8 10-5-2-8-5-8-10V6zM12 8v6M9 11h6"/></svg>',
 }
 
@@ -64,11 +65,11 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
     allowed = set(allowed_ids)
     with st.sidebar:
         st.markdown('<div class="sig-brand"><span class="sig-mark">H</span><div><strong>화랑</strong><small>WORKSPACE</small></div></div>', unsafe_allow_html=True)
-        if st.button("⌂  홈", key="v2_nav_home", use_container_width=True, type="primary" if st.session_state.get("active_app") == "home" else "secondary"):
+        if st.button("홈", icon=":material/home:", key="v2_nav_home", use_container_width=True, type="primary" if st.session_state.get("active_app") == "home" else "secondary"):
             navigate("home")
         if "analyzer" in allowed:
             with st.container(key="hw_sidebar_quick"):
-                if st.button("🛡️ 보장 분석 시작 ↗", key="hw_sidebar_analyzer", use_container_width=True):
+                if st.button("보장 분석 시작", icon=":material/shield:", key="hw_sidebar_analyzer", use_container_width=True):
                     navigate("analyzer")
         query = "" if st.session_state.get("active_app") == "home" else st.text_input("기능 빠른 검색", placeholder="상령일, 문자, 실손…", key="sig_nav_search").strip().lower()
         matched_ids = {app.id for app, _mode in _matches(query, allowed)} if query else allowed
@@ -85,12 +86,12 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
         if query and not any_match:
             st.caption("검색 결과가 없습니다.")
         st.divider()
-        if st.button("이용 안내", key="sig_usage", use_container_width=True):
+        if st.button("이용 안내", icon=":material/help_outline:", key="sig_usage", use_container_width=True):
             usage_dialog()
-        if st.button("최근 업데이트", key="sig_update", use_container_width=True):
+        if st.button("최근 업데이트", icon=":material/history:", key="sig_update", use_container_width=True):
             notice_dialog(notice)
         st.caption("접속 계정 · " + str(st.session_state.get("login_user", "")))
-        if st.button("로그아웃", key="v2_logout", use_container_width=True):
+        if st.button("로그아웃", icon=":material/logout:", key="v2_logout", use_container_width=True):
             logout()
         st.caption("Planned & Built by 박병선 팀장")
 
@@ -127,7 +128,6 @@ _HOME_TOPICS = (
 )
 
 
-_HOME_EMOJI = {"analysis": "🛡️", "consultation": "💬", "calculator": "🧮", "compare": "⚖️", "remodeling": "🔄", "materials": "📋", "education": "📚", "official": "🏢", "performance": "📊", "medical": "🔎", "tax": "🧾", "claim": "📑"}
 
 
 def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice: dict[str, object]) -> None:
@@ -144,7 +144,7 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
                     render_home_quick_search()
         if "analyzer" in allowed:
             with st.container(key="hw_mobile_quick"):
-                if st.button("🛡️ 보장 분석 시작 →", key="hw_feature_launch", use_container_width=True):
+                if st.button("보장 분석 시작", icon=":material/shield:", key="hw_feature_launch", use_container_width=True):
                     navigate("analyzer")
         work_title, work_search = st.columns([1, 1.3], gap="large", vertical_alignment="center")
         with work_title:
@@ -179,8 +179,8 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
             for start in range(0, len(items), 3):
                 for column, (app, mode) in zip(st.columns(3, gap="medium"), items[start:start + 3]):
                     with column, st.container(key=f"hw_dash_tool_{app.id}"):
-                        emoji = _HOME_EMOJI.get(app.icon_key, "📁")
-                        st.markdown(f'<div class="hw-tool-heading"><span class="hw-tool-symbol">{emoji}</span><h3>{html.escape(app.label)}</h3></div><p class="hw-dash-tool-desc">{html.escape(app.description)}</p>', unsafe_allow_html=True)
-                        if st.button("시작하기 →", key="hw_home_launch_" + app.id, use_container_width=True):
+                        icon = _ICONS.get(app.icon_key, _ICONS["materials"])
+                        st.markdown(f'<div class="hw-tool-heading"><span class="hw-tool-symbol" aria-hidden="true">{icon}</span><h3>{html.escape(app.label)}</h3></div><p class="hw-dash-tool-desc">{html.escape(app.description)}</p>', unsafe_allow_html=True)
+                        if st.button("시작하기 →", key="hw_home_launch_" + app.id, help=f"{app.label} 열기", use_container_width=True):
                             navigate(app.id, mode)
         st.markdown('<div class="hw-dash-footer">Planned &amp; Built by 박병선 팀장 · 보험 업무의 복잡함, 더 간단하게.</div>', unsafe_allow_html=True)

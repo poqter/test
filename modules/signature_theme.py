@@ -67,7 +67,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible{
 .hw-auth-copy{padding:25px 0}.hw-auth-copy>span{font-size:12px;letter-spacing:.19em;font-weight:750;color:#79d3d7}.hw-auth-copy h1{color:#fff!important;font-size:clamp(32px,4vw,48px)!important;line-height:1.28;letter-spacing:-.06em;margin:15px 0 12px}.hw-auth-copy p{color:#b7cada!important;font-size:16px}.hw-auth-copy i{display:block;height:3px;width:54px;background:#78cfcd;border-radius:3px;margin-top:31px}
 [class*="st-key-hw_auth_card"]{background:#f8fbff;border-radius:17px;padding:32px!important;box-shadow:0 28px 70px #0010206b;color:#172d45}[class*="st-key-hw_auth_card"] h2{color:#172d45!important;font-size:25px!important;margin:8px 0}[class*="st-key-hw_auth_card"] label p{font-size:14px!important;color:#33485e!important}[class*="st-key-hw_auth_card"] button[kind="primary"]{background:#143c61!important;border-color:#143c61!important}[class*="st-key-hw_auth_card"] [data-testid="stForm"]{border:0!important;padding:0!important}
 .hw-auth-card-heading small{color:#248195;letter-spacing:.14em;font-size:12px;font-weight:700}.hw-auth-card-heading p{color:#6d7d8e!important;margin:0 0 20px}.hw-auth-footer{font-size:12px;color:#b5cbdc;margin-top:70px}
-[data-testid="stSidebar"]{background:#fff!important;border-right:1px solid #e8eef2!important}.sig-brand{gap:10px;margin-bottom:25px}.sig-mark{width:36px;height:36px;border-radius:9px;background:#143c61;color:#d6f3f2;font-size:21px}.sig-brand strong{font-size:16px;letter-spacing:0}.sig-brand small{font-size:13px}.stApp [data-testid="stSidebar"] button[kind="primary"]{background:#eaf3f8!important;color:#123b60!important;border:0!important;border-left:3px solid #143c61!important}
+[data-testid="stSidebar"]{background:#fff!important;border-right:1px solid #e8eef2!important}.sig-brand{gap:10px;margin-bottom:25px}.sig-mark{width:36px;height:36px;border-radius:9px;background:#143c61;color:#d6f3f2;font-size:21px}.sig-brand strong{font-size:16px;letter-spacing:0}.sig-brand small{font-size:13px}
 .hw-new-hero{position:relative;overflow:hidden;border-radius:20px 20px 0 0;background:radial-gradient(circle at 84% 12%,#346785 0,#153e5d 28%,#0c2841 69%,#071b30 100%);color:#fff;padding:30px 38px 80px;margin-bottom:0}.hw-new-hero:after{content:"";position:absolute;right:12%;top:27%;width:125px;height:125px;border:1px solid #b5e8e453;border-radius:20px;transform:rotate(-15deg);box-shadow:-25px 18px 0 -1px #a1d7e131,-51px 36px 0 -1px #b2dfe611;pointer-events:none}.hw-new-kicker{color:#a8c9da;font-size:12px;letter-spacing:.13em;font-weight:700}.hw-new-hero-content{margin-top:45px}.hw-new-hero-content small{color:#8bd4d4;letter-spacing:.16em;font-weight:700}.hw-new-hero h1{font-size:clamp(30px,3.5vw,45px)!important;line-height:1.25;color:#fff!important;margin:12px 0!important}.hw-new-hero p{color:#bdd1de!important;font-size:16px}
 .stApp:has(.hw-new-hero) [data-testid="stMainBlockContainer"]{max-width:1180px!important}.stApp:has(.hw-new-hero) [data-testid="stSegmentedControl"]{position:relative;margin-top:-55px;padding:0 22px;z-index:2}.stApp:has(.hw-new-hero) [data-testid="stSegmentedControl"] button{min-height:55px!important;padding:12px 18px;border-radius:12px 12px 0 0!important;color:#fff!important;background:#ffffff22!important;border:1px solid #ffffff30!important;transition:transform .23s ease,background .23s ease}.stApp:has(.hw-new-hero) [data-testid="stSegmentedControl"] button:hover{transform:translateY(-3px);background:#ffffff33!important}.stApp:has(.hw-new-hero) [data-testid="stSegmentedControl"] button[aria-checked="true"],.stApp:has(.hw-new-hero) [data-testid="stSegmentedControl"] button[aria-pressed="true"]{background:#f8fafc!important;color:#143852!important}
 .hw-topic-heading{padding:35px 0 17px;animation:hw-rise .38s ease both}.hw-topic-heading small{color:#187d90;letter-spacing:.13em;font-size:12px;font-weight:750}.hw-topic-heading h2{font-size:27px!important;margin:7px 0;color:#182e43!important}.hw-topic-heading p{color:#71869a;font-size:15px}
@@ -163,8 +163,9 @@ body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"]{max-width:14
 [class*="st-key-hw_dash_tool_"]{background:#fff;border:1px solid #dde5ee;border-radius:16px;padding:22px!important;box-shadow:0 5px 18px #203c5b06;transition:box-shadow .18s ease,border-color .18s ease}
 [class*="st-key-hw_dash_tool_"]:hover{border-color:#b8cdeb;box-shadow:0 7px 20px #224f860d}
 .hw-tool-heading{display:flex;align-items:center;gap:12px;min-height:50px}
-.hw-tool-symbol{display:grid;place-items:center;width:44px;height:44px;flex:0 0 44px;background:#eef4ff;border:1px solid #d4e3fc;border-radius:12px;font-size:22px}
-[class*="st-key-hw_dashboard"] .hw-tool-heading h3{font-size:18px!important;font-weight:600!important;line-height:1.4!important;margin:0!important;padding:0!important;text-align:left!important;letter-spacing:-.025em!important}
+.hw-tool-symbol{display:grid;place-items:center;width:44px;height:44px;flex:0 0 44px;background:#eef4ff;border:1px solid #d4e3fc;border-radius:12px;font-size:22px;color:#386cc0}
+.hw-tool-symbol svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+[class*="st-key-hw_dashboard"] .hw-tool-heading h3{font-size:18px!important;font-weight:600!important;line-height:1.45!important;margin:0!important;padding:0!important;text-align:left!important;letter-spacing:-.025em!important}
 [class*="st-key-hw_dashboard"] .hw-dash-tool-desc{font-size:15px!important;font-weight:400!important;line-height:1.6!important;color:#64758a!important;min-height:72px;margin:14px 0 8px!important;text-align:left}
 [class*="st-key-hw_dash_tool_"] button[kind="secondary"]{background:#fff!important;border:1px solid #cdddf2!important;color:#2b69cf!important;min-height:42px!important;border-radius:9px!important}
 [class*="st-key-hw_dash_tool_"] button p{font-size:15px!important;font-weight:500!important;color:inherit!important}
@@ -180,17 +181,34 @@ body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"]{max-width:14
 [data-testid="stSidebar"] [data-testid="stExpander"] summary p{font-size:15px!important;font-weight:600!important;color:#344e68!important}
 [data-testid="stSidebar"] [data-testid="stExpanderDetails"]{padding:3px 4px 8px 14px!important;border-left:2px solid #e4ebf5}
 [data-testid="stSidebar"] button[kind="secondary"]{background:#fff!important;color:#50647b!important;border:1px solid #e0e7ef!important;min-height:42px!important;border-radius:9px!important;text-align:left!important;justify-content:flex-start!important}
-[data-testid="stSidebar"] button[kind="primary"]{background:#e9f1ff!important;border:1px solid #bbd3fb!important;color:#245fbd!important}
+[data-testid="stSidebar"] button[kind="primary"]{background:#e9f1ff!important;border:1px solid #bbd3fb!important;color:#245fbd!important;border-left:3px solid #2d6ad5!important}
 [data-testid="stSidebar"] button p{font-size:15px!important;font-weight:500!important;color:inherit!important}
 [data-testid="stSidebar"] button:hover{background:#f0f5fc!important}
 [data-testid="stSidebar"] [class*="st-key-hw_sidebar_quick"] button{background:#2d6ad5!important;border-color:#2d6ad5!important;color:#fff!important;margin-bottom:14px}
 [data-testid="stSidebar"] [class*="st-key-hw_sidebar_quick"] button:hover{background:#225bbd!important}
 [data-testid="stSidebar"] [data-testid="stCaptionContainer"] p{color:#71839a!important;font-size:12px!important}
 [class*="st-key-hw_mobile_quick"]{display:none}
-@keyframes hw-refined-enter{from{opacity:.4;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+
 @media(min-width:769px) and (max-width:1100px){[class*="st-key-hw_tool_grid"] [data-testid="stHorizontalBlock"]{flex-wrap:wrap!important}[class*="st-key-hw_tool_grid"] [data-testid="stColumn"]{min-width:calc(50% - 12px)!important;flex:1 1 calc(50% - 12px)!important}}
 @media(max-width:768px){body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"]{padding:4rem 1rem 2rem!important}[class*="st-key-hw_dashboard"] [data-testid="stHorizontalBlock"]{flex-wrap:wrap!important}[class*="st-key-hw_dashboard"] [data-testid="stColumn"]{min-width:100%!important}[class*="st-key-hw_category_navigation"] [data-testid="stColumn"]{min-width:calc(50% - 8px)!important;flex:1 1 calc(50% - 8px)!important}[class*="st-key-hw_home_welcome"]{padding:22px!important}[class*="st-key-hw_mobile_quick"]{display:block}.hw-dash-tool-desc{min-height:0!important}}
 @media(prefers-reduced-motion:reduce){[class*="st-key-hw_dash_tool_"],[class*="st-key-hw_category_navigation"] button{animation:none!important;transition:none!important;transform:none!important}}
+
+/* Final hierarchy and accessible interaction details, scoped to the workspace. */
+[class*="st-key-hw_dashboard"]{--hw-home-accent:#2d6ad5}
+[class*="st-key-hw_home_welcome"] [data-testid="stColumn"]{min-width:0}
+[class*="st-key-hw_dashboard"] .hw-tool-heading h3{word-break:keep-all;overflow-wrap:anywhere}
+.stApp [data-testid="stSidebar"] [data-testid="stExpanderDetails"] button[kind="secondary"]{border-color:transparent!important;background:transparent!important;min-height:42px!important}
+.stApp [data-testid="stSidebar"] [data-testid="stExpanderDetails"] button[kind="secondary"]:hover{background:#f0f5fc!important;color:#245fbd!important}
+.stApp [data-testid="stSidebar"] button[kind="primary"]:hover{background:#dce9ff!important;color:#245fbd!important}
+[class*="st-key-hw_dash_tool_analyzer"]{border-color:#b5cdf0;background:linear-gradient(145deg,#f5f9ff,#fff 65%)}
+[class*="st-key-hw_dash_tool_analyzer"] .hw-tool-symbol{background:#2d6ad5;color:#fff;border-color:#2d6ad5}
+[class*="st-key-hw_dash_tool_analyzer"] button[kind="secondary"]{background:#edf4ff!important;border-color:#b5cdf0!important}
+[class*="st-key-hw_dash_tool_analyzer"] button[kind="secondary"]:hover{background:#dfeaff!important}
+[class*="st-key-hw_dash_tool_"]:focus-within{border-color:#80a8e7}
+[class*="st-key-hw_dashboard"] button:focus-visible,[data-testid="stSidebar"] button:focus-visible,[data-testid="stSidebar"] summary:focus-visible{outline:3px solid #2d6ad5!important;outline-offset:3px!important}
+[class*="st-key-hw_dashboard"] [data-testid="stTextInputRootElement"]:focus-within{border-color:#2d6ad5!important;box-shadow:0 0 0 3px #2d6ad51a!important}
+[class*="st-key-hw_dashboard"] [data-testid="stTextInputRootElement"] [data-baseweb="input"]{border:0!important}
+@media(max-width:768px){[class*="st-key-hw_dashboard"] .hw-welcome-copy h1{font-size:24px!important}[class*="st-key-hw_dashboard"] .hw-dash-tool-desc{min-height:0!important}.hw-dash-footer{line-height:1.6}}
 
 /* Stable hover states: keep contrast and geometry consistent. */
 .stApp [data-testid="stSidebar"] .stButton button{transform:none!important;transition:background-color .18s ease,border-color .18s ease,color .18s ease!important}
