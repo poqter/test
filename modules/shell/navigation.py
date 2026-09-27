@@ -1,13 +1,16 @@
 """Authorization-aware navigation with lazy page imports."""
 from __future__ import annotations
 
+import logging
+import traceback
+from uuid import uuid4
+from pathlib import Path
 from importlib import import_module
 from typing import Any, Callable, MutableMapping
 
 import streamlit as st
 
 from modules.shell.app_registry import APP_BY_ID, APP_IDS, ROLE_PERMISSIONS
-from modules.shared.privacy_guard import safe_error
 from modules.shared.session_store import clear_session, save_legacy_draft
 
 
@@ -75,7 +78,15 @@ def dispatch(page_id: str, *, role: str | None = None) -> Any:
         return entrypoint()
     except Exception as error:
         # Do not expose uploaded content, filenames, parser messages, or a traceback.
-        st.error(safe_error("PAGE_RUN_FAILED", error))
+        reference = uuid4().hex[:8]
+        frames = traceback.extract_tb(error.__traceback__)
+        locations = " > ".join(f"{Path(f.filename).name}:{f.lineno}:{f.name}" for f in frames)
+        # Log code locations only; exception messages can contain customer data.
+        logging.getLogger(__name__).error(
+            "PAGE_RUN_FAILED ref=%s page=%s type=%s locations=%s",
+            reference, page_id, type(error).__name__, locations,
+        )
+        st.error(f"화면을 불러오지 못했습니다. 메뉴에서 다시 열어 주세요. 오류 번호: {reference}")
         return None
 
 

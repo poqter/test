@@ -38,6 +38,23 @@ _SKIP_TOKENS = (
     "_open", "_preview", "_approve", "_confirm", "_cancel", "_move_",
     "_help", "_calculate", "_recheck", "_claim_link", "_make_", "_submit", "_retry", "_recommended_go",
 )
+# Action widgets are events, not draft input. This explicit list also handles
+# sessions saved by older releases, whose drafts contain button booleans.
+_CALCULATOR_ACTION_KEYS = frozenset({
+    "jc_search_clear", "jc_back_catalog", "jc_transfer_apply",
+    "jc_home_entry", "jc_link_entry", "jc_valuation_transfer",
+})
+_CALCULATOR_ACTION_PREFIXES = ("jc_card_", "jc_purpose_", "jc_category_")
+
+
+def _transient_draft_key(key: str) -> bool:
+    return (
+        key in _CALCULATOR_ACTION_KEYS
+        or key.startswith(_CALCULATOR_ACTION_PREFIXES)
+        or key.endswith(("_customer_export", "_advisor_export"))
+    )
+
+
 _AUTH_KEYS = frozenset({"password_correct", "login_user", "active_app", "hw_calc_owner"})
 
 
@@ -173,7 +190,7 @@ def save_legacy_draft(page: str, *, state: MutableMapping[str, Any] | None = Non
         if not isinstance(key, str) or key.startswith("_ws_") or not key.startswith(prefixes):
             continue
         value = session[key]
-        if any(token in key for token in _SKIP_TOKENS) or isinstance(value, (bytes, bytearray)):
+        if _transient_draft_key(key) or any(token in key for token in _SKIP_TOKENS) or isinstance(value, (bytes, bytearray)):
             continue
         if _draftable(value):
             fields[key] = copy.deepcopy(value)
@@ -193,8 +210,18 @@ def restore_legacy_draft(page: str, *, state: MutableMapping[str, Any] | None = 
     legacy = session.pop("_draft_" + page, {})
     if isinstance(legacy, dict):
         _draft_envelope(page, session)["fields"].update(copy.deepcopy(legacy))
+    # Purge historical event values before restoring any widgets. Do not
+    # remove live widget state: a current click must still reach its callback.
+    envelope = _draft_envelope(page, session)
+    for key in list(envelope["fields"]):
+        if _transient_draft_key(key):
+            del envelope["fields"][key]
     for key, value in get_draft(page, state=session).items():
         if key.startswith(LEGACY_PREFIXES.get(page, ())):
+            if key == "jc_search":
+                # The search widget disappears in detail view; its durable
+                # query may be newer than the saved widget snapshot.
+                value = session.get("jc_catalog_query", value)
             session.setdefault(key, copy.deepcopy(value))
 
 

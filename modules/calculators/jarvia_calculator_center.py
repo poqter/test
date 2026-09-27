@@ -165,7 +165,7 @@ def run(run_legacy):
     notice=st.session_state.pop('jc_transfer_notice',None)
     if notice:st.info(notice)
     if not dedicated and not st.session_state.get('jc_open'):
-        page_header('재무·보험 계산', '재무·보험 계산기', '업무별 계산기와 결과를 확인하세요', 'QC')
+        page_header('종합계산기(80개)', '종합계산기(80개)', '업무별 계산기와 결과를 확인하세요', 'QC')
     if notice:
         st.session_state['jc_open'] = st.session_state.get('jc_selected')
     from modules.calculators.catalog_browser import render_catalog, back_to_catalog

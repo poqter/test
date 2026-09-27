@@ -27,7 +27,7 @@ def run():
 
 def run_legacy(integrated=False):
     if not integrated:
-        page_header('재무·보험 계산', '재무·보험 계산기 센터', '목적 선택 → 조건 입력 → 계산·검토 → 자료 내려받기', 'QC')
+        page_header('종합계산기(80개)', '종합계산기(80개)', '목적 선택 → 조건 입력 → 계산·검토 → 자료 내려받기', 'QC')
     session_notice('a_')
     group = st.selectbox('계산 목적', ['전체', '보험 기본', '생활과 보장', '미래 준비'], key='a_group')
     merged = {'필요 보장액','소득 공백·비상자금','목표 달성 월 저축액','미래 목표자금','은퇴 생활자금'} if integrated else set()
