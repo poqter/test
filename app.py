@@ -8,11 +8,11 @@ from pathlib import Path
 
 import streamlit as st
 
-from modules.app_registry import APP_DEFINITIONS, USER_PERMISSIONS
-from modules.navigation import allowed_ids, dispatch, logout, navigate, normalize_route
-from modules.ui_components import inject_global_styles
-from modules.workbench import render_workbench, restore_page_draft
-from modules.workspace_v2 import render_home, render_sidebar
+from modules.shell.app_registry import APP_DEFINITIONS, USER_PERMISSIONS
+from modules.shell.navigation import allowed_ids, dispatch, logout, navigate, normalize_route
+from modules.shared.ui_components import inject_global_styles
+from modules.shared.workbench import render_workbench, restore_page_draft
+from modules.shell.workspace_v2 import render_home, render_sidebar
 
 
 st.set_page_config(page_title="화랑WORKSPACE", page_icon="H", layout="wide", initial_sidebar_state="auto")
@@ -121,8 +121,10 @@ def main() -> None:
         render_home(permitted, navigate, NOTICE)
         return
     restore_page_draft(active)
-    render_workbench(active, permitted, navigate)
-    dispatch(active, role=role)
+    with st.container(key="hw_task_page"):
+        st.markdown('<div class="hw-task-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
+        render_workbench(active, permitted, navigate)
+        dispatch(active, role=role)
     # Legacy page CSS may be injected during run(); restore the shared tokens.
     inject_global_styles()
 
