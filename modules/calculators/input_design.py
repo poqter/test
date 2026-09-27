@@ -28,19 +28,30 @@ def amount_words(won):
 def number_input(label, **kwargs):
     if not re.search(r'(?<!만)원\)', label):
         return st.number_input(label, **kwargs)
-    key = kwargs.pop('key', None)
-    old_key = key
-    key = (key or 'jc_money_' + hashlib.sha256(label.encode()).hexdigest()[:12]) + '_manwon'
-    # New widget keys prevent a previous won draft being interpreted as ten-thousand won.
+    old_key = kwargs.pop('key', None)
+    base = old_key or 'jc_money_' + hashlib.sha256(label.encode()).hexdigest()[:12]
+    key = base + '_manwon_int'
+    def rounded(value):
+        return int((Decimal(str(value))/10000).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
     for option in ('value', 'min_value', 'max_value', 'step'):
         if option in kwargs and kwargs[option] is not None:
-            kwargs[option] = float(Decimal(str(kwargs[option])) / 10000)
-    kwargs.setdefault('step', 1.0)
-    kwargs.setdefault('format', '%.4f')
-    if old_key and old_key in st.session_state and key not in st.session_state:
-        st.session_state[key] = float(Decimal(str(st.session_state[old_key])) / 10000)
+            raw = Decimal(str(kwargs[option])) / 10000
+            if option == 'min_value':
+                from decimal import ROUND_CEILING
+                kwargs[option] = int(raw.to_integral_value(rounding=ROUND_CEILING))
+            elif option == 'max_value':
+                from decimal import ROUND_FLOOR
+                kwargs[option] = int(raw.to_integral_value(rounding=ROUND_FLOOR))
+            else: kwargs[option] = rounded(kwargs[option])
+    kwargs['step'] = max(1,kwargs.get('step',1))
+    kwargs['format'] = '%d'
+    if key not in st.session_state:
+        if base + '_manwon' in st.session_state:
+            st.session_state[key] = int(Decimal(str(st.session_state[base+'_manwon'])).quantize(Decimal('1'),rounding=ROUND_HALF_UP))
+        elif old_key and old_key in st.session_state:
+            st.session_state[key] = rounded(st.session_state[old_key])
     v = st.number_input(label.replace('원)', '만원)'), key=key, **kwargs)
-    won = int((Decimal(str(v)) * 10000).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+    won = int(v) * 10000
     st.markdown(f'<div data-hw-money-label="{escape(label.replace("원)", "만원)"), quote=True)}" style="font-size:12px;color:#426e98;text-align:right;margin-top:-8px">{amount_words(won)}</div>', unsafe_allow_html=True)
     return won
 

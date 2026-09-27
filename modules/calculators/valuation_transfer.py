@@ -1,5 +1,5 @@
 """Explicit handoff of the calculated tax value, never the scenario premium."""
-from decimal import Decimal, ROUND_DOWN
+from decimal import Decimal, ROUND_DOWN, ROUND_HALF_UP
 import streamlit as st
 TARGETS=('가업승계 세부담계산기','증여세계산기','상속세계산기')
 
@@ -18,11 +18,12 @@ def apply_pending():
         st.session_state['gift_mode']='증여세 상세 계산'
         st.session_state[f'cov_{target}_6']=amount
     index = 0 if target == TARGETS[0] else 35 if target == TARGETS[2] else 6
-    st.session_state[f'cov_{target}_{index}_manwon'] = float(Decimal(str(amount))/10000)
+    st.session_state[f'cov_{target}_{index}_manwon_int'] = int((Decimal(str(amount))/10000).quantize(Decimal('1'),rounding=ROUND_HALF_UP))
     st.session_state.pop('coverage_result_'+target,None)
-    st.session_state['jc_transfer_notice']=f'{target}에 평가액 {amount:,}원을 입력했습니다. 다른 재산·공제·적격요건을 확인한 뒤 계산하세요.'
+    st.session_state['jc_transfer_notice']=f'{target}에 평가액 {amount:,}원을 만원 단위로 반올림해 입력했습니다. 다른 재산·공제·적격요건을 확인한 뒤 계산하세요.'
 
 def render():
+    if st.session_state.get("hw_calc_locked"):return
     stored=st.session_state.get('coverage_result_비상장주식 평가계산기')
     if not stored:return
     args,result,_=stored

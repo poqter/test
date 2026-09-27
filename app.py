@@ -109,6 +109,9 @@ def allowed_app_ids() -> list[str]:
 
 def main() -> None:
     initialize_state()
+    from modules.calculators.dedicated_tab import render_if_requested
+    if render_if_requested():
+        return
     if not render_login():
         st.stop()
     role = st.session_state.get("login_user")

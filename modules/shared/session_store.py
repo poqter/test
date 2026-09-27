@@ -38,7 +38,7 @@ _SKIP_TOKENS = (
     "_open", "_preview", "_approve", "_confirm", "_cancel", "_move_",
     "_help", "_calculate", "_recheck", "_claim_link", "_make_", "_submit", "_retry", "_recommended_go",
 )
-_AUTH_KEYS = frozenset({"password_correct", "login_user", "active_app"})
+_AUTH_KEYS = frozenset({"password_correct", "login_user", "active_app", "hw_calc_owner"})
 
 
 def _state(state: MutableMapping[str, Any] | None) -> MutableMapping[str, Any]:
