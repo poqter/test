@@ -91,7 +91,7 @@ def render_login() -> bool:
                 login_feedback = st.empty()
                 st.markdown(
                     f'<div class="hw-auth-help"><span>변경된 비밀번호가 필요하신가요?</span>'
-                    f'<a href="{NOTICE["contact_url"]}" target="_blank" rel="noopener noreferrer">박병선에게 문의해 주세요 ↗</a></div>',
+                    f'<a href="{NOTICE["contact_url"]}" target="_blank" rel="noopener noreferrer">박병선 팀장에게 문의해 주세요 ↗</a></div>',
                     unsafe_allow_html=True,
                 )
             if submitted:
