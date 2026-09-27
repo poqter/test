@@ -116,17 +116,17 @@ body:has(.hw-new-hero-marker) [data-testid="stSegmentedControl"] button[aria-che
 /* Target both current Streamlit roots and older BaseWeb inputs. */
 [class*="st-key-hw_auth_card"] [data-testid="stTextInput"] > div:last-child,
 [class*="st-key-hw_auth_card"] [data-testid="stTextInputRootElement"],
-[class*="st-key-hw_auth_card"] [data-baseweb="input"]{background:#203f59!important;border:2px solid #527c99!important;border-radius:11px!important;min-height:54px;box-shadow:inset 0 2px 5px #071b2e40!important;transition:border-color .16s ease,box-shadow .16s ease}
+[class*="st-key-hw_auth_card"] [data-baseweb="input"]{background:#ffffff!important;border:2px solid #244d69!important;border-radius:11px!important;min-height:54px;box-shadow:none!important;transition:border-color .16s ease,box-shadow .16s ease}
 [class*="st-key-hw_auth_card"] [data-testid="stTextInput"] [data-baseweb="base-input"]{background:transparent!important}
-[class*="st-key-hw_auth_card"] [data-testid="stTextInput"] input{background:#203f59!important;color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;font-size:17px!important;caret-color:#88e3e5;border:0!important;border-radius:8px!important;min-height:50px;outline:none!important;box-shadow:none!important}
-[class*="st-key-hw_auth_card"] [data-testid="stTextInput"] input::placeholder{color:#cedee9!important;-webkit-text-fill-color:#cedee9!important;opacity:1}
+[class*="st-key-hw_auth_card"] [data-testid="stTextInput"] input{background:#ffffff!important;color:#142d44!important;-webkit-text-fill-color:#142d44!important;font-size:17px!important;caret-color:#143c61;border:0!important;border-radius:8px!important;min-height:50px;outline:none!important;box-shadow:none!important}
+[class*="st-key-hw_auth_card"] [data-testid="stTextInput"] input::placeholder{color:#536d83!important;-webkit-text-fill-color:#536d83!important;opacity:1}
 [class*="st-key-hw_auth_card"] [data-testid="stTextInput"] > div:last-child:hover,
 [class*="st-key-hw_auth_card"] [data-testid="stTextInputRootElement"]:hover,
-[class*="st-key-hw_auth_card"] [data-baseweb="input"]:hover{border-color:#81a8bf!important}
+[class*="st-key-hw_auth_card"] [data-baseweb="input"]:hover{border-color:#143c61!important}
 [class*="st-key-hw_auth_card"] [data-testid="stTextInput"] > div:last-child:focus-within,
 [class*="st-key-hw_auth_card"] [data-testid="stTextInputRootElement"]:focus-within,
-[class*="st-key-hw_auth_card"] [data-baseweb="input"]:focus-within{border-color:#42bfc7!important;box-shadow:0 0 0 3px #42bfc733!important}
-[class*="st-key-hw_auth_card"] [data-testid="stTextInput"] button{color:#d9edf5!important;background:#203f59!important;border:0!important}
+[class*="st-key-hw_auth_card"] [data-baseweb="input"]:focus-within{border-color:#102e48!important;box-shadow:none!important}
+[class*="st-key-hw_auth_card"] [data-testid="stTextInput"] button{color:#244d69!important;background:#ffffff!important;border:0!important}
 [class*="st-key-hw_auth_card"] [data-testid="stTextInput"] button svg{fill:currentColor!important}
 @media(max-width:768px){.stApp:has(.hw-auth-bg) [data-testid="stMainBlockContainer"]{padding:24px 12px!important}.st-key-hw_auth_shell{padding:24px 18px!important;border-radius:20px!important}.st-key-hw_auth_shell .hw-auth-brand{margin-bottom:16px}.st-key-hw_auth_shell .hw-auth-footer{margin-top:26px}.st-key-hw_auth_shell [data-testid="stHorizontalBlock"]{flex-wrap:wrap!important}.st-key-hw_auth_shell [data-testid="stColumn"]{min-width:100%!important}.st-key-hw_auth_card{padding:24px!important}}
 @media(prefers-reduced-motion:reduce){.st-key-hw_auth_card [data-testid="stTextInput"] [data-baseweb="input"]{transition:none}}
