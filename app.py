@@ -88,11 +88,17 @@ def render_login() -> bool:
                 with st.form("login_form", clear_on_submit=True):
                     password = st.text_input("비밀번호", type="password", placeholder="비밀번호 입력")
                     submitted = st.form_submit_button("워크스페이스 시작 →", type="primary", use_container_width=True)
+                login_feedback = st.empty()
+                st.markdown(
+                    f'<div class="hw-auth-help"><span>변경된 비밀번호가 필요하신가요?</span>'
+                    f'<a href="{NOTICE["contact_url"]}" target="_blank" rel="noopener noreferrer">박병선에게 문의해 주세요 ↗</a></div>',
+                    unsafe_allow_html=True,
+                )
             if submitted:
                 try:
                     passwords = dict(st.secrets["passwords"])
                 except (FileNotFoundError, KeyError, TypeError, ValueError):
-                    st.error("로그인 설정이 준비되지 않았습니다. 관리자에게 테스트 서버의 passwords 설정 확인을 요청해 주세요.")
+                    login_feedback.error("로그인 설정을 확인해야 합니다. 아래 카카오톡으로 문의해 주세요.", icon="⚠️")
                     return False
                 matched_user = next(
                     (name for name, saved in passwords.items() if name in USER_PERMISSIONS and isinstance(saved, str)
@@ -105,7 +111,7 @@ def render_login() -> bool:
                     st.session_state["active_app"] = "home"
                     st.rerun()
                 else:
-                    st.error("입력한 비밀번호를 확인해 주세요.")
+                    login_feedback.error("비밀번호가 일치하지 않습니다. 다시 입력해 주세요.", icon="⚠️")
         st.markdown('<div class="hw-auth-footer">Planned &amp; Built by 박병선 팀장</div>', unsafe_allow_html=True)
     return False
 
