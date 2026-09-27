@@ -1,9 +1,7 @@
 """A1-A6: transparent scenario calculators; no external API or persistence."""
 import calendar
 from datetime import date
-import streamlit as st
-from .ui_components import page_header
-from .workspace_tools import field, session_notice, source_notes
+from .workspace_tools import field
 
 
 def add_months(day, months):

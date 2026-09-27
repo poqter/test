@@ -70,15 +70,12 @@ def clear_namespace(prefix):
 
 
 def session_notice(prefix):
+    if st.session_state.get("active_app") == _PREFIX_PAGES.get(prefix):
+        return
     with st.expander("입력 초기화", expanded=False):
         st.button("이 도구 입력 초기화", key="clear_" + prefix, on_click=clear_namespace, args=(prefix,))
 
 
-def source_notes(names):
-    with st.expander("기준과 출처"):
-        st.caption(f"콘텐츠 편집 기준일 {CHECKED} · 일반 참고자료. 링크별 접속·최신 개정 확인일을 의미하지 않습니다. 개별 약관·회사 승인 자료를 우선 확인하세요.")
-        for name in names:
-            st.link_button(name, SOURCES[name], use_container_width=True)
 
 
 def workbook_bytes(title, headers, rows, notes=""):

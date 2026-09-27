@@ -16,8 +16,6 @@ from .session_store import (
 
 
 
-def save_page_draft(page: str) -> None:
-    save_legacy_draft(page)
 
 
 def restore_page_draft(page: str) -> None:
@@ -60,7 +58,6 @@ def render_workbench(page: str, allowed: list[str], navigate) -> None:
         reset_page_dialog(page)
     with st.expander("작업 상태와 초기화 범위", expanded=False):
         result = get_result(page)
-        st.caption(f"작성 내용 변경 횟수 · {input_revision(page)}")
         if result:
             state = "다시 계산 필요" if result.get("stale") else "최근 계산 결과와 현재 입력이 일치합니다."
             st.caption(state)

@@ -91,7 +91,7 @@ def run():
         return
     page_header('교육·체크리스트','교육·체크리스트 센터','용어 찾기 → 상담 점검·가상 연습 → 연구노트와 학습자료', 'ED')
     session_notice('e_')
-    choices=['보험용어 검색',*data['checklists'],'상담유형별 권장 도구','신입 FP 상담 시뮬레이션','보험금 청구 사례 퀴즈','자주 묻는 질문','수동 연구노트']
+    choices=['보험용어 검색',*data['checklists'],'상담유형별 권장 도구','신입 FP 상담 시뮬레이션','보험금 청구 사례 퀴즈','자주 묻는 질문','상담 연구 메모']
     mode=st.selectbox('학습할 내용',choices,key='e_mode')
     if mode=='보험용어 검색':
         query=field('text_input','용어 또는 설명 검색','e_query','',max_chars=100)
@@ -139,7 +139,7 @@ def run():
         status=field('selectbox','근거 확인 상태','e_note_status','확인 중',options=['확인 중','일부 확인','직접 확인 완료'])
         st.caption('확인 상태는 작성자의 표시이며 시스템의 검증 결과가 아닙니다.')
         body='\n\n'.join(label+'\n'+(value.strip() or '미기재') for label,value in zip(['주제','자료명·출처·확인일','직접 확인한 근거','미확인 사항','다음 확인 계획'],values))+'\n\n작성자 표시 상태\n'+status
-        export_report('note','수동 연구노트',body,data,valid=bool(values[0].strip() and values[2].strip()))
+        export_report('note','상담 연구 메모',body,data,valid=bool(values[0].strip() and values[2].strip()))
     with st.expander('콘텐츠 출처·기준·검증 상태'):
         st.caption('편집일 '+data['edited_at'])
         st.write(data['source'])

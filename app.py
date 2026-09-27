@@ -55,20 +55,6 @@ def initialize_state() -> None:
     st.session_state.setdefault("active_app", "home")
 
 
-def render_notice() -> None:
-    st.markdown("### 공지사항")
-    st.caption(f"최근 업데이트 · {NOTICE['date']}")
-    with st.container(border=True):
-        st.markdown(f"**{NOTICE['title']}**")
-        for item in NOTICE["items"]:
-            st.markdown(f"- {item}")
-    st.markdown(
-        textwrap.dedent(
-            f'''<div class="hw-login-contact"><span>{NOTICE["important"]}</span>
-            <a href="{NOTICE["contact_url"]}" target="_blank" rel="noopener noreferrer">문의하기 ↗</a></div>'''
-        ),
-        unsafe_allow_html=True,
-    )
 
 
 def render_login() -> bool:

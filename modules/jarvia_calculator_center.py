@@ -197,14 +197,14 @@ def run(run_legacy):
     implemented.update(('성실신고 대상판정계산기','법인 4대보험계산기','법인세 중간예납계산기'))
     implemented.update(('개인사업자·법인 비교계산기','가지급금 정밀진단계산기','DC부담금 한도계산기'))
     implemented.update(('법인세계산기','인정이자계산기','임원퇴직금 한도계산기'))
-    st.caption(f'{len(available)}개 계산기 · 계산식 구현 {len(implemented)}개 · 각 결과의 적용 범위·확인 조건을 함께 확인하세요')
+    st.caption('계산 목적을 선택하고 입력 조건과 결과를 확인하세요.')
     ready = [name for name,_ in available if name in implemented]
     pending = [name for name,_ in available if name not in implemented]
     if pending:
         with st.expander(f'준비 중인 계산기 {len(pending)}개'):
             for name in pending:
                 st.write(f'• {name} — {ITEMS[name][1]}')
-    with st.expander('화랑 추가 도구 8개'):
+    with st.expander('보험 기본·생활자금 계산'):
         run_legacy()
     if ready:
         st.subheader('사용 가능한 계산기')

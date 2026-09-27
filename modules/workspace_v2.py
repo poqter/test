@@ -2,14 +2,12 @@
 from __future__ import annotations
 
 import html
-from datetime import date
 from typing import Callable
 
 import streamlit as st
 
-from .app_registry import APP_BY_ID, GROUPS, SEARCH_ALIASES, AppSpec
+from .app_registry import APP_BY_ID, SEARCH_ALIASES, AppSpec
 from .insurer_portal import render_home_quick_search
-from .privacy_guard import environment_notice
 
 _ICONS = {
     "family": '<svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><circle cx="17" cy="8" r="2.5"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M16 14a5 5 0 0 1 5 5v2"/></svg>',
@@ -29,8 +27,6 @@ _ICONS = {
 }
 
 
-def _group_apps(group_id: str, allowed: set[str]) -> list[AppSpec]:
-    return sorted((app for app in APP_BY_ID.values() if app.group_id == group_id and app.id in allowed), key=lambda app: app.order)
 
 
 def _search_text(app: AppSpec) -> str:
@@ -98,23 +94,8 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
         st.caption("Planned & Built by 박병선 팀장")
 
 
-def _tool_card(app: AppSpec, navigate: Callable[..., object], prefix: str, mode: str | None = None) -> None:
-    with st.container(border=True, key=f"sig_card_{prefix}_{app.id}"):
-        st.markdown(
-            f'<div class="sig-icon" aria-hidden="true">{_ICONS.get(app.icon_key, _ICONS["materials"])}</div>'
-            f'<div class="sig-card-title">{html.escape(app.label)}</div>'
-            f'<div class="sig-card-desc">{html.escape(app.description)}</div>',
-            unsafe_allow_html=True,
-        )
-        if st.button("열기 →", key=f"v2_launch_{prefix}_{app.id}", use_container_width=True):
-            navigate(app.id, mode)
 
 
-def _grid(items: list[tuple[AppSpec, str | None]], navigate: Callable[..., object], prefix: str) -> None:
-    for start in range(0, len(items), 3):
-        for column, (app, mode) in zip(st.columns(3, gap="medium"), items[start:start + 3]):
-            with column:
-                _tool_card(app, navigate, prefix, mode)
 
 
 # Home tabs only change the visible tool set; registered destinations and permissions stay authoritative.
