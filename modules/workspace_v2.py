@@ -66,6 +66,10 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
         st.markdown('<div class="sig-brand"><span class="sig-mark">H</span><div><strong>화랑</strong><small>WORKSPACE</small></div></div>', unsafe_allow_html=True)
         if st.button("⌂  홈", key="v2_nav_home", use_container_width=True, type="primary" if st.session_state.get("active_app") == "home" else "secondary"):
             navigate("home")
+        if "analyzer" in allowed:
+            with st.container(key="hw_sidebar_quick"):
+                if st.button("🛡️ 보장 분석 시작 ↗", key="hw_sidebar_analyzer", use_container_width=True):
+                    navigate("analyzer")
         query = st.text_input("기능 빠른 검색", placeholder="상령일, 문자, 실손…", key="sig_nav_search").strip().lower()
         matched_ids = {app.id for app, _mode in _matches(query, allowed)} if query else allowed
         any_match = False
@@ -130,24 +134,27 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
     allowed = set(allowed_ids)
     with st.container(key="hw_dashboard"):
         st.markdown('<div class="hw-dashboard-marker"></div><div class="hw-dash-kicker">HWARANG WORKSPACE</div><h1>오늘의 업무, 여기서 시작하세요.</h1><p class="hw-dash-subtitle">필요한 도구를 쉽고 빠르게 찾아보세요.</p>', unsafe_allow_html=True)
-        search_col, portal_col = st.columns([1.1, 1], gap="large")
-        with search_col:
-            query = st.text_input("기능 찾기", key="v2_global_search", placeholder="도구 이름이나 업무를 검색하세요").strip().lower()
-        if "insurer_portal" in allowed:
-            with portal_col:
-                st.markdown('<div class="hw-dash-search-label">원수사 포털 찾기</div>', unsafe_allow_html=True)
-                render_home_quick_search()
         if "analyzer" in allowed:
-            with st.container(key="hw_dash_feature"):
-                st.markdown('<div class="hw-dash-feature-label">🛡️ 자주 사용하는 도구</div>', unsafe_allow_html=True)
-                if st.button("보장 분석 도우미 · 바로 시작 →", key="hw_feature_launch", type="primary", use_container_width=True):
+            with st.container(key="hw_mobile_quick"):
+                if st.button("🛡️ 보장 분석 시작 →", key="hw_feature_launch", use_container_width=True):
                     navigate("analyzer")
-                st.markdown('<p class="hw-dash-feature-desc">보험사 보장분석 자료를 고객 상담용으로 정리하세요.</p>', unsafe_allow_html=True)
+        if "insurer_portal" in allowed:
+            with st.container(key="hw_portal_row"):
+                portal_intro, portal_search = st.columns([1, 1.3], gap="large", vertical_alignment="center")
+                with portal_intro:
+                    st.markdown('<div class="hw-dash-kicker">보험사 업무 연결</div><h2>원수사 포털</h2><p class="hw-dash-subtitle">필요한 보험사 전산을 바로 찾으세요.</p>', unsafe_allow_html=True)
+                with portal_search:
+                    st.markdown('<div class="hw-dash-search-label">보험사 검색</div>', unsafe_allow_html=True)
+                    render_home_quick_search()
+        work_title, work_search = st.columns([1, 1.3], gap="large", vertical_alignment="center")
+        with work_title:
+            st.subheader("어떤 도구가 필요하세요?")
+        with work_search:
+            query = st.text_input("기능 찾기", key="v2_global_search", placeholder="보장, 연금, 실적 등 업무 검색", label_visibility="collapsed").strip().lower()
         labels = [topic[0] for topic in _HOME_TOPICS if any(item in allowed for item in topic[4])]
         if not labels:
             st.info("이용할 수 있는 도구가 없습니다.")
             return
-        st.subheader("업무별 도구")
         if st.session_state.get("hw_home_topic") not in labels:
             st.session_state["hw_home_topic"] = labels[0]
         choice = st.segmented_control("업무 선택", labels, key="hw_home_topic", label_visibility="collapsed")

@@ -177,6 +177,37 @@ body:has(.hw-dashboard-marker) [data-testid="stHeader"]{background:#101e31ed!imp
 @media(max-width:768px){body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"]{padding:4rem 1rem 2rem!important}[class*="st-key-hw_dashboard"] [data-testid="stHorizontalBlock"]{flex-wrap:wrap!important}[class*="st-key-hw_dashboard"] [data-testid="stColumn"]{min-width:100%!important}[class*="st-key-hw_dashboard"] [data-testid="stSegmentedControl"]>div{flex-wrap:wrap!important}}
 @media(prefers-reduced-motion:reduce){[class*="st-key-hw_dash_tool_"],[class*="st-key-hw_dash_feature"]{animation:none!important;transition:none!important;transform:none!important}}
 
+/* Approved soft home: open layout, sidebar shortcut, native tool destinations. */
+body:has(.hw-dashboard-marker) .stApp,body:has(.hw-dashboard-marker) [data-testid="stAppViewContainer"],body:has(.hw-dashboard-marker) [data-testid="stMain"]{background:#e9eef3!important;color:#233b50!important}
+body:has(.hw-dashboard-marker) [data-testid="stHeader"]{background:#e9eef3ed!important}
+body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"]{max-width:1500px!important;padding:3.5rem 2.5rem 2rem!important}
+[class*="st-key-hw_dashboard"] h1,[class*="st-key-hw_dashboard"] h2{color:#203b53!important}
+.hw-dash-kicker{color:#59778c;margin-bottom:8px}
+.hw-dash-subtitle{color:#60778b!important}
+[class*="st-key-hw_portal_row"]{padding:20px 0 26px!important;margin-bottom:18px;border-bottom:1px solid #c6d3de}
+.hw-dash-search-label,[class*="st-key-hw_dashboard"] [data-testid="stWidgetLabel"] p{color:#516c81!important}
+[class*="st-key-hw_dashboard"] [data-testid="stTextInputRootElement"],[class*="st-key-hw_dashboard"] [data-baseweb="input"]{background:#f8fafc!important;border-color:#a7bccd!important}
+[class*="st-key-hw_dashboard"] input{color:#24435b!important;caret-color:#24435b}
+[class*="st-key-hw_dashboard"] input::placeholder{color:#6c8395!important}
+[class*="st-key-hw_dashboard"] [data-testid="stCaptionContainer"] p{color:#60778b!important}
+[class*="st-key-hw_dashboard"] [data-testid="stSegmentedControl"]{background:transparent!important;border-bottom:1px solid #c6d3de;border-radius:0;padding:8px 0 14px;margin:8px 0 18px}
+[class*="st-key-hw_dashboard"] [data-testid="stSegmentedControl"] button{color:#405f76!important;background:transparent!important}
+[class*="st-key-hw_dashboard"] [data-testid="stSegmentedControl"] button p{color:inherit!important}
+[class*="st-key-hw_dashboard"] [data-testid="stSegmentedControl"] button[aria-checked="true"],[class*="st-key-hw_dashboard"] [data-testid="stSegmentedControl"] button[aria-pressed="true"]{background:#d2dfe9!important;color:#173d58!important}
+[class*="st-key-hw_dash_tool_"]{background:#f8fafc!important;border-color:#d2dce5!important;padding:22px!important;min-height:130px;box-shadow:0 2px 5px #26425805}
+[class*="st-key-hw_dash_tool_"]:hover{background:#fff!important;border-color:#8faebf!important;box-shadow:0 8px 18px #29465e0d}
+[class*="st-key-hw_dash_tool_"] button[kind="secondary"],[class*="st-key-hw_dash_tool_"] button p{color:#203f57!important;text-align:left!important;justify-content:flex-start!important}
+.hw-dash-tool-desc{color:#60788b!important}
+.hw-dash-footer{color:#718798;border-top:1px solid #ced9e2;padding-top:19px}
+[class*="st-key-hw_dashboard"] .ip-home-result{background:#f8fafc!important;border-color:#c1d1dd!important}
+[class*="st-key-hw_dashboard"] .ip-home-result a{color:#24435b!important}
+[class*="st-key-hw_dashboard"] .ip-home-result span,[class*="st-key-hw_dashboard"] .ip-home-result small{color:#536e83!important}
+[data-testid="stSidebar"]{background:#23394e!important}
+[data-testid="stSidebar"] button[kind="primary"]{background:#39536b!important;color:#fff!important}
+[data-testid="stSidebar"] [class*="st-key-hw_sidebar_quick"] button[kind="secondary"]{background:#c6e0e9!important;color:#193e56!important;border:0!important;margin:6px 0 14px}
+[class*="st-key-hw_mobile_quick"]{display:none}
+@media(max-width:768px){[class*="st-key-hw_mobile_quick"]{display:block}body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"]{padding:4rem 1rem 2rem!important}[class*="st-key-hw_portal_row"]{padding:12px 0 22px!important}}
+
 '''
 
 def inject_signature_styles():
