@@ -71,7 +71,7 @@ def run():
             pdf_options = pdf_section_options('pp_pdf_scope')
             if any(pdf_options.values()):
                 pdf = build_result_pdf('연금계산기', [(labels.get(k,k), v) for k,v in saved.items()], r, stamp, **pdf_options)
-                st.download_button('결과 PDF 저장',pdf,file_name='연금계산_결과보고서.pdf',mime='application/pdf')
+                st.download_button('결과 PDF 저장',pdf,file_name='연금계산_결과보고서.pdf',mime='application/pdf', type='primary', icon=':material/download:', width='stretch')
         with advisor:
             st.write(r.formula)
             st.caption('국민연금 개시연령·조기/연기 비율: 국민연금공단 안내 대조 2026-09-26.')

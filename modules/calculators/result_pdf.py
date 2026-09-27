@@ -22,7 +22,7 @@ def value_text(value):
     return str(value)
 
 
-def build_result_pdf(name, inputs, result, stamp, *, include_results=True, include_inputs=True, include_basis=True):
+def build_result_pdf(name, inputs, result, stamp, *, include_results=True, include_inputs=True, include_basis=True, enlarge_results=False):
     if not any((include_results, include_inputs, include_basis)):
         raise ValueError("PDF에 포함할 항목을 하나 이상 선택해주세요.")
     font = 'HwarangReport'
@@ -43,10 +43,12 @@ def build_result_pdf(name, inputs, result, stamp, *, include_results=True, inclu
     width=A4[0]-40*mm
     story=[p('CALCULATION REPORT',ParagraphStyle('Kicker',parent=body,textColor=teal,fontSize=9)),Spacer(1,7),p(name,ParagraphStyle('Title',parent=body,fontSize=23,leading=31)),Spacer(1,8),p('계산 시각  '+str(stamp)),Spacer(1,14)]
     def table(rows, highlight=False):
-        data=[[p(a),p(b,ParagraphStyle('Value',parent=body,fontSize=12 if highlight else 9,leading=18 if highlight else 14))] for a,b in rows]
+        large = highlight and enlarge_results
+        label_style = ParagraphStyle('ResultLabel', parent=body, fontSize=13 if large else 9, leading=20 if large else 14)
+        data=[[p(a,label_style),p(b,ParagraphStyle('Value',parent=body,fontSize=20 if large else (12 if highlight else 9),leading=29 if large else (18 if highlight else 14)))] for a,b in rows]
         if not data:return
         t=Table(data,colWidths=[width*.43,width*.57],hAlign='LEFT',repeatRows=0)
-        t.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP'),('BACKGROUND',(0,0),(-1,-1),colors.HexColor('#edf4f9') if highlight else colors.white),('ROWBACKGROUNDS',(0,0),(-1,-1),[colors.HexColor('#edf4f9'),colors.HexColor('#f4f8fb')] if highlight else [colors.white,colors.HexColor('#f7f9fc')]),('LINEBELOW',(0,0),(-1,-1),.4,colors.HexColor('#dce5ef')),('LEFTPADDING',(0,0),(-1,-1),12),('RIGHTPADDING',(0,0),(-1,-1),12),('TOPPADDING',(0,0),(-1,-1),10),('BOTTOMPADDING',(0,0),(-1,-1),10)]))
+        t.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP'),('BACKGROUND',(0,0),(-1,-1),colors.HexColor('#edf4f9') if highlight else colors.white),('ROWBACKGROUNDS',(0,0),(-1,-1),[colors.HexColor('#edf4f9'),colors.HexColor('#f4f8fb')] if highlight else [colors.white,colors.HexColor('#f7f9fc')]),('LINEBELOW',(0,0),(-1,-1),.4,colors.HexColor('#dce5ef')),('LEFTPADDING',(0,0),(-1,-1),12),('RIGHTPADDING',(0,0),(-1,-1),12),('TOPPADDING',(0,0),(-1,-1),24 if large else 10),('BOTTOMPADDING',(0,0),(-1,-1),24 if large else 10)]))
         story.append(t)
     section = 0
     def section_heading(title):
@@ -76,11 +78,15 @@ def build_result_pdf(name, inputs, result, stamp, *, include_results=True, inclu
 def pdf_section_options(key):
     import streamlit as st
     st.caption('PDF에 포함할 내용')
-    options = {
-        'include_results': st.checkbox('핵심 결과', value=True, key=key+'_results'),
-        'include_inputs': st.checkbox('입력 내용', value=False, key=key+'_inputs'),
-        'include_basis': st.checkbox('산출 근거 및 적용 조건', value=False, key=key+'_basis'),
-    }
+    columns = st.columns([1, 1, 1.65], gap='small')
+    options = {}
+    for column, field, label in zip(columns,
+            ('include_results', 'include_inputs', 'include_basis'),
+            ('핵심 결과', '입력 내용', '산출 근거 및 적용 조건')):
+        with column:
+            options[field] = st.checkbox(label, value=True, key=key+'_sections_v2_'+field)
     if not any(options.values()):
         st.info('PDF에 포함할 항목을 하나 이상 선택해주세요.')
+    enlarged = st.checkbox('핵심 결과 크게 표시', value=False, disabled=not options['include_results'], key=key+'_enlarge_results', help='체크하면 핵심 결과의 글자와 행 간격을 확대합니다. 입력 내용과 산출 근거는 기존 크기를 유지합니다.')
+    options['enlarge_results'] = enlarged and options['include_results']
     return options

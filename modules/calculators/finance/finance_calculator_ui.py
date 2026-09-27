@@ -147,7 +147,7 @@ def render_result(name,result,calculated_on,args,prefix):
         pdf_options = pdf_section_options(prefix+'_pdf_scope')
         if any(pdf_options.values()):
             pdf = build_result_pdf(name, input_rows(args), result, calculated_on, **pdf_options)
-            st.download_button('결과 PDF 저장',pdf,name+'_결과보고서.pdf','application/pdf',key=prefix+'_customer_export')
+            st.download_button('결과 PDF 저장',pdf,name+'_결과보고서.pdf','application/pdf',key=prefix+'_customer_export', type='primary', icon=':material/download:', width='stretch')
     with advisor:
         st.caption('계산일: '+calculated_on)
         st.write(result.formula)
