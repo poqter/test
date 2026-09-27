@@ -164,6 +164,10 @@ body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"]{max-width:14
 [class*="st-key-hw_dash_tool_"]:hover{border-color:#b8cdeb;box-shadow:0 7px 20px #224f860d}
 .hw-tool-heading{display:flex;align-items:center;gap:12px;min-height:50px}
 .hw-tool-symbol{display:grid;place-items:center;width:44px;height:44px;flex:0 0 44px;background:#eef4ff;border:1px solid #d4e3fc;border-radius:12px;font-size:22px;color:#386cc0}
+.hw-tool-symbol.hw-icon-blue{color:#3277ee;background:#f2f6ff;border-color:#cbdcff}
+.hw-tool-symbol.hw-icon-teal{color:#00a9b0;background:#effbfb;border-color:#bcebee}
+.hw-tool-symbol.hw-icon-amber{color:#d99000;background:#fff9ec;border-color:#ffdda0}
+.hw-tool-symbol.hw-icon-violet{color:#8053e8;background:#f7f2ff;border-color:#ded0ff}
 .hw-tool-symbol svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 [class*="st-key-hw_dashboard"] .hw-tool-heading h3{font-size:18px!important;font-weight:600!important;line-height:1.45!important;margin:0!important;padding:0!important;text-align:left!important;letter-spacing:-.025em!important}
 [class*="st-key-hw_dashboard"] .hw-dash-tool-desc{font-size:15px!important;font-weight:400!important;line-height:1.6!important;color:#64758a!important;min-height:72px;margin:14px 0 8px!important;text-align:left}
@@ -201,7 +205,7 @@ body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"]{max-width:14
 .stApp [data-testid="stSidebar"] [data-testid="stExpanderDetails"] button[kind="secondary"]:hover{background:#f0f5fc!important;color:#245fbd!important}
 .stApp [data-testid="stSidebar"] button[kind="primary"]:hover{background:#dce9ff!important;color:#245fbd!important}
 [class*="st-key-hw_dash_tool_analyzer"]{border-color:#b5cdf0;background:linear-gradient(145deg,#f5f9ff,#fff 65%)}
-[class*="st-key-hw_dash_tool_analyzer"] .hw-tool-symbol{background:#2d6ad5;color:#fff;border-color:#2d6ad5}
+
 [class*="st-key-hw_dash_tool_analyzer"] button[kind="secondary"]{background:#edf4ff!important;border-color:#b5cdf0!important}
 [class*="st-key-hw_dash_tool_analyzer"] button[kind="secondary"]:hover{background:#dfeaff!important}
 [class*="st-key-hw_dash_tool_"]:focus-within{border-color:#80a8e7}

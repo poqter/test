@@ -12,18 +12,20 @@ from .insurer_portal import render_home_quick_search
 from .privacy_guard import environment_notice
 
 _ICONS = {
+    "family": '<svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><circle cx="17" cy="8" r="2.5"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M16 14a5 5 0 0 1 5 5v2"/></svg>',
+    "coins": '<svg viewBox="0 0 24 24"><ellipse cx="10" cy="5" rx="7" ry="3"/><path d="M3 5v5c0 4 14 4 14 0V5M3 10v5c0 2 4 3 7 3M3 15v3c0 2 4 3 7 3"/><circle cx="17" cy="17" r="4"/><path d="M17 15v4"/></svg>',
     "consultation": '<svg viewBox="0 0 24 24"><path d="M5 4h14v12H9l-4 4z"/><path d="M8 8h8M8 12h5"/></svg>',
     "calculator": '<svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M16 11h1M8 15h2M12 15h2M16 15h1"/></svg>',
-    "analysis": '<svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M14 3v4h4M9 11h6M9 15h6"/></svg>',
+    "analysis": '<svg viewBox="0 0 24 24"><path d="M12 3l8 3v5c0 5-3 8-8 10-5-2-8-5-8-10V6z"/><path d="m8.5 11.5 2.5 2.5 4.5-5"/></svg>',
     "materials": '<svg viewBox="0 0 24 24"><path d="M7 3h10v18H7z"/><path d="M10 8h4M9 12h6M9 16h6"/></svg>',
     "education": '<svg viewBox="0 0 24 24"><path d="M3 6l9-3 9 3-9 3z"/><path d="M6 8v6c3 2 9 2 12 0V8M21 6v8"/></svg>',
-    "official": '<svg viewBox="0 0 24 24"><path d="M5 3h14v18H5z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg>',
+    "official": '<svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 21v-5h6v5M8 7h2m4 0h2M8 11h2m4 0h2"/></svg>',
     "performance": '<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V6M16 20V3M22 20H2"/></svg>',
     "compare": '<svg viewBox="0 0 24 24"><path d="M7 5h13M17 2l3 3-3 3M17 19H4M7 16l-3 3 3 3"/></svg>',
-    "remodeling": '<svg viewBox="0 0 24 24"><path d="M20 7h-5V2M20 7a8 8 0 10 0 10"/></svg>',
+    "remodeling": '<svg viewBox="0 0 24 24"><path d="M20 9a8 8 0 0 0-14-4L3 8m0-5v5h5M4 15a8 8 0 0 0 14 4l3-3m0 5v-5h-5"/></svg>',
     "tax": '<svg viewBox="0 0 24 24"><path d="M6 3h12v18H6zM9 8h6M9 12h2M13 12h2M9 16h6"/></svg>',
-    "claim": '<svg viewBox="0 0 24 24"><path d="M6 3h12v18H6zM9 8h6M9 13l2 2 4-4"/></svg>',
-    "medical": '<svg viewBox="0 0 24 24"><path d="M12 3l8 3v5c0 5-3 8-8 10-5-2-8-5-8-10V6zM12 8v6M9 11h6"/></svg>',
+    "claim": '<svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="m8 12 2.5 2.5 5-5M8 18h8"/></svg>',
+    "medical": '<svg viewBox="0 0 24 24"><path d="M5 3v7a5 5 0 0 0 10 0V3M8 3v6a2 2 0 0 0 4 0V3M10 15v2a4 4 0 0 0 8 0v-1"/><circle cx="18" cy="13" r="3"/></svg>',
 }
 
 
@@ -130,6 +132,23 @@ _HOME_TOPICS = (
 
 
 
+# Home-specific symbols and tones keep each task visually recognizable.
+_HOME_ICON_STYLES = {
+    "analyzer": ("analysis", "blue"),
+    "remodeling": ("remodeling", "teal"),
+    "deposit_vs_shortpay": ("coins", "amber"),
+    "renewal_vs_nonrenewal": ("remodeling", "teal"),
+    "inheritance_tax": ("family", "violet"),
+    "quick_calculators": ("calculator", "amber"),
+    "consultation_helper": ("consultation", "violet"),
+    "education_center": ("education", "violet"),
+    "convention": ("performance", "teal"),
+    "summer": ("performance", "amber"),
+    "manager_results": ("performance", "violet"),
+    "commission_calculator": ("coins", "amber"),
+}
+
+
 def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice: dict[str, object]) -> None:
     allowed = set(allowed_ids)
     with st.container(key="hw_dashboard"):
@@ -179,8 +198,9 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
             for start in range(0, len(items), 3):
                 for column, (app, mode) in zip(st.columns(3, gap="medium"), items[start:start + 3]):
                     with column, st.container(key=f"hw_dash_tool_{app.id}"):
-                        icon = _ICONS.get(app.icon_key, _ICONS["materials"])
-                        st.markdown(f'<div class="hw-tool-heading"><span class="hw-tool-symbol" aria-hidden="true">{icon}</span><h3>{html.escape(app.label)}</h3></div><p class="hw-dash-tool-desc">{html.escape(app.description)}</p>', unsafe_allow_html=True)
+                        icon_key, tone = _HOME_ICON_STYLES.get(app.id, (app.icon_key, "blue"))
+                        icon = _ICONS.get(icon_key, _ICONS["materials"])
+                        st.markdown(f'<div class="hw-tool-heading"><span class="hw-tool-symbol hw-icon-{tone}" aria-hidden="true">{icon}</span><h3>{html.escape(app.label)}</h3></div><p class="hw-dash-tool-desc">{html.escape(app.description)}</p>', unsafe_allow_html=True)
                         if st.button("시작하기 →", key="hw_home_launch_" + app.id, help=f"{app.label} 열기", use_container_width=True):
                             navigate(app.id, mode)
         st.markdown('<div class="hw-dash-footer">Planned &amp; Built by 박병선 팀장 · 보험 업무의 복잡함, 더 간단하게.</div>', unsafe_allow_html=True)
