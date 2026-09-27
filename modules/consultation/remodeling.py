@@ -247,7 +247,8 @@ def render_plan_inputs(person_no: int) -> list[NewPlan]:
 
 def _contract_suggestion(company, rows):
     row = next((r for r in rows if r['name'] == clean(company)), None)
-    return row.get('phone', '') if row else ''
+    phone = row.get('phone', '') if row else ''
+    return f'고객센터 {phone}' if phone else ''
 
 
 def _contract_detail_edited(suffix):
