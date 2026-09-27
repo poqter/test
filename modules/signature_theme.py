@@ -177,7 +177,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible{
 [class*="st-key-hw_auth_card"] [data-testid="stTextInput"] [data-baseweb="input"]{border-width:3px!important;border-style:solid!important;border-color:#244d69!important}/* Home and sidebar: unified light workspace; login rules above are preserved. */
 body:has(.hw-dashboard-marker) .stApp,body:has(.hw-dashboard-marker) [data-testid="stAppViewContainer"],body:has(.hw-dashboard-marker) [data-testid="stMain"]{background:#f5f7fa!important;color:#253247!important}
 body:has(.hw-dashboard-marker) [data-testid="stHeader"]{background:#f5f7faed!important}
-body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"]{max-width:1440px!important;margin-left:0!important;margin-right:auto!important;padding:3rem 2rem 2rem!important}
+body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"]{max-width:1440px!important;margin-left:auto!important;margin-right:auto!important;padding:3rem 2rem 2rem!important}
 [class*="st-key-hw_dashboard"],[data-testid="stSidebar"]{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important}
 [class*="st-key-hw_dashboard"] p,[class*="st-key-hw_dashboard"] button,[data-testid="stSidebar"] p,[data-testid="stSidebar"] button{font-family:inherit!important;letter-spacing:-.015em!important}
 [class*="st-key-hw_home_welcome"]{padding:26px 28px!important;background:linear-gradient(110deg,#fff 15%,#edf4ff 100%);border:1px solid #d3e1f5;border-radius:18px;box-shadow:0 8px 26px #27476c08;margin-bottom:26px;position:relative}
