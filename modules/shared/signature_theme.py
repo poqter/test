@@ -272,6 +272,17 @@ body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"]{padding:4rem
 @media(prefers-reduced-motion:reduce){
 .stApp [data-testid="stSidebar"] .stButton button,[class*="st-key-hw_dash_tool_"] button{transition:none!important}}
 
+/* Scoped contrast correction: do not change password input colors. */
+.st-key-hw_auth_card [data-testid="stFormSubmitButton"] button{background:#173b5d!important;border:1px solid #173b5d!important;color:#fff!important;min-height:50px!important}
+.st-key-hw_auth_card [data-testid="stFormSubmitButton"] button:hover{background:#214d74!important;border-color:#214d74!important}
+.st-key-hw_auth_card [data-testid="stFormSubmitButton"] button p,
+.st-key-hw_auth_card [data-testid="stFormSubmitButton"] button span{color:#fff!important;-webkit-text-fill-color:#fff!important;font-weight:650!important}
+[data-testid="stSidebar"] [data-testid="stLayoutWrapper"]:has(>.st-key-hw_sidebar_header){position:sticky;top:0;z-index:20;background:#fff}
+[data-testid="stSidebar"] .st-key-hw_sidebar_header{background:#fff;padding-bottom:10px;box-shadow:0 8px 12px #fff}
+[class*="st-key-hw_dash_tool_analyzer"] button[kind="secondary"],
+[class*="st-key-hw_dash_tool_analyzer"] button[kind="secondary"]:hover{background:#2867c5!important;border-color:#2867c5!important;color:#fff!important}
+[class*="st-key-hw_dash_tool_analyzer"] button p{color:#fff!important}
+
 '''
 
 def inject_signature_styles():

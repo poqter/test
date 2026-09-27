@@ -21,7 +21,7 @@ body:has(.hw-calculator-only) .st-key-hw_calc_paper textarea{color:#18334f!impor
 body:has(.hw-calculator-only) .st-key-hw_calc_paper [data-baseweb="input"]:focus-within,
 body:has(.hw-calculator-only) .st-key-hw_calc_paper [data-baseweb="textarea"]:focus-within,
 body:has(.hw-calculator-only) .st-key-hw_calc_paper [data-baseweb="select"]:focus-within>div{border-color:#2875cc!important;box-shadow:0 0 0 3px #2875cc26!important}
-@media(max-width:640px){body:has(.hw-calculator-only) [data-testid="stMainBlockContainer"]{padding:14px 8px!important}body:has(.hw-calculator-only) .st-key-hw_task_page{padding:7px!important;border-radius:20px!important}body:has(.hw-calculator-only) .st-key-hw_calc_paper{padding:16px 12px!important;border-radius:13px!important}}
+@media(max-width:768px){body:has(.hw-calculator-only) [data-testid="stMainBlockContainer"]{padding:14px 8px!important}body:has(.hw-calculator-only) .st-key-hw_task_page{padding:7px!important;border-radius:20px!important}body:has(.hw-calculator-only) .st-key-hw_calc_paper{padding:16px 12px!important;border-radius:13px!important}}
 '''
 def apply():
     st.markdown('<style>'+CSS+'</style>',unsafe_allow_html=True)

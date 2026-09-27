@@ -79,6 +79,7 @@ def scroll_memory(last, restore):
       if (w.__hwCatalogClick) d.removeEventListener('click', w.__hwCatalogClick, true);
       w.__hwCatalogClick = e => {
         if (e.target.closest('[class*="st-key-jc_card_"]')) {
+          w.__hwOpenCalculator = true;
           try { w.sessionStorage.setItem(key, JSON.stringify({top:container.scrollTop, y:w.scrollY})); } catch (_) {}
         }
       };
@@ -90,10 +91,10 @@ def scroll_memory(last, restore):
           if (!card && attempts++ < 30) { w.setTimeout(recover, 80); return; }
           let saved;
           try { saved = JSON.parse(w.sessionStorage.getItem(key)); } catch (_) {}
-          if (saved) { container.scrollTop = saved.top; w.scrollTo(0, saved.y); }
+          if (d.activeElement && /INPUT|TEXTAREA/.test(d.activeElement.tagName)) return;
+          if (saved) { container.scrollTop = Math.min(saved.top,container.scrollHeight-container.clientHeight); w.scrollTo(0, saved.y); }
           else if (card) card.scrollIntoView({block:'center'});
-          const button = card && card.querySelector('button');
-          if (button) button.focus({preventScroll:true});
+          // Restore position without taking focus away from search or keyboard navigation.
         };
         w.requestAnimationFrame(() => w.setTimeout(recover, 100));
       }
@@ -148,11 +149,21 @@ def render_catalog(items, groups, implemented):
     .st-key-jc_purposes button p{font-size:12px!important}
     .st-key-jc_categories button{min-height:42px!important;font-weight:650!important}
     [class*="st-key-jc_actions_"]{border-left:1px solid #edf1f6;padding-left:12px}
-    @media(max-width:640px){[class*="st-key-jc_actions_"]{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px!important;border-left:0;border-top:1px solid #edf1f6;padding:12px 0 0}[class*="st-key-jc_card_"] button{min-height:44px!important}}
+    @media(max-width:768px){[class*="st-key-jc_actions_"]{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px!important;border-left:0;border-top:1px solid #edf1f6;padding:12px 0 0}[class*="st-key-jc_card_"] button{min-height:44px!important}}
     @media(prefers-reduced-motion:reduce){[class*="st-key-jc_card_"]{transition:none!important}}
     </style>''', unsafe_allow_html=True)
-    for gi, category in enumerate(groups):
-        subset = [(n, d) for n, g, d in found if g == category]
+    if query:
+        q = normalize(query).removesuffix('계산기')
+        def rank(item):
+            n = normalize(item[0]).removesuffix('계산기')
+            return 0 if n == q else 1 if n.startswith(q) or q in initials(n) else 2 if q in n else 3
+        found.sort(key=rank)
+        sections = [('이름 일치', [item for item in found if rank(item) < 2]),
+                    ('관련 계산기', [item for item in found if rank(item) >= 2])]
+    else:
+        sections = [(category, [item for item in found if item[1] == category]) for category in groups]
+    for category, section_items in sections:
+        subset = [(n, d) for n, g, d in section_items]
         if not subset:
             continue
         st.markdown('##### ' + category)
@@ -162,7 +173,7 @@ def render_catalog(items, groups, implemented):
                 summary = description.replace('계산 결과: ', '').split(' 적용 조건')[0]
                 with col.container(key=card_key(name)):
                     copy, actions = st.columns([2.0, 1.1], gap='small', vertical_alignment='center')
-                    icon = ('🧾','🌿','🛡️','📈','🏢','📑')[gi]
+                    icon = ('🧾','🌿','🛡️','📈','🏢','📑')[list(groups).index(items[name][0])]
                     copy.markdown(f'<div class="hw-calc-card-copy"><span class="hw-calc-card-icon" aria-hidden="true">{icon}</span><div><div class="hw-calc-card-title">{escape(name.removesuffix("계산기"))}</div><div class="hw-calc-card-summary">{escape(summary)}</div></div></div>', unsafe_allow_html=True)
                     with actions.container(key="jc_actions_"+card_key(name)):
                         st.button('현재 창에서 열기', key=card_key(name)+'_open', on_click=open_calculator, args=(name,), use_container_width=True)

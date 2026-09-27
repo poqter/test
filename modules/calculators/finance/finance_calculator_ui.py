@@ -112,7 +112,7 @@ def run(name):
             else:
                 args=dict(monthly=_money('매달 나가는 금액',300000),years=_years(20),rate=_rate())
                 calculate=engine.opportunity
-            submit=st.button('계산하기',type='primary')
+            submit=st.button('계산하기',type='primary',width='stretch')
         result_key=prefix+'_result'
         if submit:
             st.session_state.pop(result_key,None)
@@ -128,6 +128,8 @@ def run(name):
     with _ui_1:
         st.caption("02 · 계산 결과")
         render_result(name,result,calculated_on,args,prefix)
+    from modules.calculators.input_design import jump_to_result
+    jump_to_result(submit, "finance_calculator_ui")
 
 
 def _rows_for_display(result):
@@ -142,15 +144,15 @@ def render_result(name,result,calculated_on,args,prefix):
         for index,(label,value) in enumerate(display.items()):
             with st.container(key=prefix+('_hero_result' if index == 0 else '_support_result_'+str(index))):
                 st.metric(label,value)
-        if result.rows and '총 자금' in result.rows[0]:
-            from modules.calculators.result_chart import render_growth_chart
-            render_growth_chart(result.rows)
         st.caption('입력한 수익률과 조건에 따른 예상치입니다.')
         from modules.calculators.result_pdf import build_result_pdf, pdf_section_options
         pdf_options = pdf_section_options(prefix+'_pdf_scope')
         if any(pdf_options.values()):
             pdf = build_result_pdf(name, input_rows(args), result, calculated_on, **pdf_options)
             st.download_button('결과 PDF 저장',pdf,name+'_결과보고서.pdf','application/pdf',key=prefix+'_customer_export', type='primary', icon=':material/download:', width='stretch')
+        if result.rows and '총 자금' in result.rows[0]:
+            from modules.calculators.result_chart import render_growth_chart
+            render_growth_chart(result.rows)
     with advisor:
         st.caption('계산일: '+calculated_on)
         st.write(result.formula)

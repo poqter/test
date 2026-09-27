@@ -171,6 +171,11 @@ def run(run_legacy):
     from modules.calculators.catalog_browser import render_catalog, back_to_catalog
     active = st.session_state.get('jc_open')
     if active and not dedicated:
+        st.iframe("""<script>(()=>{const w=window.parent,d=w.document;
+        if(!w.__hwOpenCalculator)return;w.__hwOpenCalculator=false;
+        const main=d.querySelector('[data-testid="stMain"]');
+        if(main)main.scrollTop=0;w.scrollTo(0,0);
+        })();</script>""",height=1)
         with st.container(horizontal=True, vertical_alignment='center'):
             st.button('← 계산기 목록', key='jc_back_catalog', on_click=back_to_catalog)
             from modules.calculators.catalog_browser import new_tab_link

@@ -19,21 +19,23 @@ def run():
         with st.container(key='pension_plan'):
             for key,label,default,maximum in [('age','현재 나이',45,120),('retire','은퇴 나이',60,120),('end','자금 사용 종료 나이',90,120),('expense','목표 월 생활비 (원)',3000000,10**12),('assets','현재 연금자산 (원)',80000000,10**12),('saving','월 저축액 (오늘 가치·원)',500000,10**12),('saving_years','저축 기간 (년)',15,120),('pension','예상 월 국민연금 (오늘 가치·원)',1100000,10**12),('normal_age','국민연금 정상 개시 나이',65,65),('pension_start','실제 수령 개시 나이',65,120)]:
                 labels[key]=label;args[key]=number_input(label,min_value=0,max_value=maximum,value=default,key='pp_'+key)
-            args['expense_future']=st.checkbox('목표 생활비를 은퇴시점의 명목금액으로 입력')
-            args['adjust']=st.checkbox('국민연금 조기·연기 수령률 적용',value=True)
-            direct=st.checkbox('예상 적립액 직접 사용 (오늘 가치)')
-            direct_value=number_input('은퇴시점 예상자산 직접 입력 (오늘 가치·원)',min_value=0,value=200000000,key='pp_direct')
-            args['direct']=direct_value if direct else None
-            for key,label,value in [('before_rate','은퇴 전 연 수익률 (%)',5.0),('after_rate','은퇴 후 연 수익률 (%)',3.5),('inflation','연 물가상승률 (%)',2.5),('pension_growth','국민연금 수령 후 연 증가율 (%)',2.5)]:
-                labels[key]=label;args[key]=number_input(label,min_value=-99.0,max_value=100.0,value=value,key='pp_'+key)
-            args['extra']=number_input('추가 월 저축액 (오늘 가치·원)',min_value=0,value=300000,key='pp_extra')
-            args['extra_years']=number_input('추가 저축 기간 (년)',min_value=0,max_value=120,value=15,key='pp_extra_years')
-            args['delay']=number_input('시작을 미룰 기간 (년)',min_value=0,max_value=120,value=5,key='pp_delay')
+            with st.expander('수익률 · 물가 · 추가 저축 조건', expanded=False):
+                args['expense_future']=st.checkbox('목표 생활비를 은퇴시점의 명목금액으로 입력')
+                args['adjust']=st.checkbox('국민연금 조기·연기 수령률 적용',value=True)
+                direct=st.checkbox('예상 적립액 직접 사용 (오늘 가치)')
+                direct_value=number_input('은퇴시점 예상자산 직접 입력 (오늘 가치·원)',min_value=0,value=200000000,key='pp_direct',disabled=not direct)
+                args['direct']=direct_value if direct else None
+                for key,label,value in [('before_rate','은퇴 전 연 수익률 (%)',5.0),('after_rate','은퇴 후 연 수익률 (%)',3.5),('inflation','연 물가상승률 (%)',2.5),('pension_growth','국민연금 수령 후 연 증가율 (%)',2.5)]:
+                    labels[key]=label;args[key]=number_input(label,min_value=-99.0,max_value=100.0,value=value,key='pp_'+key)
+                args['extra']=number_input('추가 월 저축액 (오늘 가치·원)',min_value=0,value=300000,key='pp_extra')
+                args['extra_years']=number_input('추가 저축 기간 (년)',min_value=0,max_value=120,value=15,key='pp_extra_years')
+                args['delay']=number_input('시작을 미룰 기간 (년)',min_value=0,max_value=120,value=5,key='pp_delay')
             include_credit=st.checkbox('추가 납입액의 연금저축·IRP 세액공제도 계산')
-            tax_inputs={}
-            for key,label,default in [('income','연간 총급여 (근로소득만 있는 경우)',60000000),('existing_pension','기존 연금저축 연 납입액',0),('existing_irp','기존 IRP 연 납입액',0),('extra_pension_annual','추가 납입액 중 연금저축 연 배분액',3600000)]:
-                labels[key]=label;tax_inputs[key]=number_input(label,min_value=0,value=default,key='pp_tax_'+key)
-            submitted=st.button('계산하기')
+            with st.expander('연금저축·IRP 세액공제 입력', expanded=include_credit):
+                tax_inputs={}
+                for key,label,default in [('income','연간 총급여 (근로소득만 있는 경우)',60000000),('existing_pension','기존 연금저축 연 납입액',0),('existing_irp','기존 IRP 연 납입액',0),('extra_pension_annual','추가 납입액 중 연금저축 연 배분액',3600000)]:
+                    labels[key]=label+' (원)';tax_inputs[key]=number_input(label+' (원)',min_value=0,value=default,key='pp_tax_'+key,disabled=not include_credit)
+            submitted=st.button('계산하기',type='primary',width='stretch')
         if submitted:
             try:
                 result=calculate(PensionPlan(**args));saved_inputs=dict(args)
@@ -64,15 +66,16 @@ def run():
         st.caption('계산 시각: '+stamp+' · 입력 변경 후 계산하기를 눌러 결과를 갱신하세요.')
         customer,advisor=(st.container(), st.expander('산출 내역 자세히 보기'))
         with customer:
-            for k,v in r.display().items():st.metric(k,v)
-            st.line_chart([{'나이':float(x['나이']),'현재 계획 잔액':float(x['현재 계획 잔액']),'추가 납입 후 잔액':float(x['추가 납입 후 잔액'])} for x in r.rows],x='나이',y=['현재 계획 잔액','추가 납입 후 잔액'])
-            for note in r.assumptions:st.caption(note)
+            from modules.calculators.input_design import render_metrics
+            render_metrics(r.display(), 'pp')
             from modules.calculators.result_pdf import build_result_pdf, pdf_section_options
             pdf_options = pdf_section_options('pp_pdf_scope')
             if any(pdf_options.values()):
                 pdf = build_result_pdf('연금계산기', [(labels.get(k,k), v) for k,v in saved.items()], r, stamp, **pdf_options)
                 st.download_button('결과 PDF 저장',pdf,file_name='연금계산_결과보고서.pdf',mime='application/pdf', type='primary', icon=':material/download:', width='stretch')
+            st.line_chart([{'나이':float(x['나이']),'현재 계획 잔액':float(x['현재 계획 잔액']),'추가 납입 후 잔액':float(x['추가 납입 후 잔액'])} for x in r.rows],x='나이',y=['현재 계획 잔액','추가 납입 후 잔액'])
         with advisor:
+            for note in r.assumptions: st.caption(note)
             st.write(r.formula)
             st.caption('국민연금 개시연령·조기/연기 비율: 국민연금공단 안내 대조 2026-09-26.')
             st.markdown('[국민연금공단 제도 안내](https://www.nps.or.kr/pnsinfo/ntpsklg/getOHAF0100M0.do)')
@@ -81,3 +84,6 @@ def run():
             st.dataframe(rows,hide_index=True)
             st.dataframe([{k:float(v) for k,v in row.items()} for row in r.rows],hide_index=True)
             st.download_button('상세 계산 CSV 저장',csv_data,file_name='연금계산_상세.csv',mime='text/csv')
+
+    from modules.calculators.input_design import jump_to_result
+    jump_to_result(submitted, 'pension_calculator_ui')

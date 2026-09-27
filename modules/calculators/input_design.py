@@ -28,6 +28,14 @@ def amount_words(won):
 def number_input(label, **kwargs):
     if not re.search(r'(?<!만)원\)', label):
         return st.number_input(label, **kwargs)
+    # Per-share prices must retain won precision; only totals use integer manwon.
+    if any(word in label for word in ('주당', '액면가', '행사가액')):
+        kwargs['step'] = 1
+        kwargs['format'] = '%d'
+        for option in ('value', 'min_value', 'max_value'):
+            if option in kwargs and kwargs[option] is not None:
+                kwargs[option] = int(kwargs[option])
+        return st.number_input(label, **kwargs)
     old_key = kwargs.pop('key', None)
     base = old_key or 'jc_money_' + hashlib.sha256(label.encode()).hexdigest()[:12]
     key = base + '_manwon_int'
@@ -82,8 +90,8 @@ def input_panels(key):
     from contextlib import contextmanager
     with st.container(key='hw_calc_'+key):
         left,right=st.columns([1.25,1],gap='large')
-        inputs=left.container(border=True)
-        results=right.container(border=True)
+        inputs=left.container(border=True, key='hw_calc_input_'+key)
+        results=right.container(border=True, key='hw_calc_result_'+key)
         with results:
             hint=st.empty()
             hint.info('입력 조건을 확인한 뒤 계산하기를 눌러주세요.')
@@ -92,3 +100,24 @@ def input_panels(key):
         hint.empty()
         with results: yield
     return inputs,result_context()
+
+
+def render_metrics(display, prefix):
+    """One primary result, then compact supporting numbers; preserve metric semantics."""
+    for index, (label, value) in enumerate(display.items()):
+        with st.container(key=prefix+('_hero_result' if index == 0 else '_support_result_'+str(index))):
+            st.metric(label, value)
+
+
+def jump_to_result(submitted, panel):
+    # Only a successful explicit calculation may scroll. Editing/exporting does not.
+    if not submitted:
+        return
+    import json
+    selector = '.st-key-hw_calc_result_' + panel
+    st.iframe("""<script>(()=>{const w=window.parent,d=w.document;
+    const node=d.querySelector(SELECTOR);if(!node)return;
+    const r=node.getBoundingClientRect();
+    if(r.top<0||r.top>w.innerHeight*.65)node.scrollIntoView({block:'start',
+    behavior:w.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+    })();</script>""".replace('SELECTOR',json.dumps(selector)),height=1)

@@ -75,7 +75,7 @@ body:has(.hw-task-marker):not(:has(.hw-calculator-only)) [data-testid="stMainBlo
 .st-key-hw_task_page [data-testid="stTextInputRootElement"],
 .st-key-hw_task_page [data-testid="stTextArea"] textarea,
 .st-key-hw_task_page [data-baseweb="select"]>div,
-.st-key-hw_task_page [data-testid="stSelectbox"] [role="combobox"]{
+.st-key-hw_task_page [data-testid="stSelectbox"] [role="group"]:has(>[role="combobox"]){
 border:1.5px solid #8ea3ba!important;background:#fff!important;border-radius:9px!important;color:#18334f!important;box-shadow:none!important}
 .st-key-hw_task_page [data-testid="stNumberInputContainer"]:focus-within,
 .st-key-hw_task_page [data-testid="stTextInputRootElement"]:focus-within,
@@ -105,6 +105,24 @@ border:1.5px solid #8ea3ba!important;background:#fff!important;border-radius:9px
 [class*="st-key-hw_dash_tool_analyzer"]{background:linear-gradient(145deg,#eaf2ff,#f8fbff)!important;border:1.5px solid #91b2e4!important}
 [class*="st-key-hw_dash_tool_analyzer"] button{background:#2d6ad5!important;color:#fff!important;border-color:#2d6ad5!important}
 @media(max-width:768px){body:has(.hw-task-marker):not(:has(.hw-calculator-only)) [data-testid="stMainBlockContainer"]{padding-top:3rem!important}.st-key-hw_task_page [class*="st-key-hw_surface_"]{padding:16px!important}.st-key-hw_task_page [class*="_hero_result"] [data-testid="stMetricValue"]{font-size:26px!important}}
+
+/* September UI review: stable outer controls and result hierarchy. */
+.st-key-hw_task_page [data-testid="stSelectbox"] input[role="combobox"]{border:0!important;border-radius:0!important;box-shadow:none!important;outline:none!important;min-width:0!important;background:transparent!important}
+.st-key-hw_task_page [data-testid="stSelectbox"] [role="group"]:has(>[role="combobox"]):focus-within{border-color:#2867c5!important;box-shadow:0 0 0 3px #2867c51c!important}
+.st-key-hw_task_page [data-testid="stSelectbox"] [role="group"]>button{border:0!important;background:transparent!important;min-width:40px!important;border-radius:0!important}
+.st-key-hw_task_page [class*="st-key-hw_calc_input_"],.st-key-hw_task_page [class*="st-key-hw_calc_result_"]{background:#fff!important;border-radius:14px!important;padding:20px!important;min-width:0;scroll-margin-top:24px}
+.st-key-hw_task_page [class*="_hero_result"] [data-testid="stMetricValue"],
+.st-key-hw_task_page [class*="_hero_result"] [data-testid="stMetricValue"] *{font-size:clamp(26px,2.7vw,36px)!important;line-height:1.3!important;font-weight:750!important;color:#163e71!important;white-space:normal!important;overflow-wrap:anywhere}
+.st-key-hw_task_page [class*="_support_result"] [data-testid="stMetricValue"],
+.st-key-hw_task_page [class*="_support_result"] [data-testid="stMetricValue"] *{font-size:22px!important;line-height:1.4!important;font-weight:650!important;white-space:normal!important;overflow-wrap:anywhere}
+.st-key-hw_task_page [class*="st-key-hw_confirm_"]{background:#f0f6ff!important;border:1px solid #bed0eb!important;border-radius:12px!important;padding:14px!important}
+.st-key-hw_task_page [data-testid="stWidgetLabel"] p{overflow-wrap:anywhere;white-space:normal!important}
+@media(max-width:768px){
+.st-key-hw_task_page [class*="st-key-hw_calc_input_"],.st-key-hw_task_page [class*="st-key-hw_calc_result_"]{padding:14px!important}
+.st-key-hw_task_page [data-testid="stMetricValue"] *{white-space:normal!important;overflow-wrap:anywhere}
+.st-key-hw_task_page [class*="st-key-jc_actions_"] button{white-space:normal!important;min-height:44px!important}
+.st-key-hw_task_page [data-testid="stNumberInput"] input{min-width:0!important}
+}
 
 '''
 

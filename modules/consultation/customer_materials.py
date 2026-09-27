@@ -103,9 +103,9 @@ def run():
         if placeholders:st.info('대괄호 예시 항목을 실제 문구로 바꾸세요: '+', '.join(placeholders[:10]))
         valid=bool(title.strip() and final.strip()) and not placeholders and not stale and len(final)<=22000
         if len(final)>22000:st.warning('전체 문서는 22,000자 이내로 작성해 주세요.')
-        if st.button('전달자료 미리보기',key='d_preview',disabled=not final.strip()):preview(title,final)
+        if final.strip() and st.button('전달자료 미리보기',key='d_preview'):preview(title,final)
         token=fingerprint([title,final,stale,date.today().isoformat()])
-        if st.button('내용·가정 확인 완료',key='d_approve',disabled=not valid):st.session_state['d_review']=token
+        if valid and st.button('내용·가정 확인 완료',key='d_approve',type='primary'):st.session_state['d_review']=token
         if valid and st.session_state.get('d_review')==token:
             prepared=date.today().isoformat()
             content=title+'\n작성일 '+prepared+'\n\n'+final+'\n\n'+NOTE

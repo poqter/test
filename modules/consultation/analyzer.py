@@ -970,7 +970,7 @@ def _render_personal_selector(
     if col_all.button("전체 선택", use_container_width=True, key=f"{prefix}all"):
         for label in available_labels:
             st.session_state[f"{prefix}{label}"] = True
-    if col_default.button("간편모드 기본값", use_container_width=True, key=f"{prefix}default"):
+    if col_default.button("기본 보장 선택", use_container_width=True, key=f"{prefix}default"):
         for label in available_labels:
             st.session_state[f"{prefix}{label}"] = label in default_set
     if col_clear.button("전체 해제", use_container_width=True, key=f"{prefix}clear"):
@@ -1077,9 +1077,10 @@ def run() -> None:
                 ["간편모드", "개인모드"],
                 horizontal=True,
                 key="analyzer_v2_mode",
+                format_func=lambda value: {"간편모드":"자동 정리", "개인모드":"항목 직접 선택"}[value],
             )
 
-            st.caption("간편모드는 업로드 후 자동 생성합니다. 개인모드는 출력 항목을 선택한 뒤 실행합니다.")
+            st.caption("자동 정리는 파일을 올리면 결과를 만듭니다. 항목 직접 선택은 출력할 보장을 고른 뒤 실행합니다.")
 
         selected_labels: list[str] = []
         if parsed:
@@ -1094,7 +1095,7 @@ def run() -> None:
             if mode == "간편모드":
                 selected_labels = default_labels
                 st.info(f"기본 보장 {len(selected_labels)}개가 자동으로 적용됩니다.")
-                with st.expander("간편모드 적용 항목 보기"):
+                with st.expander("자동 정리에 포함되는 보장 보기"):
                     st.write([DISPLAY_NAMES.get(label, label) for label in selected_labels])
             else:
                 st.markdown("#### 출력할 보장항목")

@@ -204,6 +204,10 @@ def render_plan_inputs(person_no: int) -> list[NewPlan]:
                 custom = st.checkbox("개월 수 직접 입력", key=f"rm_plan_custom_on_{person_no}_{i}")
             if custom:
                 months = int(st.number_input("직접 입력할 납입 개월 수", min_value=1, max_value=1200, value=240, step=1, key=f"rm_plan_months_{person_no}_{i}"))
+            if clean(premium) and not clean(name):
+                c1.caption('보험 또는 보장 구성명을 입력해 주세요.')
+            if clean(name) and not clean(premium):
+                c2.caption('월 보험료를 입력해 주세요. 엑셀 합계에 반영됩니다.')
             plan = NewPlan(clean(name), money(premium), int(years), int(months))
             plans.append(plan)
             if plan.name and plan.monthly:
