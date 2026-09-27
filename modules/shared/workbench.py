@@ -12,15 +12,19 @@ from modules.shared.session_store import get_result, input_revision, reset_all_w
 
 
 def restore_page_draft(page: str) -> None:
+    if st.session_state.get("_wb_reset_pending_page") == page:
+        # Clear at the start of the full rerun, before this page registers widgets.
+        st.session_state.pop("_wb_reset_pending_page", None)
+        reset_page(page)
     restore_legacy_draft(page)
 
 
 @st.dialog("이 도구만 초기화")
 def reset_page_dialog(page: str) -> None:
-    st.write("현재 도구에서 연결된 입력·계산 결과·업로드 참조를 비우고 홈으로 이동합니다. 다른 도구와 로그인 상태는 유지됩니다.")
-    st.caption("다시 열면 새 작업으로 시작합니다. 필요한 결과는 먼저 내려받으세요.")
+    st.write("현재 도구에서 연결된 입력·계산 결과·업로드 참조를 비우고 현재 화면에서 새 작업을 시작합니다. 다른 도구와 로그인 상태는 유지됩니다.")
+    st.caption("입력값은 처음 실행했을 때의 기본값으로 돌아갑니다. 필요한 결과는 먼저 내려받으세요.")
     if st.button("이 도구만 초기화", type="primary", key="wb_reset_confirm"):
-        _reset_page_and_home(page)
+        _reset_page_in_place(page)
         # Dialog interactions rerun only the fragment; redraw the entire app.
         st.rerun(scope="app")
 
@@ -33,9 +37,9 @@ def reset_all_dialog() -> None:
         st.rerun(scope="app")
 
 
-def _reset_page_and_home(page: str) -> None:
-    reset_page(page)
-    st.session_state["active_app"] = "home"
+def _reset_page_in_place(page: str) -> None:
+    st.session_state["_wb_reset_pending_page"] = page
+    st.session_state["active_app"] = page
 
 
 def _reset_all_and_home() -> None:
