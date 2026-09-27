@@ -208,6 +208,26 @@ body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"]{max-width:15
 [class*="st-key-hw_mobile_quick"]{display:none}
 @media(max-width:768px){[class*="st-key-hw_mobile_quick"]{display:block}body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"]{padding:4rem 1rem 2rem!important}[class*="st-key-hw_portal_row"]{padding:12px 0 22px!important}}
 
+/* Readability: explicit keyed controls, left aligned workspace. */
+body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"]{max-width:1400px!important;width:100%!important;margin-left:0!important;margin-right:auto!important;padding:3rem 2.5rem 2rem!important}
+[class*="st-key-hw_dashboard"] h1{font-size:32px!important;line-height:1.35!important}
+[class*="st-key-hw_dashboard"] h2{font-size:23px!important}
+[class*="st-key-hw_portal_row"]{padding:8px 0 16px!important;margin-bottom:10px!important}
+[class*="st-key-hw_portal_row"] .hw-dash-subtitle{margin-bottom:0!important}
+[class*="st-key-hw_category_navigation"]{margin:12px 0 14px!important}
+[class*="st-key-hw_category_navigation"] button{min-height:52px!important;border-radius:10px!important;font-size:17px!important;transition:background .16s ease,box-shadow .16s ease}
+[class*="st-key-hw_category_navigation"] button p{font-size:17px!important;font-weight:650!important;color:inherit!important}
+[class*="st-key-hw_category_navigation"] button[kind="primary"]{background:#264c69!important;border:1px solid #264c69!important;color:#fff!important}
+[class*="st-key-hw_category_navigation"] button[kind="secondary"]{background:#dce6ee!important;border:1px solid #b6c9d8!important;color:#304e66!important}
+[class*="st-key-hw_dash_tool_"] button{width:100%!important;display:flex!important;justify-content:flex-start!important;text-align:left!important;min-height:44px!important}
+[class*="st-key-hw_dash_tool_"] button [data-testid="stMarkdownContainer"]{width:100%!important;text-align:left!important}
+[class*="st-key-hw_dash_tool_"] button [data-testid="stMarkdownContainer"] p{font-size:20px!important;font-weight:700!important;text-align:left!important;line-height:1.4!important;color:#203f57!important}
+[class*="st-key-hw_dash_tool_"] .hw-dash-tool-desc{font-size:16px!important;line-height:1.65!important;color:#425e74!important;margin-top:7px!important}
+[class*="st-key-hw_dash_tool_"]{min-height:145px!important;padding:22px 24px!important}
+[class*="st-key-hw_dashboard"] [data-testid="stCaptionContainer"] p{color:#4d677e!important;font-size:15px!important}
+@media(max-width:768px){body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"]{padding:4rem 1rem 2rem!important}[class*="st-key-hw_category_navigation"] [data-testid="stColumn"]{min-width:calc(50% - 8px)!important;width:calc(50% - 8px)!important;flex:1 1 calc(50% - 8px)!important}[class*="st-key-hw_category_navigation"] button p{font-size:15px!important}[class*="st-key-hw_dash_tool_"] button [data-testid="stMarkdownContainer"] p{font-size:18px!important}}
+@media(prefers-reduced-motion:reduce){[class*="st-key-hw_category_navigation"] button{transition:none!important}}
+
 '''
 
 def inject_signature_styles():

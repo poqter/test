@@ -70,7 +70,7 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
             with st.container(key="hw_sidebar_quick"):
                 if st.button("🛡️ 보장 분석 시작 ↗", key="hw_sidebar_analyzer", use_container_width=True):
                     navigate("analyzer")
-        query = st.text_input("기능 빠른 검색", placeholder="상령일, 문자, 실손…", key="sig_nav_search").strip().lower()
+        query = "" if st.session_state.get("active_app") == "home" else st.text_input("기능 빠른 검색", placeholder="상령일, 문자, 실손…", key="sig_nav_search").strip().lower()
         matched_ids = {app.id for app, _mode in _matches(query, allowed)} if query else allowed
         any_match = False
         for topic in _HOME_TOPICS:
@@ -142,7 +142,7 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
             with st.container(key="hw_portal_row"):
                 portal_intro, portal_search = st.columns([1, 1.3], gap="large", vertical_alignment="center")
                 with portal_intro:
-                    st.markdown('<div class="hw-dash-kicker">보험사 업무 연결</div><h2>원수사 포털</h2><p class="hw-dash-subtitle">필요한 보험사 전산을 바로 찾으세요.</p>', unsafe_allow_html=True)
+                    st.markdown('<h2>원수사 포털</h2><p class="hw-dash-subtitle">보험사 전산 바로 찾기</p>', unsafe_allow_html=True)
                 with portal_search:
                     st.markdown('<div class="hw-dash-search-label">보험사 검색</div>', unsafe_allow_html=True)
                     render_home_quick_search()
@@ -157,8 +157,15 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
             return
         if st.session_state.get("hw_home_topic") not in labels:
             st.session_state["hw_home_topic"] = labels[0]
-        choice = st.segmented_control("업무 선택", labels, key="hw_home_topic", label_visibility="collapsed")
-        choice = choice or labels[0]
+        with st.container(key="hw_category_navigation"):
+            for column, label in zip(st.columns(len(labels), gap="small"), labels):
+                with column:
+                    if st.button(label, key="hw_category_" + label,
+                                 type="primary" if st.session_state["hw_home_topic"] == label else "secondary",
+                                 use_container_width=True):
+                        st.session_state["hw_home_topic"] = label
+                        st.rerun()
+        choice = st.session_state["hw_home_topic"]
         selected = next(topic for topic in _HOME_TOPICS if topic[0] == choice)
         if query:
             items = _matches(query, allowed)
