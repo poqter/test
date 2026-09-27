@@ -16,7 +16,7 @@ LEGACY_PREFIXES: dict[str, tuple[str, ...]] = {
     "inheritance_tax": ("it_",),
     "insurance_claim_guide": ("cg_",),
     "silson_generation_comparison": ("sc_",),
-    "quick_calculators": ("a_",),
+    "quick_calculators": ("a_", "jc_", "finance_", "cov_", "coverage_", "pp_", "gift_", "wo_", "retirement_"),
     "consultation_helper": ("b_",),
     "comparison_builder": ("c_",),
     "customer_materials": ("d_",),

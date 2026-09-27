@@ -110,18 +110,13 @@ def amount_input(
 
 
 # -----------------------------------------------------------------------------
-# 기존 상속세 계산 로직 — 변경하지 않음
+# 공유 상속세 계산 로직 — 법령 대조 수정 반영
 # -----------------------------------------------------------------------------
 def tax_rate_and_deduction(tax_base: float) -> Tuple[float, float]:
-    if tax_base <= 1 * EOK:
-        return 0.10, 0
-    if tax_base <= 5 * EOK:
-        return 0.20, 1_000
-    if tax_base <= 10 * EOK:
-        return 0.30, 6_000
-    if tax_base <= 30 * EOK:
-        return 0.40, 16_000
-    return 0.50, 46_000
+    from .transfer_tax_rules import rate_and_deduction
+    from .finance_models import D
+    rate, deduction = rate_and_deduction(D(str(tax_base))*10000)
+    return float(rate), float(deduction/10000)
 
 
 def financial_asset_deduction(net_financial_assets: float) -> float:
@@ -212,17 +207,26 @@ def calculate(**v) -> Result:
         taxable_estate
         - max(0, v["non_heir_bequest"])
         - max(0, v["inheritance_waiver_next_rank"])
-        - max(0, v["prior_gift_tax_base_for_limit"]),
+        - (max(0, v["prior_gift_tax_base_for_limit"]) if taxable_estate > 50_000 else 0),
     )
     allowed = min(deduction_before_limit, deduction_limit)
     tax_base = max(0, taxable_estate - allowed - max(0, v["appraisal_fee"]))
     rate, progressive = tax_rate_and_deduction(tax_base)
-    calculated_tax = max(0, tax_base * rate - progressive)
+    calculated_tax = max(0, tax_base * rate - progressive) if tax_base >= 50 else 0  # 법25: 50만원 미만 불부과
 
-    gen_amount = min(max(0, v["generation_skip_amount"]), taxable_estate)
-    gen_ratio = gen_amount / taxable_estate if taxable_estate else 0
-    gen_rate = 0.40 if v["generation_skip_minor_over_2b"] else 0.30
-    gen_surcharge = calculated_tax * gen_ratio * gen_rate
+    # Law 27 denominator is inherited property including aggregated gifts,
+    # not the taxable estate after debt/funeral deductions.
+    gen_denominator = max(0, gross - max(0, v["non_taxable"]) + prior_gifts)
+    if "generation_skip_30_amount" in v or "generation_skip_40_amount" in v:
+        gen30 = max(0, v.get("generation_skip_30_amount", 0))
+        gen40 = max(0, v.get("generation_skip_40_amount", 0))
+    else:
+        gen_amount = max(0, v["generation_skip_amount"])
+        gen30 = 0 if v["generation_skip_minor_over_2b"] else gen_amount
+        gen40 = gen_amount if v["generation_skip_minor_over_2b"] else 0
+    if gen30 + gen40 > gen_denominator:
+        raise ValueError("세대생략 대상액은 합산 증여를 포함한 상속재산 이하여야 합니다.")
+    gen_surcharge = calculated_tax * (gen30 * .30 + gen40 * .40) / gen_denominator if gen_denominator else 0
 
     before_credit = calculated_tax + gen_surcharge
     tax_credits = min(before_credit, max(0, v["gift_tax_credit"]) + max(0, v["other_tax_credit"]))
@@ -1081,7 +1085,7 @@ def run():
             )
         f1, f2 = st.columns(2)
         with f1:
-            generation_skip_amount = amount_input("세대를 건너뛴 상속재산가액", value=0, key="it_gen")
+            generation_skip_amount = amount_input("세대를 건너뛴 상속재산가액 (대습상속 제외·합산 증여 포함)", value=0, key="it_gen")
             generation_skip_minor_over_2b = st.checkbox(
                 "미성년자가 세대생략으로 20억원 초과 상속",
                 key="it_gen_minor",

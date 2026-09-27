@@ -88,8 +88,8 @@ class ConsultationStudioTests(unittest.TestCase):
         at = self.summary()
         at.button(key='b_summary_approve').click().run()
         at.button(key='clear_b_').click().run()
-        self.assertFalse(at.session_state.filtered_state.get('b_summary_edit', ''))
-        self.assertNotIn('b_summary_review', at.session_state.filtered_state)
+        self.assertFalse(at.session_state.to_dict().get('b_summary_edit', ''))
+        self.assertNotIn('b_summary_review', at.session_state.to_dict())
 
     def test_content_and_long_pdf_preserve_text(self):
         for name in CONTENT_FILES:

@@ -4,7 +4,7 @@ from decimal import Decimal
 import streamlit as st
 from .calculator_catalog import MODES
 from .calculator_core import calculate
-from .calculator_exports import formatted_results, export_bytes
+from .legacy_calculator_exports import formatted_results, export_bytes
 from .consultation_documents import fingerprint
 from .session_store import save_result, input_revision
 from .ui_components import page_header
@@ -21,10 +21,16 @@ def assumptions_dialog(formula, assumptions):
 
 
 def run():
+    from .jarvia_calculator_center import run as run_new
+    run_new(run_legacy=lambda: run_legacy(integrated=True))
+
+
+def run_legacy(integrated=False):
     page_header('재무·보험 계산', '재무·보험 계산기 센터', '목적 선택 → 조건 입력 → 계산·검토 → 자료 내려받기', 'QC')
     session_notice('a_')
     group = st.selectbox('계산 목적', ['전체', '보험 기본', '생활과 보장', '미래 준비'], key='a_group')
-    choices = [name for name,spec in MODES.items() if group == '전체' or spec[1] == group]
+    merged = {'필요 보장액','소득 공백·비상자금','목표 달성 월 저축액','미래 목표자금','은퇴 생활자금'} if integrated else set()
+    choices = [name for name,spec in MODES.items() if name not in merged and (group == '전체' or spec[1] == group)]
     if st.session_state.get('a_mode') not in choices:
         st.session_state['a_mode'] = choices[0]
     mode = st.radio('계산 선택', choices, key='a_mode', horizontal=True)

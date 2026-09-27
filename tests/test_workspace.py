@@ -80,7 +80,8 @@ class WorkspaceTests(unittest.TestCase):
                 at = app_for(user)
                 self.assert_clean(at)
                 self.assertFalse(at.error, [e.value for e in at.error])
-                self.assertEqual(len([b for b in at.button if b.key.startswith("v2_launch_all_")]), len(at.session_state["ws_allowed_ids"]))
+                self.assertTrue(at.button(key="hw_feature_launch"))
+                self.assertTrue(any(b.key == "hw_home_topic" for b in at.get("button_group")))
 
     def test_search_and_empty_result(self):
         at = app_for()
@@ -102,12 +103,12 @@ class WorkspaceTests(unittest.TestCase):
             self.assertEqual(at.session_state["active_app"], "home")
             self.assertNotIn("v2_launch_all_commission_calculator", [b.key for b in at.button])
         at = app_for("Basic")
-        self.assertFalse(at.button(key="v2_launch_all_analyzer").disabled)
+        self.assertFalse(at.button(key="hw_feature_launch").disabled)
 
     def test_rapid_repeated_navigation(self):
         at = app_for()
         for _ in range(3):
-            at.button(key="v2_launch_quick_analyzer").click().run()
+            at.button(key="hw_feature_launch").click().run()
             self.assert_clean(at)
             at.button(key="v2_nav_home").click().run()
             self.assert_clean(at)

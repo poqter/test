@@ -42,13 +42,13 @@ class SignatureTests(unittest.TestCase):
         at.radio(key='b_mode').set_value('상담 요약').run()
         at.text_area(key='_ws_b_summary_topic').set_value('가상 상담 주제').run()
         at.button(key='v2_nav_home').click().run()
-        at.button(key='v2_launch_quick_consultation_helper').click().run()
+        at.button(key='hw_home_launch_consultation_helper').click().run()
         at.radio(key='b_mode').set_value('상담 요약').run();self.clean(at)
         self.assertEqual(at.text_area(key='_ws_b_summary_topic').value,'가상 상담 주제')
         other=opened('consultation_helper')
-        self.assertNotIn('b_summary_topic',other.session_state.filtered_state)
+        self.assertNotIn('b_summary_topic',other.session_state.to_dict())
         at.button(key='v2_logout').click().run();self.clean(at)
-        self.assertNotIn('b_summary_topic',at.session_state.filtered_state)
+        self.assertNotIn('b_summary_topic',at.session_state.to_dict())
 
     def test_old_keyed_draft(self):
         at=opened('remodeling')
@@ -80,7 +80,7 @@ class SignatureTests(unittest.TestCase):
         at.button(key='wb_reset_confirm').click().run();self.clean(at)
         self.assertEqual(at.session_state['login_user'],'Admin')
         self.assertEqual(at.session_state['active_app'],'home')
-        self.assertNotIn('a_synthetic_reset_value',at.session_state.filtered_state)
+        self.assertNotIn('a_synthetic_reset_value',at.session_state.to_dict())
 
     def test_education_dialog_and_navigation(self):
         at=opened('education_center')

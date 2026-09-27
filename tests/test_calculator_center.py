@@ -66,8 +66,9 @@ class CalculatorCenterTests(unittest.TestCase):
 
     def test_all_modes_calculate_and_review(self):
         at=opened('quick_calculators')
-        self.assertEqual(len(at.radio(key='a_mode').options),13)
-        for mode in MODES:
+        self.assertEqual(len(at.radio(key='a_mode').options),8)
+        self.assertNotIn('필요 보장액',at.radio(key='a_mode').options)
+        for mode in list(at.radio(key='a_mode').options):
             at.radio(key='a_mode').set_value(mode).run()
             at.button(key='a_calculate').click().run();self.clean(at)
             self.assertEqual(at.session_state['a_calculation']['title'],mode)
@@ -100,9 +101,9 @@ class CalculatorCenterTests(unittest.TestCase):
         at.number_input(key='_ws_a_total_paid').set_value(241).run()
         at.button(key='a_calculate').click().run();self.clean(at)
         self.assertTrue(at.warning)
-        self.assertNotIn('a_calculation',at.session_state.filtered_state)
+        self.assertNotIn('a_calculation',at.session_state.to_dict())
         at.button(key='clear_a_').click().run();self.clean(at)
-        self.assertNotIn('a_review_token',at.session_state.filtered_state)
+        self.assertNotIn('a_review_token',at.session_state.to_dict())
 
     def test_exports_exact_values_and_no_metadata_birth(self):
         r={'title':'가상 계산 검증','values':{'확인 금액':D('1234567.5')},'inputs':[('가상 조건','100만원')],'formula':'가상 산식','assumptions':'가상 조건 검토','prepared_on':'2026-09-22'}

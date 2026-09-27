@@ -99,23 +99,23 @@ class CustomerMaterialsTests(unittest.TestCase):
 
     def test_import_cancel_and_allowlist(self):
         at=self.calculator()
-        state=at.session_state.filtered_state
+        state=at.session_state.to_dict()
         with self.assertRaises(ValueError):selected_payload('quick_calculators',['주민등록번호'],state)
         at.multiselect(key='d_selection_quick_calculators').set_value(['총 납입 예정']).run()
         at.button(key='d_import_open').click().run()
         at.button(key='d_import_cancel').click().run();self.clean(at)
-        self.assertNotIn('d_transfers',at.session_state.filtered_state)
+        self.assertNotIn('d_transfers',at.session_state.to_dict())
         self.assertIsNone(candidate('quick_calculators',{}))
 
     def test_birth_excluded_and_session_isolation(self):
         at=opened('quick_calculators')
         at.button(key='a_calculate').click().run()
         at.button(key='a_approve').click().run()
-        payload=candidate('quick_calculators',at.session_state.filtered_state)
+        payload=candidate('quick_calculators',at.session_state.to_dict())
         self.assertIsNotNone(payload)
         self.assertNotIn('입력 · 생년월일',payload['fields'])
         other=opened('customer_materials')
-        self.assertNotIn('a_calculation',other.session_state.filtered_state)
+        self.assertNotIn('a_calculation',other.session_state.to_dict())
 
     def test_consultation_selection_and_source_reset(self):
         at=opened('consultation_helper')

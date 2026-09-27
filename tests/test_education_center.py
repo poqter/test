@@ -104,9 +104,9 @@ class EducationCenterTests(unittest.TestCase):
         at.text_area(key='_ws_e_note_pending').set_value('추가로 확인할 가상 질문').run()
         self.assertEqual(len(at.get('download_button')),0)
         other=opened('education_center')
-        self.assertNotIn('e_note_topic',other.session_state.filtered_state)
+        self.assertNotIn('e_note_topic',other.session_state.to_dict())
         at.button(key='clear_e_').click().run();self.clean(at)
-        self.assertNotIn('e_note_topic',at.session_state.filtered_state)
+        self.assertNotIn('e_note_topic',at.session_state.to_dict())
 
     def test_guide_respects_role(self):
         at=opened('education_center',role='Basic')

@@ -17,7 +17,9 @@ EXPECTED_IDS = {
 ROOT = Path(__file__).resolve().parents[1]
 BUSINESS_MODULES = (
     "modules/analyzer.py", "modules/remodeling.py", "modules/deposit_vs_shortpay.py",
-    "modules/renewal_vs_nonrenewal.py", "modules/inheritance_tax.py",
+    "modules/renewal_vs_nonrenewal.py",
+    # Inheritance is intentionally migrated to shared 2026 transfer-tax rules;
+    # its calculation regressions are covered by test_inheritance_tax_new.py.
     # Stage 7 intentionally rebuilds the portal; its original URLs are tested separately.
     "modules/insurance_claim_guide.py",
     "modules/silson_generation_comparison.py", "modules/convention.py",

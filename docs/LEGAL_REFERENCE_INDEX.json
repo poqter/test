@@ -1,0 +1,514 @@
+{
+  "review_period": "2026-09-26 ~ 2026-09-27",
+  "notes": "작업 중 대조한 주요 공식 자료. 화면에는 계산별 법령·요율 기준일과 적용 범위를 표시합니다. 구 연혁·서식은 해당 검토 맥락에서 사용했으며 모든 URL이 동일 시행일인 것은 아닙니다.",
+  "references": [
+    {
+      "review_topic": "연금계산기 핵심 구현 (추가 진행)",
+      "url": "https://in.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7875&mi=6439"
+    },
+    {
+      "review_topic": "1단계 연금·은퇴 묶음 추가 구현",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032880515"
+    },
+    {
+      "review_topic": "1단계 연금·은퇴 묶음 추가 구현",
+      "url": "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7888&mi=2312"
+    },
+    {
+      "review_topic": "1단계 연금·은퇴 묶음 추가 구현",
+      "url": "https://www.hf.go.kr/ko/sub03/sub03_01_01_02.do"
+    },
+    {
+      "review_topic": "개인 세금 2개 구현 및 공통 내보내기 보완 (2026-09-26 23:15 UTC)",
+      "url": "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7873"
+    },
+    {
+      "review_topic": "개인 세금 2개 구현 및 공통 내보내기 보완 (2026-09-26 23:15 UTC)",
+      "url": "https://law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1026638031"
+    },
+    {
+      "review_topic": "개인 세금 2개 구현 및 공통 내보내기 보완 (2026-09-26 23:15 UTC)",
+      "url": "https://law.go.kr/lsLawLinkInfo.do?chrClsCd=010202&lsJoLnkSeq=1000928713"
+    },
+    {
+      "review_topic": "개인 세금 2개 구현 및 공통 내보내기 보완 (2026-09-26 23:15 UTC)",
+      "url": "https://www.law.go.kr/LSW/lsLawLinkInfo.do?chrClsCd=010202&lsJoLnkSeq=1000667082"
+    },
+    {
+      "review_topic": "개인 세금 2개 구현 및 공통 내보내기 보완 (2026-09-26 23:15 UTC)",
+      "url": "https://www.easylaw.go.kr/CSP/CnpClsMain.laf?ccfNo=6&cciNo=2&cnpClsNo=1&csmSeq=1126&popMenu=ov"
+    },
+    {
+      "review_topic": "근로·종합·임대소득세 3개 추가 구현 (2026-09-26)",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0053&lsiSeq=286211&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "근로·종합·임대소득세 3개 추가 구현 (2026-09-26)",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0023&lsiSeq=286379&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "근로·종합·임대소득세 3개 추가 구현 (2026-09-26)",
+      "url": "https://law.go.kr/LSW/lsLawLinkInfo.do?chrClsCd=010202&lsJoLnkSeq=1000819707"
+    },
+    {
+      "review_topic": "기장세액공제 자동 계산 보완 및 원본 주소 필요 (2026-09-26)",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=02&joNo=0056&lsiSeq=280405&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "상세 주소 확보 및 주택대출·보험·창업 3개 구현 (2026-09-26)",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0052&lsiSeq=280405&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "상세 주소 확보 및 주택대출·보험·창업 3개 구현 (2026-09-26)",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0112&lsiSeq=286211&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "상세 주소 확보 및 주택대출·보험·창업 3개 구현 (2026-09-26)",
+      "url": "https://www.nps.or.kr/pnsinfo/ntpsklg/getOHAF0038M0.do"
+    },
+    {
+      "review_topic": "상세 주소 확보 및 주택대출·보험·창업 3개 구현 (2026-09-26)",
+      "url": "https://edi.nhis.or.kr/portal/images/popup/20251204_pop01longdesc.html"
+    },
+    {
+      "review_topic": "상세 주소 확보 및 주택대출·보험·창업 3개 구현 (2026-09-26)",
+      "url": "https://www.nhis.or.kr/lm/lmxsrv/law/lawFullContent.do?SEQ=39"
+    },
+    {
+      "review_topic": "상세 주소 확보 및 주택대출·보험·창업 3개 구현 (2026-09-26)",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0006&lsiSeq=284389&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "상세 주소 확보 및 주택대출·보험·창업 3개 구현 (2026-09-26)",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0005&lsiSeq=288915&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "상세 주소 확보 및 주택대출·보험·창업 3개 구현 (2026-09-26)",
+      "url": "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7987&mi=6561"
+    },
+    {
+      "review_topic": "상속·증여·양도 핵심 계산 및 대조 (2026-09-26 기준, 구현 2026-09-27 UTC)",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0053&lsiSeq=276123&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "상속·증여·양도 핵심 계산 및 대조 (2026-09-26 기준, 구현 2026-09-27 UTC)",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=03&joNo=0046&lsiSeq=288887&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "상속·증여·양도 핵심 계산 및 대조 (2026-09-26 기준, 구현 2026-09-27 UTC)",
+      "url": "https://b.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7730&mi=2342"
+    },
+    {
+      "review_topic": "상속·증여·양도 핵심 계산 및 대조 (2026-09-26 기준, 구현 2026-09-27 UTC)",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0095&lsiSeq=280405&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "상속·증여·양도 핵심 계산 및 대조 (2026-09-26 기준, 구현 2026-09-27 UTC)",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0160&lsiSeq=286211&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "증여 비교2모드 구현 및 상속 과세최저한 수정 (2026-09-26 기준)",
+      "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0159&lsiSeq=286211&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "증여 비교2모드 구현 및 상속 과세최저한 수정 (2026-09-26 기준)",
+      "url": "https://taxlaw.nts.go.kr/qt/USEQTA002P.do?ntstDcmId=010000000000145482"
+    },
+    {
+      "review_topic": "증여 비교2모드 구현 및 상속 과세최저한 수정 (2026-09-26 기준)",
+      "url": "https://law.go.kr/LSW/lsLawLinkInfo.do?chrClsCd=010202&lsJoLnkSeq=1013668629"
+    },
+    {
+      "review_topic": "법인목록 차단 확인 및 상속세대생략 보완 (2026-09-26 기준)",
+      "url": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1025381233"
+    },
+    {
+      "review_topic": "법인목록 차단 확인 및 상속세대생략 보완 (2026-09-26 기준)",
+      "url": "https://law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1025380165"
+    },
+    {
+      "review_topic": "법인 첫3개 구현 (사용자 제공 URL, 기준일2026-09-26 유지)",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1029619579"
+    },
+    {
+      "review_topic": "법인 첫3개 구현 (사용자 제공 URL, 기준일2026-09-26 유지)",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1031131053"
+    },
+    {
+      "review_topic": "법인 첫3개 구현 (사용자 제공 URL, 기준일2026-09-26 유지)",
+      "url": "https://law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1021691229"
+    },
+    {
+      "review_topic": "법인 첫3개 구현 (사용자 제공 URL, 기준일2026-09-26 유지)",
+      "url": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1029490341"
+    },
+    {
+      "review_topic": "법인 첫3개 구현 (사용자 제공 URL, 기준일2026-09-26 유지)",
+      "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0022&lsiSeq=280405&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "법인 첫3개 구현 (사용자 제공 URL, 기준일2026-09-26 유지)",
+      "url": "https://law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0044&lsiSeq=283635&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "법인 첫3개 구현 (사용자 제공 URL, 기준일2026-09-26 유지)",
+      "url": "https://www.law.go.kr/lsLawLinkInfo.do?chrClsCd=010202&lsJoLnkSeq=1000086891"
+    },
+    {
+      "review_topic": "법인 첫3개 구현 (사용자 제공 URL, 기준일2026-09-26 유지)",
+      "url": "https://law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1022758423"
+    },
+    {
+      "review_topic": "법인 첫3개 구현 (사용자 제공 URL, 기준일2026-09-26 유지)",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1032172779"
+    },
+    {
+      "review_topic": "법인 첫3개 구현 (사용자 제공 URL, 기준일2026-09-26 유지)",
+      "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0053&lsiSeq=283635&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "법인 다음3개 구현 (2026-09-27 작업, 법령 기준일2026-09-26 유지)",
+      "url": "https://law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1016105255"
+    },
+    {
+      "review_topic": "법인 다음3개 구현 (2026-09-27 작업, 법령 기준일2026-09-26 유지)",
+      "url": "https://law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032460465"
+    },
+    {
+      "review_topic": "법인 다음3개 구현 (2026-09-27 작업, 법령 기준일2026-09-26 유지)",
+      "url": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1033247143"
+    },
+    {
+      "review_topic": "법인 다음3개 구현 (2026-09-27 작업, 법령 기준일2026-09-26 유지)",
+      "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0129&lsiSeq=285523&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "법인 세번째3개 구현 (2026-09-27 사용자 현지일, 법령대조일2026-09-26 유지)",
+      "url": "https://law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lspttninfSeq=126781"
+    },
+    {
+      "review_topic": "법인 세번째3개 구현 (2026-09-27 사용자 현지일, 법령대조일2026-09-26 유지)",
+      "url": "https://ems.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7672&mi=2234"
+    },
+    {
+      "review_topic": "법인 세번째3개 구현 (2026-09-27 사용자 현지일, 법령대조일2026-09-26 유지)",
+      "url": "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7748&mi=2319"
+    },
+    {
+      "review_topic": "법인 세번째3개 구현 (2026-09-27 사용자 현지일, 법령대조일2026-09-26 유지)",
+      "url": "https://www.nps.or.kr/pnsinfo/ntpsklg/getOHAF0097M0.do"
+    },
+    {
+      "review_topic": "법인 세번째3개 구현 (2026-09-27 사용자 현지일, 법령대조일2026-09-26 유지)",
+      "url": "https://www.law.go.kr/lsLawLinkInfo.do?chrClsCd=010202&lsJoLnkSeq=900180943"
+    },
+    {
+      "review_topic": "법인 세번째3개 구현 (2026-09-27 사용자 현지일, 법령대조일2026-09-26 유지)",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1017633131"
+    },
+    {
+      "review_topic": "법인 세번째3개 구현 (2026-09-27 사용자 현지일, 법령대조일2026-09-26 유지)",
+      "url": "https://webtv.nts.go.kr/nts/na/ntt/selectNttInfo.do?mi=2201&nttSn=1353844"
+    },
+    {
+      "review_topic": "법인 네번째2개 구현 (2026-09-27 기록일, 법령 대조일2026-09-26)",
+      "url": "https://law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1022607651"
+    },
+    {
+      "review_topic": "법인 네번째2개 구현 (2026-09-27 기록일, 법령 대조일2026-09-26)",
+      "url": "https://law.go.kr/LSW/lsRvsDocListP.do?chrClsCd=010202&lsId=001563&lsRvsGubun=all"
+    },
+    {
+      "review_topic": "법인 네번째2개 구현 (2026-09-27 기록일, 법령 대조일2026-09-26)",
+      "url": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1028446143"
+    },
+    {
+      "review_topic": "법인 네번째2개 구현 (2026-09-27 기록일, 법령 대조일2026-09-26)",
+      "url": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1028458117"
+    },
+    {
+      "review_topic": "법인 네번째2개 구현 (2026-09-27 기록일, 법령 대조일2026-09-26)",
+      "url": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1027279381"
+    },
+    {
+      "review_topic": "법인 다섯번째2개 구현 (2026-09-27, 법령대조일2026-09-26)",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=02&joNo=0050&lsiSeq=283635&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "법인 다섯번째2개 구현 (2026-09-27, 법령대조일2026-09-26)",
+      "url": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lspttninfSeq=58911"
+    },
+    {
+      "review_topic": "법인 다섯번째2개 구현 (2026-09-27, 법령대조일2026-09-26)",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1032167867"
+    },
+    {
+      "review_topic": "법인 다섯번째2개 구현 (2026-09-27, 법령대조일2026-09-26)",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0042&lsiSeq=283635&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "법인 다섯번째2개 구현 (2026-09-27, 법령대조일2026-09-26)",
+      "url": "https://law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1018146239"
+    },
+    {
+      "review_topic": "법인 다섯번째2개 구현 (2026-09-27, 법령대조일2026-09-26)",
+      "url": "https://law.go.kr/LSW/flDownload.do?bylClsCd=110202&flSeq=162687087&gubun="
+    },
+    {
+      "review_topic": "법인 여섯번째3개 구현 (2026-09-27, 법령대조일2026-09-26)",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1031668763"
+    },
+    {
+      "review_topic": "법인 여섯번째3개 구현 (2026-09-27, 법령대조일2026-09-26)",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032595443"
+    },
+    {
+      "review_topic": "법인 여섯번째3개 구현 (2026-09-27, 법령대조일2026-09-26)",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1024944785"
+    },
+    {
+      "review_topic": "법인 여섯번째3개 구현 (2026-09-27, 법령대조일2026-09-26)",
+      "url": "https://taxlaw.nts.go.kr/qt/USEQTA002P.do?ntstDcmId=010000000000364684"
+    },
+    {
+      "review_topic": "법인 여섯번째3개 구현 (2026-09-27, 법령대조일2026-09-26)",
+      "url": "https://taxlaw.nts.go.kr/qt/USEQTA002P.do?ntstDcmId=010000000000126808"
+    },
+    {
+      "review_topic": "법인 일곱번째2개 구현 (법령 대조일2026-09-26)",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0017&lsiSeq=280405&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "법인 일곱번째2개 구현 (법령 대조일2026-09-26)",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0079&lsiSeq=280349&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "법인 일곱번째2개 구현 (법령 대조일2026-09-26)",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0083&lsiSeq=280349&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "법인 일곱번째2개 구현 (법령 대조일2026-09-26)",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=42&joNo=0103&lsiSeq=282559&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "법인 여덟번째2개 구현 (2026-09-27, 법령대조일2026-09-26)",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1027435015"
+    },
+    {
+      "review_topic": "법인 여덟번째2개 구현 (2026-09-27, 법령대조일2026-09-26)",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=02&joNo=0031&lsiSeq=288887&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "법인 여덟번째2개 구현 (2026-09-27, 법령대조일2026-09-26)",
+      "url": "https://www.law.go.kr/flDownload.do?bylClsCd=110202&flSeq=160317749&gubun="
+    },
+    {
+      "review_topic": "법인 여덟번째2개 구현 (2026-09-27, 법령대조일2026-09-26)",
+      "url": "https://www.law.go.kr/LSW//lsInfoP.do?ancYnChk=0&chrClsCd=010202&efYd=20260320&lsiSeq=284609&urlMode=lsInfoP"
+    },
+    {
+      "review_topic": "법인 여덟번째2개 구현 (2026-09-27, 법령대조일2026-09-26)",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=03&joNo=0045&lsiSeq=276123&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "법인 여덟번째2개 구현 (2026-09-27, 법령대조일2026-09-26)",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=03&joNo=0034&lsiSeq=288887&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "법인 여덟번째2개 구현 (2026-09-27, 법령대조일2026-09-26)",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0047&lsiSeq=276123&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "법인 아홉번째2개 구현 (법령 대조일2026-09-26)",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=02&joNo=0045&lsiSeq=276123&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "법인 아홉번째2개 구현 (법령 대조일2026-09-26)",
+      "url": "https://j.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=8086&mi=2491"
+    },
+    {
+      "review_topic": "법인 아홉번째2개 구현 (법령 대조일2026-09-26)",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0088&lsiSeq=283635&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "법인 아홉번째2개 구현 (법령 대조일2026-09-26)",
+      "url": "https://law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lspttninfSeq=59365"
+    },
+    {
+      "review_topic": "법인 열번째2개 구현 (법령대조일2026-09-26)",
+      "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0044&lsiSeq=280349&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "법인 열번째2개 구현 (법령대조일2026-09-26)",
+      "url": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1033506925"
+    },
+    {
+      "review_topic": "법인 열번째2개 구현 (법령대조일2026-09-26)",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?lspttninfSeq=128470"
+    },
+    {
+      "review_topic": "법인 열번째2개 구현 (법령대조일2026-09-26)",
+      "url": "https://sc.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=238919&mi=40344"
+    },
+    {
+      "review_topic": "지주회사 수입배당금 구현 (2026-09-27)",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1032169961"
+    },
+    {
+      "review_topic": "지주회사 수입배당금 구현 (2026-09-27)",
+      "url": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1022761673"
+    },
+    {
+      "review_topic": "고용증대 세액공제 구현 (2026-09-27)",
+      "url": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1026394269"
+    },
+    {
+      "review_topic": "고용증대 세액공제 구현 (2026-09-27)",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1031206885"
+    },
+    {
+      "review_topic": "특허권 자본화 구현 (2026-09-27)",
+      "url": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1033245337"
+    },
+    {
+      "review_topic": "특허권 자본화 구현 (2026-09-27)",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1028589923"
+    },
+    {
+      "review_topic": "직무발명보상금 구현 (2026-09-27)",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032959669"
+    },
+    {
+      "review_topic": "직무발명보상금 구현 (2026-09-27)",
+      "url": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lspttninfSeq=138477"
+    },
+    {
+      "review_topic": "연구인력개발비 세액공제 구현 (2026-09-27)",
+      "url": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032473947"
+    },
+    {
+      "review_topic": "연구인력개발비 세액공제 구현 (2026-09-27)",
+      "url": "https://www.law.go.kr/lsLawLinkInfo.do?chrClsCd=010202&lsJoLnkSeq=1001022659"
+    },
+    {
+      "review_topic": "취득세 중과 구현 (2026-09-27)",
+      "url": "https://law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1021846727"
+    },
+    {
+      "review_topic": "취득세 중과 구현 (2026-09-27)",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1033362893"
+    },
+    {
+      "review_topic": "법인 부동산 보유·양도 비교 구현 (2026-09-27)",
+      "url": "https://law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032173305"
+    },
+    {
+      "review_topic": "법인 부동산 보유·양도 비교 구현 (2026-09-27)",
+      "url": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032177413"
+    },
+    {
+      "review_topic": "제공된 8개 주소 작업 및 전체 앱 복구 (2026-09-27)",
+      "url": "https://law.go.kr/LSW/lsLinkCommonInfo.do?lspttninfSeq=75659"
+    },
+    {
+      "review_topic": "제공된 8개 주소 작업 및 전체 앱 복구 (2026-09-27)",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1029819571"
+    },
+    {
+      "review_topic": "제공된 8개 주소 작업 및 전체 앱 복구 (2026-09-27)",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1031673931"
+    },
+    {
+      "review_topic": "제공된 8개 주소 작업 및 전체 앱 복구 (2026-09-27)",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032487231"
+    },
+    {
+      "review_topic": "全80 경로 감사 및 중복 통합",
+      "url": "https://www.law.go.kr/LSW/flDownload.do?bylClsCd=110201&flSeq=155769839"
+    },
+    {
+      "review_topic": "全80 경로 감사 및 중복 통합",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1032880527"
+    },
+    {
+      "review_topic": "全80 경로 감사 및 중복 통합",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1029623903"
+    },
+    {
+      "review_topic": "全80 경로 감사 및 중복 통합",
+      "url": "https://www.law.go.kr/LSW/flDownload.do?flSeq=136615927&gubun="
+    },
+    {
+      "review_topic": "실행감사 완료 및 보험계약 이전 구현",
+      "url": "https://taxlaw.nts.go.kr/qt/USEQTA002P.do?ntstDcmId=010000000000584720"
+    },
+    {
+      "review_topic": "실행감사 완료 및 보험계약 이전 구현",
+      "url": "https://taxlaw.nts.go.kr/qt/USEQTA002P.do?ntstDcmId=010000000000077669"
+    },
+    {
+      "review_topic": "실행감사 완료 및 보험계약 이전 구현",
+      "url": "https://law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1032460419"
+    },
+    {
+      "review_topic": "최종 감사 추가 보완 (2026-09-27, checkpoint36 이후)",
+      "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0087&lsiSeq=286211&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "최종 감사 추가 보완 (2026-09-27, checkpoint36 이후)",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1016426653"
+    },
+    {
+      "review_topic": "최종 감사 추가 보완 (2026-09-27, checkpoint36 이후)",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1027255937"
+    },
+    {
+      "review_topic": "최종 감사 추가 보완 (2026-09-27, checkpoint36 이후)",
+      "url": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032161299"
+    },
+    {
+      "review_topic": "최종 감사 추가 보완 (2026-09-27, checkpoint36 이후)",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1031635235"
+    },
+    {
+      "review_topic": "최종 감사 추가 보완 (2026-09-27, checkpoint36 이후)",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1029616317"
+    },
+    {
+      "review_topic": "최종 감사 추가 보완 (2026-09-27, checkpoint36 이후)",
+      "url": "https://taxlaw.nts.go.kr/qt/USEQTA002P.do?ntstDcmId=200000000000021000"
+    },
+    {
+      "review_topic": "최종 감사 41/80 및 다주택·부담부 보완",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1032216825"
+    },
+    {
+      "review_topic": "최종 감사 41/80 및 다주택·부담부 보완",
+      "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0104&lsiSeq=280405&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "최종 감사 41/80 및 다주택·부담부 보완",
+      "url": "https://www.law.go.kr/LSW//lsSideInfoP.do?docCls=jo&joBrNo=10&joNo=0167&lsiSeq=286211&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "최종 감사 41/80 및 다주택·부담부 보완",
+      "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=03&joNo=0167&lsiSeq=286211&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "최종 감사 41/80 및 다주택·부담부 보완",
+      "url": "https://taxlaw.nts.go.kr/qt/USEQTA002P.do?ntstDcmId=010000000000027439"
+    },
+    {
+      "review_topic": "최종 감사 41/80 및 다주택·부담부 보완",
+      "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0160&lsiSeq=286211&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "review_topic": "최종 검증 완료 (2026-09-27)",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032161551"
+    },
+    {
+      "review_topic": "최종 검증 완료 (2026-09-27)",
+      "url": "https://law.go.kr/lsLinkCommonInfo.do?lspttninfSeq=113871"
+    }
+  ]
+}
