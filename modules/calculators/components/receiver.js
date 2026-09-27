@@ -8,6 +8,7 @@ export default function({data, parentElement, setTriggerValue}) {
     return;
   }
   if (data.lease) {
+    output.textContent = "";
     try { sessionStorage.setItem(key, JSON.stringify({lease:data.lease})); }
     catch (_) { output.textContent='이 브라우저에서는 새로고침 후 연결을 유지할 수 없습니다.'; }
     return;

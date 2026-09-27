@@ -3,7 +3,6 @@ from pathlib import Path
 from html import escape
 import re
 import secrets
-import time
 import streamlit as st
 from modules.calculators.tab_access import access_store
 
@@ -82,11 +81,10 @@ def _expiry_guard():
     if not grant:
         st.session_state['hw_calc_denied'] = True
         st.rerun(scope='app')
-    remaining = max(0, int(grant.expires - time.time()))
-    st.caption(f'전용 계산기 · 남은 시간 {remaining//60}분 {remaining%60:02d}초')
+    # Keep the expiry check active without rendering a countdown.
 
 
-def render_if_requested():
+def _render_requested():
     """Run before normal login/navigation. Never grants general app credentials."""
     requested = st.query_params.get('calc_view')
     if not requested and not st.session_state.get('hw_calc_locked'): return False
@@ -94,10 +92,12 @@ def render_if_requested():
     st.session_state['hw_calc_locked'] = True
     st.markdown('''<style>
     [data-testid="stSidebar"],[data-testid="stSidebarCollapsedControl"],
-    [data-testid="stToolbar"],#MainMenu,footer{display:none!important}
-    .block-container{max-width:1150px!important;margin:auto!important;padding-top:24px!important}
-    .hw-dedicated-brand{font-size:15px;font-weight:700;color:#284866;padding-bottom:16px;border-bottom:1px solid #dce5ef;margin-bottom:22px}
-    </style><div class="hw-dedicated-brand">H　화랑 WORKSPACE</div>''', unsafe_allow_html=True)
+    [data-testid="stToolbar"],[data-testid="stHeader"],#MainMenu,footer{display:none!important}
+    body:has(.hw-calculator-only) [data-testid="stMainBlockContainer"]{max-width:1150px!important;margin-inline:auto!important;padding:24px 24px 32px!important}
+    body:has(.hw-calculator-only) .st-key-hw_task_page [class*="st-key-hw_calc_"] [data-testid="stVerticalBlockBorderWrapper"]{background:#fff!important;border-radius:16px!important}
+    body:has(.hw-calculator-only) .st-key-hw_calc_connection{display:none!important}
+    @media(max-width:640px){body:has(.hw-calculator-only) [data-testid="stMainBlockContainer"]{padding:16px 12px 24px!important}}
+    </style>''', unsafe_allow_html=True)
     tab = st.query_params.get('calc_tab','')
     if 'hw_calc_name' not in st.session_state:
         st.session_state['hw_calc_name'] = requested
@@ -109,9 +109,10 @@ def render_if_requested():
     grant = current_grant() if token else None
     if token and not grant: st.session_state['hw_calc_denied'] = True
     denied = bool(st.session_state.get('hw_calc_denied'))
-    receiver(data={'tab':st.session_state.get('hw_calc_tab',''), 'lease':token if grant and not denied else None,
-                   'denied':denied, 'attempt':st.session_state.setdefault('hw_calc_attempt',secrets.token_hex(16))},
-             key='hw_calc_receiver', on_credential_change=_credential)
+    with st.container(key='hw_calc_connection'):
+        receiver(data={'tab':st.session_state.get('hw_calc_tab',''), 'lease':token if grant and not denied else None,
+                       'denied':denied, 'attempt':st.session_state.setdefault('hw_calc_attempt',secrets.token_hex(16))},
+                 key='hw_calc_receiver', on_credential_change=_credential)
     if denied:
         st.warning('이용 권한이 만료되었거나 유효하지 않습니다. 원래 워크스페이스에서 계산기를 다시 열어주세요.')
         return True
@@ -119,11 +120,24 @@ def render_if_requested():
         st.info('계산기 전용 탭을 연결하고 있습니다. 주소만으로는 계산기를 열 수 없습니다.')
         return True
     _expiry_guard()
-    st.button('이 계산기만 초기화', on_click=reset_calculator, key='hw_calc_reset')
     # The validated lease, not the URL or client widget, determines the route.
     st.session_state['jc_open'] = grant.calculator
     st.session_state.pop('jc_valuation_transfer',None)
     st.session_state.pop('jc_link_entry',None)
     st.session_state.pop('jc_home_entry',None)
     run(run_legacy=lambda:None)
+    st.button('입력 초기화', on_click=reset_calculator, key='hw_calc_reset')
     return True
+
+
+def render_if_requested():
+    """Use the same task theme as the main app, with no dedicated-tab chrome."""
+    if not st.query_params.get('calc_view') and not st.session_state.get('hw_calc_locked'):
+        return False
+    from modules.shared.ui_components import inject_global_styles
+    with st.container(key='hw_task_page'):
+        st.markdown('<div class="hw-task-marker hw-calculator-only" aria-hidden="true"></div>', unsafe_allow_html=True)
+        result = _render_requested()
+    # Reapply the shared palette after any calculator-specific legacy styling.
+    inject_global_styles()
+    return result
