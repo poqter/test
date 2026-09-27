@@ -7,7 +7,7 @@ from datetime import date
 from io import BytesIO
 
 import streamlit as st
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.page import PageMargins
@@ -168,8 +168,12 @@ def _state_count(key: str, default: int) -> int:
     return int(st.session_state[key])
 
 
+def _editor_focus(section):
+    st.session_state["rm_editor_focus"] = section
+
+
 def _money_input(label: str, key: str, help_text: str | None = None) -> int:
-    raw = st.text_input(label, key=key, placeholder="예: 694,580", help=help_text)
+    raw = st.text_input(label, key=key, placeholder="예: 694,580", help=help_text, on_change=_editor_focus, args=("totals" if "total" in key else "monthly",))
     value = money(raw)
     if raw:
         if re.fullmatch(r"[0-9]+", raw.strip().replace(",", "")):
@@ -188,9 +192,9 @@ def render_plan_inputs(person_no: int) -> list[NewPlan]:
         with st.expander(title, expanded=i < 2):
             c1, c2 = st.columns([2.2, 1])
             with c1:
-                name = st.text_input("보험 또는 보장 구성명", key=f"rm_plan_name_{person_no}_{i}", placeholder="예: 암·뇌·심장 진단비")
+                name = st.text_input("보험 또는 보장 구성명", key=f"rm_plan_name_{person_no}_{i}", on_change=_editor_focus, args=("plans",), placeholder="예: 암·뇌·심장 진단비")
             with c2:
-                premium = st.text_input("신규 월 보험료 (원)", key=f"rm_plan_premium_{person_no}_{i}", placeholder="예: 128,589")
+                premium = st.text_input("신규 월 보험료 (원)", key=f"rm_plan_premium_{person_no}_{i}", on_change=_editor_focus, args=("plans",), placeholder="예: 128,589")
             c3, c4 = st.columns([1.3, 1])
             years = 20
             months = 0
@@ -251,33 +255,25 @@ def render_contract_inputs(person_no: int) -> list[ExistingContract]:
 
 def render_person_inputs(person_no: int) -> Person:
     name = st.text_input("고객명", key=f"rm_name_{person_no}", placeholder="예: 홍길동")
-    def summary(field):
-        raw = str(st.session_state.get(f"rm_{field}_{person_no}", "")).strip()
-        return won(money(raw)) if raw else "입력 전"
-    with st.expander(f"01 · 현재 보험 — 월 {summary('old_monthly')}", expanded=True):
-        st.caption("변경하기 전, 기존 보험 전체의 합계를 입력하세요.")
-        old_monthly = _money_input("기존 월 보험료 합계 (원)", f"rm_old_monthly_{person_no}", "현재 가입한 보험의 월 보험료를 모두 합한 금액입니다.")
-        old_total = _money_input("기존 납입 예정 총액 (원)", f"rm_old_total_{person_no}", "기존 기능과 동일한 기준으로 확인한 납입 예정 총액을 입력하세요.")
-    with st.expander(f"02 · 변경 계획 — 남는 월 보험료 {summary('retained_monthly')}", expanded=True):
-        st.caption("기존 계약의 처리 계획을 기록한 뒤, 변경 후 남는 기존 보험료 합계를 입력하세요.")
-        contracts = render_contract_inputs(person_no)
-        st.info("유지·감액·해지 선택은 처리 계획입니다. 선택만으로 보험료가 자동 변경되지는 않습니다.")
-        retained_monthly = _money_input("변경 후 남는 기존 월 보험료 (원)", f"rm_retained_monthly_{person_no}", "유지할 보험과 감액 후 남는 보험료의 합계입니다. 신규 보험료는 제외하며, 남는 보험이 없다면 0을 입력하세요.")
-        retained_total = _money_input("유지 보험의 남은 확정 납입 예정 총액 (원)", f"rm_retained_total_{person_no}", "사용자가 확인한 합계를 직접 입력합니다. 남은 금액이 없으면 0을 입력하세요.")
-    with st.expander("03 · 새롭게 가입할 보험", expanded=True):
-        st.caption("앞에서 입력한 기존 보험료는 다시 포함하지 않습니다. 납입기간은 보장기간이 아닌 보험료를 낼 기간입니다.")
+    with st.expander("월 보험료 비교", expanded=True):
+        old_monthly = _money_input("기존 월 보험료 합계 (원)", f"rm_old_monthly_{person_no}")
+        retained_monthly = _money_input("변경 후 남는 기존 월 보험료 (원)", f"rm_retained_monthly_{person_no}", "유지·감액 후 남는 기존 보험료입니다. 신규 보험료는 아래에서 합산합니다.")
+    with st.expander("새롭게 가입하는 보험", expanded=True):
         no_new = st.checkbox("신규로 가입할 보험이 없습니다", key=f"rm_no_new_{person_no}")
         if no_new:
-            # Preserve hidden widget values when the user temporarily switches this option.
             for key in list(st.session_state):
                 if key.startswith((f"rm_plan_name_{person_no}_", f"rm_plan_premium_{person_no}_", f"rm_plan_years_{person_no}_", f"rm_plan_custom_on_{person_no}_", f"rm_plan_months_{person_no}_")):
                     st.session_state[key] = st.session_state[key]
             plans = []
-            st.caption("신규 보험료 합계는 0원으로 반영됩니다.")
         else:
             plans = render_plan_inputs(person_no)
-        coverage = st.text_area("새롭게 확보되는 핵심 보장", key=f"rm_coverage_{person_no}", placeholder="예: 암·뇌·심장 진단비 보완 · 주요 치료비 강화", height=75)
-    return Person(clean(name), old_monthly, old_total, retained_monthly, retained_total, plans, clean(coverage), contracts)
+        st.caption("첫 장 표시 한도: 1명 상담 5건, 2명 상담 고객별 4건. 초과하면 다운로드 전에 안내합니다.")
+    with st.expander("핵심 보장 설명", expanded=False):
+        coverage = st.text_area("신규 가입안의 핵심 보장", key=f"rm_coverage_{person_no}", on_change=_editor_focus, args=("coverage",), placeholder="예: 암·뇌·심장 진단비 보완", height=100)
+    with st.expander("납입 예정 총액", expanded=False):
+        old_total = _money_input("기존 납입 예정 총액 (원)", f"rm_old_total_{person_no}")
+        retained_total = _money_input("유지 보험의 남은 확정 납입 예정 총액 (원)", f"rm_retained_total_{person_no}", "확인한 합계를 입력하세요. 신규 보험 총액은 보험료와 납입기간으로 계산합니다.")
+    return Person(clean(name), old_monthly, old_total, retained_monthly, retained_total, plans, clean(coverage), [])
 
 
 # ---------------- Excel ----------------
@@ -713,71 +709,163 @@ def _remodeling_page_style() -> None:
     </style>""", unsafe_allow_html=True)
 
 
+def _editor_excel(people, title, consultation_date, consultant, include_detail):
+    """Presentation changes only, based on the original workbook generator."""
+    wb = load_workbook(create_excel(people, title, consultation_date, consultant))
+    ws = wb["리모델링 비교안"]
+    ws["A3"] = "기존 계약과 변경안을 같은 기준으로 비교한 상담 자료입니다."
+    totals = combined(people)
+    # Keep before/after values visible; highlight reductions only.
+    for label_cell, amount_cell, rate_cell, old_key, new_key in [
+        ("A5", "A6", "E6", "old_monthly", "after_monthly"),
+        ("M5", "M6", "Q6", "old_total", "after_total")]:
+        if totals[old_key] <= totals[new_key]:
+            ws[label_cell] = "변경 후 월 보험료" if old_key == "old_monthly" else "변경 후 납입 예정 총액"
+            ws[amount_cell] = won(totals[new_key])
+            ws[rate_cell] = ""
+    if len(people) == 1:
+        p = people[0]
+        ws["A17"] = "감소액" if p.total_change < 0 else ""
+        ws["E17"] = won(-p.total_change) if p.total_change < 0 else ""
+    for row in ws:
+        for cell in row:
+            if isinstance(cell.value, str):
+                if cell.value.endswith("원 증가"):
+                    cell.value = "—"
+                if cell.value == "새롭게 확보되는 핵심 보장":
+                    cell.value = "신규 가입안의 핵심 보장"
+    # Display existing payment terms without changing any amount calculation.
+    for person_index, person in enumerate(people):
+        start_col = 11 if len(people) == 1 or person_index == 1 else 1
+        start_row = 10 if len(people) == 1 else 15
+        limit = 5 if len(people) == 1 else 4
+        for i, plan in enumerate(person.plans[:limit]):
+            cell = ws.cell(start_row + i, start_col)
+            cell.value = f"{plan.name} · {plan.months}개월납"
+    if not include_detail:
+        del wb["기존 계약 변경"]
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output, wb
+
+
+def _workbook_preview(ws, draft=False):
+    """Render actual workbook cells and merged ranges; not a print-engine screenshot."""
+    merges = {}
+    covered = set()
+    for area in ws.merged_cells.ranges:
+        merges[(area.min_row, area.min_col)] = (area.max_row-area.min_row+1, area.max_col-area.min_col+1)
+        for row in range(area.min_row, area.max_row+1):
+            for col in range(area.min_col, area.max_col+1):
+                if (row, col) != (area.min_row, area.min_col): covered.add((row, col))
+    widths = [ws.column_dimensions[get_column_letter(c)].width or 8 for c in range(1, ws.max_column+1)]
+    parts = ['<div class="rm-workbook"><table><colgroup>']
+    parts += [f'<col style="width:{w/sum(widths)*100:.3f}%">' for w in widths]
+    parts.append('</colgroup>')
+    for row in ws.iter_rows():
+        parts.append('<tr>')
+        for cell in row:
+            if (cell.row, cell.column) in covered: continue
+            rowspan, colspan = merges.get((cell.row,cell.column),(1,1))
+            fill = cell.fill.fgColor
+            bg = '#'+str(fill.rgb)[-6:] if cell.fill.patternType == 'solid' and fill.type == 'rgb' else '#ffffff'
+            color = '#'+str(cell.font.color.rgb)[-6:] if cell.font.color and cell.font.color.type == 'rgb' else '#263b54'
+            size = max(10, min(22, (cell.font.sz or 10)*1.05))
+            raw_value = str(cell.value if cell.value is not None else '')
+            if draft and (re.search(r"[0-9][0-9,]*원", raw_value) or '%' in raw_value):
+                raw_value = "입력 확인 중"
+            value = html.escape(raw_value).replace('\n','<br>')
+            focus = st.session_state.get("rm_editor_focus", "")
+            r, c = cell.row, cell.column
+            two = ws.max_row > 27
+            region = {
+                "title": r <= 3,
+                "monthly": 5 <= r <= 6 or (10 <= r <= 11 if two else 8 <= r <= 12 and c <= 8),
+                "plans": 13 <= r <= 19 if two else 8 <= r <= 15 and c >= 11,
+                "coverage": 21 <= r <= 23 if two else 17 <= r <= 19 and c >= 11,
+                "totals": 25 <= r <= 28 if two else (14 <= r <= 17 and c <= 8) or 21 <= r <= 24,
+            }
+            accent = "box-shadow:inset 0 1px #7ca9e6,inset 0 -1px #7ca9e6;" if ws.title == "리모델링 비교안" and region.get(focus, False) else ""
+            parts.append(f'<td rowspan="{rowspan}" colspan="{colspan}" style="{accent}background:{bg};color:{color};font-size:{size}px;font-weight:{700 if cell.font.bold else 400}">{value}</td>')
+        parts.append('</tr>')
+    parts.append('</table></div>')
+    if draft:
+        st.info("작성 중인 비교안입니다. 금액 입력을 완료하면 비교 금액이 표시되고 다운로드할 수 있습니다.")
+    st.markdown(''.join(parts), unsafe_allow_html=True)
+    st.caption("생성된 엑셀의 셀 내용·병합·색상을 표시합니다. 글꼴과 인쇄 배율에 따른 줄바꿈은 실제 엑셀과 다를 수 있습니다.")
+
+
 def run() -> None:
     _remodeling_page_style()
-    page_header("고객 상담", APP_TITLE, "왼쪽에서 순서대로 입력하고, 오른쪽에서 변경 전후를 확인하세요.", "RM")
-    with st.container(key="hw_surface_remodeling_info"):
-        st.markdown("### 상담 기본정보")
-        c1, c2, c3, c4 = st.columns([.85, 1, 1.15, 1])
-        with c1:
-            count = int(st.selectbox("대상 인원", [1, 2], format_func=lambda x: f"{x}명", key="rm_count"))
-        with c2:
-            consultation_date = st.date_input("상담일", value=date.today(), key="rm_date")
-        with c3:
-            consultant = st.text_input("담당자", key="rm_consultant", placeholder="예: 박병선")
-        with c4:
-            if st.button("예시 데이터 입력", use_container_width=True):
-                for i in range(1, count + 1):
-                    st.session_state[f"rm_no_new_{i}"] = False
-                load_example(count)
-                st.rerun()
+    st.markdown("""<style>
+      .st-key-rm_workspace>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]:first-child,
+      .st-key-rm_workspace>[data-testid="stVerticalBlock"]>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]:first-child {flex:0.8 1 0!important;}
+      .st-key-rm_workspace>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]:last-child,
+      .st-key-rm_workspace>[data-testid="stVerticalBlock"]>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]:last-child {flex:1.2 1 0!important;position:static;}
+      .rm-workbook{background:#fff;padding:14px;border:1px solid #dce4ef;box-shadow:0 4px 18px #20344b10;overflow-x:auto;}
+      .rm-workbook table{table-layout:fixed;width:100%;border-collapse:collapse;min-width:420px;}
+      .rm-workbook td{padding:7px 3px!important;text-align:center;vertical-align:middle;overflow-wrap:anywhere;border:1px solid #e5eaf1;line-height:1.45;}
+    </style>""", unsafe_allow_html=True)
+    page_header("고객 상담", APP_TITLE, "고객에게 전달할 비교안을 보면서 내용을 완성하세요.", "RM")
+    c1, c2 = st.columns([1, 2])
+    with c1:
+        count = int(st.selectbox("대상 인원", [1, 2], format_func=lambda x: f"{x}명", key="rm_count"))
+    with c2:
+        if st.button("예시 데이터 입력"):
+            for i in range(1,count+1): st.session_state[f"rm_no_new_{i}"] = False
+            load_example(count)
+            st.rerun()
     with st.container(key="rm_workspace"):
-        left, right = st.columns([1.6, 1], gap="large")
+        left, right = st.columns([.8, 1.2], gap="large")
         with left, st.container(key="rm_guided_inputs"):
-            people = []
-            tabs = st.tabs([f"고객 {i}" for i in range(1, count + 1)])
-            for i, tab in enumerate(tabs, 1):
-                with tab:
-                    people.append(render_person_inputs(i))
-            if count == 2:
-                shared = st.checkbox("두 고객의 핵심 보장을 하나로 묶어 표시", key="rm_shared_coverage")
-                if shared:
-                    shared_text = st.text_area("공통 핵심 보장", key="rm_shared_coverage_text", height=75)
-                    for person in people:
-                        person.coverage = clean(shared_text)
-            display_names = [re.sub(r"님$", "", clean(p.name)) or "OOO" for p in people]
-            default_title = " · ".join(f"{name}님" for name in display_names) + " 보험 리모델링 비교안"
-            custom_title = st.text_input("자료 제목 (선택)", key="rm_title", placeholder=default_title)
+            first, second = st.tabs(["① 리모델링 비교안", "② 기존 계약 정리표 · 선택"])
+            with first:
+                people = []
+                tabs = st.tabs([f"고객 {i}" for i in range(1,count+1)])
+                for i, tab in enumerate(tabs,1):
+                    with tab: people.append(render_person_inputs(i))
+                display_names = [re.sub(r"님$", "", clean(p.name)) or "OOO" for p in people]
+                default_title = " · ".join(f"{name}님" for name in display_names) + " 보험 리모델링 비교안"
+                custom_title = st.text_input("자료 제목 (선택)", key="rm_title", on_change=_editor_focus, args=("title",), placeholder=default_title)
+                if count == 2 and st.checkbox("두 고객의 핵심 보장을 하나로 묶어 표시", key="rm_shared_coverage"):
+                    shared = st.text_area("공통 핵심 보장", key="rm_shared_coverage_text")
+                    for person in people: person.coverage = clean(shared)
+                with st.expander("상담일 · 담당자"):
+                    consultation_date = st.date_input("상담일", value=date.today(), key="rm_date")
+                    consultant = st.text_input("담당자", key="rm_consultant", placeholder="예: 박병선 팀장")
+            with second:
+                include_detail = st.checkbox("기존 계약 정리표를 출력에 포함", key="rm_include_detail")
+                st.caption("선택 자료입니다. 작성하지 않아도 첫 번째 비교안을 다운로드할 수 있습니다.")
+                if include_detail:
+                    dtabs = st.tabs([f"고객 {i}" for i in range(1,count+1)])
+                    for i,tab in enumerate(dtabs,1):
+                        with tab: people[i-1].contracts = render_contract_inputs(i)
+                else:
+                    for key in list(st.session_state):
+                        if key.startswith('rm_contract_'): st.session_state[key] = st.session_state[key]
             effective_title = clean(custom_title) or default_title
-        statuses = [_input_status(i) for i in range(1, count + 1)]
+        flags = [_input_status(i) for i in range(1,count+1)]
+        ready = all(all(f.values()) for f in flags)
+        limit = 5 if count == 1 else 4
+        overflow = [p.name or f"고객 {i+1}" for i,p in enumerate(people) if len(p.plans)>limit]
+        excel, wb = _editor_excel(people, effective_title, consultation_date, clean(consultant), include_detail)
         with right, st.container(key="rm_live_summary"):
-            _render_live_summary(people, statuses)
-    with st.container(key="hw_surface_remodeling_output"):
-        st.markdown("### 고객용 비교안 · 다운로드")
-        ready = all(all(flags.values()) for flags in statuses)
-        if not ready:
-            st.info("아직 입력하지 않았거나 확인이 필요한 금액이 있습니다. 0원인 항목은 0을 입력하고, 신규 가입이 없다면 ‘신규로 가입할 보험이 없습니다’를 선택하세요.")
-            for i, flags in enumerate(statuses, 1):
-                names = {"old_monthly": "기존 월 보험료", "old_total": "기존 납입 예정 총액", "retained_monthly": "남는 기존 월 보험료", "retained_total": "유지 보험의 남은 총액", "plans": "신규 보험명·보험료 또는 신규 가입 없음 선택"}
-                missing = [names[k] for k, ok in flags.items() if not ok]
-                if missing:
-                    st.caption(f"고객 {i} 확인: " + " · ".join(missing))
-        else:
-            missing = [f"고객 {i+1} 이름" for i, p in enumerate(people) if not p.name]
-            if not clean(consultant):
-                missing.append("담당자")
-            if missing:
-                st.warning("미입력 항목: " + ", ".join(missing) + " · 확인용 파일은 그대로 다운로드할 수 있습니다.")
-            render_preview(people)
-            excel = create_excel(people, effective_title, consultation_date, clean(consultant))
-            filename_people = "_".join(f"{safe_filename(name)}님" for name in display_names)
-            base = f"{filename_people}_보험리모델링_비교안_{date.today():%Y%m%d}"
-            st.download_button("엑셀로 다운로드", excel, f"{base}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, type="primary")
-    tool_guide("사용 방법 및 작성 기준", "현재 보험 → 변경 계획 → 신규 보험 순서로 작성하세요.",
-        [("현재 보험", "변경 전 보험료와 납입 예정 총액을 입력합니다."),
-         ("변경 계획", "계약별 처리 방향과 변경 후 남는 기존 보험료를 입력합니다."),
-         ("신규 보험", "새로 가입하는 보험의 보험료와 납입기간을 입력합니다.")],
-        criteria="월 보험료와 납입 예정 총액은 기존 계산식으로 계산합니다. 계약 처리 방향은 금액과 별도로 입력합니다.")
+            st.markdown("### 출력 미리보기")
+            st.caption("입력 후 Enter 또는 다른 입력칸을 선택하면 갱신됩니다.")
+            previews = st.tabs(wb.sheetnames)
+            for name,tab in zip(wb.sheetnames,previews):
+                with tab: _workbook_preview(wb[name], draft=not ready)
+            if overflow:
+                st.error(f"첫 장 표시 한도 초과: {', '.join(overflow)}. 고객별 {limit}건 이내로 정리해야 모든 신규 보험이 첫 장에 표시됩니다.")
+            if not ready:
+                names = {"old_monthly":"기존 월 보험료", "old_total":"기존 납입 예정 총액", "retained_monthly":"남는 기존 월 보험료", "retained_total":"유지 보험의 남은 총액", "plans":"신규 보험명·보험료 또는 신규 가입 없음 선택"}
+                for i,f in enumerate(flags,1):
+                    missing = [names[k] for k,ok in f.items() if not ok]
+                    if missing: st.caption(f"고객 {i} 확인: " + ' · '.join(missing))
+            st.caption(f"출력 구성: {len(wb.sheetnames)}개 시트 · 첫 번째 비교안 A4 가로 한 장")
+            filename_people = '_'.join(f"{safe_filename(n)}님" for n in display_names)
+            st.download_button("엑셀 다운로드", excel, f"{filename_people}_보험리모델링_비교안_{date.today():%Y%m%d}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", type="primary", use_container_width=True, disabled=not ready or bool(overflow))
     page_footer("보험 리모델링", APP_VERSION)
 
 
