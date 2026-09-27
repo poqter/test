@@ -1381,7 +1381,7 @@ def run():
         )
 
         if uploaded_file is None:
-            st.info("📤 7월과 8월 계약이 포함된 Excel 파일(.xlsx)을 업로드해주세요.")
+            st.caption("파일을 등록하면 자료 확인과 집계 단계가 표시됩니다.")
             return
 
         base_filename = os.path.splitext(uploaded_file.name)[0]

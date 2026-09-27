@@ -62,14 +62,15 @@ def usage_dialog() -> None:
 def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logout: Callable[..., object], notice: dict[str, object]) -> None:
     allowed = set(allowed_ids)
     with st.sidebar:
-        st.markdown('<div class="sig-brand"><span class="sig-mark">H</span><div><strong>화랑</strong><small>WORKSPACE</small></div></div>', unsafe_allow_html=True)
-        if st.button("홈", icon=":material/home:", key="v2_nav_home", use_container_width=True, type="primary" if st.session_state.get("active_app") == "home" else "secondary"):
-            navigate("home")
-        if "analyzer" in allowed:
-            with st.container(key="hw_sidebar_quick"):
-                if st.button("보장 분석 시작", icon=":material/shield:", key="hw_sidebar_analyzer", use_container_width=True):
-                    navigate("analyzer")
-        query = "" if st.session_state.get("active_app") == "home" else st.text_input("기능 빠른 검색", placeholder="상령일, 문자, 실손…", key="sig_nav_search").strip().lower()
+        with st.container(key="hw_sidebar_header"):
+            st.markdown('<div class="sig-brand"><span class="sig-mark">H</span><div><strong>화랑</strong><small>WORKSPACE</small></div></div>', unsafe_allow_html=True)
+            if st.button("홈", icon=":material/home:", key="v2_nav_home", use_container_width=True, type="primary" if st.session_state.get("active_app") == "home" else "secondary"):
+                navigate("home")
+            if "analyzer" in allowed:
+                with st.container(key="hw_sidebar_quick"):
+                    if st.button("보장 분석 시작", icon=":material/shield:", key="hw_sidebar_analyzer", use_container_width=True):
+                        navigate("analyzer")
+            query = "" if st.session_state.get("active_app") == "home" else st.text_input("기능 빠른 검색", placeholder="상령일, 문자, 실손…", key="sig_nav_search").strip().lower()
         matched_ids = {app.id for app, _mode in _matches(query, allowed)} if query else allowed
         any_match = False
         for topic in _HOME_TOPICS:

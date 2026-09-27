@@ -166,6 +166,7 @@ def run():
         editor_key=f'c_editor_{st.session_state.get("c_editor_revision",0)}'
         if editor_key not in st.session_state:
             st.session_state["c_base"]=st.session_state["c_rows"].copy()
+        st.caption("표의 셀을 두 번 눌러 수정하세요. 금액은 쉼표를 포함해 입력할 수 있습니다.")
         edited=st.data_editor(st.session_state["c_base"],num_rows="fixed",hide_index=True,use_container_width=True,key=editor_key,on_change=commit_editor,args=(editor_key,),column_config={
             'row_id':None,'order':None,
             "항목":st.column_config.TextColumn(max_chars=100),
@@ -191,7 +192,15 @@ def run():
         if not rows: st.info("항목명을 입력해 비교표를 시작하세요."); return
         headers=["항목","유형","단위","변경 전","변경 후","차이","확인 메모"]
         st.subheader("변경 전후 미리보기")
-        st.dataframe(pd.DataFrame(rows,columns=headers),hide_index=True,use_container_width=True)
+        display_rows = []
+        for row in rows:
+            shown = dict(row)
+            if shown.get('유형') == '금액':
+                for field_name in ('변경 전', '변경 후'):
+                    try: shown[field_name] = f"{parse_number(shown[field_name]):,}"
+                    except (ValueError, InvalidOperation): pass
+            display_rows.append(shown)
+        st.dataframe(pd.DataFrame(display_rows,columns=headers),hide_index=True,use_container_width=True)
         st.subheader("입력값 자동 요약")
         st.text("\n".join(summary))
         st.caption("금액 증감과 문자 변경만 설명합니다. 보장 확대·축소, 상품 우열이나 가입 적합성을 자동 판정하지 않습니다.")

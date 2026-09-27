@@ -64,8 +64,8 @@ def run():
     with _ui_0:
         st.caption("01 · 자료 작성")
         choice=field('selectbox','자료 종류','d_template','한 장 요약',options=list(data['templates']))
-        st.caption('처음에는 빈 문서입니다. 양식은 예시이며 적용 버튼을 눌러야 본문에 반영됩니다.')
-        if st.button('양식 미리보기·적용',key='d_template_open'):template_dialog(data['templates'][choice])
+        st.caption('양식으로 시작하거나 아래에 직접 작성하세요.')
+        if st.button('양식 선택 후 시작하기',key='d_template_open',type='primary',width='stretch'):template_dialog(data['templates'][choice])
         if choice=='청구 준비':
             st.info('필요서류는 기존 보험금 청구 가이드에서 확인합니다. 이 도구에 별도 서류 규칙을 복사하지 않습니다.')
             st.button('보험금 청구 가이드 열기',key='d_claim_link',on_click=navigate,args=('insurance_claim_guide',))

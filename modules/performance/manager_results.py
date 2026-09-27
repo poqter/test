@@ -784,7 +784,7 @@ def run():
         )
 
         if not uploaded_file:
-            st.info("📤 계약 목록 Excel 파일(.xlsx)을 업로드해주세요.")
+            st.caption("파일을 등록하면 자료 확인과 집계 단계가 표시됩니다.")
             return
 
     with st.container(key="hw_surface_manager_results_1"):

@@ -426,7 +426,7 @@ def render_sidebar() -> None:
     st.info(
         "상속세가 예상된다면 세액뿐 아니라 상속 직후 바로 사용할 수 있는 현금성 납부재원도 함께 확인해야 합니다."
     )
-    st.caption(f"UI 버전: {UI_VERSION}")
+
 
 
 def render_quick_actions() -> None:
@@ -929,8 +929,10 @@ def run():
     )
     st.info("모든 금액은 **만원 단위**로 입력합니다. 입력값은 자동으로 억·만원 단위로 해석해 표시합니다.")
 
-    render_sidebar()
-    render_quick_actions()
+    with st.popover("공제·세율 참고", icon=":material/info:"):
+        render_sidebar()
+    with st.expander("예시 불러오기 · 초기화"):
+        render_quick_actions()
     st.divider()
 
     with st.container(key="hw_surface_inheritance_tax_0"):

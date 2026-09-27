@@ -91,15 +91,18 @@ def run():
         return
     page_header('교육·체크리스트','교육·체크리스트 센터','용어 찾기 → 상담 점검·가상 연습 → 연구노트와 학습자료', 'ED')
     session_notice('e_')
-    with st.container(key="hw_surface_education_center_0"):
+    with st.container(key="hw_compact_education_topics"):
         st.caption("01 · 학습 주제 선택")
         choices=['보험용어 검색',*data['checklists'],'상담유형별 권장 도구','신입 FP 상담 시뮬레이션','보험금 청구 사례 퀴즈','자주 묻는 질문','상담 연구 메모']
         mode=st.selectbox('학습할 내용',choices,key='e_mode')
     with st.container(key="hw_surface_education_center_1"):
         st.caption("02 · 학습 · 체크리스트 · 메모")
         if mode=='보험용어 검색':
-            query=field('text_input','용어 또는 설명 검색','e_query','',max_chars=100)
-            category=field('selectbox','용어 분류','e_category','전체',options=['전체',*dict.fromkeys(item['category'] for item in data['terms'])])
+            search_col, filter_col = st.columns([3,1])
+            with search_col:
+                query=field('text_input','용어 또는 설명 검색','e_query','',max_chars=100)
+            with filter_col:
+                category=field('selectbox','용어 분류','e_category','전체',options=['전체',*dict.fromkeys(item['category'] for item in data['terms'])])
             favorites=field('checkbox','즐겨찾기만 보기','e_favorites_only',False)
             matches=search_terms(data['terms'],query,category)
             if favorites:matches=[item for item in matches if st.session_state.get('e_favorite_'+item['id'],False)]

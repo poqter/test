@@ -102,7 +102,7 @@ def run():
     checks = load_content("checklists")
     page_header("상담·제안서", "상담·제안서 스튜디오", "준비 → 상담 → 요약 → 제안서. 직접 검토한 내용으로 전달자료를 만드세요.", "CH")
     session_notice("b_")
-    with st.container(key="hw_surface_consultation_helper_0"):
+    with st.container(key="hw_compact_consultation_topics"):
         st.caption("01 · 상담 작업 선택")
         with st.expander("이번 상담 설정"):
             field("selectbox", "상담 구분", "b_visit", "첫 상담", options=topics["visits"])
@@ -114,10 +114,10 @@ def run():
                   "고객 전달자료": ["상황별 메시지", "상담 요약", "제안서·PDF"]}
         if "b_work_stage" not in st.session_state:
             st.session_state["b_work_stage"] = next((k for k,v in stages.items() if st.session_state.get("b_mode") in v), "상담 준비")
-        stage = st.radio("지금 할 업무", list(stages), horizontal=True, key="b_work_stage")
+        stage = st.segmented_control("지금 할 업무", list(stages), default=list(stages)[0], selection_mode="single", key="b_work_stage") or list(stages)[0]
         if st.session_state.get("b_mode") not in stages[stage]:
             st.session_state["b_mode"] = stages[stage][0]
-        mode = st.radio("작업 선택", stages[stage], horizontal=True, key="b_mode")
+        mode = st.segmented_control("작업 선택", stages[stage], default=st.session_state.get("b_mode",stages[stage][0]), selection_mode="single", key="b_mode") or stages[stage][0]
     with st.container(key="hw_surface_consultation_helper_1"):
         st.caption("02 · 상담 내용 작성 · 검토")
         if mode == "생애주기 주제":

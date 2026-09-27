@@ -139,9 +139,12 @@ def render_result(name,result,calculated_on,args,prefix):
     display=result.display()
     with customer:
         st.subheader(name)
-        for label,value in display.items():st.metric(label,value)
+        for index,(label,value) in enumerate(display.items()):
+            with st.container(key=prefix+('_hero_result' if index == 0 else '_support_result_'+str(index))):
+                st.metric(label,value)
         if result.rows and '총 자금' in result.rows[0]:
-            st.line_chart([{'경과 연수':r['경과 연수'],'총 자금':float(r['총 자금']),'납입 원금':float(r['납입 원금'])} for r in result.rows],x='경과 연수',y=['총 자금','납입 원금'])
+            from modules.calculators.result_chart import render_growth_chart
+            render_growth_chart(result.rows)
         st.caption('입력한 수익률과 조건에 따른 예상치입니다.')
         from modules.calculators.result_pdf import build_result_pdf, pdf_section_options
         pdf_options = pdf_section_options(prefix+'_pdf_scope')

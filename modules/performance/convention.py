@@ -929,7 +929,7 @@ def run():
         uploaded_file = guarded_upload("📂 컨벤션 계산용 Excel 파일 업로드 (.xlsx)", type=["xlsx"])
 
         if not uploaded_file:
-            st.info("📤 계약 목록 Excel 파일(.xlsx)을 업로드해주세요.")
+            st.caption("파일을 등록하면 자료 확인과 집계 단계가 표시됩니다.")
             return
 
         base_filename = os.path.splitext(uploaded_file.name)[0]

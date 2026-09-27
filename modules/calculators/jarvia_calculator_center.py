@@ -164,19 +164,20 @@ def run(run_legacy):
     if not dedicated: apply_pending()
     notice=st.session_state.pop('jc_transfer_notice',None)
     if notice:st.info(notice)
-    if not dedicated:
+    if not dedicated and not st.session_state.get('jc_open'):
         page_header('재무·보험 계산', '재무·보험 계산기', '업무별 계산기와 결과를 확인하세요', 'QC')
     if notice:
         st.session_state['jc_open'] = st.session_state.get('jc_selected')
     from modules.calculators.catalog_browser import render_catalog, back_to_catalog
     active = st.session_state.get('jc_open')
     if active and not dedicated:
-        st.button('← 계산기 목록', key='jc_back_catalog', on_click=back_to_catalog)
-        from modules.calculators.catalog_browser import new_tab_link
-        if active in ITEMS:
-            new_tab_link(active)
-            from modules.calculators.dedicated_tab import render_launcher
-            render_launcher([active])
+        with st.container(horizontal=True, vertical_alignment='center'):
+            st.button('← 계산기 목록', key='jc_back_catalog', on_click=back_to_catalog)
+            from modules.calculators.catalog_browser import new_tab_link
+            if active in ITEMS:
+                new_tab_link(active)
+                from modules.calculators.dedicated_tab import render_launcher
+                render_launcher([active])
     from modules.calculators.pension.retirement_models import NAMES as RETIREMENT_NAMES
     from modules.calculators.tax.personal_tax_models import NAMES as PERSONAL_TAX_NAMES
     implemented = set(FIELDS) | {'연금계산기','주택연금계산기','은퇴저축계산기','연금 인출순서계산기','퇴직금계산기'} | set(RETIREMENT_NAMES)

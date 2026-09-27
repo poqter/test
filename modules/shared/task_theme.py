@@ -67,6 +67,44 @@ body:has(.hw-task-marker) [data-testid="stMainBlockContainer"]{max-width:1480px!
 .st-key-hw_task_page .st-key-hw_task_toolbar button{min-height:38px!important}
 .st-key-hw_task_page [data-testid="stCaptionContainer"] p{color:#566b84!important;font-size:13px!important;opacity:1!important}
 .st-key-hw_task_page [data-testid="stTextArea"] textarea{border:1px solid #ccd7e5!important;border-radius:10px!important}
+/* UI audit: real Streamlit 1.64 input elements and compact task hierarchy. */
+body:has(.hw-task-marker):not(:has(.hw-calculator-only)) [data-testid="stMainBlockContainer"]{padding-top:1.25rem!important}
+.st-key-hw_task_page .hw-page-head{margin:4px 0 12px!important;padding:4px 0 8px!important}
+.st-key-hw_task_page .st-key-hw_task_toolbar{background:transparent!important;border:0!important;padding:0!important;margin:0!important}
+.st-key-hw_task_page [data-testid="stNumberInputContainer"],
+.st-key-hw_task_page [data-testid="stTextInputRootElement"],
+.st-key-hw_task_page [data-testid="stTextArea"] textarea,
+.st-key-hw_task_page [data-baseweb="select"]>div,
+.st-key-hw_task_page [data-testid="stSelectbox"] [role="combobox"]{
+border:1.5px solid #8ea3ba!important;background:#fff!important;border-radius:9px!important;color:#18334f!important;box-shadow:none!important}
+.st-key-hw_task_page [data-testid="stNumberInputContainer"]:focus-within,
+.st-key-hw_task_page [data-testid="stTextInputRootElement"]:focus-within,
+.st-key-hw_task_page [data-testid="stTextArea"] textarea:focus,
+.st-key-hw_task_page [data-baseweb="select"]:focus-within>div{border-color:#2867c5!important;box-shadow:0 0 0 3px #2867c51c!important}
+.st-key-hw_task_page input,.st-key-hw_task_page textarea{color:#18334f!important;-webkit-text-fill-color:#18334f!important;caret-color:#2867c5!important}
+.st-key-hw_task_page [data-testid="stCaptionContainer"] p,.st-key-hw_task_page .hw-page-desc{color:#52657d!important;opacity:1!important}
+.st-key-hw_task_page [class*="st-key-hw_surface_"]{padding:20px!important;margin-bottom:4px!important}
+.st-key-hw_task_page [class*="st-key-hw_compact_"]{padding:12px 0!important}
+.st-key-hw_task_page .hw-section-head{margin:4px 0 10px!important}
+.st-key-hw_task_page .hw-calc-panel,.st-key-hw_task_page .hw-input-panel{background:#f4f7fc!important}
+.st-key-hw_task_page .st-key-rm_live_summary h4{font-size:17px!important;line-height:1.5!important;word-break:keep-all;overflow-wrap:anywhere}
+.st-key-hw_task_page .st-key-rm_live_summary{padding:18px!important}
+.st-key-hw_task_page [class*="st-key-hw_calc_"] [data-testid="stVerticalBlockBorderWrapper"]{background:#fff!important;border-color:#d3deeb!important}
+.st-key-hw_task_page [class*="_hero_result"] [data-testid="stMetric"]{background:#eaf2ff!important;border:1px solid #bfd3ef!important}
+.st-key-hw_task_page [class*="_hero_result"] [data-testid="stMetricValue"]{font-size:30px!important}
+.st-key-hw_task_page [class*="_support_result"] [data-testid="stMetric"]{padding:10px 14px!important}
+.st-key-hw_task_page [class*="_support_result"] [data-testid="stMetricValue"]{font-size:21px!important}
+.st-key-jc_categories{padding:4px 0 8px!important;margin-bottom:0!important}
+.st-key-jc_purposes{gap:6px!important}
+.st-key-hw_task_page [data-testid="stFileUploaderDropzone"]{background:#f4f8fd!important;border:1.5px dashed #91a9c4!important;border-radius:12px!important;padding:14px!important}
+[data-testid="stSidebar"] .st-key-hw_sidebar_header{position:sticky;top:0;z-index:20;background:#fff;padding-bottom:10px;box-shadow:0 8px 12px #fff}
+[data-testid="stSidebar"] .sig-brand{margin-bottom:8px!important;padding:12px!important}
+[data-testid="stSidebar"] [data-testid="stExpander"]{margin-bottom:4px!important}
+[data-testid="stSidebar"] [data-testid="stExpander"] button{min-height:38px!important;padding:6px 12px!important;justify-content:flex-start!important}
+[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{gap:.55rem!important}
+[class*="st-key-hw_dash_tool_analyzer"]{background:linear-gradient(145deg,#eaf2ff,#f8fbff)!important;border:1.5px solid #91b2e4!important}
+[class*="st-key-hw_dash_tool_analyzer"] button{background:#2d6ad5!important;color:#fff!important;border-color:#2d6ad5!important}
+@media(max-width:768px){body:has(.hw-task-marker):not(:has(.hw-calculator-only)) [data-testid="stMainBlockContainer"]{padding-top:3rem!important}.st-key-hw_task_page [class*="st-key-hw_surface_"]{padding:16px!important}.st-key-hw_task_page [class*="_hero_result"] [data-testid="stMetricValue"]{font-size:26px!important}}
 
 '''
 

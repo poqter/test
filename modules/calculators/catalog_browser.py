@@ -107,8 +107,7 @@ def new_tab_link(name):
 
 
 def render_catalog(items, groups, implemented):
-    st.markdown('### 어떤 상담을 준비하시나요?')
-    st.caption('계산기 이름을 몰라도, 고객의 상황으로 찾아보세요.')
+    st.caption('계산기 이름 또는 고객의 상황으로 검색하세요.')
     st.session_state.setdefault('jc_catalog_query', st.session_state.get('jc_search', ''))
     st.session_state.setdefault('jc_catalog_group', st.session_state.get('jc_group', '전체'))
     if 'jc_search' not in st.session_state:
@@ -117,13 +116,11 @@ def render_catalog(items, groups, implemented):
     search.text_input('계산기 이름 또는 상담 목적', key='jc_search', on_change=save_query,
                       placeholder='예: 노후 생활비, 자녀 증여, 보험료 부담', label_visibility='collapsed')
     clear.button('초기화', key='jc_search_clear', on_click=set_query, args=('',), use_container_width=True)
-    st.caption('추천 검색')
     with st.container(key='jc_purposes', horizontal=True):
         for i, (label, query) in enumerate(PURPOSES):
             st.button(label, key=f'jc_purpose_{i}', on_click=set_query, args=(query,),
                       type='tertiary')
-    st.divider()
-    st.markdown('##### 업무별 찾기')
+    st.caption('업무 분류')
     group = st.session_state['jc_catalog_group']
     with st.container(key='jc_categories', horizontal=True):
         for i, category in enumerate(('전체', *groups)):
@@ -133,7 +130,7 @@ def render_catalog(items, groups, implemented):
     found = [(n, g, d) for n, (g, d) in items.items() if n in implemented
              and (group == '전체' or group == g) and matches(n, g, d, query)]
     st.markdown('#### ' + ('검색 결과' if query else group + ' 계산기'))
-    st.caption(f'{len(found)}개 · 열기 방식을 선택하세요.')
+    st.caption(f'{len(found)}개 결과')
     st.markdown('''<style>
     .st-key-jc_categories{padding:12px 0;border-bottom:1px solid #dce5ef;margin-bottom:10px}
     [class*="st-key-jc_card_"][data-testid="stVerticalBlock"]{background:#fff;border:1px solid #dce5ef;border-radius:14px;padding:20px;transition:border-color .18s,box-shadow .18s}

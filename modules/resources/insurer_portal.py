@@ -49,8 +49,9 @@ def contact_dialog(row):
 
 def insurer_cards(rows,contacts=False):
     if not rows:st.info('검색·분류·즐겨찾기 조건에 맞는 항목이 없습니다.')
+    columns = st.columns(2)
     for index,row in enumerate(rows):
-        with st.container(border=True):
+        with columns[index % 2].container(border=True):
             st.subheader(row['name'])
             st.caption(row['group']+' · '+('번호 확인 '+row['phone_verified_at'] if row.get('phone_verified_at') else '번호 재확인 필요' if row['phone'] else '대표번호 미등록'))
             if row['phone']:st.write('대표·상담 '+row['phone'])
@@ -76,8 +77,11 @@ def run():
             from modules.resources.official_resources import render_resources
             render_resources(data,mode,issues)
             return
-        query=field('text_input','보험사·별칭·대표번호 검색','f_search','',max_chars=100)
-        group=field('selectbox','보험사 구분','f_group','전체',options=['전체','기본 포털','생명보험','손해보험'])
+        search_col, filter_col = st.columns([3,1])
+        with search_col:
+            query=field('text_input','보험사·별칭·대표번호 검색','f_search','',max_chars=100)
+        with filter_col:
+            group=field('selectbox','보험사 구분','f_group','전체',options=['전체','기본 포털','생명보험','손해보험'])
         rows=filter_insurers(data['insurers'],query,group)
         if mode=='즐겨찾기':rows=[r for r in rows if st.session_state.get('f_favorite_'+r['slug'],False)]
     with st.container(key="hw_surface_insurer_portal_1"):

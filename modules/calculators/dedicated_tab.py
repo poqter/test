@@ -117,7 +117,7 @@ def _render_requested():
         st.warning('이용 권한이 만료되었거나 유효하지 않습니다. 원래 워크스페이스에서 계산기를 다시 열어주세요.')
         return True
     if not grant:
-        st.info('계산기 전용 탭을 연결하고 있습니다. 주소만으로는 계산기를 열 수 없습니다.')
+        st.info('계산기를 준비하고 있습니다. 잠시만 기다려주세요.', icon='⏳')
         return True
     _expiry_guard()
     # The validated lease, not the URL or client widget, determines the route.

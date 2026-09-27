@@ -663,7 +663,7 @@ def run():
         st.caption("01 · 비교 조건")
         section_intro("입력", "상담 조건 입력", "적금과 단기납에 적용할 네 가지 조건을 입력해 주세요.")
         with st.form("hwarang_deposit_shortpay_form"):
-            left, right = st.columns(2, gap="large")
+            left, right = st.container(), st.container()
 
             with left:
                 monthly = st.number_input(

@@ -14,6 +14,8 @@ def inject_global_styles() -> None:
 
 
 def page_header(category: str, title: str, description: str, icon: str) -> None:
+    icons = {'RM':'🔄','QC':'🧮','CH':'💬','CB':'📊','CM':'📄','CG':'📋','DS':'💰','RN':'🛡️','IT':'🏛️','CV':'🏆','SU':'☀️','MR':'📈','CC':'🧾','IP':'🌐','ED':'📚','▤':'🛡️'}
+    icon = icons.get(icon, icon)
     st.markdown(
         f'''<div class="hw-page-head"><div class="hw-page-icon" aria-hidden="true">{html.escape(icon)}</div>
         <div class="hw-page-copy"><div class="hw-breadcrumb">화랑 WORKSPACE / {html.escape(category)}</div>
@@ -21,12 +23,12 @@ def page_header(category: str, title: str, description: str, icon: str) -> None:
         unsafe_allow_html=True,
     )
 
-    from modules.shared.legacy_workflow import render_workflow
-    render_workflow(st.session_state.get("active_app", ""))
+    # Workflow help is available from the compact page toolbar.
 
 
 def tool_guide(title: str, introduction: str, steps: list[tuple[str, str]], criteria: str = "", caution: str = "") -> None:
-    with st.expander(title, expanded=False):
+    with st.popover("사용 방법 · 기준", icon=":material/help_outline:"):
+        st.markdown("**"+title+"**")
         st.markdown(f'<div class="hw-guide-intro">{html.escape(introduction)}</div>', unsafe_allow_html=True)
         if steps:
             cards = "".join(
@@ -44,11 +46,8 @@ def tool_guide(title: str, introduction: str, steps: list[tuple[str, str]], crit
 
 
 def page_footer(tool_name: str, version: str, updated: str = "2026.08.22") -> None:
-    st.markdown(
-        f'<div class="hw-page-footer"><span class="hw-page-footer-brand">화랑 WORKSPACE</span>'
-        f'<span>{html.escape(tool_name)} v{html.escape(version.lstrip("v"))} · Updated {html.escape(updated)}</span></div>',
-        unsafe_allow_html=True,
-    )
+    with st.expander('도구 정보'):
+        st.caption(f'{tool_name} · v{version.lstrip("v")} · 업데이트 {updated}')
 
 
 def section_intro(label: str, title: str, description: str = "") -> None:

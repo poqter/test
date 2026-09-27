@@ -320,24 +320,24 @@ def run() -> None:
             with basic_col:
                 with st.container(border=True):
                     st.markdown('<div class="rn-card-label"><span class="rn-card-number">1</span>기본 정보</div>', unsafe_allow_html=True)
-                    current_age = int(st.number_input("현재 나이", min_value=18, max_value=90, value=40, step=1))
-                    end_age = int(st.number_input("보장 종료 나이", min_value=current_age + 1, max_value=110, value=max(100, current_age + 1), step=1))
-                    retirement_age = int(st.number_input("예상 은퇴 나이", min_value=current_age, max_value=end_age, value=min(max(65, current_age), end_age), step=1))
-                    past_paid = float(st.number_input("현재까지 납입한 총액 · 선택", min_value=0, value=0, step=1_000_000, help="모르는 경우 0원으로 두세요."))
+                    current_age = int(st.number_input("현재 나이 (세)", min_value=18, max_value=90, value=40, step=1))
+                    end_age = int(st.number_input("보장 종료 나이 (세)", min_value=current_age + 1, max_value=110, value=max(100, current_age + 1), step=1))
+                    retirement_age = int(st.number_input("예상 은퇴 나이 (세)", min_value=current_age, max_value=end_age, value=min(max(65, current_age), end_age), step=1))
+                    past_paid = float(st.number_input("현재까지 납입한 총액 (원) · 선택", min_value=0, value=0, step=1_000_000, help="모르는 경우 0원으로 두세요."))
 
             with renew_col:
                 with st.container(border=True):
                     st.markdown('<div class="rn-card-label"><span class="rn-card-number">2</span>갱신형 정보</div>', unsafe_allow_html=True)
-                    current_premium = float(st.number_input("현재 월보험료", min_value=0, value=80_000, step=10_000))
+                    current_premium = float(st.number_input("현재 월보험료 (원)", min_value=0, value=80_000, step=10_000))
                     cycle = int(st.selectbox("갱신 주기", [5, 10, 15, 20, 30], index=3, format_func=lambda value: f"{value}년"))
-                    next_years = int(st.number_input("다음 갱신까지 남은 기간", min_value=1, max_value=min(cycle, end_age - current_age), value=min(5, cycle, end_age - current_age), step=1))
+                    next_years = int(st.number_input("다음 갱신까지 남은 기간 (년)", min_value=1, max_value=min(cycle, end_age - current_age), value=min(5, cycle, end_age - current_age), step=1))
                     method = st.selectbox("갱신보험료 산정 방식", ["간편 시나리오", "가입제안서 직접 입력", "갱신배수 직접 설정"])
                     scenario = st.selectbox("갱신 상승 시나리오", list(SCENARIOS), index=1, disabled=method != "간편 시나리오")
 
             with fixed_col:
                 with st.container(border=True):
                     st.markdown('<div class="rn-card-label"><span class="rn-card-number">3</span>비갱신형 정보</div>', unsafe_allow_html=True)
-                    fixed_premium = float(st.number_input("월보험료", min_value=0, value=135_000, step=10_000, key="rn_fixed_premium"))
+                    fixed_premium = float(st.number_input("월보험료 (원)", min_value=0, value=135_000, step=10_000, key="rn_fixed_premium"))
                     fixed_years = int(st.selectbox("납입기간", [10, 15, 20, 25, 30], index=2, format_func=lambda value: f"{value}년"))
 
             ages = _renewal_ages(current_age, end_age, cycle, next_years)

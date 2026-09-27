@@ -828,7 +828,7 @@ def run() -> None:
             first, second = st.tabs(["① 리모델링 비교안", "② 기존 계약 정리표 · 선택"])
             with first:
                 people = []
-                tabs = st.tabs([f"고객 {i}" for i in range(1,count+1)])
+                tabs = st.tabs([f"고객 {i}" for i in range(1,count+1)]) if count > 1 else [st.container()]
                 for i, tab in enumerate(tabs,1):
                     with tab: people.append(render_person_inputs(i))
                 display_names = [re.sub(r"님$", "", clean(p.name)) or "OOO" for p in people]
@@ -844,7 +844,7 @@ def run() -> None:
                 include_detail = st.checkbox("기존 계약 정리표를 출력에 포함", key="rm_include_detail")
                 st.caption("선택 자료입니다. 작성하지 않아도 첫 번째 비교안을 다운로드할 수 있습니다.")
                 if include_detail:
-                    dtabs = st.tabs([f"고객 {i}" for i in range(1,count+1)])
+                    dtabs = st.tabs([f"고객 {i}" for i in range(1,count+1)]) if count > 1 else [st.container()]
                     for i,tab in enumerate(dtabs,1):
                         with tab: people[i-1].contracts = render_contract_inputs(i)
                 else:

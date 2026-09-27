@@ -1075,6 +1075,14 @@ def inject_styles() -> None:
 
 def render_claim_buttons() -> list[str]:
     selected = st.session_state.setdefault("cg_selected_claims", [])
+    selected = st.session_state.get("cg_selected_claims", [])
+    if selected:
+        chips = " · ".join(html.escape(x) for x in selected)
+        st.markdown(f'<div class="cg-selected-summary"><b>선택한 청구 항목 {len(selected)}개</b><br>{chips}</div>', unsafe_allow_html=True)
+        if st.button("전체 선택 해제", key="cg_clear_claims"):
+            st.session_state["cg_selected_claims"] = []
+            st.session_state.pop("cg_result_claims", None)
+            st.rerun()
     for group, claims in CLAIM_GROUPS.items():
         st.markdown(f"#### {group}")
         columns = st.columns(4)
@@ -1088,14 +1096,6 @@ def render_claim_buttons() -> list[str]:
                 ):
                     toggle_claim(claim)
                     st.rerun()
-    selected = st.session_state.get("cg_selected_claims", [])
-    if selected:
-        chips = " · ".join(html.escape(x) for x in selected)
-        st.markdown(f'<div class="cg-selected-summary"><b>선택한 청구 항목 {len(selected)}개</b><br>{chips}</div>', unsafe_allow_html=True)
-        if st.button("전체 선택 해제", key="cg_clear_claims"):
-            st.session_state["cg_selected_claims"] = []
-            st.session_state.pop("cg_result_claims", None)
-            st.rerun()
     return selected
 
 

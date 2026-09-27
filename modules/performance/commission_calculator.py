@@ -1715,6 +1715,8 @@ def run() -> None:
         "수수료 예시표와 보유계약 장기 파일을 연결해 계약별 예상 수당을 계산합니다.",
         "CC",
     )
+    with st.container(horizontal=True):
+        st.caption('① 수수료표 등록  →  ② 계약자료 확인  →  ③ 예상 수당 확인')
     with st.container(key="hw_surface_commission_calculator_0"):
         st.caption("01 · 수수료 예시표")
         section_intro("입력", "수수료 자료 불러오기", "생보·손보 수수료 예시표를 먼저 등록해 주세요.")
