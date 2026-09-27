@@ -228,6 +228,21 @@ body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"]{max-width:14
 @media(max-width:768px){body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"]{padding:4rem 1rem 2rem!important}[class*="st-key-hw_category_navigation"] [data-testid="stColumn"]{min-width:calc(50% - 8px)!important;width:calc(50% - 8px)!important;flex:1 1 calc(50% - 8px)!important}[class*="st-key-hw_category_navigation"] button p{font-size:15px!important}[class*="st-key-hw_dash_tool_"] button [data-testid="stMarkdownContainer"] p{font-size:18px!important}}
 @media(prefers-reduced-motion:reduce){[class*="st-key-hw_category_navigation"] button{transition:none!important}}
 
+/* Sidebar hierarchy: group headers, inset tool rows, active destination. */
+[data-testid="stSidebar"] [data-testid="stExpander"]{background:#192f44!important;border:1px solid #607a90!important;border-radius:12px!important;margin:5px 0 9px!important;overflow:hidden}
+[data-testid="stSidebar"] [data-testid="stExpander"] summary{background:#304d65!important;padding:13px 14px!important;min-height:50px;color:#f5f9fd!important}
+[data-testid="stSidebar"] [data-testid="stExpander"] summary p{color:#f5f9fd!important;font-size:17px!important;font-weight:700!important;letter-spacing:0!important}
+[data-testid="stSidebar"] [data-testid="stExpander"] summary svg{color:#e5f2fc!important;fill:currentColor}
+[data-testid="stSidebar"] [data-testid="stExpander"] summary:hover{background:#3d5b74!important}
+[data-testid="stSidebar"] [data-testid="stExpander"] details[open]>summary{border-bottom:1px solid #607a90!important}
+[data-testid="stSidebar"] [data-testid="stExpanderDetails"]{padding:10px 10px 12px 18px!important}
+[data-testid="stSidebar"] [data-testid="stExpander"] button[kind="secondary"]{background:#20394f!important;border:1px solid #425f78!important;border-left:3px solid #69899f!important;border-radius:8px!important;padding:10px 12px!important;justify-content:flex-start!important;text-align:left!important;color:#e5eff7!important}
+[data-testid="stSidebar"] [data-testid="stExpander"] button[kind="secondary"]:hover{background:#35556f!important;border-color:#92b4cb!important}
+[data-testid="stSidebar"] [data-testid="stExpander"] button[kind="primary"]{background:#d7e9f2!important;border:1px solid #d7e9f2!important;border-left:4px solid #65c4c9!important;color:#173b55!important;justify-content:flex-start!important;text-align:left!important}
+[data-testid="stSidebar"] [data-testid="stExpander"] button [data-testid="stMarkdownContainer"]{width:100%;text-align:left!important}
+[data-testid="stSidebar"] [data-testid="stExpander"] button p{color:inherit!important;font-size:15px!important;font-weight:600!important}
+[data-testid="stSidebar"] button:focus-visible,[data-testid="stSidebar"] summary:focus-visible{outline:3px solid #a8e6e7!important;outline-offset:2px}
+
 '''
 
 def inject_signature_styles():
