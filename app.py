@@ -114,6 +114,13 @@ def main() -> None:
     role = st.session_state.get("login_user")
     permitted = allowed_ids(role)
     st.session_state["ws_allowed_ids"] = permitted
+    requested_calculator = st.query_params.get("calculator")
+    if requested_calculator and "quick_calculators" in permitted:
+        from modules.calculators.jarvia_calculator_center import ITEMS
+        if requested_calculator in ITEMS:
+            st.session_state["active_app"] = "quick_calculators"
+            st.session_state["jc_link_entry"] = requested_calculator
+        del st.query_params["calculator"]
     active = normalize_route(st.session_state.get("active_app"), role)
     st.session_state["active_app"] = active
     render_sidebar(permitted, navigate, logout, NOTICE)

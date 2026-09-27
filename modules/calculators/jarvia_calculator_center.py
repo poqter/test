@@ -151,6 +151,15 @@ def compute_insurance_pension(name, v, fmt, factor, annuity, count):
 
 def run(run_legacy):
     from modules.calculators.valuation_transfer import apply_pending
+    if st.session_state.pop('jc_home_entry', False):
+        for k in ('jc_open','jc_selected','jc_search','jc_catalog_query','jc_catalog_group','jc_catalog_last','jc_catalog_restore','jc_group','jc_transfer_notice'):
+            st.session_state.pop(k, None)
+    linked = st.session_state.pop('jc_link_entry', None)
+    if linked in ITEMS:
+        from modules.shared.session_store import reset_page
+        reset_page('quick_calculators')
+        st.session_state['jc_open'] = linked
+        st.session_state['jc_selected'] = linked
     apply_pending()
     notice=st.session_state.pop('jc_transfer_notice',None)
     if notice:st.info(notice)
@@ -161,6 +170,8 @@ def run(run_legacy):
     active = st.session_state.get('jc_open')
     if active:
         st.button('← 계산기 목록', key='jc_back_catalog', on_click=back_to_catalog)
+        from modules.calculators.catalog_browser import new_tab_link
+        if active in ITEMS: new_tab_link(active)
     from modules.calculators.pension.retirement_models import NAMES as RETIREMENT_NAMES
     from modules.calculators.tax.personal_tax_models import NAMES as PERSONAL_TAX_NAMES
     implemented = set(FIELDS) | {'연금계산기','주택연금계산기','은퇴저축계산기','연금 인출순서계산기','퇴직금계산기'} | set(RETIREMENT_NAMES)

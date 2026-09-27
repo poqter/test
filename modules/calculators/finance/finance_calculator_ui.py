@@ -6,6 +6,7 @@ from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 import streamlit as st
+from modules.calculators.input_design import number_input
 from modules.calculators.finance import finance_models as engine
 
 NAMES = ('미래가치계산기','복리계산기','수익률계산기','재무계산기','투자수익계산기',
@@ -32,15 +33,15 @@ FREQUENCIES = {'매월':12,'분기마다':4,'반기마다':2,'매년':1}
 
 
 def _money(label,default=0,key=None):
-    return st.number_input(label+' (원)',min_value=0,max_value=10**12,value=int(default),step=10000,key=key)
+    return number_input(label+' (원)',min_value=0,max_value=10**12,value=int(default),step=10000,key=key)
 
 
 def _rate(label='연 명목수익률 (%)',default=4.0,key=None):
-    return st.number_input(label,min_value=-99.99,max_value=100.0,value=float(default),step=.1,key=key)
+    return number_input(label,min_value=-99.99,max_value=100.0,value=float(default),step=.1,key=key)
 
 
 def _years(default=10,key=None):
-    return st.number_input('기간 (년)',min_value=1,max_value=120,value=int(default),step=1,key=key)
+    return number_input('기간 (년)',min_value=1,max_value=120,value=int(default),step=1,key=key)
 
 
 def run(name):
@@ -51,12 +52,12 @@ def run(name):
         mode=MODES[st.selectbox('계산할 항목',list(MODES),key=prefix+'_mode')]
     elif name=='현재가치계산기':
         mode=st.radio('현재가치 계산 방식',['미래 일시금','매년 정기 입금'],horizontal=True,key=prefix+'_mode')
-    st.caption('금액은 원 단위입니다. 입력값을 변경한 뒤 계산하기를 누르면 결과가 갱신됩니다.')
-    from modules.shared.page_layouts import work_panels
+    st.caption('금액은 만원 단위로 입력합니다. 입력값을 변경한 뒤 계산하기를 누르면 결과가 갱신됩니다.')
+    from modules.calculators.input_design import input_panels as work_panels
     _ui_0, _ui_1 = work_panels("finance_calculator_ui")
     with _ui_0:
         st.caption("01 · 조건 입력")
-        with st.form(prefix+'_form_'+mode):
+        with st.container(key=prefix+'_form_'+mode):
             args={}
             if name=='미래가치계산기':
                 args=dict(principal=_money('처음 투자할 금액',10000000),annual_payment=_money('매년 추가할 금액',200000),
@@ -93,7 +94,7 @@ def run(name):
                 if annuity:args['beginning']=st.radio('입금 시점',['기간 시작','기간 말'],horizontal=True)=='기간 시작'
                 calculate=engine.present_value
             elif name=='비상자금 진단계산기':
-                args=dict(expense=_money('월 필수 생활비',3000000),months=st.number_input('목표 보유 기간 (개월)',min_value=1,max_value=1200,value=6),
+                args=dict(expense=_money('월 필수 생활비',3000000),months=number_input('목표 보유 기간 (개월)',min_value=1,max_value=1200,value=6),
                     cash=_money('현금·수시입출금',20000000),deposits=_money('단기 예적금'),other=_money('기타 즉시 현금화 자산'),debt=_money('1년 내 상환할 단기부채'))
                 calculate=engine.emergency
             elif name=='목표자금 계획계산기':
@@ -111,7 +112,7 @@ def run(name):
             else:
                 args=dict(monthly=_money('매달 나가는 금액',300000),years=_years(20),rate=_rate())
                 calculate=engine.opportunity
-            submit=st.form_submit_button('계산하기',type='primary')
+            submit=st.button('계산하기',type='primary')
         result_key=prefix+'_result'
         if submit:
             st.session_state.pop(result_key,None)
@@ -119,10 +120,13 @@ def run(name):
             except (ValueError,ArithmeticError) as exc:st.warning(str(exc))
             else:st.session_state[result_key]=(args,result,datetime.now(ZoneInfo('Asia/Seoul')).isoformat(timespec='seconds'))
         saved=st.session_state.get(result_key)
-        if not saved or saved[0]!=args:return
+        if not saved:return
+        if saved[0]!=args:
+            st.info('입력 조건이 변경되었습니다. 다시 계산해주세요.')
+            return
         _,result,calculated_on=saved
     with _ui_1:
-        st.caption("02 · 고객용 결과 · 상세 계산")
+        st.caption("02 · 계산 결과")
         render_result(name,result,calculated_on,args,prefix)
 
 
@@ -131,7 +135,7 @@ def _rows_for_display(result):
 
 
 def render_result(name,result,calculated_on,args,prefix):
-    customer,advisor=st.tabs(['고객용 결과','설계사용 상세 계산'])
+    customer,advisor=(st.container(), st.expander('산출 내역 자세히 보기'))
     display=result.display()
     with customer:
         st.subheader(name)
@@ -140,7 +144,7 @@ def render_result(name,result,calculated_on,args,prefix):
             st.line_chart([{'경과 연수':r['경과 연수'],'총 자금':float(r['총 자금']),'납입 원금':float(r['납입 원금'])} for r in result.rows],x='경과 연수',y=['총 자금','납입 원금'])
         st.caption('입력한 수익률과 조건에 따른 예상치입니다.')
         summary=name+'\n계산일: '+calculated_on+'\n'+'\n'.join(f'{k}: {v}' for k,v in display.items())+'\n\n계산에 사용한 입력\n'+'\n'.join(f'{k}: {v}' for k,v in input_rows(args))+'\n\n산식: '+result.formula+'\n\n'+'\n'.join(result.assumptions)
-        st.download_button('고객용 결과 저장',summary.encode('utf-8-sig'),name+'_고객용.txt','text/plain',key=prefix+'_customer_export')
+        st.download_button('결과 저장',summary.encode('utf-8-sig'),name+'_고객용.txt','text/plain',key=prefix+'_customer_export')
     with advisor:
         st.caption('계산일: '+calculated_on)
         st.write(result.formula)

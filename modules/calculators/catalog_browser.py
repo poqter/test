@@ -2,6 +2,8 @@
 import hashlib
 import json
 import re
+from urllib.parse import urlencode
+from html import escape
 import streamlit as st
 
 PURPOSES = (
@@ -99,6 +101,11 @@ def scroll_memory(last, restore):
     </script>'''.replace('RESTORE', json.dumps(restore)).replace('SELECTOR', json.dumps(selector)), height=1)
 
 
+def new_tab_link(name):
+    url = '?' + urlencode({'calculator': name})
+    st.markdown(f'<a href="{escape(url, quote=True)}" target="_blank" rel="noopener noreferrer" style="font-size:12px;color:#506d8c;text-decoration:none">새 탭으로 열기 ↗</a>', unsafe_allow_html=True)
+
+
 def render_catalog(items, groups, implemented):
     st.markdown('### 어떤 상담을 준비하시나요?')
     st.caption('계산기 이름을 몰라도, 고객의 상황으로 찾아보세요.')
@@ -110,17 +117,18 @@ def render_catalog(items, groups, implemented):
     search.text_input('계산기 이름 또는 상담 목적', key='jc_search', on_change=save_query,
                       placeholder='예: 노후 생활비, 자녀 증여, 보험료 부담', label_visibility='collapsed')
     clear.button('초기화', key='jc_search_clear', on_click=set_query, args=('',), use_container_width=True)
-    with st.container(key='jc_purposes'):
-        cols = st.columns(3)
+    st.caption('추천 검색')
+    with st.container(key='jc_purposes', horizontal=True):
         for i, (label, query) in enumerate(PURPOSES):
-            cols[i % 3].button(label, key=f'jc_purpose_{i}', on_click=set_query, args=(query,), use_container_width=True,
-                                type='primary' if st.session_state['jc_catalog_query'] == query else 'secondary')
+            st.button(label, key=f'jc_purpose_{i}', on_click=set_query, args=(query,),
+                      type='tertiary')
+    st.divider()
+    st.markdown('##### 업무별 찾기')
     group = st.session_state['jc_catalog_group']
-    with st.container(key='jc_categories'):
-        cols = st.columns(4)
+    with st.container(key='jc_categories', horizontal=True):
         for i, category in enumerate(('전체', *groups)):
-            cols[i % 4].button(category.split(' · ')[-1], key=f'jc_category_{i}', on_click=set_group, args=(category,),
-                               use_container_width=True, type='primary' if group == category else 'secondary')
+            st.button(category.split(' · ')[-1], key=f'jc_category_{i}', on_click=set_group, args=(category,),
+                      type='primary' if group == category else 'secondary')
     query = st.session_state['jc_catalog_query']
     found = [(n, g, d) for n, (g, d) in items.items() if n in implemented
              and (group == '전체' or group == g) and matches(n, g, d, query)]
@@ -132,7 +140,9 @@ def render_catalog(items, groups, implemented):
     [class*="st-key-jc_card_"] button:hover{border-color:#7e9ebf!important;box-shadow:0 5px 16px #25456912!important;transform:none!important}
     [class*="st-key-jc_card_"] button p{font-size:14px!important;line-height:1.65!important;text-align:left!important}
     [class*="st-key-jc_card_"] button strong{font-size:17px!important;color:#1d3653!important}
-    .st-key-jc_purposes button{font-size:13px!important;border-radius:20px!important}
+    .st-key-jc_purposes button{font-size:12px!important;min-height:28px!important;padding:3px 9px!important;border-radius:16px!important;background:#edf2f7!important;color:#526982!important}
+    .st-key-jc_purposes button p{font-size:12px!important}
+    .st-key-jc_categories button{min-height:42px!important;font-weight:650!important}
     @media(prefers-reduced-motion:reduce){[class*="st-key-jc_card_"] button{transition:none!important}}
     </style>''', unsafe_allow_html=True)
     for gi, category in enumerate(groups):
@@ -146,6 +156,7 @@ def render_catalog(items, groups, implemented):
                 summary = description.replace('계산 결과: ', '').split(' 적용 조건')[0]
                 label = f"{('🧾','🌿','🛡️','📈','🏢','📑')[gi]} **{name.removesuffix('계산기')}**\n\n{summary}　↗"
                 col.button(label, key=card_key(name), on_click=open_calculator, args=(name,), use_container_width=True)
+                with col: new_tab_link(name)
     if not found:
         st.info('일치하는 계산기가 없습니다. 다른 키워드를 입력하거나 분류를 전체로 바꿔보세요.')
     st.divider()

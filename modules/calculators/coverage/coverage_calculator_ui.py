@@ -4,6 +4,7 @@ import io
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import streamlit as st
+from modules.calculators.input_design import number_input
 from modules.calculators.coverage.coverage_models import NAMES, FIELDS, calculate
 from modules.calculators.finance.finance_calculator_ui import csv_safe
 
@@ -11,11 +12,11 @@ def run(name, fields=None, calculator=None, caption=None):
     fields = FIELDS if fields is None else fields
     calculator = calculate if calculator is None else calculator
     st.caption(caption or '보장 필요액 시나리오 · 원본 입력·결과 대조 반영')
-    from modules.shared.page_layouts import work_panels
+    from modules.calculators.input_design import input_panels as work_panels
     _ui_0, _ui_1 = work_panels("coverage_calculator_ui")
     with _ui_0:
         st.caption("01 · 조건 입력")
-        with st.form('coverage_'+name):
+        with st.container(key='coverage_'+name):
             values=[]
             entries = fields[name]
             if name == '상속세계산기':
@@ -40,11 +41,11 @@ def run(name, fields=None, calculator=None, caption=None):
                         elif unit=='문자':
                             value=st.text_input(label,value=default,max_chars=maximum,key=f'cov_{name}_{i}')
                         elif unit in ('%','명(연평균)'):
-                            value=st.number_input(f'{label} ({unit})',min_value=0.0,max_value=float(maximum),value=float(default),step=0.01 if unit=='명(연평균)' else 0.1,key=f'cov_{name}_{i}')
+                            value=number_input(f'{label} ({unit})',min_value=0.0,max_value=float(maximum),value=float(default),step=0.01 if unit=='명(연평균)' else 0.1,key=f'cov_{name}_{i}')
                         else:
-                            value=st.number_input(f'{label} ({unit})',min_value=0,max_value=maximum,value=default,step=10000 if unit=='원' else 1,key=f'cov_{name}_{i}')
+                            value=number_input(f'{label} ({unit})',min_value=0,max_value=maximum,value=default,step=10000 if unit=='원' else 1,key=f'cov_{name}_{i}')
                         values.append(value)
-            submitted=st.form_submit_button('계산하기')
+            submitted=st.button('계산하기')
         result_key='coverage_result_'+name
         if submitted:
             try:st.session_state[result_key]=(tuple(values),calculator(name,values),datetime.now(ZoneInfo('Asia/Seoul')).strftime('%Y-%m-%d %H:%M'))
@@ -52,10 +53,13 @@ def run(name, fields=None, calculator=None, caption=None):
                 st.session_state.pop(result_key,None);st.error(str(exc))
         stored=st.session_state.get(result_key)
         if not stored:return
+        if stored[0] != tuple(values):
+            st.info("입력 조건이 변경되었습니다. 다시 계산해주세요.")
+            return
         args,result,stamp=stored
     with _ui_1:
-        st.caption("02 · 고객용 결과 · 상세 계산")
-        customer,advisor=st.tabs(['고객용 결과','설계사용 상세 계산'])
+        st.caption("02 · 계산 결과")
+        customer,advisor=(st.container(), st.expander('산출 내역 자세히 보기'))
         display=result.display()
         from modules.calculators.calculator_exports import build_exports
         text,csv_bytes=build_exports(name,fields[name],args,result,stamp)
@@ -64,7 +68,7 @@ def run(name, fields=None, calculator=None, caption=None):
             st.subheader(name)
             for k,v in display.items():st.metric(k,v)
             for note in result.assumptions:st.caption(note)
-            st.download_button('고객용 결과 저장',text,file_name=name+'_고객용.txt',mime='text/plain',key=name+'_customer')
+            st.download_button('결과 저장',text,file_name=name+'_고객용.txt',mime='text/plain',key=name+'_customer')
         with advisor:
             st.write(result.formula)
             st.caption('계산 시각: '+stamp)

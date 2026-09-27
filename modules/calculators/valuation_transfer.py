@@ -17,6 +17,8 @@ def apply_pending():
     else:
         st.session_state['gift_mode']='증여세 상세 계산'
         st.session_state[f'cov_{target}_6']=amount
+    index = 0 if target == TARGETS[0] else 35 if target == TARGETS[2] else 6
+    st.session_state[f'cov_{target}_{index}_manwon'] = float(Decimal(str(amount))/10000)
     st.session_state.pop('coverage_result_'+target,None)
     st.session_state['jc_transfer_notice']=f'{target}에 평가액 {amount:,}원을 입력했습니다. 다른 재산·공제·적격요건을 확인한 뒤 계산하세요.'
 

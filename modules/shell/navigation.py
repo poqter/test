@@ -40,6 +40,8 @@ def navigate(
     role = session.get("login_user")
     target = normalize_route(page_id, role)
     save_legacy_draft(str(session.get("active_app", "home")), state=session)
+    if target == "quick_calculators" and session.get("active_app", "home") == "home":
+        session["jc_home_entry"] = True
     session["active_app"] = target
     if mode and target != "home":
         session["hw.ui.target_mode"] = {"page": target, "mode": mode}
