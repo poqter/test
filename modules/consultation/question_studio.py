@@ -69,7 +69,7 @@ def _add_custom():
 
 def run():
     _init()
-    page_header('상담·제안서','상담·제안서 스튜디오','필요한 질문을 고르고, 고객에 맞게 다듬어 상담 질문지로 저장하세요.','CH')
+    page_header('상담·제안서','상담 질문지 제작기','필요한 질문을 고르고, 고객에 맞게 다듬어 상담 질문지로 저장하세요.','CH')
     session_notice('b_')
     st.subheader('1. 질문 선택')
     cols=st.columns(3)

@@ -100,7 +100,7 @@ def legacy_run():
     scripts = load_content("consultation_scripts")
     messages = load_content("message_templates")
     checks = load_content("checklists")
-    page_header("상담·제안서", "상담·제안서 스튜디오", "준비 → 상담 → 요약 → 제안서. 직접 검토한 내용으로 전달자료를 만드세요.", "CH")
+    page_header("상담·제안서", "상담 질문지 제작기", "준비 → 상담 → 요약 → 제안서. 직접 검토한 내용으로 전달자료를 만드세요.", "CH")
     session_notice("b_")
     with st.container(key="hw_compact_consultation_topics"):
         st.caption("01 · 상담 작업 선택")

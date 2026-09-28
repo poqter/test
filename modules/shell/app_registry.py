@@ -45,7 +45,7 @@ GROUPS: Final[tuple[GroupSpec, ...]] = (
 
 
 APPS: Final[tuple[AppSpec, ...]] = (
-    AppSpec("consultation_helper", "상담·제안서 스튜디오", "consultation", "상담 준비부터 요약·고객 전달문·제안서 PDF까지 정리합니다.", ("문자", "생애주기", "질문", "상담요약", "스크립트", "제안서", "PDF"), "modules.consultation.consultation_helper", icon_key="consultation", order=10, source_status="stage3"),
+    AppSpec("consultation_helper", "상담 질문지 제작기", "consultation", "필요한 질문을 골라 고객 맞춤 상담 질문지를 만듭니다.", ("상담", "질문지", "질문", "메모", "상담 준비", "PDF"), "modules.consultation.consultation_helper", icon_key="consultation", order=10, source_status="stage3"),
     AppSpec("quick_calculators", "종합계산기(80개)", "calculators", "세금·연금·보장과 재무 계획에 필요한 금액을 계산합니다.", ("보험나이", "상령일", "총납입", "비상자금", "납입면제", "교육자금", "은퇴", "저축", "물가", "부채", "세금", "법인", "연금"), "modules.calculators.quick_calculators", icon_key="calculator", order=20, source_status="in_progress"),
     AppSpec("deposit_vs_shortpay", "적금 vs 단기납", "calculators", "10년 기준 적금과 단기납의 예상 결과를 비교합니다.", ("저축", "적금", "단기납", "환급"), "modules.calculators.comparison.deposit_vs_shortpay", icon_key="compare", order=30),
     AppSpec("renewal_vs_nonrenewal", "갱신 vs 비갱신", "calculators", "보험료 변동을 반영해 장기 총납입액을 비교합니다.", ("갱신보험료", "총납입", "갱신형", "비갱신형"), "modules.calculators.comparison.renewal_vs_nonrenewal", icon_key="compare", order=40),
@@ -53,7 +53,7 @@ APPS: Final[tuple[AppSpec, ...]] = (
     AppSpec("analyzer", "보장 분석 도우미", "analysis", "보험사 보장분석 자료를 고객용 양식으로 변환합니다.", ("보장분석", "증권", "고객용", "엑셀"), "modules.consultation.analyzer", icon_key="analysis", order=60),
     AppSpec("remodeling", "보험 리모델링", "analysis", "변경안을 비교하고 고객용 엑셀 자료를 만듭니다.", ("보험료", "변경안", "리모델링"), "modules.consultation.remodeling", icon_key="remodeling", order=70),
     AppSpec("silson_generation_comparison", "실손보험 세대 비교", "analysis", "현재 가입 실손과 5세대 실손의 보험료와 입원 보장을 비교합니다.", ("실손", "실비", "세대", "입원"), "modules.calculators.comparison.silson_generation_comparison", icon_key="medical", order=80),
-    AppSpec("comparison_builder", "고객용 비교표 제작기", "materials", "금액·기간·조건을 비교하고 순서를 정해 Excel·PDF로 전달합니다.", ("비교표", "워터마크", "설명문", "변경안"), "modules.consultation.comparison_builder", icon_key="materials", order=90, source_status="stage5"),
+    AppSpec("comparison_builder", "고객용 비교표 제작기", "materials", "가입안별 보험료·보장을 비교하고 고객용 PDF로 전달합니다.", ("비교표", "가입안", "보험료", "PDF"), "modules.consultation.comparison_builder", icon_key="materials", order=90, source_status="stage5"),
     AppSpec("customer_materials", "고객자료 제작기", "materials", "9개 안내 양식과 상담·계산 결과로 고객 전달자료를 만듭니다.", ("고객자료", "안내문", "한 장 요약", "전달자료", "계약 변경"), "modules.consultation.customer_materials", icon_key="materials", order=95, source_status="stage5"),
     AppSpec("insurance_claim_guide", "보험금 청구 가이드", "materials", "청구 항목별 필요서류를 확인하고 관련 담보를 찾습니다.", ("청구서류", "진단서", "보험금", "안내문"), "modules.consultation.insurance_claim_guide", icon_key="claim", order=100),
     AppSpec("education_center", "교육·체크리스트 센터", "education", "용어·상담 연습·오답 복습·체크리스트와 수동 연구노트를 제공합니다.", ("교육", "용어", "설명의무", "퀴즈", "신입", "FAQ", "연구노트", "오답"), "modules.resources.education_center", icon_key="education", order=110, source_status="stage6"),
