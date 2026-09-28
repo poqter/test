@@ -1,3 +1,4 @@
+from modules.shared.pdf_brand import draw_brand
 """Branded, paginated calculation snapshots. No calculation or rounding changes."""
 from io import BytesIO
 from pathlib import Path
@@ -65,12 +66,7 @@ def build_result_pdf(name, inputs, result, stamp, *, include_results=True, inclu
         for note in result.assumptions:
             story.append(p('• '+str(note)));story.append(Spacer(1,5))
     def page(canvas, doc):
-        canvas.saveState();w,h=A4
-        canvas.setFillColor(navy);canvas.rect(0,h-13*mm,w,13*mm,fill=1,stroke=0)
-        canvas.setFillColor(colors.white);canvas.setFont(font,9);canvas.drawString(20*mm,h-8.5*mm,'H  |  화랑 WORKSPACE')
-        canvas.setStrokeColor(colors.HexColor('#dce5ef'));canvas.line(20*mm,17*mm,w-20*mm,17*mm)
-        canvas.setFont(font,8);canvas.setFillColor(colors.HexColor('#62758a'));canvas.drawString(20*mm,11*mm,'화랑 WORKSPACE');canvas.drawRightString(w-20*mm,11*mm,str(doc.page))
-        canvas.restoreState()
+        draw_brand(canvas, doc.page)
     doc.build(story,onFirstPage=page,onLaterPages=page)
     return buf.getvalue()
 

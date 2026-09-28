@@ -1,3 +1,4 @@
+from modules.shared.pdf_brand import draw_brand
 """Branded, in-memory question sheet with handwriting space."""
 import html
 import io
@@ -54,9 +55,7 @@ def build_question_pdf(title, questions, customer='', consultation_date=''):
         if page:c.showPage()
         page+=1
         if page == 1:
-            c.setFillColor(HexColor(navy));c.rect(0,h-55,w,55,fill=1,stroke=0)
-            c.setFillColor(HexColor('#FFFFFF'));c.setFont(font,12);c.drawString(margin,h-33,'H  |  화랑 WORKSPACE')
-            c.setFont(font,8);c.drawRightString(w-margin,h-33,'상담·제안서 스튜디오')
+            draw_brand(c)
             y=h-78;y-=paragraph(title,margin,y,size=22,leading=29)+16
             c.setFillColor(HexColor('#F0F5FC'));c.roundRect(margin,y-39,width,39,7,fill=1,stroke=0)
             customer_label=customer.strip() or '____________________'
@@ -65,13 +64,8 @@ def build_question_pdf(title, questions, customer='', consultation_date=''):
             paragraph('상담일: '+date_label,margin+width*.57,y-8,available=width*.43-12,size=10,leading=13)
             start_y=y-62
         else:
-            c.setFillColor(HexColor(navy));c.setFont(font,10)
-            c.drawString(margin,h-33,'H  |  화랑 WORKSPACE')
-            c.setStrokeColor(HexColor(line));c.setLineWidth(.6)
-            c.line(margin,h-45,w-margin,h-45)
+            draw_brand(c)
             start_y=h-66
-        c.setStrokeColor(HexColor(line));c.setLineWidth(.6);c.line(margin,40,w-margin,40)
-        c.setFillColor(HexColor(muted));c.setFont(font,8);c.drawString(margin,25,'화랑 WORKSPACE')
         return start_y
     y=new_page()
     for i,q in enumerate(questions,1):

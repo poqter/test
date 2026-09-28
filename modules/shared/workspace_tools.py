@@ -1,5 +1,6 @@
 """Session-only UI helpers and in-memory, literal-text exports."""
 from __future__ import annotations
+from modules.shared.pdf_brand import draw_brand
 from modules.shared.paths import PROJECT_ROOT
 
 import html
@@ -114,23 +115,14 @@ def pdf_bytes(title, headers, rows, notes=""):
         pdfmetrics.registerFont(TTFont(font, str(PROJECT_ROOT / "assets/fonts/PretendardVariable.ttf")))
     output = io.BytesIO()
     page = landscape(A4)
-    doc = SimpleDocTemplate(output, pagesize=page, rightMargin=30, leftMargin=30, topMargin=36, bottomMargin=40)
+    doc = SimpleDocTemplate(output, pagesize=page, rightMargin=30, leftMargin=30, topMargin=58, bottomMargin=40)
     style = ParagraphStyle("body", fontName=font, fontSize=10, leading=15, wordWrap="CJK", textColor=colors.HexColor("#17233C"))
     heading = ParagraphStyle("heading", parent=style, fontSize=20, leading=27, spaceAfter=12)
     cell = lambda value: Paragraph(html.escape(text(value, 16000)).replace("\n", "<br/>"), style)
     table = Table([[cell(v) for v in headers]] + [[cell(v) for v in row] for row in rows], colWidths=[(doc.width-12)/len(headers)]*len(headers), repeatRows=1, hAlign="LEFT", splitInRow=1)
     table.setStyle(TableStyle([("BACKGROUND", (0,0),(-1,0), colors.HexColor("#ECE8DF")), ("GRID",(0,0),(-1,-1),.5, colors.HexColor("#D4D6DB")), ("VALIGN",(0,0),(-1,-1),"TOP"), ("TOPPADDING",(0,0),(-1,-1),8), ("BOTTOMPADDING",(0,0),(-1,-1),8)]))
     def footer(canvas, document):
-        canvas.saveState()
-        canvas.setFont(font, 9)
-        canvas.setFillColor(colors.HexColor("#586277"))
-        canvas.drawString(30, 20, f"H  |  화랑 WORKSPACE · 상담 참고용 · {document.page}")
-        canvas.setFillColor(colors.Color(.72,.65,.48,alpha=.11))
-        canvas.setFont(font, 45)
-        canvas.translate(page[0]/2, page[1]/2)
-        canvas.rotate(25)
-        canvas.drawCentredString(0,0,"HWARANG · 상담 참고용")
-        canvas.restoreState()
+        draw_brand(canvas, document.page)
     note_paragraphs=[cell(part) for part in text(notes,16000).split("\n") if part.strip()]
     story=[Paragraph(html.escape(text(title,100)), heading), *note_paragraphs, Spacer(1,12),table]
     doc.build(story,onFirstPage=footer,onLaterPages=footer)

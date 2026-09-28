@@ -1,4 +1,5 @@
 from __future__ import annotations
+from modules.shared.pdf_brand import draw_brand
 from modules.shared.paths import PROJECT_ROOT
 
 from datetime import date
@@ -376,6 +377,7 @@ def build_pdf(data: dict) -> bytes:
         c.roundRect(center_x-badge_w/2, chart_bottom+2.2*mm, badge_w, 5.5*mm, 2.2*mm, fill=1, stroke=0)
         c.setFillColor(colors.HexColor("#365D78")); c.setFont(font, 8.2)
         c.drawCentredString(center_x, chart_bottom+4*mm, diff_text)
+    draw_brand(c, 1)
     c.showPage(); c.save(); output.seek(0)
     return output.getvalue()
 

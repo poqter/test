@@ -1,4 +1,5 @@
 from __future__ import annotations
+from modules.shared.pdf_brand import draw_brand
 from modules.shared.paths import PROJECT_ROOT
 
 import hashlib
@@ -933,32 +934,14 @@ def build_guide_pdf(selected_claims: list[str], docs: list[DocumentRule], accide
         pass
 
     def footer(canvas, doc):
-        canvas.saveState()
-        # 고객용 자료 공통 브랜드 락업
-        brand_y = A4[1] - 10 * mm
-        canvas.setFillColor(colors.HexColor("#1769DC"))
-        canvas.roundRect(A4[0] - 69 * mm, brand_y - 3.7 * mm, 7.4 * mm, 7.4 * mm, 1.8 * mm, fill=1, stroke=0)
-        canvas.setFillColor(colors.white)
-        canvas.setFont(font_name, 7.5)
-        canvas.drawCentredString(A4[0] - 65.3 * mm, brand_y - 1.3 * mm, "H")
-        canvas.setStrokeColor(colors.HexColor("#C7D7E5"))
-        canvas.setLineWidth(.6)
-        canvas.line(A4[0] - 58.7 * mm, brand_y - 3.7 * mm, A4[0] - 58.7 * mm, brand_y + 3.7 * mm)
-        canvas.setFillColor(colors.HexColor("#183B67"))
-        canvas.setFont(font_name, 7.5)
-        canvas.drawString(A4[0] - 55.5 * mm, brand_y - 1.3 * mm, "화랑 WORKSPACE")
-        canvas.setFont(font_name, 7.5)
-        canvas.setFillColor(colors.HexColor("#64748B"))
-        canvas.drawString(15 * mm, 9 * mm, f"보험금 청구 가이드 · {date.today():%Y.%m.%d}")
-        canvas.drawRightString(A4[0] - 15 * mm, 9 * mm, f"{doc.page}페이지")
-        canvas.restoreState()
+        draw_brand(canvas, doc.page)
 
     doc = BaseDocTemplate(
         buffer,
         pagesize=A4,
         leftMargin=15 * mm,
         rightMargin=15 * mm,
-        topMargin=18 * mm,
+        topMargin=22 * mm,
         bottomMargin=15 * mm,
         title="보험금 청구 준비 안내",
         author="보험금 청구 가이드",

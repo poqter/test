@@ -1,3 +1,4 @@
+from modules.shared.pdf_brand import draw_brand
 """Pure consultation composition and in-memory portrait PDF export."""
 from modules.shared.paths import PROJECT_ROOT
 import hashlib
@@ -59,7 +60,7 @@ def document_pdf(title, body, *, prepared_on, customer_label="", note=NOTE):
         pdfmetrics.registerFont(TTFont(font, str(PROJECT_ROOT / "assets/fonts/PretendardVariable.ttf")))
     output = io.BytesIO()
     doc = SimpleDocTemplate(output, pagesize=A4, leftMargin=42, rightMargin=42,
-                            topMargin=52, bottomMargin=50, title="화랑 WORKSPACE 상담자료", author="화랑 WORKSPACE")
+                            topMargin=62, bottomMargin=50, title="화랑 WORKSPACE 상담자료", author="화랑 WORKSPACE")
     normal = ParagraphStyle("body", fontName=font, fontSize=11, leading=18,
                             wordWrap="CJK", textColor=colors.HexColor("#172033"), spaceAfter=3)
     heading = ParagraphStyle("title", parent=normal, fontSize=23, leading=31, spaceAfter=12)
@@ -84,20 +85,6 @@ def document_pdf(title, body, *, prepared_on, customer_label="", note=NOTE):
         story.append(Spacer(1, 4))
 
     def page_marks(canvas, document):
-        canvas.saveState()
-        canvas.setFillColor(colors.HexColor("#17233C"))
-        canvas.setFont(font, 9)
-        canvas.drawString(42, A4[1] - 28, "H  |  화랑 WORKSPACE")
-        canvas.setStrokeColor(colors.HexColor("#B89555"))
-        canvas.line(42, A4[1] - 36, A4[0] - 42, A4[1] - 36)
-        canvas.setFillColor(colors.HexColor("#586277"))
-        canvas.drawString(42, 27, "화랑 WORKSPACE · 상담 참고용")
-        canvas.drawRightString(A4[0] - 42, 27, str(document.page))
-        canvas.setFillColor(colors.Color(.72, .65, .48, alpha=.08))
-        canvas.setFont(font, 38)
-        canvas.translate(A4[0] / 2, A4[1] / 2)
-        canvas.rotate(35)
-        canvas.drawCentredString(0, 0, "HWARANG WORKSPACE")
-        canvas.restoreState()
+        draw_brand(canvas, document.page)
     doc.build(story, onFirstPage=page_marks, onLaterPages=page_marks)
     return output.getvalue()
