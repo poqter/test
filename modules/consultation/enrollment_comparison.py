@@ -19,14 +19,7 @@ from modules.shared.pdf_brand import draw_brand
 from modules.shared.ui_components import page_header
 
 EXAMPLES={'암 보장':'일반암 3,000만원 / 유사암 600만원\n암주요치료 포함 (10년 또는 만기 보장)','뇌·심장 보장':'뇌혈관질환 1,000만원 / 허혈성심장질환 1,000만원\n순환계주요치료 포함 (10년 또는 만기 보장)','수술 보장':'1-5종 수술 최대 1,000만원\n질병수술 30만원 / 상해수술 50만원','입원·간병 보장':'질병입원일당 2만원 / 간병인사용일당 10만원','실손의료비':'입원 5,000만원·통원 20만원 보장 / \n자기부담금과 한도 기재','사망·후유장해':'상해사망 1억원 / 상해후유장해 5,000만원','운전자·배상책임':'교통사고처리지원금 2억원 / 일상생활배상책임 1억원'}
-NOTE_EXAMPLE = (
-    '각 안의 최종 월 보험료에는 공통 보험료가 포함됩니다.\n'
-    '보장 범위·지급 조건·면책 및 감액기간은 실제 가입설계와 약관을 확인해 주세요.\n\n'
-    '보장과 보험료의 균형을 고려해 B안을 추천드립니다.\n'
-    '암·뇌·심장 보장을 확보하면서 장기적으로 유지할 수 있는 보험료를 고려한 구성입니다.\n\n'
-    '보험료 절감이 우선이면 A안, 보장금액 확대가 우선이면 C안을 고려하실 수 있습니다.\n'
-    '기존 보험과의 중복 여부와 고객님의 예산·우선순위를 확인해 최종 선택해 주세요.'
-)
+NOTE_EXAMPLE = '각 안의 최종 월 보험료에는 공통 보험료가 포함됩니다. 보장 범위·지급 조건·면책 및 감액기간은 실제 가입설계와 약관을 확인해 주세요.\n\n보장과 보험료의 균형을 고려해 B안을 추천드립니다. 암·뇌·심장 보장을 확보하면서 장기적으로 유지할 수 있는 보험료를 고려한 구성입니다.\n\n보험료 절감이 우선이면 A안, 보장금액 확대가 우선이면 C안을 고려하실 수 있습니다. 기존 보험과의 중복 여부와 고객님의 예산·우선순위를 확인해 최종 선택해 주세요.'
 
 MODES=['가입안별 간편 입력','상품별 상세 입력']
 RENEWALS=['선택','비갱신','갱신','혼합']
@@ -37,11 +30,11 @@ def product():return dict(**condition(),premium=None)
 def cell():return dict(summary='',absent=False)
 def new_model():
     groups=[dict(id=uid(),name=n,selected=False) for n in EXAMPLES]
-    return dict(version=2,title='신규 가입안 비교',basis='',note=NOTE_EXAMPLE,note_align='가운데 정렬',third=False,mode=MODES[0],common_enabled=False,common_summary='',common=[],groups=groups,
+    return dict(version=2,title='신규 가입안 비교',note=NOTE_EXAMPLE,note_align='가운데 정렬',third=False,mode=MODES[0],common_enabled=False,common_summary='',common=[],groups=groups,
         plans={p:dict(name=p+'안',mode=MODES[0],override=False,premium=None,conditions=[condition()],products=[],cells={g['id']:cell() for g in groups},reference=None) for p in 'ABC'})
 def example_model():
     m=new_model()
-    m.update(third=True,basis='가상 입력 예시 · 실제 상품의 보험료·보장조건이 아닙니다.',
+    m.update(third=True,
              common_enabled=True,common_summary='실손의료비 · 입원·통원 보장 / 자기부담금 및 재가입 조건 확인')
     common=product();common.update(premium=15000,pay='전기',cover='1년',renewal='갱신')
     m['common']=[common]
@@ -66,7 +59,7 @@ def example_model():
 
 def has_written_input(m):
     # Ignore generated IDs and initial default explanation when detecting an empty draft.
-    if (m['title']!='신규 가입안 비교' or m['basis'].strip() or m['note']!=NOTE_EXAMPLE
+    if (m['title']!='신규 가입안 비교' or m['note']!=NOTE_EXAMPLE
             or m['common'] or m['common_summary'].strip() or m['third']):return True
     if any(g['selected'] for g in m['groups']):return True
     if [g['name'] for g in m['groups']]!=list(EXAMPLES):return True
@@ -78,10 +71,11 @@ def has_written_input(m):
 
 def migrate(old):
     if old.get('version')==2:
+        old.pop('basis',None)
         old.setdefault('note_align','가운데 정렬')
         return old
     m=new_model()
-    for k in ['title','basis','note','third']:m[k]=old.get(k,m[k])
+    for k in ['title','note','third']:m[k]=old.get(k,m[k])
     m['groups']=deepcopy(old.get('groups',m['groups']))
     def convert(x):
         y=product(); y.update(premium=x.get('premium'),pay=x.get('term',''),cover='',renewal=x.get('renewal','선택'))
@@ -163,10 +157,9 @@ def build_pdf(m):
     white=ParagraphStyle('white',parent=table_body,textColor=colors.white)
     def para(s,style=body):return Paragraph(html.escape(str(s)).replace('\n','<br/>'),style)
     blocks=[para(m['title'],title)]
-    if m['basis'].strip():blocks.append(para(m['basis']))
     headers,rows=table_data(m)
     t=Table([[para(x,white) for x in headers]]+[[para(x,table_body) for x in row] for row in rows],colWidths=[112]+[(usable-112)/(len(headers)-1)]*(len(headers)-1),repeatRows=1,splitByRow=1,splitInRow=1)
-    styles=[('BACKGROUND',(0,0),(-1,0),colors.HexColor('#112B49')),('BACKGROUND',(0,1),(0,-1),colors.HexColor('#EEF3F8')),('ROWBACKGROUNDS',(1,1),(-1,-1),[colors.white,colors.HexColor('#F7FAFD')]),('VALIGN',(0,0),(-1,-1),'MIDDLE'),('ALIGN',(0,0),(-1,-1),'CENTER'),('GRID',(0,0),(-1,-1),.4,colors.HexColor('#DCE5EF')),('TOPPADDING',(0,0),(-1,-1),7),('BOTTOMPADDING',(0,0),(-1,-1),7),('LEFTPADDING',(0,0),(-1,-1),9),('RIGHTPADDING',(0,0),(-1,-1),9)]
+    styles=[('BACKGROUND',(0,0),(-1,0),colors.HexColor('#112B49')),('BACKGROUND',(0,1),(0,-1),colors.HexColor('#EEF3F8')),('ROWBACKGROUNDS',(1,1),(-1,-1),[colors.white,colors.HexColor('#F7FAFD')]),('VALIGN',(0,0),(-1,-1),'MIDDLE'),('ALIGN',(0,0),(-1,-1),'CENTER'),('GRID',(0,0),(-1,-1),.4,colors.HexColor('#DCE5EF')),('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),5),('LEFTPADDING',(0,0),(-1,-1),9),('RIGHTPADDING',(0,0),(-1,-1),9)]
     if m['common_enabled']:styles += [('SPAN',(1,1),(-1,1)),('BACKGROUND',(0,1),(-1,1),colors.HexColor('#EAF5F4'))]
     premium_row=2 if m['common_enabled'] else 1
     styles.append(('BACKGROUND',(1,premium_row),(-1,premium_row),colors.HexColor('#E8F0FF')))
@@ -181,7 +174,7 @@ def build_pdf(m):
             ('ALIGN',(0,0),(-1,-1),'CENTER'),
             ('VALIGN',(0,0),(-1,-1),'MIDDLE'),
             ('LEFTPADDING',(0,0),(-1,-1),14),('RIGHTPADDING',(0,0),(-1,-1),14),
-            ('TOPPADDING',(0,0),(-1,-1),9),('BOTTOMPADDING',(0,0),(-1,-1),9),
+            ('TOPPADDING',(0,0),(-1,-1),6),('BOTTOMPADDING',(0,0),(-1,-1),6),
         ]))
         blocks.append(note_table)
     out=io.BytesIO()
@@ -189,7 +182,7 @@ def build_pdf(m):
                           topMargin=54,bottomMargin=46,title=m['title'],author='화랑 WORKSPACE')
     story=[]
     for block in blocks:
-        if story:story.append(Spacer(1,10))
+        if story:story.append(Spacer(1,6))
         story.append(block)
     def marks(c,d):draw_brand(c,d.page)
     doc.build(story,onFirstPage=marks,onLaterPages=marks)
@@ -245,7 +238,6 @@ def run():
             for p in 'ABC':
                 if not m['plans'][p]['override']:switch_mode(m['plans'][p],chosen)
             refresh()
-        with st.expander('비교 기준 · 선택 사항'):widget('text_area','비교 기준',m,'basis','base',max_chars=500)
         widget('checkbox','모든 안에 공통으로 포함되는 내용이 있어요',m,'common_enabled','base')
         if m['common_enabled']:
             with st.expander('공통 가입 내용',expanded=True):
