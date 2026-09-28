@@ -29,7 +29,7 @@ def product():return dict(**condition(),premium=None)
 def cell():return dict(summary='',absent=False)
 def new_model():
     groups=[dict(id=uid(),name=n,selected=False) for n in EXAMPLES]
-    return dict(version=2,title='신규 가입안 비교',basis='',note='',third=False,mode=MODES[0],common_enabled=False,common_summary='',common=[],groups=groups,
+    return dict(version=2,title='신규 가입안 비교',basis='',note=NOTE_EXAMPLE,third=False,mode=MODES[0],common_enabled=False,common_summary='',common=[],groups=groups,
         plans={p:dict(name=p+'안',mode=MODES[0],override=False,premium=None,conditions=[condition()],products=[],cells={g['id']:cell() for g in groups},reference=None) for p in 'ABC'})
 def migrate(old):
     if old.get('version')==2:return old
@@ -254,7 +254,7 @@ def run():
                             if c.button('삭제',key='del_'+g['id']):m['groups'].pop(idx);refresh()
     with tabs[2]:
         widget('text_area','고객에게 전할 설명 · 선택 사항',m,'note','base',max_chars=1500,height=260,placeholder=NOTE_EXAMPLE)
-        st.caption('아래 안내 표에는 직접 작성한 내용만 출력됩니다. 예시의 추천안과 이유는 실제 비교 결과에 맞게 수정하세요.')
+        st.caption('기본 설명이 입력되어 있습니다. 추천안과 이유를 실제 비교 결과에 맞게 수정하세요. 모두 지우면 PDF에서 안내 표가 생략됩니다.')
         headers,rows=table_data(m);st.dataframe(pd.DataFrame(rows,columns=headers),hide_index=True,width='stretch')
         errors=issues(m);pdf=None
         try:pdf=build_pdf(m);st.success('A4 가로 한 장 출력 가능')
