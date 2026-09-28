@@ -144,7 +144,7 @@ def replace_explanation(value,signature):
     if st.button('취소',key='c_explanation_cancel'): st.rerun()
 
 
-def run():
+def run_legacy():
     page_header("리모델링·비교","고객용 비교표 제작기","보험료·보장·조건을 같은 기준으로 직접 비교하고 설명자료로 내보냅니다.","CB")
     session_notice("c_")
     with st.container(key="hw_surface_comparison_builder_0"):
@@ -194,7 +194,7 @@ def run():
         st.subheader("변경 전후 미리보기")
         display_rows = []
         for row in rows:
-            shown = dict(row)
+            shown = dict(zip(headers, row))
             if shown.get('유형') == '금액':
                 for field_name in ('변경 전', '변경 후'):
                     try: shown[field_name] = f"{parse_number(shown[field_name]):,}"
@@ -225,3 +225,12 @@ def run():
         if checked and not stale:
             downloads("comparison",title,headers,rows,context+"\n\n"+explanation)
         else: st.info("단위·조건을 확인하고 체크하면 Excel·PDF 다운로드가 표시됩니다.")
+
+
+def run():
+    mode=st.radio("비교 방식", ["신규 가입안 비교", "변경 전후 비교"], horizontal=True, key="comparison_mode")
+    if mode == "신규 가입안 비교":
+        from modules.consultation.enrollment_comparison import run as enrollment_run
+        enrollment_run()
+    else:
+        run_legacy()

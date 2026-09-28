@@ -18,7 +18,7 @@ LEGACY_PREFIXES: dict[str, tuple[str, ...]] = {
     "silson_generation_comparison": ("sc_",),
     "quick_calculators": ("a_", "jc_", "finance_", "cov_", "coverage_", "pp_", "gift_", "wo_", "retirement_"),
     "consultation_helper": ("b_",),
-    "comparison_builder": ("c_",),
+    "comparison_builder": ("c_", "enroll_", "comparison_mode"),
     "customer_materials": ("d_",),
     "education_center": ("e_",),
     "insurer_portal": ("f_", "home_insurer_"),
@@ -190,6 +190,8 @@ def save_legacy_draft(page: str, *, state: MutableMapping[str, Any] | None = Non
         if not isinstance(key, str) or key.startswith("_ws_") or not key.startswith(prefixes):
             continue
         value = session[key]
+        if page == "comparison_builder" and key.startswith("enroll_") and key not in ("enroll_model", "enroll_revision"):
+            continue
         if _transient_draft_key(key) or any(token in key for token in _SKIP_TOKENS) or isinstance(value, (bytes, bytearray)):
             continue
         if _draftable(value):
