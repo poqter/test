@@ -77,13 +77,11 @@ def export_document(kind, title, body, *, valid=True, pdf=True):
     if not reviewed:
         st.caption("문구와 포함 정보를 확인하면 내려받기가 활성화됩니다. 수정 시 다시 확인해야 합니다.")
     content = title + "\n작성일 " + prepared + ("\n상담 구분명: " + alias if alias else "") + "\n\n" + body + "\n\n" + NOTE
-    st.download_button("TXT 내려받기", content.encode("utf-8-sig") if reviewed else b"",
-                       "consultation_" + kind + ".txt", disabled=not reviewed, key="b_" + kind + "_download")
     if pdf and reviewed:
         try:
             payload = document_pdf(title, body, prepared_on=prepared, customer_label=alias)
         except Exception:
-            st.warning("PDF를 만들지 못했습니다. 본문 길이와 설치된 글꼴을 확인하거나 TXT를 이용해 주세요.")
+            st.warning("PDF를 만들지 못했습니다. 본문 길이와 설치된 글꼴을 확인해 주세요.")
         else:
             st.download_button("PDF 내려받기", payload, "consultation_" + kind + ".pdf",
                                "application/pdf", key="b_" + kind + "_pdf")
@@ -133,7 +131,6 @@ def legacy_run():
             extra = field("text_area", "추가 질문", "b_extra", "", max_chars=1500)
             output = "\n".join(f"{i}. {q}" for i, q in enumerate(picked, 1)) + ("\n" + extra if extra else "")
             st.text(output or "질문을 선택하세요.")
-            st.download_button("질문 목록 내려받기", output.encode("utf-8-sig"), "consultation_questions.txt", disabled=not output.strip(), key="b_questions_download")
         elif mode == "단계별 스크립트":
             stage = field("selectbox", "상담 단계", "b_stage", "첫 만남", options=list(scripts["scripts"]))
             value = field("text_area", "수정 가능한 진행 문구", "b_script_" + stage, scripts["scripts"][stage], height=200, max_chars=4000)
@@ -174,7 +171,6 @@ def legacy_run():
             completed = checklist(items, "meeting")
             note = field("text_area", "다음 미팅 메모", "b_meeting_note", "", max_chars=2000)
             output = "\n".join(("완료: " if item in completed else "미완료: ") + item for item in items) + "\n\n" + note
-            st.download_button("미팅 체크리스트 내려받기", output.encode("utf-8-sig"), "next_meeting.txt", key="b_meeting_download")
         else:
             from modules.shared.page_layouts import work_panels
             _input_panel, _result_panel = work_panels("consultation_proposal")

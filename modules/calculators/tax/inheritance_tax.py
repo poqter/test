@@ -916,7 +916,7 @@ def build_excel_report(
 # -----------------------------------------------------------------------------
 # Streamlit 화면
 # -----------------------------------------------------------------------------
-def run():
+def legacy_run():
     page_header("고객 상담", "상속세 예상 계산기", "상속재산과 공제 항목을 입력하여 예상 상속세와 납부재원 부족액을 확인합니다.", "IT")
     tool_guide(
         "사용 방법 및 계산 기준",
@@ -1168,9 +1168,6 @@ def run():
         liquid_funds = max(0, available_cash) + max(0, death_benefit) + max(0, other_liquidity)
         tax_due = result.estimated_tax_due
         funding_gap = liquid_funds - tax_due
-        st.download_button('세액·납부재원 요약 내려받기',
-            f'화랑 WORKSPACE · 입력 가정 기반 요약\n예상 상속세: {tax_due:,.0f}원\n현금성 재원: {liquid_funds:,.0f}원\n부족액: {max(0,-funding_gap):,.0f}원\n실제 신고세액 확정 자료가 아닙니다.'.encode('utf-8-sig'),
-            'inheritance_funding_summary.txt', key='it_summary_download')
 
         st.divider()
     with st.container(key="hw_surface_inheritance_tax_1"):
@@ -1399,6 +1396,11 @@ def run():
             "상담용 예상치입니다. 실제 신고 시 상속관계, 재산평가, 사전증여 내역과 공제 요건을 별도로 확인해야 합니다."
         )
     page_footer("상속세 예상 계산기", APP_VERSION)
+
+
+def run():
+    from modules.calculators.tax.estate_studio import run as unified_run
+    unified_run()
 
 
 if __name__ == "__main__":

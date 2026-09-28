@@ -57,7 +57,7 @@ def preview(title,body):
 
 def run():
     data=load_content('customer_material_templates')
-    page_header('고객 전달자료','고객자료 제작기','양식 선택 → 필요한 내용 작성·가져오기 → 검토 → TXT·PDF', 'CM')
+    page_header('고객 전달자료','고객자료 제작기','양식 선택 → 필요한 내용 작성·가져오기 → 검토 → PDF', 'CM')
     session_notice('d_')
     from modules.shared.page_layouts import work_panels
     _ui_0, _ui_1 = work_panels("customer_materials")
@@ -109,9 +109,8 @@ def run():
         if valid and st.session_state.get('d_review')==token:
             prepared=date.today().isoformat()
             content=title+'\n작성일 '+prepared+'\n\n'+final+'\n\n'+NOTE
-            st.download_button('TXT 내려받기',content.encode('utf-8-sig'),'hwarang_customer_material.txt','text/plain',key='d_txt')
             try:pdf=document_pdf(title,final,prepared_on=prepared)
-            except Exception:st.warning('PDF를 만들지 못했습니다. TXT를 이용하거나 문서 길이·글꼴 설치 상태를 확인해 주세요.')
+            except Exception:st.warning('PDF를 만들지 못했습니다. 문서 길이·글꼴 설치 상태를 확인해 주세요.')
             else:st.download_button('PDF 내려받기',pdf,'hwarang_customer_material.pdf','application/pdf',key='d_pdf')
         else:st.caption('현재 내용의 검토를 마치면 내려받기가 표시됩니다. 원본 변경 시 다시 확인합니다.')
     with st.expander('양식 안내'):

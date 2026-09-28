@@ -14,6 +14,7 @@ def apply_pending():
         st.session_state[f'cov_{target}_0']=amount
     elif target==TARGETS[2]:
         st.session_state[f'cov_{target}_35']=amount
+        st.session_state['estate_transfer_open']=True
     else:
         st.session_state['gift_mode']='증여세 상세 계산'
         st.session_state[f'cov_{target}_6']=amount

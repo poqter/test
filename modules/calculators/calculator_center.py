@@ -104,9 +104,9 @@ def run_legacy(integrated=False):
         if st.button('조건·결과 확인 완료',key='a_approve'):
             st.session_state['a_review_token']=token
         if st.session_state.get('a_review_token') != token:
-            st.caption('입력 조건과 결과를 확인하면 TXT·Excel·PDF 다운로드가 표시됩니다.')
+            st.caption('입력 조건과 결과를 확인하면 Excel·PDF 다운로드가 표시됩니다.')
             return
-        for ext,label,mime in [('txt','TXT','text/plain'),('xlsx','Excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),('pdf','PDF','application/pdf')]:
+        for ext,label,mime in [('xlsx','Excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),('pdf','PDF','application/pdf')]:
             try:
                 data = export_bytes(result,ext)
             except Exception:

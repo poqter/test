@@ -31,9 +31,8 @@ def export_report(key,title,body,data,valid=True):
     if st.button('내용 확인 후 출력 준비',key=f'e_{key}_approve',disabled=not valid):st.session_state[f'e_{key}_review']=token
     if valid and st.session_state.get(f'e_{key}_review')==token:
         text=title+'\n작성일 '+date.today().isoformat()+'\n\n'+full+'\n\n'+NOTE
-        st.download_button('TXT 내려받기',text.encode('utf-8-sig'),f'hwarang_education_{key}.txt','text/plain',key=f'e_{key}_download')
         try:pdf=document_pdf(title,full,prepared_on=date.today().isoformat(),note=NOTE)
-        except Exception:st.warning('PDF를 만들지 못했습니다. TXT를 이용하거나 글꼴 설치 상태를 확인해 주세요.')
+        except Exception:st.warning('PDF를 만들지 못했습니다. 글꼴 설치 상태를 확인해 주세요.')
         else:st.download_button('PDF 내려받기',pdf,f'hwarang_education_{key}.pdf','application/pdf',key=f'e_{key}_pdf')
 
 def retry(key):

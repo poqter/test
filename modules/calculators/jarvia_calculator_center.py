@@ -374,9 +374,8 @@ def run(run_legacy):
             render_gains(selected,GF,gc,'2026년 일반 부동산 단일 매매 · 법령 대조 기준일 2026-09-26')
             return
         if selected == '상속세계산기':
-            from modules.calculators.tax.estate_calculator import FIELDS as IF, calculate as ic
-            from modules.calculators.coverage.coverage_calculator_ui import run as render_estate
-            render_estate(selected,IF,ic,'2026년 거주자 일반 상속 · 법령 대조 기준일 2026-09-26')
+            from modules.calculators.tax.estate_studio import run as render_estate
+            render_estate()
             return
         if selected == '증여세계산기':
             from modules.calculators.tax.gift_planning import run as render_gift

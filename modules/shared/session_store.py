@@ -16,7 +16,7 @@ LEGACY_PREFIXES: dict[str, tuple[str, ...]] = {
     "inheritance_tax": ("it_",),
     "insurance_claim_guide": ("cg_",),
     "silson_generation_comparison": ("sc_",),
-    "quick_calculators": ("a_", "jc_", "finance_", "cov_", "coverage_", "pp_", "gift_", "wo_", "retirement_"),
+    "quick_calculators": ("a_", "jc_", "finance_", "cov_", "coverage_", "pp_", "gift_", "wo_", "retirement_", "estate_"),
     "consultation_helper": ("b_",),
     "comparison_builder": ("c_", "enroll_", "comparison_mode"),
     "customer_materials": ("d_",),
@@ -43,6 +43,7 @@ _SKIP_TOKENS = (
 _CALCULATOR_ACTION_KEYS = frozenset({
     "jc_search_clear", "jc_back_catalog", "jc_transfer_apply",
     "jc_home_entry", "jc_link_entry", "jc_valuation_transfer",
+    "estate_explain", "estate_pdf", "estate_excel", "estate_replace_note", "estate_transfer_open",
 })
 _CALCULATOR_ACTION_PREFIXES = ("jc_card_", "jc_purpose_", "jc_category_")
 
