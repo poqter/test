@@ -15,7 +15,6 @@ from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph,Table,TableStyle
 from modules.shared.paths import PROJECT_ROOT
 from modules.shared.pdf_brand import draw_brand
-from modules.shared.workspace_tools import workbook_bytes
 from modules.shared.ui_components import page_header
 
 EXAMPLES={'암 보장':'일반암 3,000만원 / 유사암 600만원','뇌·심장 보장':'뇌혈관질환 1,000만원 / 허혈성심장질환 1,000만원','수술 보장':'질병수술 30만원 / 상해수술 50만원','입원·간병 보장':'질병입원일당 2만원 / 간병인사용일당 10만원','실손의료비':'입원·통원 보장 / 자기부담금과 한도 기재','사망·후유장해':'상해사망 1억원 / 상해후유장해 5,000만원','운전자·배상책임':'교통사고처리지원금 2억원 / 일상생활배상책임 1억원'}
@@ -252,6 +251,4 @@ def run():
         if st.session_state.get('enroll_last_sig')!=sig:st.session_state['enroll_last_sig']=sig;st.session_state['enroll_reviewed']=False
         reviewed=st.checkbox('현재 보험료·조건·보장 내용을 확인했습니다.',key='enroll_reviewed',disabled=bool(errors))
         if reviewed and not errors:
-            a,b=st.columns(2)
-            a.download_button('한 장 PDF 저장',pdf,filename(m['title'])+'.pdf','application/pdf',width='stretch')
-            b.download_button('Excel 저장',workbook_bytes(m['title'],headers,rows,m['basis']+'\n'+m['note']),filename(m['title'])+'.xlsx',width='stretch')
+            st.download_button('한 장 PDF 저장',pdf,filename(m['title'])+'.pdf','application/pdf',width='stretch')
