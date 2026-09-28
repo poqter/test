@@ -110,13 +110,14 @@ def build_pdf(m):
     w,h=landscape(A4);usable=w-64
     body=ParagraphStyle('body',fontName=font,fontSize=10,leading=14,wordWrap='CJK',textColor=colors.HexColor('#112B49'))
     title=ParagraphStyle('title',parent=body,fontSize=21,leading=28)
-    white=ParagraphStyle('white',parent=body,textColor=colors.white)
+    table_body=ParagraphStyle('table_body',parent=body,alignment=1)
+    white=ParagraphStyle('white',parent=table_body,textColor=colors.white)
     def para(s,style=body):return Paragraph(html.escape(str(s)).replace('\n','<br/>'),style)
     blocks=[para(m['title'],title)]
     if m['basis'].strip():blocks.append(para(m['basis']))
     headers,rows=table_data(m)
-    t=Table([[para(x,white) for x in headers]]+[[para(x) for x in row] for row in rows],colWidths=[112]+[(usable-112)/(len(headers)-1)]*(len(headers)-1))
-    styles=[('BACKGROUND',(0,0),(-1,0),colors.HexColor('#112B49')),('BACKGROUND',(0,1),(0,-1),colors.HexColor('#EEF3F8')),('ROWBACKGROUNDS',(1,1),(-1,-1),[colors.white,colors.HexColor('#F7FAFD')]),('VALIGN',(0,0),(-1,-1),'TOP'),('GRID',(0,0),(-1,-1),.4,colors.HexColor('#DCE5EF')),('TOPPADDING',(0,0),(-1,-1),7),('BOTTOMPADDING',(0,0),(-1,-1),7),('LEFTPADDING',(0,0),(-1,-1),9),('RIGHTPADDING',(0,0),(-1,-1),9)]
+    t=Table([[para(x,white) for x in headers]]+[[para(x,table_body) for x in row] for row in rows],colWidths=[112]+[(usable-112)/(len(headers)-1)]*(len(headers)-1))
+    styles=[('BACKGROUND',(0,0),(-1,0),colors.HexColor('#112B49')),('BACKGROUND',(0,1),(0,-1),colors.HexColor('#EEF3F8')),('ROWBACKGROUNDS',(1,1),(-1,-1),[colors.white,colors.HexColor('#F7FAFD')]),('VALIGN',(0,0),(-1,-1),'MIDDLE'),('ALIGN',(0,0),(-1,-1),'CENTER'),('GRID',(0,0),(-1,-1),.4,colors.HexColor('#DCE5EF')),('TOPPADDING',(0,0),(-1,-1),7),('BOTTOMPADDING',(0,0),(-1,-1),7),('LEFTPADDING',(0,0),(-1,-1),9),('RIGHTPADDING',(0,0),(-1,-1),9)]
     if m['common_enabled']:styles += [('SPAN',(1,1),(-1,1)),('BACKGROUND',(0,1),(-1,1),colors.HexColor('#EAF5F4'))]
     premium_row=2 if m['common_enabled'] else 1
     styles.append(('BACKGROUND',(1,premium_row),(-1,premium_row),colors.HexColor('#E8F0FF')))

@@ -224,7 +224,7 @@ def run_legacy():
         checked=field("checkbox","입력 단위와 사실관계를 확인했습니다","c_reviewed",False)
         if checked and not stale:
             from modules.consultation.enrollment_comparison import filename
-            st.download_button("PDF 저장", pdf_bytes(title,headers,rows,context+"\n\n"+explanation), filename(title)+".pdf", "application/pdf", key="comparison_pdf", width="stretch")
+            st.download_button("PDF 저장", pdf_bytes(title,headers,rows,context+"\n\n"+explanation,center_table=True), filename(title)+".pdf", "application/pdf", key="comparison_pdf", width="stretch")
         else: st.info("단위·조건을 확인하고 체크하면 PDF 다운로드가 표시됩니다.")
 
 
