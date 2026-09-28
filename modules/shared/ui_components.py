@@ -14,6 +14,12 @@ def inject_global_styles() -> None:
 
 
 def page_header(category: str, title: str, description: str, icon: str) -> None:
+    category = {
+        '상담·제안서': '고객 상담', '보험자료 분석': '고객 상담',
+        '고객 전달자료': '고객 상담', '재무·보험 계산': '보험 비교 · 계산',
+        '종합계산기(80개)': '보험 비교 · 계산', '교육·체크리스트': '자료 · 교육',
+        '원수사·공식정보': '자료 · 교육', '실적·수수료': '실적 관리',
+    }.get(category, category)
     icons = {'RM':'🔄','QC':'🧮','CH':'💬','CB':'📊','CM':'📄','CG':'📋','DS':'💰','RN':'🛡️','IT':'🏛️','CV':'🏆','SU':'☀️','MR':'📈','CC':'🧾','IP':'🌐','ED':'📚','▤':'🛡️'}
     icon = icons.get(icon, icon)
     st.markdown(
@@ -24,6 +30,22 @@ def page_header(category: str, title: str, description: str, icon: str) -> None:
     )
 
     # Workflow help is available from the compact page toolbar.
+
+
+def workflow_steps(labels: list[str], key: str) -> str:
+    """Consistent, session-preserving step selector for document workflows."""
+    pending = st.session_state.pop(key + '_pending', None)
+    current = pending or st.session_state.get(key, labels[0])
+    st.session_state[key] = current if current in labels else labels[0]
+    with st.container(key='hw_steps_' + key):
+        return st.radio('작성 순서', labels, horizontal=True, key=key)
+
+
+def workflow_button(label: str, step: str, key: str, *, primary=False):
+    if st.button(label, key=key + '_go_' + step,
+                 type='primary' if primary else 'secondary', use_container_width=True):
+        st.session_state[key + '_pending'] = step
+        st.rerun()
 
 
 def tool_guide(title: str, introduction: str, steps: list[tuple[str, str]], criteria: str = "", caution: str = "") -> None:

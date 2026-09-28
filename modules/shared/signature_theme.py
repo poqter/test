@@ -286,4 +286,4 @@ body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"]{padding:4rem
 '''
 
 def inject_signature_styles():
-    st.markdown('<style>'+CSS+'</style>',unsafe_allow_html=True)
+    st.html('<style>'+CSS+'</style>')

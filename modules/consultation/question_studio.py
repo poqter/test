@@ -1,7 +1,7 @@
 """Question selection, session-local editing and PDF export."""
 import re
 import streamlit as st
-from modules.shared.ui_components import page_header
+from modules.shared.ui_components import page_header, workflow_steps, workflow_button
 from modules.shared.workspace_tools import field, session_notice
 from modules.consultation.question_bank import BANK, QUESTIONS, RECOMMENDED
 from modules.consultation.question_pdf import build_question_pdf
@@ -69,29 +69,34 @@ def _add_custom():
 
 def run():
     _init()
-    page_header('상담·제안서','상담 질문지 제작기','필요한 질문을 고르고, 고객에 맞게 다듬어 상담 질문지로 저장하세요.','CH')
+    page_header('고객 상담','상담 질문지 제작기','필요한 질문을 고르고, 고객에 맞게 다듬어 상담 질문지로 저장하세요.','CH')
     session_notice('b_')
-    st.subheader('1. 질문 선택')
-    cols=st.columns(3)
-    for col,(name,ids,description) in zip(cols,RECOMMENDED):
-        with col:
-            with st.container(border=True):
-                st.markdown('**'+name+'**');st.caption(description)
-                st.button('추천 질문 10개 추가',key='b_add_set_'+name,on_click=_add_set,args=(ids,),use_container_width=True)
-    search=st.text_input('질문 검색',key='b_question_search',placeholder='예: 보험료, 가족, 갱신')
-    category=st.selectbox('질문 분류',['전체']+[x[0] for x in BANK],key='b_question_category')
-    with st.container(height=330,border=True):
+    steps=['1. 질문 선택','2. 편집·PDF 저장']
+    step=workflow_steps(steps,'b_question_step')
+    st.caption(f"선택한 질문 {len(st.session_state['b_questions'])}개")
+    if step==steps[0]:
+        purpose=st.radio('상담 목적',[r[0] for r in RECOMMENDED],horizontal=True,key='b_question_purpose')
+        name,ids,description=next(r for r in RECOMMENDED if r[0]==purpose)
+        st.caption(description)
+        st.button('추천 질문 10개 추가',key='b_add_set_'+name,on_click=_add_set,args=(ids,),use_container_width=True)
+        more=st.toggle('질문 더 찾기',key='b_question_find_more')
+        search=st.text_input('질문 검색',key='b_question_search',placeholder='예: 보험료, 가족, 갱신') if more else ''
+        category=st.selectbox('질문 분류',['전체']+[x[0] for x in BANK],key='b_question_category') if more else '전체'
+        visible=set(QUESTIONS) if more else {f'Q{n:02d}' for n in ids}
         found=0
-        for qid,q in QUESTIONS.items():
-            if category!='전체' and q['category']!=category:continue
-            if search.strip() and search.strip().casefold() not in (qid+' '+q['text']+' '+q['category']).casefold():continue
-            found+=1
-            # Rehydrate selection after a filter hides a checkbox and Streamlit cleans its widget state.
-            st.session_state['b_pick_'+qid]=qid in st.session_state['b_questions']
-            st.checkbox(qid+' · '+q['text'],key='b_pick_'+qid,on_change=_select,args=(qid,))
-        if not found:st.info('검색된 질문이 없습니다. 다른 단어로 찾아보세요.')
-    st.caption('추천 묶음을 여러 번 추가해도 같은 질문은 한 번만 들어갑니다.')
-    st.subheader('2. 선택한 질문 편집')
+        with st.container(height=360,border=True):
+            for qid,q in QUESTIONS.items():
+                if qid not in visible:continue
+                if category!='전체' and q['category']!=category:continue
+                if search.strip() and search.strip().casefold() not in (qid+' '+q['text']+' '+q['category']).casefold():continue
+                found+=1
+                st.session_state['b_pick_'+qid]=qid in st.session_state['b_questions']
+                st.checkbox(q['text'],key='b_pick_'+qid,on_change=_select,args=(qid,))
+            if not found:st.info('검색된 질문이 없습니다. 다른 단어로 찾아보세요.')
+        st.caption('상담 목적이나 검색 조건을 바꿔도 선택한 질문은 유지됩니다. 같은 질문은 한 번만 추가됩니다.')
+        workflow_button('선택한 질문 편집·PDF 저장 →',steps[1],'b_question_step',primary=True)
+        return
+    st.subheader('선택한 질문 편집')
     st.caption('문구 수정은 이번 질문지에만 적용됩니다. 위·아래 버튼으로 상담 순서를 바꿀 수 있습니다.')
     order=list(st.session_state['b_questions'])
     for index,qid in enumerate(order):
@@ -105,11 +110,11 @@ def run():
             cols[1].button('↓ 아래로',key='b_move_down_'+qid,disabled=index==len(order)-1,on_click=_move,args=(qid,1),use_container_width=True)
             cols[2].button('선택 해제',key='b_remove_'+qid,on_click=_remove,args=(qid,),use_container_width=True)
             if qid in QUESTIONS:cols[3].button('원문으로',key='b_restore_'+qid,on_click=_restore,args=(qid,),use_container_width=True)
-    if not order:st.info('위에서 질문을 선택하거나 아래에서 직접 추가해 주세요.')
+    if not order:st.info('1단계에서 질문을 선택하거나 아래에서 직접 추가해 주세요.')
     with st.container(border=True):
         st.text_area('내 질문 추가',key='b_new_question',max_chars=500,height=80,placeholder='이번 고객에게 물어보고 싶은 질문을 적어주세요.')
         st.button('질문 추가',key='b_add_custom',on_click=_add_custom,disabled=not st.session_state.get('b_new_question','').strip())
-    st.subheader('3. PDF 저장')
+    st.subheader('PDF 저장')
     title=field('text_input','질문지 제목','b_question_title','상담 질문지',max_chars=80)
     left,right=st.columns(2)
     with left:customer=field('text_input','고객명 (선택)','b_question_customer','',max_chars=40,placeholder='비워두면 필기란으로 출력')
@@ -125,3 +130,5 @@ def run():
         st.download_button('PDF 질문지 다운로드',payload,question_pdf_filename(title),'application/pdf',type='primary',use_container_width=True,key='b_question_download')
     else:
         st.button('PDF 질문지 다운로드',disabled=True,type='primary',use_container_width=True)
+
+    workflow_button('← 질문 선택',steps[0],'b_question_step')

@@ -16,6 +16,7 @@ from modules.shell.workspace_v2 import render_home, render_sidebar
 
 
 st.set_page_config(page_title="화랑WORKSPACE", page_icon="H", layout="wide", initial_sidebar_state="auto")
+st.set_option("client.toolbarMode", "minimal")
 
 
 @st.cache_data(show_spinner=False)
@@ -27,9 +28,8 @@ def _pretendard_font_data() -> str:
 def inject_pretendard_font() -> None:
     font_data = _pretendard_font_data()
     if font_data:
-        st.markdown(
+        st.html(
             f"<style>@font-face{{font-family:'Pretendard';src:url(data:font/ttf;base64,{font_data}) format('truetype');font-weight:100 900;font-style:normal;font-display:swap}}</style>",
-            unsafe_allow_html=True,
         )
 
 

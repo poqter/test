@@ -200,7 +200,9 @@ def _money_text_input(label: str, key: str, section: str, placeholder: str, help
 
 
 def _money_input(label: str, key: str, help_text: str | None = None) -> int:
-    raw = _money_text_input(label, key, 'totals' if 'total' in key else 'monthly', '예: 694,580원', help_text)
+    is_total = 'total' in key
+    raw = _money_text_input(label, key, 'totals' if is_total else 'monthly',
+                            '예: 48,000,000원' if is_total else '예: 200,000원', help_text)
     return money(raw)
 
 
@@ -758,11 +760,11 @@ def _show_download_requirements(count: int) -> None:
         return
     # Widget keys identify the exact fields, including customers on another tab.
     selectors = ','.join(f'.st-key-rm_workspace .st-key-{key} [data-testid="stTextInputRootElement"]' for key in keys)
-    st.markdown('<style>'+selectors+'{border:2px solid #c88a35!important;background:#fffaf1!important;box-shadow:0 0 0 2px #c88a3512!important}</style>', unsafe_allow_html=True)
-    st.warning(f'엑셀 다운로드 전 {len(keys)}개 입력란을 확인해 주세요. 해당 입력란을 주황색 테두리로 표시했습니다.')
+    st.markdown('<style>'+selectors+'{border:2px solid #d5b42b!important;background:#fff8ce!important;box-shadow:0 0 0 2px #d5b42b12!important}</style>', unsafe_allow_html=True)
+    st.info(f'노란색으로 표시한 {len(keys)}개 항목을 입력해 주세요. 입력을 완료하면 강조가 사라집니다.')
     for i, rows in groups:
         if rows:
-            st.markdown(f'**고객 {i} · 보완할 항목**')
+            st.markdown(f'**고객 {i} · 입력할 항목**')
             for _, label in rows:
                 st.markdown('• '+label)
     st.caption('해당 금액이 없으면 0을 입력하세요. 신규 가입이 없으면 ‘신규로 가입할 보험이 없습니다’를 선택하세요. 핵심 보장 설명과 기존 계약 정리표는 선택 사항입니다.')

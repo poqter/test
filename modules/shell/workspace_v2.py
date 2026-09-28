@@ -147,6 +147,26 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
             with st.container(key="hw_mobile_quick"):
                 if st.button("보장 분석 시작", icon=":material/shield:", key="hw_feature_launch", use_container_width=True):
                     navigate("analyzer")
+        defaults = [p for p in ('comparison_builder', 'insurance_claim_guide', 'analyzer') if p in allowed]
+        pins = [p for p in st.session_state.get('hw_home_pins', defaults) if p in allowed]
+        st.session_state['hw_home_pins'] = pins
+        with st.container(key='hw_home_favorites'):
+            title_col, edit_col = st.columns([3, 1], vertical_alignment='center')
+            title_col.markdown('**자주 사용하는 도구**')
+            with edit_col, st.popover('바로가기 편집', use_container_width=True):
+                st.session_state.setdefault('hw_home_pins_ui', list(pins))
+                def save_pins():
+                    st.session_state['hw_home_pins'] = list(st.session_state['hw_home_pins_ui'])
+                st.multiselect('상단에 고정할 도구', allowed_ids, max_selections=3,
+                               format_func=lambda p: APP_BY_ID[p].label,
+                               key='hw_home_pins_ui', on_change=save_pins)
+                st.caption('최대 3개 · 선택은 현재 접속 동안 유지됩니다.')
+            if pins:
+                for column, item in zip(st.columns(len(pins), gap='small'), pins):
+                    if column.button(APP_BY_ID[item].label+' →', key='hw_pin_'+item, use_container_width=True):
+                        navigate(item)
+            else:
+                st.caption('바로가기 편집에서 자주 쓰는 도구를 선택하세요.')
         work_title, work_search = st.columns([1, 1.3], gap="large", vertical_alignment="center")
         with work_title:
             st.subheader("어떤 도구가 필요하세요?")
@@ -183,6 +203,6 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
                         icon_key, tone = _HOME_ICON_STYLES.get(app.id, (app.icon_key, "blue"))
                         icon = _ICONS.get(icon_key, _ICONS["materials"])
                         st.markdown(f'<div class="hw-tool-heading"><span class="hw-tool-symbol hw-icon-{tone}" aria-hidden="true">{icon}</span><h3>{html.escape(app.label)}</h3></div><p class="hw-dash-tool-desc">{html.escape(app.description)}</p>', unsafe_allow_html=True)
-                        if st.button("시작하기 →", key="hw_home_launch_" + app.id, help=f"{app.label} 열기", use_container_width=True):
+                        if st.button(app.label+" 열기 →", key="hw_home_launch_" + app.id, help=f"{app.label} 열기", use_container_width=True):
                             navigate(app.id, mode)
         st.markdown('<div class="hw-dash-footer">Planned &amp; Built by 박병선 팀장 · 보험 업무의 복잡함, 더 간단하게.</div>', unsafe_allow_html=True)

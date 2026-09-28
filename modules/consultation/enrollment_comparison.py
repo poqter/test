@@ -16,7 +16,7 @@ from reportlab.platypus import Paragraph,Table,TableStyle,SimpleDocTemplate,Spac
 from pypdf import PdfReader
 from modules.shared.paths import PROJECT_ROOT
 from modules.shared.pdf_brand import draw_brand
-from modules.shared.ui_components import page_header
+from modules.shared.ui_components import page_header, workflow_steps, workflow_button
 
 EXAMPLES={'암 보장':'일반암 3,000만원 / 유사암 600만원\n암주요치료 포함 (10년 또는 만기 보장)','뇌·심장 보장':'뇌혈관질환 1,000만원 / 허혈성심장질환 1,000만원\n순환계주요치료 포함 (10년 또는 만기 보장)','수술 보장':'1-5종 수술 최대 1,000만원\n질병수술 30만원 / 상해수술 50만원','입원·간병 보장':'질병입원일당 2만원 / 간병인사용일당 10만원','실손의료비':'입원 5,000만원·통원 20만원 보장 / \n자기부담금과 한도 기재','사망·후유장해':'상해사망 1억원 / 상해후유장해 5,000만원','운전자·배상책임':'교통사고처리지원금 2억원 / 일상생활배상책임 1억원'}
 NOTE_EXAMPLE = '각 안의 최종 월 보험료에는 공통 보험료가 포함됩니다. 보장 범위·지급 조건·면책 및 감액기간은 실제 가입설계와 약관을 확인해 주세요.\n\n보장과 보험료의 균형을 고려해 B안을 추천드립니다. 암·뇌·심장 보장을 확보하면서 장기적으로 유지할 수 있는 보험료를 고려한 구성입니다.\n\n보험료 절감이 우선이면 A안, 보장금액 확대가 우선이면 C안을 고려하실 수 있습니다. 기존 보험과의 중복 여부와 고객님의 예산·우선순위를 확인해 최종 선택해 주세요.'
@@ -105,6 +105,18 @@ def switch_mode(p,mode):
 def copy_plan(m,src,dst):
     name=m['plans'][dst]['name'];m['plans'][dst]=deepcopy(m['plans'][src]);m['plans'][dst]['name']=name
     for x in m['plans'][dst]['products']+m['plans'][dst]['conditions']:x['id']=uid()
+def copy_conditions(m,src,dst):
+    """Copy only conditions; preserve target premiums, summaries and mode."""
+    template=plan_conditions(m['plans'][src])
+    target=m['plans'][dst]
+    if target['mode']==MODES[0]:
+        target['conditions']=[dict(id=uid(),pay=x['pay'],cover=x['cover'],renewal=x['renewal']) for x in template]
+    else:
+        for i,x in enumerate(target['products']):
+            if template:
+                base=template[min(i,len(template)-1)]
+                for k in ['pay','cover','renewal']:x[k]=base[k]
+
 def condition_text(xs):return '\n'.join(f'{x["pay"]}납 / {x["cover"]} 보장 / {x["renewal"]}' for x in xs)
 def issues(m):
     out=[]
@@ -228,8 +240,9 @@ def run():
             st.session_state['enroll_example_pending']=False
             st.rerun()
     st.caption('예시는 가상 자료입니다. 공통 내용과 A·B·C안이 채워지며, 입력 후 자유롭게 수정할 수 있습니다.')
-    tabs=st.tabs(['① 기본·가입 조건','② 보장 묶음','③ 미리보기·저장'])
-    with tabs[0]:
+    steps=['1. 기본·가입 조건','2. 보장 묶음','3. 미리보기·PDF 저장']
+    step=workflow_steps(steps,'enroll_step')
+    if step==steps[0]:
         widget('text_input','자료 제목',m,'title','base',max_chars=100)
         widget('checkbox','C안 추가',m,'third','base')
         chosen=st.radio('기본 입력 방식',MODES,index=MODES.index(m['mode']),key=f'enroll_globalmode_{rev}',horizontal=True)
@@ -247,6 +260,11 @@ def run():
             plan=m['plans'][p]
             with st.expander(plan['name']+' · 보험료와 조건',expanded=True):
                 widget('text_input','가입안 이름',plan,'name',p,max_chars=40)
+                if p!='A':
+                    st.caption('A안의 납입·보장·갱신 조건만 가져옵니다. 이 안의 보험료와 보장 요약은 유지됩니다.')
+                    if st.button('A안 조건 가져오기',key='enroll_quick_conditions_'+p):
+                        copy_conditions(m,'A',p);refresh()
+
                 override=widget('checkbox','이 안만 입력 방식 별도 선택',plan,'override',p)
                 mode=st.radio('입력 방식',MODES,index=MODES.index(plan['mode']),key=f'enroll_mode_{rev}_{p}',horizontal=True) if override else m['mode']
                 if mode!=plan['mode']:switch_mode(plan,mode);refresh()
@@ -269,16 +287,10 @@ def run():
                 for target in dst:
                     if action=='가입안 전체':copy_plan(m,src,target)
                     else:
-                        template=plan_conditions(m['plans'][src])
-                        target_plan=m['plans'][target]
-                        if target_plan['mode']==MODES[0]:target_plan['conditions']=[dict(id=uid(),pay=x['pay'],cover=x['cover'],renewal=x['renewal']) for x in template]
-                        else:
-                            for i,x in enumerate(target_plan['products']):
-                                if template:
-                                    base=template[min(i,len(template)-1)]
-                                    for k in ['pay','cover','renewal']:x[k]=base[k]
+                        copy_conditions(m,src,target)
                 refresh()
-    with tabs[1]:
+        workflow_button('보장 묶음 입력 →',steps[1],'enroll_step',primary=True)
+    elif step==steps[1]:
         st.caption('왼쪽 체크로 PDF 포함을 선택하세요. 예시는 안내용이며 출력되지 않습니다.')
         only=st.toggle('선택한 묶음만 보기',key='enroll_only_selected')
         custom=st.text_input('추가할 묶음 이름',key=f'enroll_newgroup_{rev}',max_chars=40)
@@ -316,7 +328,10 @@ def run():
                             if a.button('위로',key='up_'+g['id'],disabled=idx==0):m['groups'][idx-1],m['groups'][idx]=m['groups'][idx],m['groups'][idx-1];refresh()
                             if b.button('아래로',key='down_'+g['id'],disabled=idx==len(m['groups'])-1):m['groups'][idx+1],m['groups'][idx]=m['groups'][idx],m['groups'][idx+1];refresh()
                             if c.button('삭제',key='del_'+g['id']):m['groups'].pop(idx);refresh()
-    with tabs[2]:
+        left,right=st.columns(2)
+        with left:workflow_button('← 기본·가입 조건',steps[0],'enroll_step')
+        with right:workflow_button('미리보기·PDF 저장 →',steps[2],'enroll_step',primary=True)
+    else:
         widget('radio','설명 정렬',m,'note_align','base',options=['왼쪽 정렬','가운데 정렬','오른쪽 정렬'],horizontal=True)
         note_css={'왼쪽 정렬':'left','가운데 정렬':'center','오른쪽 정렬':'right'}[m['note_align']]
         st.markdown(f'<style>.st-key-enroll_note_editor textarea {{text-align: {note_css};}}</style>',unsafe_allow_html=True)
@@ -339,3 +354,5 @@ def run():
         reviewed=st.checkbox('현재 보험료·조건·보장 내용을 확인했습니다.',key='enroll_reviewed',disabled=bool(errors))
         if reviewed and not errors:
             st.download_button('PDF 저장',pdf,filename(m['title'])+'.pdf','application/pdf',width='stretch')
+
+        workflow_button('← 보장 묶음',steps[1],'enroll_step')

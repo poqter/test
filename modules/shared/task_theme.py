@@ -124,7 +124,39 @@ border:1.5px solid #8ea3ba!important;background:#fff!important;border-radius:9px
 .st-key-hw_task_page [data-testid="stNumberInput"] input{min-width:0!important}
 }
 
+
+/* Compact Streamlit chrome. Keep the sidebar reopen control usable. */
+[data-testid="stToolbar"], [data-testid="stMainMenu"], .stAppDeployButton {display:none!important}
+[data-testid="stHeader"]{height:0!important;min-height:0!important;background:transparent!important;pointer-events:none}
+[data-testid="stHeader"] button,[data-testid="stSidebarCollapsedControl"],[data-testid="stExpandSidebarButton"],
+[data-testid="stSidebarCollapsedControl"] button {pointer-events:auto!important}
+[data-testid="stSidebarCollapsedControl"],[data-testid="stExpandSidebarButton"]{position:fixed!important;top:8px!important;left:8px!important;z-index:1001}
+body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"],
+body:has(.hw-task-marker):not(:has(.hw-calculator-only)) [data-testid="stMainBlockContainer"]{padding-top:1rem!important}
+.st-key-hw_home_welcome{padding:16px 22px!important;margin-bottom:4px!important}
+.st-key-hw_dashboard .hw-welcome-copy h1{font-size:24px!important;margin:5px 0!important}
+.st-key-hw_home_favorites{padding:10px 0!important}
+.st-key-hw_home_favorites [data-testid="stVerticalBlock"]{gap:.5rem!important}
+.st-key-hw_home_favorites button{min-height:42px!important}
+.st-key-hw_dashboard [class*="st-key-hw_dash_tool_"]{padding:18px!important}
+.st-key-hw_dashboard .hw-dash-tool-desc{min-height:48px!important;margin:10px 0 6px!important}
+/* Same step navigation across question, comparison and claim documents. */
+[class*="st-key-hw_steps_"] [role="radiogroup"]{gap:8px!important;flex-wrap:wrap}
+[class*="st-key-hw_steps_"] [data-testid="stRadio"] label[data-baseweb="radio"]{border:1px solid #d6e0ed;border-radius:10px;padding:7px 12px!important;background:#fff;min-height:42px}
+[class*="st-key-hw_steps_"] label:has(input:checked){background:#edf4ff!important;border-color:#87afe9!important}
+/* A document checkbox stays next to its summary, including on narrow screens. */
+.st-key-hw_task_page [class*="st-key-cg_document_row_"] [data-testid="stHorizontalBlock"]{flex-wrap:nowrap!important;gap:8px!important;align-items:center!important}
+.st-key-hw_task_page [class*="st-key-cg_document_row_"] [data-testid="stColumn"]{min-width:0!important}
+.st-key-hw_task_page [class*="st-key-cg_document_row_"] [data-testid="stColumn"]:first-child{width:28px!important;flex:0 0 28px!important}
+.st-key-hw_task_page [class*="st-key-cg_document_row_"] [data-testid="stColumn"]:last-child{width:auto!important;flex:1 1 0!important}
+.st-key-hw_task_page [class*="st-key-cg_document_row_"] [data-testid="stExpander"] summary{padding:8px 10px!important;min-height:44px}
+.st-key-hw_task_page [class*="st-key-cg_document_row_"] [data-testid="stExpander"] summary p{font-size:14px!important;line-height:1.5!important}
+@media(max-width:768px){
+body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"],
+body:has(.hw-task-marker):not(:has(.hw-calculator-only)) [data-testid="stMainBlockContainer"]{padding-top:3.25rem!important}
+.st-key-hw_home_welcome{padding:14px!important}
+}
 '''
 
 def inject_task_styles():
-    st.markdown('<style>'+CSS+'</style>', unsafe_allow_html=True)
+    st.html('<style>'+CSS+'</style>')
