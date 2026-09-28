@@ -30,10 +30,49 @@ def product():return dict(**condition(),premium=None)
 def cell():return dict(summary='',absent=False)
 def new_model():
     groups=[dict(id=uid(),name=n,selected=False) for n in EXAMPLES]
-    return dict(version=2,title='신규 가입안 비교',basis='',note=NOTE_EXAMPLE,third=False,mode=MODES[0],common_enabled=False,common_summary='',common=[],groups=groups,
+    return dict(version=2,title='신규 가입안 비교',basis='',note=NOTE_EXAMPLE,note_align='가운데 정렬',third=False,mode=MODES[0],common_enabled=False,common_summary='',common=[],groups=groups,
         plans={p:dict(name=p+'안',mode=MODES[0],override=False,premium=None,conditions=[condition()],products=[],cells={g['id']:cell() for g in groups},reference=None) for p in 'ABC'})
+def example_model():
+    m=new_model()
+    m.update(third=True,basis='가상 입력 예시 · 실제 상품의 보험료·보장조건이 아닙니다.',
+             common_enabled=True,common_summary='실손의료비 · 입원·통원 보장 / 자기부담금 및 재가입 조건 확인')
+    common=product();common.update(premium=15000,pay='전기',cover='1년',renewal='갱신')
+    m['common']=[common]
+    examples=[
+        ['일반암 2,000만원 / 유사암 400만원','일반암 3,000만원 / 유사암 600만원\n암주요치료 포함 (10년 보장)','일반암 5,000만원 / 유사암 1,000만원\n암주요치료 포함 (만기 보장)'],
+        ['뇌혈관질환·허혈성심장질환 각 1,000만원','뇌혈관질환·허혈성심장질환 각 1,500만원\n순환계주요치료 포함 (10년 보장)','뇌혈관질환·허혈성심장질환 각 2,000만원\n순환계주요치료 포함 (만기 보장)'],
+        ['질병수술 30만원 / 상해수술 50만원','1~5종 수술 최대 500만원\n질병수술 30만원 / 상해수술 50만원','1~5종 수술 최대 1,000만원\n질병수술 50만원 / 상해수술 100만원'],
+        ['질병입원일당 2만원','질병입원일당 2만원 / 간병인사용일당 10만원','질병입원일당 3만원 / 간병인사용일당 15만원'],
+        ['공통 실손의료비와 동일']*3,
+        ['상해사망 5,000만원 / 상해후유장해 3,000만원','상해사망 1억원 / 상해후유장해 5,000만원','상해사망 1억원 / 상해후유장해 1억원'],
+        ['일상생활배상책임 1억원']*3,
+    ]
+    for i,p in enumerate('ABC'):
+        plan=m['plans'][p]
+        plan.update(name=['A안 · 기본형','B안 · 균형형','C안 · 보장강화형'][i],premium=[45000,65000,85000][i])
+        plan['conditions'][0].update(pay='20년',cover='100세',renewal='비갱신')
+        for j,g in enumerate(m['groups']):
+            g['selected']=j<4
+            plan['cells'][g['id']]['summary']=examples[j][i]
+    return m
+
+
+def has_written_input(m):
+    # Ignore generated IDs and initial default explanation when detecting an empty draft.
+    if (m['title']!='신규 가입안 비교' or m['basis'].strip() or m['note']!=NOTE_EXAMPLE
+            or m['common'] or m['common_summary'].strip() or m['third']):return True
+    if any(g['selected'] for g in m['groups']):return True
+    if [g['name'] for g in m['groups']]!=list(EXAMPLES):return True
+    for p,plan in m['plans'].items():
+        if plan['name']!=p+'안' or plan['premium'] is not None or plan['products']:return True
+        if any(x['pay'] or x['cover'] or x['renewal']!='선택' for x in plan['conditions']):return True
+        if any(c['summary'] or c['absent'] for c in plan['cells'].values()):return True
+    return False
+
 def migrate(old):
-    if old.get('version')==2:return old
+    if old.get('version')==2:
+        old.setdefault('note_align','가운데 정렬')
+        return old
     m=new_model()
     for k in ['title','basis','note','third']:m[k]=old.get(k,m[k])
     m['groups']=deepcopy(old.get('groups',m['groups']))
@@ -126,7 +165,8 @@ def build_pdf(m):
     styles.append(('BACKGROUND',(1,premium_row),(-1,premium_row),colors.HexColor('#E8F0FF')))
     t.setStyle(TableStyle(styles));blocks.append(t)
     if m['note'].strip():
-        note_table=Table([[para('고객님께 드리는 안내',white)],[para(m['note'],table_body)]],colWidths=[usable],repeatRows=1,splitByRow=1,splitInRow=1)
+        note_style=ParagraphStyle('note_body',parent=body,alignment={'왼쪽 정렬':0,'가운데 정렬':1,'오른쪽 정렬':2}.get(m.get('note_align'),1))
+        note_table=Table([[para('고객님께 드리는 안내',white)],[para(m['note'],note_style)]],colWidths=[usable],repeatRows=1,splitByRow=1,splitInRow=1)
         note_table.setStyle(TableStyle([
             ('BACKGROUND',(0,0),(-1,0),colors.HexColor('#112B49')),
             ('BACKGROUND',(0,1),(-1,-1),colors.HexColor('#F7FAFD')),
@@ -170,6 +210,24 @@ def run():
                 with c:widget('selectbox','갱신 구분',x,'renewal',x['id'],options=RENEWALS)
                 if st.button('삭제',key='remove_'+label+x['id']):xs.remove(x);refresh()
         if st.button('+ 상품 추가' if priced else '+ 조건 추가',key='add_'+label):xs.append(product() if priced else condition());refresh()
+    if st.button('예시 입력내용 입력하기',key='enroll_example_open',type='secondary'):
+        if has_written_input(m):
+            st.session_state['enroll_example_pending']=True
+        else:
+            st.session_state['enroll_model']=example_model()
+            st.session_state['enroll_example_pending']=False
+            refresh()
+    if st.session_state.get('enroll_example_pending'):
+        st.warning('현재 입력을 예시로 교체합니다. 적용하면 작성 중인 내용이 바뀝니다.')
+        yes,no=st.columns(2)
+        if yes.button('예시로 교체',key='enroll_example_confirm'):
+            st.session_state['enroll_model']=example_model()
+            st.session_state['enroll_example_pending']=False
+            refresh()
+        if no.button('취소',key='enroll_example_cancel'):
+            st.session_state['enroll_example_pending']=False
+            st.rerun()
+    st.caption('예시는 가상 자료입니다. 공통 내용과 A·B·C안이 채워지며, 입력 후 자유롭게 수정할 수 있습니다.')
     tabs=st.tabs(['① 기본·가입 조건','② 보장 묶음','③ 미리보기·저장'])
     with tabs[0]:
         widget('text_input','자료 제목',m,'title','base',max_chars=100)
@@ -260,7 +318,11 @@ def run():
                             if b.button('아래로',key='down_'+g['id'],disabled=idx==len(m['groups'])-1):m['groups'][idx+1],m['groups'][idx]=m['groups'][idx],m['groups'][idx+1];refresh()
                             if c.button('삭제',key='del_'+g['id']):m['groups'].pop(idx);refresh()
     with tabs[2]:
-        widget('text_area','고객에게 전할 설명 · 선택 사항',m,'note','base',max_chars=1500,height=260,placeholder=NOTE_EXAMPLE)
+        widget('radio','설명 정렬',m,'note_align','base',options=['왼쪽 정렬','가운데 정렬','오른쪽 정렬'],horizontal=True)
+        note_css={'왼쪽 정렬':'left','가운데 정렬':'center','오른쪽 정렬':'right'}[m['note_align']]
+        st.markdown(f'<style>.st-key-enroll_note_editor textarea {{text-align: {note_css};}}</style>',unsafe_allow_html=True)
+        with st.container(key='enroll_note_editor'):
+            widget('text_area','고객에게 전할 설명 · 선택 사항',m,'note','base',max_chars=1500,height=280,placeholder='')
         st.caption('기본 설명이 입력되어 있습니다. 추천안과 이유를 실제 비교 결과에 맞게 수정하세요. 모두 지우면 PDF에서 안내 표가 생략됩니다.')
         headers,rows=table_data(m);st.dataframe(pd.DataFrame(rows,columns=headers),hide_index=True,width='stretch')
         errors=issues(m);pdf=None
