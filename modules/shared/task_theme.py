@@ -135,9 +135,6 @@ body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"],
 body:has(.hw-task-marker):not(:has(.hw-calculator-only)) [data-testid="stMainBlockContainer"]{padding-top:1rem!important}
 .st-key-hw_home_welcome{padding:16px 22px!important;margin-bottom:4px!important}
 .st-key-hw_dashboard .hw-welcome-copy h1{font-size:24px!important;margin:5px 0!important}
-.st-key-hw_home_favorites{padding:10px 0!important}
-.st-key-hw_home_favorites [data-testid="stVerticalBlock"]{gap:.5rem!important}
-.st-key-hw_home_favorites button{min-height:42px!important}
 .st-key-hw_dashboard [class*="st-key-hw_dash_tool_"]{padding:18px!important}
 .st-key-hw_dashboard .hw-dash-tool-desc{min-height:48px!important;margin:10px 0 6px!important}
 /* Same step navigation across question, comparison and claim documents. */
@@ -156,6 +153,16 @@ body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"],
 body:has(.hw-task-marker):not(:has(.hw-calculator-only)) [data-testid="stMainBlockContainer"]{padding-top:3.25rem!important}
 .st-key-hw_home_welcome{padding:14px!important}
 }
+/* The sidebar has its own header spacer, independent of the main toolbar. */
+[data-testid="stSidebar"] [data-testid="stSidebarHeader"]{
+    height:0!important;min-height:0!important;padding:0!important;margin:0!important;
+    position:relative;overflow:visible!important;
+}
+[data-testid="stSidebar"] [data-testid="stSidebarHeader"] button{
+    position:absolute!important;top:3px!important;right:12px!important;
+    min-height:28px!important;height:28px!important;z-index:30;
+}
+[data-testid="stSidebar"] [data-testid="stSidebarUserContent"]{padding-top:2rem!important}
 '''
 
 def inject_task_styles():
