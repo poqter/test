@@ -95,7 +95,7 @@ def checklist(items, prefix):
     return completed
 
 
-def run():
+def legacy_run():
     topics = load_content("consultation_topics")
     scripts = load_content("consultation_scripts")
     messages = load_content("message_templates")
@@ -202,3 +202,8 @@ def run():
                 export_document("proposal", "상담 제안서", value, valid=valid)
         with st.expander("기본 문구 안내"):
             st.caption(f"자체 작성 기본 문구 · 편집일 {topics['edited_at']} · 회사 승인 문구나 최신 약관의 대체 자료가 아닙니다.")
+
+
+def run():
+    from modules.consultation.question_studio import run as question_run
+    question_run()
