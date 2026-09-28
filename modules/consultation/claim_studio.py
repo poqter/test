@@ -1,5 +1,6 @@
-"""Three-step claim guide using the reviewed workflow model."""
+"""Four-step claim guide using the reviewed workflow model."""
 import hashlib
+import uuid
 from io import BytesIO
 import streamlit as st
 import pdfplumber
@@ -15,12 +16,22 @@ def field(model, name, label, *, area=False):
     return value
 
 
+def nav(case,step,label):
+    if st.button(label,key='cg_nav_'+w.stable_id([step,label])):
+        st.session_state['cg_pending_step']=step
+        st.rerun()
+
+
 def run():
     from .insurance_claim_guide import extract_pdf, render_copyable_message
     from modules.shared.upload_ui import guarded_upload
     st.title('보험금 청구 가이드')
     c=st.session_state.setdefault('cg_case',w.new_case())
-    step=st.radio('작성 순서',['1. 청구 내용 선택','2. 안내할 서류 선택','3. 문자·PDF 전달'],horizontal=True,key='cg_step')
+    steps=['1. 청구 내용 선택','2. 안내할 서류 선택','3. 관련 담보 찾기 · 선택사항','4. 문자·PDF 전달']
+    if st.session_state.get('cg_step')=='3. 문자·PDF 전달':st.session_state['cg_step']=steps[3]
+    pending=st.session_state.pop('cg_pending_step',None)
+    if pending:st.session_state['cg_step']=pending
+    step=st.radio('작성 순서',steps,horizontal=True,key='cg_step')
     if st.button('처음부터 다시',key='cg_restart'):
         for k in list(st.session_state):
             if k.startswith('cg_'): del st.session_state[k]
@@ -37,6 +48,7 @@ def run():
                     if not chosen and claim in c['claims']: c['claims'].remove(claim)
         if c['claims']:
             st.write('선택한 내용: '+' · '.join(c['claims']))
+        if c['claims']:nav(c,steps[1],'안내할 서류 선택으로 이동')
         return
     if not c['claims']:
         st.info('1단계에서 청구 내용을 먼저 선택해 주세요.')
@@ -44,23 +56,21 @@ def run():
     docs=w.documents_for_case(c)
     if step.startswith('2'):
         questions={q for d in docs for q in d['questions']}
-        labels={'biopsy':'조직검사를 받았나요?','prescription':'처방을 받았나요?','blood_cancer':'혈액암 진단인가요?',
-            'blood_test':'혈액검사를 받았나요?','marrow_test':'골수검사를 받았나요?','brain_angiography':'뇌혈관조영술을 받았나요?',
-            'heart_angiography':'관상동맥조영술을 받았나요?','cast':'깁스·부목 치료를 받았나요?',
+        labels={'prescription':'처방을 받았나요?','cast':'깁스·부목 치료를 받았나요?',
             'biomarker':'유전자·바이오마커 검사를 받았나요?','icu':'중환자실을 이용했나요?',
             'proxy':'대리 청구인가요?','nicu':'신생아중환자실을 이용했나요?','beneficiary':'보험수익자는 누구인가요?'}
         for q in sorted(questions):
-            opts=['확인 중','받음','받지 못함'] if q in ('biopsy','blood_test','marrow_test') else ['확인 중','예','아니요']
-            if q=='beneficiary': opts=['확인 중','지정수익자','법정상속인']
+            opts=['확인 중','예','아니오','해당 없음']
+            if q=='beneficiary':opts=['확인 중','지정수익자','법정상속인']
             key='cg_answer_'+q
-            st.session_state.setdefault(key,c['answers'].get(q,opts[0]))
+            previous=st.session_state.get(key,c['answers'].get(q,opts[0]))
+            previous={'아니요':'아니오','받음':'예','받지 못함':'아니오'}.get(previous,previous)
+            st.session_state[key]=previous if previous in opts else opts[0]
             c['answers'][q]=st.selectbox(labels.get(q,q),opts,key=key)
         if any(x in c['claims'] for x in ('수술','암 수술','산모 수술')):
             opts=['확인 중','질병','상해·재해','교통사고','질병과 상해 모두 확인']
             st.session_state.setdefault('cg_surgery_answer',c['answers'].get('surgery_cause',opts[0]))
             c['answers']['surgery_cause']=st.selectbox('수술 원인',opts,key='cg_surgery_answer')
-        if c['answers'].get('biopsy')=='받지 못함':
-            c['answers']['alternative_diagnosis_confirmed']=st.selectbox('대체 진단자료 사용을 확인했나요?',['확인 중','예','아니요'],key='cg_alternative_diagnosis')
         docs=w.documents_for_case(c)
         a,b=st.columns(2)
         if a.button('추천 상태로 되돌리기'):
@@ -69,15 +79,17 @@ def run():
                 if k.startswith('cg_doc_'):del st.session_state[k]
             st.rerun()
         if b.button('전체 포함 해제'):
+            for d in c.get('custom_docs',[]):
+                d['include']=False
+                st.session_state['cg_custom_'+d['id']]=False
             for d in docs:
                 c['doc_edits'].setdefault(d['id'],{})['include']=False
                 st.session_state['cg_doc_include_'+d['id']]=False
             st.rerun()
-        if any(d['tier']=='조건부 추천' and not d['include'] for d in docs):
-            st.caption('확인 중인 조건부 서류는 자동 포함하지 않습니다. 필요한 경우 직접 선택할 수 있습니다.')
-        for tier in ['기본 추천','조건부 추천','추가 요청 시']:
+        st.caption('고객에게 안내할 서류를 체크해 주세요. 검사자료는 이번 진단에 사용한 항목을 선택해 주세요.')
+        for tier in ['안내할 서류','추가 요청 시']:
             with st.expander(tier,expanded=tier!='추가 요청 시'):
-                for d in [x for x in docs if x['tier']==tier]:
+                for d in [x for x in docs if (x['tier']=='추가 요청 시')==(tier=='추가 요청 시')]:
                     ident=d['id'];edit=c['doc_edits'].setdefault(ident,{})
                     cols=st.columns([1,9])
                     key='cg_doc_include_'+ident
@@ -88,23 +100,40 @@ def run():
                     st.session_state.setdefault(key,d['include'])
                     chosen=cols[0].checkbox('안내문 포함',key=key,label_visibility='collapsed',on_change=save_include)
                     if chosen!=d['include']: edit['include']=chosen
-                    with cols[1].expander(d['name']+(' · 직접 수정' if any(k in edit for k in ('name','required_info')) else '')):
-                        st.caption('추천 이유: '+' · '.join(d['reasons']))
+                    fresh=' · 새로 추가됨' if ident in c.get('new_doc_ids',[]) else ''
+                    with cols[1].expander(d['name']+fresh+(' · 직접 수정' if any(k in edit for k in ('name','required_info')) else '')):
+                        st.caption('관련 청구: '+' · '.join(d['reasons'])+' / 대상: '+d['target'])
+                        if len(d['reasons'])>1:st.caption('목록에서는 한 번 표시하지만, 대상 질환과 발급기관에 따라 실제 서류는 여러 장일 수 있습니다.')
                         for f,label in [('name','서류명'),('required_info','확인할 내용')]:
                             key='cg_doc_'+f+'_'+ident
+                            if f not in edit:st.session_state[key]=d[f]
                             st.session_state.setdefault(key,d[f])
-                            val=st.text_input(label,key=key)
-                            if val!=d[f]:edit[f]=val
+                            def save_text(f=f,key=key,ident=ident,basis=d['default_info']):
+                                e=c['doc_edits'].setdefault(ident,{})
+                                e[f]=st.session_state[key]
+                                if f=='required_info':e['basis_info']=basis
+                            val=st.text_input(label,key=key,on_change=save_text)
+                    cols[1].caption(c['doc_edits'].get(ident,{}).get('required_info',d['required_info']))
+                    if d.get('additional_info'):cols[1].info('추가로 확인할 내용: '+d['additional_info'])
         st.subheader('서류 직접 추가')
         custom=c.setdefault('custom_docs',[])
         with st.form('cg_custom_form',clear_on_submit=True):
             name=st.text_input('추가할 서류명');info=st.text_input('서류에 포함할 내용')
             if st.form_submit_button('서류 추가') and name.strip():
-                custom.append(dict(id=w.stable_id([name,info,len(custom)]),name=name,required_info=info,group='직접 준비',include=True));st.rerun()
+                custom.append(dict(id=uuid.uuid4().hex,name=name,required_info=info,group='직접 준비',include=True));st.rerun()
         for d in custom:
             d['include']=st.checkbox(d['name'],value=d['include'],key='cg_custom_'+d['id'])
             if st.button('삭제',key='cg_custom_del_'+d['id']):custom.remove(d);st.rerun()
+        if c.get('new_doc_ids') and st.button('추가된 서류 확인 완료'):
+            c['new_doc_ids']=[];st.rerun()
+        nav(c,steps[2],'관련 담보 찾기')
+        nav(c,steps[3],'담보 찾기를 건너뛰고 문자·PDF 만들기')
+    elif step.startswith('3'):
+        st.caption('선택사항입니다. PDF 없이 담보를 직접 추가하거나 이 단계를 건너뛸 수 있습니다.')
+        nav(c,steps[3],'건너뛰고 문자·PDF 만들기')
         coverage_section(c,extract_pdf,guarded_upload)
+        if c.get('new_doc_ids'):nav(c,steps[1],'추가된 서류 확인')
+        nav(c,steps[3],'문자·PDF 전달로 이동')
     else:
         name=field(c,'customer_name','고객 이름 · 선택사항')
         if name and c.get('source_customer') not in ('',None,'확인 필요',name):
@@ -112,6 +141,10 @@ def run():
         note=field(c,'note','추가 안내 · 선택사항',area=True)
         accident=field(c,'accident','사고경위 · 선택사항',area=True)
         docs=w.documents_for_case(c)+c.get('custom_docs',[])
+        st.caption(f"청구 {len(c['claims'])}개 · 안내서류 {sum(d['include'] for d in docs)}개")
+        if not any(d['include'] for d in docs):
+            st.info('안내할 서류가 선택되지 않았습니다.')
+            nav(c,steps[1],'안내할 서류 선택으로 이동')
         fingerprint=w.message_fingerprint(c['claims'],docs,name,note)
         if c['message'] and c['message_fingerprint']!=fingerprint:
             st.warning('선택 내용이 변경되었습니다. 기존 문자를 유지하거나 다시 생성해 주세요.')
@@ -125,13 +158,17 @@ def run():
             c['message']=st.text_area('고객에게 보낼 문자',key='cg_message_edit',height=300)
             render_copyable_message(c['message'])
         selected=list({r['id']:r for r in w.review_rows(c,c['claims'],c['answers'])}.values())
+        st.session_state.setdefault('cg_pdf_coverages',c.get('include_coverages',False))
         include=st.checkbox('선택한 담보 목록을 PDF 별도 페이지에 포함',key='cg_pdf_coverages')
+        c['include_coverages']=include
+        st.caption('담보 목록 포함' if include else '담보 목록 미포함')
         if st.button('PDF 미리보기·생성'):
             data=build_customer_pdf(c['claims'],docs,name=name,note=note,accident=accident,coverages=selected if include else [])
             with pdfplumber.open(BytesIO(data)) as pdf: pages=len(pdf.pages)
             st.session_state['cg_pdf_result']=(w.stable_id([docs,name,note,accident,selected,include,c['claims']]),data,pages)
         token=w.stable_id([docs,name,note,accident,selected,include,c['claims']])
         saved=st.session_state.get('cg_pdf_result')
+        if saved and saved[0]!=token:st.warning('입력 내용이 변경되었습니다. PDF를 다시 생성해 주세요.')
         if saved and saved[0]==token:
             if saved[2]>1:st.info(f'{saved[2]}쪽으로 작성됩니다. 그대로 다운로드할 수 있습니다.')
             st.download_button('고객용 PDF 다운로드',saved[1],file_name='화랑_보험금청구안내.pdf',mime='application/pdf')
@@ -211,7 +248,7 @@ def coverage_section(c,extract_pdf,guarded_upload):
         with st.form('cg_manual_form',clear_on_submit=True):
             company=st.text_input('보험회사');product=st.text_input('상품명');coverage=st.text_input('담보명');amount=st.text_input('가입금액')
             if st.form_submit_button('담보 추가') and coverage.strip():
-                c['manual'].append({'id':w.stable_id([company,product,coverage,amount,len(c['manual'])]),'포함':True,'보험회사':company,'상품명':product,'관련 담보':coverage,'가입금액':amount,'확인사항':'사용자 직접 입력'});st.rerun()
+                c['manual'].append({'id':uuid.uuid4().hex,'포함':True,'보험회사':company,'상품명':product,'관련 담보':coverage,'가입금액':amount,'확인사항':'사용자 직접 입력'});st.rerun()
         for r in c['manual']:
             if st.button('삭제: '+r['관련 담보'],key='cg_manual_del_'+r['id']):c['manual'].remove(r);st.rerun()
     asked=set()
@@ -219,11 +256,15 @@ def coverage_section(c,extract_pdf,guarded_upload):
         with st.container(border=True):
             st.write('추가로 확인할 청구: '+p['claim'])
             q=p['question'];key='cg_fact_'+q
-            st.session_state.setdefault(key,c['answers'].get(q,'확인 중'))
+            st.session_state.setdefault(key,{'아니요':'아니오'}.get(c['answers'].get(q,'확인 중'),c['answers'].get(q,'확인 중')))
             if q not in asked:
-                c['answers'][q]=st.selectbox(p['claim']+' 관련 치료·이용이 실제 있었나요?',['확인 중','예','아니요'],key=key)
+                c['answers'][q]=st.selectbox(p['claim']+' 관련 치료·이용이 실제 있었나요?',['확인 중','예','아니오','해당 없음'],key=key)
                 asked.add(q)
-            st.caption('추가 검토 서류: '+', '.join(p['documents']))
+            delta=w.proposal_delta(c,p['claim'])
+            st.caption('추가할 청구: '+p['claim'])
+            st.caption('새로 추가할 서류: '+(', '.join(d['name'] for d in delta['added']) or '없음'))
+            if delta['updated']:st.caption('기재정보가 추가될 서류: '+', '.join(d['name'] for d in delta['updated']))
+            st.caption('기존 선택과 직접 수정한 내용은 유지됩니다.')
             if st.button('청구에 추가',key='cg_proposal_'+p['claim'],disabled=c['answers'][q]!='예'):
-                c.update(w.accept_proposal(c,p['claim']));st.session_state['cg_pick_'+p['claim']]=True;st.rerun()
+                c.update(w.accept_proposal(c,p['claim']));st.rerun()
             if st.button('이번 상담에서는 제외',key='cg_dismiss_'+p['claim']):c['dismissed'].append(p['claim']);st.rerun()

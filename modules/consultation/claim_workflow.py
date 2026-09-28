@@ -158,7 +158,7 @@ def proposals(case):
             if any(term in text for term in terms):
                 hits.append(coverage_id(row))
         answer = case['answers'].get(question, '확인 중')
-        if hits and answer != '아니요':
+        if hits and answer not in ('아니요','아니오','해당 없음'):
             result.append({'claim': claim, 'question': question, 'confirmed': answer == '예',
                            'evidence_ids': list(dict.fromkeys(hits)), 'documents': list(documents)})
     return result
@@ -169,77 +169,106 @@ def accept_proposal(case, claim):
     if not proposal or not proposal['confirmed']:
         raise ValueError('실제 치료 여부를 먼저 확인해 주세요.')
     result = deepcopy(case)
-    result['claims'].append(claim)
+    before={d['id'] for d in document_recommendations(case['claims'],case['answers'])}
+    label={'항암방사선':'방사선'}.get(claim,claim)
+    result['claims'].append(label)
+    result['new_doc_ids']=list(set(result.get('new_doc_ids',[])) | {d['id'] for d in document_recommendations(result['claims'],result['answers']) if d['id'] not in before})
     return result
 
 
-def document_recommendations(claims, answers=None):
-    """One document per identity, all reasons retained; unknown conditions are unchecked.
+DIAGNOSIS_TESTS = {
+    '암': [('조직병리검사 결과지','조직검사를 시행한 경우, 최종 병리진단과 검사 결과'),
+           ('영상검사 판독지','이번 암 진단에 사용한 영상검사 결과'),
+           ('혈액검사 결과지','이번 암 진단에 사용한 혈액검사 결과'),
+           ('골수검사 결과지','이번 암 진단에 사용한 골수검사 결과')],
+    '뇌질환': [('CT·MRI·MRA 등 영상검사 판독지','이번 뇌질환 진단에 사용한 영상검사 결과'),
+              ('뇌혈관조영술 결과지','이번 뇌질환 진단에 사용한 검사 결과')],
+    '심장질환': [('심전도 검사결과지','이번 심장질환 진단에 사용한 검사 결과'),
+                ('심장초음파 검사결과지','이번 심장질환 진단에 사용한 검사 결과'),
+                ('혈액검사 결과지','심장효소 등 이번 심장질환 진단에 사용한 검사 결과'),
+                ('관상동맥조영술 결과지','이번 심장질환 진단에 사용한 검사 결과')],
+}
 
-    Source baseline: KB general injury document guide, checked 2026-09-28.
-    Other claim-specific templates remain review-required generic guidance.
-    """
-    from .insurance_claim_guide import DOC_RULES, COMMON_DOCUMENTS
-    answers = answers or {}
+
+def document_identity(name, target='피보험자', purpose='보험금 청구'):
+    return stable_id([name,target,purpose])
+
+
+def merge_information(requirements):
+    """Deduplicate common fields, preserve claim-specific qualifiers."""
+    import re
+    fields=[]
+    for claim, text in requirements:
+        for part in re.split(r'[,，]', text):
+            part=part.strip()
+            if part and part not in fields: fields.append(part)
+    return ', '.join(fields)
+
+
+def document_recommendations(claims, answers=None):
+    from .insurance_claim_guide import COMMON_DOCUMENTS, DocumentRule as D
+    answers=answers or {}
     if not claims: return []
-    rows = {}
-    conditional = {
-        '조직병리검사 결과지': ('biopsy', '받음'),
-        '처방전': ('prescription', '예'),
-        '뇌혈관조영술 결과지': ('brain_angiography', '예'),
-        '관상동맥조영술 결과지': ('heart_angiography', '예'),
-        '깁스·부목 치료확인서': ('cast', '예'),
-        '유전자·바이오마커 검사결과': ('biomarker', '예'),
-        '중환자실·병실 이용확인서': ('icu', '예'),
-        '대리청구 관계서류': ('proxy', '예'),
-        '신생아중환자실 사용확인서': ('nicu', '예'),
-        '기본증명서·가족관계증명서': ('beneficiary', '법정상속인'),
-    }
-    for claim in ['공통'] + list(dict.fromkeys(claims)):
-        for doc in COMMON_DOCUMENTS if claim == '공통' else rules_for_claim(claim):
-            # Admission confirmation and diagnosis certificate are alternatives, not both defaults.
-            if claim == '실손 입원' and doc.name == '진단서':
-                continue
-            key = stable_id([doc.group, doc.name])
-            tier = '기본 추천' if doc.default_selected and doc.level == '기본 준비' else '추가 요청 시'
-            include = tier == '기본 추천'
-            question = ''
-            if doc.name in conditional and not (doc.name == '처방전' and claim == '약제비'):
-                question, yes = conditional[doc.name]
-                tier = '조건부 추천'
-                include = answers.get(question) == yes
-            elif doc.level == '해당 시':
-                tier, include = '조건부 추천', False
-            if claim in {'암','암 진단'} and doc.name == '영상검사 결과지':
-                question, tier = 'biopsy', '조건부 추천'
-                include = answers.get('biopsy') == '받지 못함' and answers.get('alternative_diagnosis_confirmed') == '예'
-            item = rows.setdefault(key, {'id': key, 'name': doc.name, 'required_info': [],
-                'group': doc.group, 'tier': tier, 'include': False, 'reasons': [], 'questions': []})
-            item['include'] |= include
-            if include or item['tier'] == '추가 요청 시':
-                item['tier'] = tier
-            if doc.required_info not in item['required_info']:
-                item['required_info'].append(doc.required_info)
-            item['reasons'].append(claim)
-            if question and question not in item['questions']:
-                item['questions'].append(question)
-    if any(c in claims for c in ('암','암 진단')):
-        for name, question in [('혈액검사 결과지','blood_test'),('골수검사 결과지','marrow_test')]:
-            key=stable_id(['병원 발급',name])
-            rows[key]={'id':key,'name':name,'required_info':['확정진단 근거와 검사 결과'],
-                'group':'병원 발급','tier':'조건부 추천',
-                'include':answers.get('blood_cancer')=='예' and answers.get(question)=='받음',
-                'reasons':['암 진단'],'questions':['blood_cancer',question]}
+    rows={}
+    conditions={'처방전':('prescription','예'),'깁스·부목 치료확인서':('cast','예'),
+        '유전자·바이오마커 검사결과':('biomarker','예'),
+        '중환자실·병실 이용확인서':('icu','예'),'대리청구 관계서류':('proxy','예'),
+        '신생아중환자실 사용확인서':('nicu','예'),
+        '기본증명서·가족관계증명서':('beneficiary','법정상속인')}
+    for claim in ['공통']+list(dict.fromkeys(claims)):
+        canonical=ALIASES.get(claim,claim)
+        tests=DIAGNOSIS_TESTS.get(canonical)
+        if tests is not None:
+            rules=[D('진단서','각 청구 질환의 진단명·진단코드·확정진단일')]
+            rules += [D(name,info,level='해당 시',default_selected=False) for name,info in tests]
+            rules += [D('기타 검사자료','이번 진단에 사용한 검사명과 검사 결과',level='해당 시',default_selected=False)]
+        else:
+            rules=COMMON_DOCUMENTS if claim=='공통' else rules_for_claim(claim)
+        for doc in rules:
+            if claim=='실손 입원' and doc.name=='진단서': continue
+            target='피보험자';purpose='보험금 청구'
+            if claim=='공통':target='청구인'
+            elif doc.name=='기본증명서·가족관계증명서':target='사망자';purpose='사망사실·상속관계 확인'
+            elif '수익자' in doc.name:target='보험수익자'
+            elif claim in ('저체중아','신생아 입원/중환자실','선천이상'):target='출생아'
+            elif claim.startswith('산모') or claim in ('유산','사산'):target='산모'
+            ident=document_identity(doc.name,target,purpose)
+            tier='기본 추천' if doc.default_selected and doc.level=='기본 준비' else '추가 요청 시'
+            included=tier=='기본 추천';question=''
+            if doc.level=='해당 시':tier='조건부 추천';included=False
+            if doc.name in conditions and not (claim=='약제비' and doc.name=='처방전'):
+                question,yes=conditions[doc.name];tier='조건부 추천';included=answers.get(question)==yes
+            item=rows.setdefault(ident,dict(id=ident,name=doc.name,group=doc.group,target=target,purpose=purpose,
+                tier=tier,include=False,reasons=[],questions=[],requirements=[]))
+            item['include'] |= included
+            if included:item['tier']=tier
+            if claim not in item['reasons']:item['reasons'].append(claim)
+            if question and question not in item['questions']:item['questions'].append(question)
+            item['requirements'].append((claim,doc.required_info))
     for item in rows.values():
-        item['required_info'] = ' / '.join(item['required_info'])
+        item['required_info']=merge_information(item['requirements'])
+        item['default_info']=item['required_info']
     return list(rows.values())
 
 
 def documents_for_case(case):
-    result = document_recommendations(case['claims'], case['answers'])
+    result=document_recommendations(case['claims'],case['answers'])
     for row in result:
-        row.update(case['doc_edits'].get(row['id'], {}))
+        edit=case['doc_edits'].get(row['id'],{})
+        row['additional_info']=''
+        if 'required_info' in edit:
+            basis=edit.get('basis_info',row['default_info'])
+            old={part.strip() for part in basis.split(',')}
+            row['additional_info']=', '.join(part.strip() for part in row['default_info'].split(',') if part.strip() not in old)
+        row.update({k:v for k,v in edit.items() if k in ('name','required_info','include')})
     return result
+
+
+def proposal_delta(case, claim):
+    before={d['id']:d for d in document_recommendations(case['claims'],case['answers'])}
+    after=document_recommendations(case['claims']+[claim],case['answers'])
+    return {'added':[d for d in after if d['id'] not in before],
+            'updated':[d for d in after if d['id'] in before and d['required_info']!=before[d['id']]['required_info']]}
 
 
 def message_fingerprint(claims, docs, name='', note=''):
@@ -255,7 +284,7 @@ def make_message(claims, docs, name='', note=''):
             lines.extend(['', '['+group+']'])
             lines.extend(f"• {d['name']}: {d['required_info']}" for d in selected)
     if note.strip(): lines.extend(['', note.strip()])
-    lines.extend(['', '보험회사·가입 담보에 따라 추가서류가 요청될 수 있습니다.', '화랑 WORKSPACE'])
+    lines.extend(['', '보험회사·가입 담보에 따라 추가서류가 요청될 수 있습니다.'])
     return '\n'.join(lines)
 
 
@@ -263,7 +292,7 @@ def generate_message(case, name='', note='', *, replace=False):
     if case['message'] and not replace:
         raise ValueError('작성한 안내문을 교체할지 확인해 주세요.')
     result = deepcopy(case)
-    docs = documents_for_case(case)
+    docs = documents_for_case(case)+case.get('custom_docs',[])
     result['message'] = make_message(case['claims'], docs, name, note)
     result['message_fingerprint'] = message_fingerprint(case['claims'], docs, name, note)
     return result
