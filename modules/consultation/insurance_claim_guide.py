@@ -351,164 +351,50 @@ def infer_coverage_category(category: str, coverage: str) -> str:
 
 
 def extract_pdf(pdf_bytes: bytes) -> dict:
-    pages_text: list[str] = []
-    pages_words: list[tuple[float, list[dict]]] = []
-    pages_tables: list[list[list[list[str | None]]]] = []
-    with pdfplumber.open(BytesIO(pdf_bytes)) as pdf:
-        for page in pdf.pages:
-            pages_text.append(page.extract_text(x_tolerance=2, y_tolerance=3, layout=True) or "")
-            pages_words.append((float(page.width), page.extract_words(x_tolerance=1, y_tolerance=2) or []))
-            pages_tables.append(page.extract_tables() or [])
+    from modules.consultation.claim_pdf_parser import extract_report
+    return extract_report(pdf_bytes)
 
-    first_text = "\n".join(pages_text[:2])
-    customer_match = re.search(r"([가-힣]{2,5})님을\s*위한", first_text)
-    report_match = re.search(r"작성일자\s*(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})", first_text)
-    customer = customer_match.group(1) if customer_match else "확인 필요"
-    report_date = (
-        f"{report_match.group(1)}.{int(report_match.group(2)):02d}.{int(report_match.group(3)):02d}"
-        if report_match else "확인 필요"
-    )
 
-    rows: list[CoverageRow] = []
-    for page_no, ((page_width, words), page_tables) in enumerate(zip(pages_words, pages_tables), start=1):
-        table_row_count = 0
-        for table in page_tables:
-            if not table:
-                continue
-            header_index = next(
-                (
-                    idx for idx, row in enumerate(table)
-                    if len(row) >= 7
-                    and "구분" in normalize_text(row[0] or "")
-                    and "회사" in normalize_text(row[1] or "")
-                    and "담보" in normalize_text(row[3] or "")
-                ),
-                None,
-            )
-            if header_index is None:
-                continue
-            current_category = ""
-            for cells in table[header_index + 1:]:
-                if len(cells) < 7:
-                    continue
-                category_cell = str(cells[0] or "").replace("\n", " ").strip()
-                if category_cell:
-                    current_category = category_cell
-                company_cell = str(cells[1] or "").replace("\n", " ").strip()
-                insurer_match = INSURER_PATTERN.search(company_cell)
-                if not insurer_match:
-                    continue
-                product = str(cells[2] or "").replace("\n", " ").strip()
-                coverage = str(cells[3] or "").replace("\n", " ").strip()
-                if coverage.startswith(")") and product.count("(") > product.count(")"):
-                    product += ")"
-                    coverage = coverage[1:].lstrip()
-                amount_raw = str(cells[4] or "").replace("\n", " ").strip()
-                contract_date = str(cells[5] or "").replace("\n", " ").strip()
-                expiry_date = str(cells[6] or "").replace("\n", " ").strip()
-                if not product or not coverage or not re.fullmatch(r"\d{4}[-.]\d{1,2}(?:[-.]\d{1,2})?", contract_date):
-                    continue
-                if not re.fullmatch(r"\d{4}[-.]\d{1,2}(?:[-.]\d{1,2})?|종신", expiry_date):
-                    expiry_date = "확인 필요"
-                category = infer_coverage_category(current_category, coverage)
-                rows.append(CoverageRow(
-                    company=normalize_company(insurer_match.group(0)), product=product, category=category,
-                    coverage=coverage, amount=parse_amount(amount_raw), contract_date=contract_date,
-                    expiry_date=expiry_date, source_page=page_no,
-                    extraction_status="담보명 잘림 가능성" if coverage.endswith(("(", "제", "갱", "지", "수")) else "정상 추출",
-                ))
-                table_row_count += 1
-        if table_row_count:
-            continue
-        if not words:
-            continue
-        scale = 595.28 / page_width if page_width else 1.0
-        line_groups: list[list[dict]] = []
-        for word in sorted(words, key=lambda item: (float(item["top"]), float(item["x0"]))):
-            if not line_groups or abs(float(word["top"]) - float(line_groups[-1][0]["top"])) > 2.2:
-                line_groups.append([word])
-            else:
-                line_groups[-1].append(word)
+def coverage_hits(row: dict, claim: str) -> tuple[list[str], list[str]]:
+    """Match benefit purpose separately from diagnosis names and exclusion clauses."""
+    category = normalize_text(row.get("category", ""))
+    name = normalize_text(row.get("coverage", ""))
+    text = category + " " + name
+    rules = MATCH_RULES.get(claim, {"direct": [], "related": []})
+    direct = [term for term in rules["direct"] if normalize_text(term) in text]
+    related = [term for term in rules["related"] if normalize_text(term) in text]
+    if claim in {"실손 입원", "실손 통원"}:
+        if "의료비" in text and re.search(r"입원\s*[+·/ㆍ및과와]+\s*통원|통원\s*[+·/ㆍ및과와]+\s*입원", text):
+            direct.append("입원·통원 통합 의료비")
+    if claim == "암":
+        # An exclusion mention alone (e.g. benign brain tumour, borderline tumour excluded)
+        # must not create a cancer benefit match.
+        positive = re.sub(r"(?:기타피부암|갑상선암|유사암|소액암|고액암|특정암|경계성종양|상피내암|암)제외", "", text)
+        cancer = any(term in positive for term in ("암", "경계성종양", "상피내"))
+        treatment = any(term in name for term in ("치료", "수술", "입원", "통원", "검사"))
+        death = "사망" in name or ("사망" in category and "진단" not in category)
+        if treatment or death:
+            direct = []
+            related = ["암 관련 치료·수술·입원 등 확인"] if cancer else []
+        elif cancer and ("진단" in name or "진단" in category):
+            direct = ["암 진단 보장"]
+        elif cancer:
+            direct = []
+            related = ["암 관련 보장 확인"]
+        else:
+            direct = []
+            related = ["납입면제"] if "납입면제" in name else []
+    return direct, related
 
-        # 보장분류 셀은 여러 담보 행의 세로 중앙에 놓이는 경우가 있어
-        # 단순히 '이전 분류'를 물려주면 질병/상해 분류가 뒤바뀔 수 있다.
-        category_markers: list[tuple[float, str]] = []
-        for marker_words in line_groups:
-            marker_text = " ".join(
-                str(word["text"]).strip()
-                for word in sorted(marker_words, key=lambda item: float(item["x0"]))
-                if float(word["x0"]) * scale < 95
-            ).strip()
-            if marker_text and len(marker_text) <= 35:
-                category_markers.append((float(marker_words[0]["top"]), marker_text))
 
-        for line_words in line_groups:
-            fields = {"category": [], "company": [], "product": [], "coverage": [], "amount": [], "contract": [], "expiry": []}
-            for word in sorted(line_words, key=lambda item: float(item["x0"])):
-                x = float(word["x0"]) * scale
-                text = str(word["text"]).strip()
-                if x < 95:
-                    fields["category"].append(text)
-                elif x < 150:
-                    fields["company"].append(text)
-                elif x < 303:
-                    fields["product"].append(text)
-                elif x < 428:
-                    fields["coverage"].append(text)
-                elif x < 473:
-                    fields["amount"].append(text)
-                elif x < 528:
-                    fields["contract"].append(text)
-                else:
-                    fields["expiry"].append(text)
-
-            category_text = " ".join(fields["category"]).strip()
-            company_text = " ".join(fields["company"]).strip()
-            insurer_match = INSURER_PATTERN.search(company_text)
-            if not insurer_match:
-                continue
-            product = " ".join(fields["product"]).strip()
-            coverage = " ".join(fields["coverage"]).strip()
-            amount_raw = " ".join(fields["amount"]).strip()
-            contract_date = " ".join(fields["contract"]).strip()
-            expiry_date = " ".join(fields["expiry"]).strip()
-            if not product or not coverage or not re.fullmatch(r"\d{4}[-.]\d{1,2}(?:[-.]\d{1,2})?", contract_date):
-                continue
-            if not re.fullmatch(r"\d{4}[-.]\d{1,2}(?:[-.]\d{1,2})?|종신", expiry_date):
-                expiry_date = "확인 필요"
-            if not category_text and category_markers:
-                row_top = float(line_words[0]["top"])
-                category_text = min(category_markers, key=lambda item: abs(item[0] - row_top))[1]
-            category_text = infer_coverage_category(category_text, coverage)
-            status = "담보명 잘림 가능성" if coverage.endswith(("(", "제", "갱", "지", "수")) else "정상 추출"
-            rows.append(
-                CoverageRow(
-                    company=normalize_company(insurer_match.group(0)),
-                    product=product,
-                    category=category_text,
-                    coverage=coverage,
-                    amount=parse_amount(amount_raw),
-                    contract_date=contract_date,
-                    expiry_date=expiry_date,
-                    source_page=page_no,
-                    extraction_status=status,
-                )
-            )
-
-    deduped: list[CoverageRow] = []
-    seen: set[tuple] = set()
-    for row in rows:
-        key = (row.company, row.product, row.coverage, row.amount, row.contract_date, row.expiry_date)
-        if key not in seen:
-            seen.add(key)
-            deduped.append(row)
-
-    return {
-        "customer": customer,
-        "report_date": report_date,
-        "coverages": [asdict(row) for row in deduped],
-        "page_count": len(pages_text),
-    }
+def coverage_checks(searchable: str) -> list[str]:
+    checks = []
+    for term, note in LIMIT_TERMS.items():
+        # Remove 비급여 before looking for 급여; genuinely mixed benefits retain both checks.
+        target = searchable.replace("비급여", "") if term == "급여" else searchable
+        if normalize_text(term) in target:
+            checks.append(note)
+    return list(dict.fromkeys(checks))
 
 
 def match_coverages(coverages: list[dict], selected_claims: list[str]) -> pd.DataFrame:
@@ -516,18 +402,13 @@ def match_coverages(coverages: list[dict], selected_claims: list[str]) -> pd.Dat
     for row in coverages:
         searchable = normalize_text(f"{row.get('category', '')} {row.get('coverage', '')}")
         for claim in selected_claims:
-            rules = MATCH_RULES.get(claim, {"direct": [], "related": []})
-            direct_hits = [term for term in rules["direct"] if normalize_text(term) in searchable]
-            related_hits = [term for term in rules["related"] if normalize_text(term) in searchable]
+            direct_hits, related_hits = coverage_hits(row, claim)
             if not direct_hits and not related_hits:
                 continue
 
             relation = "직접 관련" if direct_hits else "함께 확인"
             hit = (direct_hits or related_hits)[0]
-            checks = []
-            for term, note in LIMIT_TERMS.items():
-                if normalize_text(term) in searchable:
-                    checks.append(note)
+            checks = coverage_checks(searchable)
             if checks and relation == "직접 관련":
                 relation = "조건부 관련"
             note = " · ".join(dict.fromkeys(checks)) or (
@@ -535,11 +416,11 @@ def match_coverages(coverages: list[dict], selected_claims: list[str]) -> pd.Dat
             )
 
             key = (
-                row.get("company"), row.get("product"), row.get("coverage"), row.get("amount"), row.get("contract_date")
+                row.get("company"), row.get("product"), row.get("coverage"), row.get("amount"), row.get("contract_date"), row.get("expiry_date")
             )
             priority = {"직접 관련": 3, "조건부 관련": 2, "함께 확인": 1}
             candidate = {
-                "포함": relation != "함께 확인",
+                "포함": relation == "직접 관련" and row.get("extraction_status") == "상세표 대조 완료",
                 "보험회사": row.get("company", "확인 필요"),
                 "상품명": row.get("product", "확인 필요"),
                 "보장분류": row.get("category", ""),
@@ -550,13 +431,19 @@ def match_coverages(coverages: list[dict], selected_claims: list[str]) -> pd.Dat
                 "추출상태": row.get("extraction_status", "정상 추출"),
                 "계약일": row.get("contract_date", ""),
                 "만기일": row.get("expiry_date", ""),
-                "원본쪽": row.get("source_page", ""),
+                "원본쪽": ", ".join(map(str,row.get("source_pages",[row.get("source_page", "")]))),
                 "매칭근거": hit,
+                "관련 청구": claim,
             }
-            if key not in matched or priority[relation] > priority[matched[key]["분류"]]:
-                matched[key] = candidate
+            previous = matched.get(key)
+            if previous:
+                candidate["관련 청구"] = " · ".join(dict.fromkeys(previous.get("관련 청구", "").split(" · ") + [claim]))
+                if priority[relation] <= priority[previous["분류"]]:
+                    previous["관련 청구"] = candidate["관련 청구"]
+                    continue
+            matched[key] = candidate
 
-    columns = ["포함", "보험회사", "상품명", "보장분류", "관련 담보", "가입금액", "분류", "확인사항", "추출상태", "계약일", "만기일", "원본쪽", "매칭근거"]
+    columns = ["포함", "보험회사", "상품명", "보장분류", "관련 담보", "가입금액", "분류", "확인사항", "추출상태", "계약일", "만기일", "원본쪽", "매칭근거", "관련 청구"]
     if not matched:
         return pd.DataFrame(columns=columns)
     df = pd.DataFrame(matched.values(), columns=columns)
@@ -587,8 +474,8 @@ def refine_matches_with_answers(df: pd.DataFrame, answers: dict) -> pd.DataFrame
         elif surgery_cause == "상해·재해":
             downgrade(surgery_rows & ~(injury | generic))
         elif surgery_cause == "교통사고":
-            downgrade(surgery_rows & ~traffic)
-        elif surgery_cause in {"선택 전", "잘 모르겠음"}:
+            downgrade(surgery_rows & ~(traffic | injury | generic))
+        elif surgery_cause in {"선택 전", "잘 모르겠음", "확인 중"}:
             downgrade(surgery_rows & ~generic)
 
     cause = answers.get("death_cause")
@@ -599,7 +486,7 @@ def refine_matches_with_answers(df: pd.DataFrame, answers: dict) -> pd.DataFrame
         elif cause == "재해·상해":
             keep = normalized.str.contains("상해사망|재해사망", regex=True) & ~normalized.str.contains("교통")
         else:
-            keep = normalized.str.contains("교통.*사망|자동차.*사망", regex=True)
+            keep = normalized.str.contains("교통.*사망|자동차.*사망|상해사망|재해사망", regex=True)
         death_rows = normalized.str.contains("사망")
         downgrade(death_rows & ~keep)
 
@@ -1083,13 +970,13 @@ def render_claim_buttons() -> list[str]:
 
 
 def _coverage_key(row: dict) -> str:
-    return "|".join(str(row.get(x, "")) for x in ["보험회사", "상품명", "관련 담보", "계약일"])
+    return "|".join(str(row.get(x, "")) for x in ["보험회사", "상품명", "관련 담보", "가입금액", "계약일", "만기일"])
 
 
 def _coverage_editor_table(df: pd.DataFrame, key: str) -> pd.DataFrame:
     return st.data_editor(
         df, key=key, hide_index=True, use_container_width=True,
-        disabled=["보험회사", "상품명", "보장분류", "분류", "추출상태", "계약일", "만기일", "원본쪽", "매칭근거"],
+        disabled=["보험회사", "상품명", "보장분류", "분류", "추출상태", "계약일", "만기일", "원본쪽", "매칭근거", "관련 청구"],
         column_config={
             "포함": st.column_config.CheckboxColumn("포함"),
             "보장분류": st.column_config.TextColumn("보장분류", width="small"),
@@ -1110,7 +997,7 @@ def render_coverage_editor(matched_df: pd.DataFrame, all_coverages: list[dict]) 
     if not manual_df.empty:
         frames.append(manual_df)
     display_df = pd.concat(frames, ignore_index=True).drop_duplicates(
-        subset=["보험회사", "상품명", "관련 담보", "계약일"], keep="last"
+        subset=["보험회사", "상품명", "관련 담보", "가입금액", "계약일", "만기일"], keep="last"
     )
 
     direct_df = display_df[display_df["분류"] != "함께 확인"].copy()
@@ -1146,7 +1033,7 @@ def render_coverage_editor(matched_df: pd.DataFrame, all_coverages: list[dict]) 
                         "관련 담보": row.get("coverage", "확인 필요"), "가입금액": row.get("amount", "확인 필요"), "분류": "검색 추가",
                         "확인사항": "담보 검색으로 추가", "추출상태": row.get("extraction_status", "정상 추출"),
                         "계약일": row.get("contract_date", ""), "만기일": row.get("expiry_date", ""),
-                        "원본쪽": row.get("source_page", ""), "매칭근거": search_term.strip(),
+                        "원본쪽": ", ".join(map(str,row.get("source_pages",[row.get("source_page", "")]))), "매칭근거": search_term.strip(),
                     }
                     candidate["_already_listed"] = _coverage_key(candidate) in existing_keys
                     candidates.append(candidate)
@@ -1308,7 +1195,7 @@ def render_accident_helper(selected_claims: list[str]) -> str:
         return narrative
 
 
-def run() -> None:
+def run_legacy() -> None:
     inject_styles()
     page_header("고객 상담", "보험금 청구 가이드", "청구 항목별 필요서류를 확인하고 보장분석 PDF에서 관련 담보와 가입금액을 찾습니다.", "CG")
     tool_guide(
@@ -1449,3 +1336,8 @@ def run() -> None:
     st.divider()
     st.caption("이 가이드는 보장분석 자료와 선택한 청구 항목을 기준으로 관련 담보와 준비서류를 안내합니다. 실제 지급 여부와 추가서류는 가입 약관 및 보험회사의 심사 결과에 따라 달라질 수 있습니다.")
     page_footer("보험금 청구 가이드", GUIDE_VERSION)
+
+
+def run() -> None:
+    from .claim_studio import run as studio_run
+    studio_run()

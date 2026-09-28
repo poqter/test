@@ -50,7 +50,8 @@ _CALCULATOR_ACTION_PREFIXES = ("jc_card_", "jc_purpose_", "jc_category_")
 
 def _transient_draft_key(key: str) -> bool:
     return (
-        key in _CALCULATOR_ACTION_KEYS
+        (key.startswith("cg_") and key not in {"cg_case", "cg_step"})
+        or key in _CALCULATOR_ACTION_KEYS
         or key.startswith(_CALCULATOR_ACTION_PREFIXES)
         or key.endswith(("_customer_export", "_advisor_export"))
     )
