@@ -12,7 +12,8 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
-from reportlab.platypus import Paragraph,Table,TableStyle
+from reportlab.platypus import Paragraph,Table,TableStyle,SimpleDocTemplate,Spacer
+from pypdf import PdfReader
 from modules.shared.paths import PROJECT_ROOT
 from modules.shared.pdf_brand import draw_brand
 from modules.shared.ui_components import page_header
@@ -118,14 +119,14 @@ def build_pdf(m):
     blocks=[para(m['title'],title)]
     if m['basis'].strip():blocks.append(para(m['basis']))
     headers,rows=table_data(m)
-    t=Table([[para(x,white) for x in headers]]+[[para(x,table_body) for x in row] for row in rows],colWidths=[112]+[(usable-112)/(len(headers)-1)]*(len(headers)-1))
+    t=Table([[para(x,white) for x in headers]]+[[para(x,table_body) for x in row] for row in rows],colWidths=[112]+[(usable-112)/(len(headers)-1)]*(len(headers)-1),repeatRows=1,splitByRow=1,splitInRow=1)
     styles=[('BACKGROUND',(0,0),(-1,0),colors.HexColor('#112B49')),('BACKGROUND',(0,1),(0,-1),colors.HexColor('#EEF3F8')),('ROWBACKGROUNDS',(1,1),(-1,-1),[colors.white,colors.HexColor('#F7FAFD')]),('VALIGN',(0,0),(-1,-1),'MIDDLE'),('ALIGN',(0,0),(-1,-1),'CENTER'),('GRID',(0,0),(-1,-1),.4,colors.HexColor('#DCE5EF')),('TOPPADDING',(0,0),(-1,-1),7),('BOTTOMPADDING',(0,0),(-1,-1),7),('LEFTPADDING',(0,0),(-1,-1),9),('RIGHTPADDING',(0,0),(-1,-1),9)]
     if m['common_enabled']:styles += [('SPAN',(1,1),(-1,1)),('BACKGROUND',(0,1),(-1,1),colors.HexColor('#EAF5F4'))]
     premium_row=2 if m['common_enabled'] else 1
     styles.append(('BACKGROUND',(1,premium_row),(-1,premium_row),colors.HexColor('#E8F0FF')))
     t.setStyle(TableStyle(styles));blocks.append(t)
     if m['note'].strip():
-        note_table=Table([[para('고객님께 드리는 안내',white)],[para(m['note'],table_body)]],colWidths=[usable])
+        note_table=Table([[para('고객님께 드리는 안내',white)],[para(m['note'],table_body)]],colWidths=[usable],repeatRows=1,splitByRow=1,splitInRow=1)
         note_table.setStyle(TableStyle([
             ('BACKGROUND',(0,0),(-1,0),colors.HexColor('#112B49')),
             ('BACKGROUND',(0,1),(-1,-1),colors.HexColor('#F7FAFD')),
@@ -136,15 +137,21 @@ def build_pdf(m):
             ('TOPPADDING',(0,0),(-1,-1),9),('BOTTOMPADDING',(0,0),(-1,-1),9),
         ]))
         blocks.append(note_table)
-    sizes=[b.wrap(usable,h) for b in blocks];needed=sum(x[1] for x in sizes)+10*(len(blocks)-1)
-    if needed>h-112:raise PageOverflow('한 장 분량 초과: ① 공통·반복 설명 정리 → ② 긴 요약 줄이기 → ③ 중요도가 낮은 묶음 체크 해제')
-    out=io.BytesIO();c=canvas.Canvas(out,pagesize=(w,h));c.setTitle(m['title']);c.setAuthor('화랑 WORKSPACE');draw_brand(c,'1 / 1');y=h-60
-    for b,(_,height) in zip(blocks,sizes):y-=height;b.drawOn(c,32,y);y-=10
-    c.showPage();c.save();return out.getvalue()
+    out=io.BytesIO()
+    doc=SimpleDocTemplate(out,pagesize=(w,h),leftMargin=26,rightMargin=26,
+                          topMargin=54,bottomMargin=46,title=m['title'],author='화랑 WORKSPACE')
+    story=[]
+    for block in blocks:
+        if story:story.append(Spacer(1,10))
+        story.append(block)
+    def marks(c,d):draw_brand(c,d.page)
+    doc.build(story,onFirstPage=marks,onLaterPages=marks)
+    return out.getvalue()
+
 def filename(s):return re.sub(r'[\\/:*?"<>|\x00-\x1f]','_',s).strip().rstrip('.')[:90] or '가입안_비교'
 
 def run():
-    page_header('고객 상담','고객용 비교표 제작기','보험료와 필요한 보장만 입력해 한 장으로 비교하세요.','CB')
+    page_header('고객 상담','고객용 비교표 제작기','보험료와 필요한 보장만 입력해 비교 자료를 만드세요.','CB')
     st.session_state.setdefault('enroll_model',new_model());m=migrate(st.session_state['enroll_model']);st.session_state['enroll_model']=m
     rev=st.session_state.get('enroll_revision',0)
     def refresh():st.session_state['enroll_revision']=rev+1;st.rerun()
@@ -257,8 +264,12 @@ def run():
         st.caption('기본 설명이 입력되어 있습니다. 추천안과 이유를 실제 비교 결과에 맞게 수정하세요. 모두 지우면 PDF에서 안내 표가 생략됩니다.')
         headers,rows=table_data(m);st.dataframe(pd.DataFrame(rows,columns=headers),hide_index=True,width='stretch')
         errors=issues(m);pdf=None
-        try:pdf=build_pdf(m);st.success('A4 가로 한 장 출력 가능')
-        except PageOverflow as e:errors.append(str(e));st.warning(str(e))
+        pdf=build_pdf(m)
+        pages=len(PdfReader(io.BytesIO(pdf)).pages)
+        if pages==1:st.success('A4 가로 한 장 출력 가능')
+        else:
+            st.warning(f'한 장 분량을 초과하여 총 {pages}페이지로 출력됩니다. 그대로 PDF를 저장할 수 있습니다.')
+            st.caption('한 장으로 줄이려면 ① 공통·반복 설명 정리 → ② 긴 요약 줄이기 → ③ 중요도가 낮은 묶음 체크 해제 순서로 조정하세요.')
         if errors:
             with st.expander(f'저장 전 확인 {len(errors)}개',expanded=True):
                 for e in errors:st.write('• '+e)
@@ -266,4 +277,4 @@ def run():
         if st.session_state.get('enroll_last_sig')!=sig:st.session_state['enroll_last_sig']=sig;st.session_state['enroll_reviewed']=False
         reviewed=st.checkbox('현재 보험료·조건·보장 내용을 확인했습니다.',key='enroll_reviewed',disabled=bool(errors))
         if reviewed and not errors:
-            st.download_button('한 장 PDF 저장',pdf,filename(m['title'])+'.pdf','application/pdf',width='stretch')
+            st.download_button('PDF 저장',pdf,filename(m['title'])+'.pdf','application/pdf',width='stretch')
