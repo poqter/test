@@ -1,9 +1,21 @@
 """Question selection, session-local editing and PDF export."""
+import re
 import streamlit as st
 from modules.shared.ui_components import page_header
 from modules.shared.workspace_tools import field, session_notice
 from modules.consultation.question_bank import BANK, QUESTIONS, RECOMMENDED
 from modules.consultation.question_pdf import build_question_pdf
+
+
+def question_pdf_filename(title):
+    """Preserve the displayed title while producing a portable PDF filename."""
+    name = re.sub(r'[<>:"/\\|?*\x00-\x1f\x7f]', '_', str(title)).strip().rstrip('. ')
+    if name.lower().endswith('.pdf'):
+        name = name[:-4].rstrip('. ')
+    name = name or '상담 질문지'
+    if name.split('.')[0].upper() in {'CON', 'PRN', 'AUX', 'NUL', *('COM'+str(i) for i in range(1,10)), *('LPT'+str(i) for i in range(1,10))}:
+        name = '_' + name
+    return name + '.pdf'
 
 
 def _init():
@@ -110,6 +122,6 @@ def run():
     if questions and not invalid and title.strip():
         payload,pages=build_question_pdf(title,questions,customer,day.isoformat() if day else '')
         st.caption(f'선택한 질문 {len(questions)}개 · PDF {pages}페이지 (종합 메모 포함)')
-        st.download_button('PDF 질문지 다운로드',payload,'hwarang_consultation_questions.pdf','application/pdf',type='primary',use_container_width=True,key='b_question_download')
+        st.download_button('PDF 질문지 다운로드',payload,question_pdf_filename(title),'application/pdf',type='primary',use_container_width=True,key='b_question_download')
     else:
         st.button('PDF 질문지 다운로드',disabled=True,type='primary',use_container_width=True)
