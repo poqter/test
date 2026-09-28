@@ -18,6 +18,8 @@ from modules.shared.pdf_brand import draw_brand
 from modules.shared.ui_components import page_header
 
 EXAMPLES={'암 보장':'일반암 3,000만원 / 유사암 600만원\n암주요치료 포함 (10년 또는 만기 보장)','뇌·심장 보장':'뇌혈관질환 1,000만원 / 허혈성심장질환 1,000만원\n순환계주요치료 포함 (10년 또는 만기 보장)','수술 보장':'1-5종 수술 최대 1,000만원\n질병수술 30만원 / 상해수술 50만원','입원·간병 보장':'질병입원일당 2만원 / 간병인사용일당 10만원','실손의료비':'입원 5,000만원·통원 20만원 보장 / \n자기부담금과 한도 기재','사망·후유장해':'상해사망 1억원 / 상해후유장해 5,000만원','운전자·배상책임':'교통사고처리지원금 2억원 / 일상생활배상책임 1억원'}
+NOTE_EXAMPLE = '각 안의 최종 월 보험료에는 공통 보험료가 포함됩니다. 보장 범위와 지급 조건은 실제 가입설계 및 약관을 기준으로 확인하며, 면책기간·감액기간·갱신 여부에 따라 보장 내용이 달라질 수 있습니다.\n\n아래와 같은 비교 결과가 확인된 경우의 추천 예시입니다.\n최종적으로는 B안을 추천드립니다. A안은 월 보험료 부담을 줄이는 데 중점을 두었고, C안은 보장금액을 더 높인 구성입니다. B안은 고객님께서 중요하게 생각하신 암·뇌·심장 보장을 확보하면서, 매월 납입 가능한 예산과 장기적인 유지 가능성을 함께 고려한 절충안입니다.\n\n다만 보험료 절감이 가장 중요하시다면 A안을, 추가 보험료를 부담하더라도 보장금액을 높이고 싶으시다면 C안을 검토하실 수 있습니다. 최종 선택은 기존 보험과의 중복 여부, 실제 보장 차이, 납입기간 및 고객님의 우선순위를 확인한 뒤 결정해 주세요.'
+
 MODES=['가입안별 간편 입력','상품별 상세 입력']
 RENEWALS=['선택','비갱신','갱신','혼합']
 def uid():return uuid4().hex[:12]
@@ -122,7 +124,18 @@ def build_pdf(m):
     premium_row=2 if m['common_enabled'] else 1
     styles.append(('BACKGROUND',(1,premium_row),(-1,premium_row),colors.HexColor('#E8F0FF')))
     t.setStyle(TableStyle(styles));blocks.append(t)
-    if m['note'].strip():blocks.append(para('설명 · '+m['note']))
+    if m['note'].strip():
+        note_table=Table([[para('고객님께 드리는 안내',white)],[para(m['note'],table_body)]],colWidths=[usable])
+        note_table.setStyle(TableStyle([
+            ('BACKGROUND',(0,0),(-1,0),colors.HexColor('#112B49')),
+            ('BACKGROUND',(0,1),(-1,-1),colors.HexColor('#F7FAFD')),
+            ('BOX',(0,0),(-1,-1),.5,colors.HexColor('#DCE5EF')),
+            ('ALIGN',(0,0),(-1,-1),'CENTER'),
+            ('VALIGN',(0,0),(-1,-1),'MIDDLE'),
+            ('LEFTPADDING',(0,0),(-1,-1),14),('RIGHTPADDING',(0,0),(-1,-1),14),
+            ('TOPPADDING',(0,0),(-1,-1),9),('BOTTOMPADDING',(0,0),(-1,-1),9),
+        ]))
+        blocks.append(note_table)
     sizes=[b.wrap(usable,h) for b in blocks];needed=sum(x[1] for x in sizes)+10*(len(blocks)-1)
     if needed>h-112:raise PageOverflow('한 장 분량 초과: ① 공통·반복 설명 정리 → ② 긴 요약 줄이기 → ③ 중요도가 낮은 묶음 체크 해제')
     out=io.BytesIO();c=canvas.Canvas(out,pagesize=(w,h));c.setTitle(m['title']);c.setAuthor('화랑 WORKSPACE');draw_brand(c,'1 / 1');y=h-60
@@ -240,7 +253,8 @@ def run():
                             if b.button('아래로',key='down_'+g['id'],disabled=idx==len(m['groups'])-1):m['groups'][idx+1],m['groups'][idx]=m['groups'][idx],m['groups'][idx+1];refresh()
                             if c.button('삭제',key='del_'+g['id']):m['groups'].pop(idx);refresh()
     with tabs[2]:
-        widget('text_area','고객에게 전할 설명 · 선택 사항',m,'note','base',max_chars=1500)
+        widget('text_area','고객에게 전할 설명 · 선택 사항',m,'note','base',max_chars=1500,height=260,placeholder=NOTE_EXAMPLE)
+        st.caption('아래 안내 표에는 직접 작성한 내용만 출력됩니다. 예시의 추천안과 이유는 실제 비교 결과에 맞게 수정하세요.')
         headers,rows=table_data(m);st.dataframe(pd.DataFrame(rows,columns=headers),hide_index=True,width='stretch')
         errors=issues(m);pdf=None
         try:pdf=build_pdf(m);st.success('A4 가로 한 장 출력 가능')
