@@ -3,6 +3,7 @@ import hashlib
 import json
 import re
 from html import escape
+from urllib.parse import quote
 import streamlit as st
 from modules.calculators.ux_profiles import profile
 from modules.calculators.visuals import category_emoji, category_label, purpose_label
@@ -43,6 +44,20 @@ def matches(name, group, description, query):
 def card_key(name):
     return 'jc_card_' + hashlib.sha256(name.encode()).hexdigest()[:12]
 
+
+def calculator_deep_link(name):
+    # Relative URL keeps the link valid for production, test and local Calculator apps.
+    return '?calc=' + quote(name, safe='')
+
+
+def clear_calculator_query():
+    try:
+        if 'calc' in st.query_params:
+            del st.query_params['calc']
+    except (AttributeError, KeyError, TypeError):
+        pass
+
+
 def open_calculator(name):
     st.session_state['jc_open'] = name
     st.session_state['jc_selected'] = name
@@ -51,6 +66,8 @@ def open_calculator(name):
 
 def back_to_catalog():
     st.session_state.pop('jc_open', None)
+    st.session_state.pop('jc_selected', None)
+    clear_calculator_query()
     st.session_state['jc_catalog_restore'] = True
 
 
@@ -104,7 +121,8 @@ def scroll_memory(last, restore):
 
 
 def render_catalog(items, groups, implemented):
-    st.caption('🔎 계산기 이름 또는 고객의 상황으로 검색하세요.')
+    st.markdown('#### 🔎 계산기 검색')
+    st.caption('계산기 이름 또는 고객의 상황으로 검색하세요.')
     st.session_state.setdefault('jc_catalog_query', st.session_state.get('jc_search', ''))
     st.session_state.setdefault('jc_catalog_group', st.session_state.get('jc_group', '전체'))
     if 'jc_search' not in st.session_state:
@@ -129,6 +147,16 @@ def render_catalog(items, groups, implemented):
     st.markdown('#### ' + ('🔎 검색 결과' if query else category_label(group) + ' 계산기'))
     st.caption(f'{len(found)}개 결과')
     st.markdown('''<style>
+    .st-key-jc_search [data-baseweb="input"]{
+        background:#fff!important;border:2px solid #b7c6d6!important;border-radius:12px!important;
+        box-shadow:0 1px 2px rgba(25,57,89,.05)!important;transition:border-color .16s,box-shadow .16s
+    }
+    .st-key-jc_search [data-baseweb="input"]:focus-within{
+        border-color:#4d7fab!important;box-shadow:0 0 0 3px rgba(77,127,171,.14)!important
+    }
+    .st-key-jc_search input{background:transparent!important;color:#203a58!important;min-height:44px!important}
+    .st-key-jc_search input::placeholder{color:#8395a8!important;opacity:1!important}
+    .st-key-jc_search_clear button{min-height:48px!important;border:1px solid #c9d6e3!important;border-radius:11px!important}
     .st-key-jc_categories{padding:12px 0;border-bottom:1px solid #dce5ef;margin-bottom:10px}
     [class*="st-key-jc_card_"][data-testid="stVerticalBlock"]{background:#fff;border:1px solid #dce5ef;border-radius:14px;padding:20px;transition:border-color .18s,box-shadow .18s}
     [class*="st-key-jc_card_"][data-testid="stVerticalBlock"]:hover{border-color:#9cb6d0;box-shadow:0 4px 14px #18395c0a}
@@ -137,15 +165,27 @@ def render_catalog(items, groups, implemented):
     .hw-calc-card-title{font-size:17px;font-weight:700;color:#203a58;line-height:1.45;margin-bottom:6px;word-break:keep-all;overflow-wrap:anywhere}
     .hw-calc-card-summary{font-size:13px;line-height:1.65;color:#657b91;word-break:keep-all;overflow-wrap:anywhere}
     .hw-calc-card-core{font-size:12px;line-height:1.5;color:#426e98;margin-top:7px;word-break:keep-all;overflow-wrap:anywhere}
-    [class*="st-key-jc_card_"] button{width:100%;min-height:38px!important;padding:9px 7px!important;border:1px solid #d0ddea!important;border-radius:8px!important;font-size:12px!important;line-height:1.4!important;transform:none!important;box-shadow:none!important}
-    [class*="st-key-jc_card_"] [data-testid="stButton"] button{background:#e9f0f8!important;color:#214b76!important;justify-content:center!important}
+    [class*="st-key-jc_actions_"][data-testid="stVerticalBlock"]{gap:8px!important;border-left:1px solid #edf1f6;padding-left:14px;justify-content:center}
+    [class*="st-key-jc_card_"] button,
+    .hw-calc-new-tab{width:100%;min-height:42px!important;padding:9px 8px!important;border-radius:9px!important;font-size:12px!important;line-height:1.35!important;transform:none!important;box-shadow:none!important}
+    [class*="st-key-jc_card_"] [data-testid="stButton"] button{background:#e9f0f8!important;color:#214b76!important;border:1px solid #cbd9e7!important;justify-content:center!important;font-weight:650!important}
+    [class*="st-key-jc_card_"] [data-testid="stButton"] button:hover{background:#dfeaf6!important;border-color:#a9bfd5!important}
     [class*="st-key-jc_card_"] button p{font-size:12px!important;white-space:nowrap!important}
+    .hw-calc-new-tab{display:flex;align-items:center;justify-content:center;box-sizing:border-box;background:#fff!important;color:#365f87!important;border:1px solid #cbd9e7!important;text-decoration:none!important;font-weight:600!important;white-space:nowrap}
+    .hw-calc-new-tab:hover{background:#f5f8fc!important;border-color:#9fb7cf!important;color:#214b76!important;text-decoration:none!important}
+    [class*="st-key-jc_actions_"] [data-testid="stMarkdownContainer"]{width:100%!important}
+    [class*="st-key-jc_actions_"] [data-testid="stMarkdownContainer"] p{margin:0!important;width:100%!important}
     .st-key-jc_purposes button{font-size:12px!important;min-height:28px!important;padding:3px 9px!important;border-radius:16px!important;background:#edf2f7!important;color:#526982!important}
     .st-key-jc_purposes button p{font-size:12px!important}
     .st-key-jc_categories button{min-height:42px!important;font-weight:650!important}
-    [class*="st-key-jc_actions_"]{border-left:1px solid #edf1f6;padding-left:12px}
-    @media(max-width:768px){[class*="st-key-jc_actions_"]{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px!important;border-left:0;border-top:1px solid #edf1f6;padding:12px 0 0}[class*="st-key-jc_card_"] button{min-height:44px!important}}
-    @media(prefers-reduced-motion:reduce){[class*="st-key-jc_card_"]{transition:none!important}}
+    @media(max-width:768px){
+        [class*="st-key-jc_card_"]>[data-testid="stHorizontalBlock"]{flex-direction:column!important}
+        [class*="st-key-jc_card_"]>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]{width:100%!important;flex:1 1 100%!important}
+        [class*="st-key-jc_actions_"][data-testid="stVerticalBlock"]{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px!important;border-left:0;border-top:1px solid #edf1f6;padding:12px 0 0;justify-content:stretch}
+        [class*="st-key-jc_card_"] button,.hw-calc-new-tab{min-height:44px!important}
+    }
+    @media(max-width:480px){[class*="st-key-jc_actions_"][data-testid="stVerticalBlock"]{grid-template-columns:1fr!important}}
+    @media(prefers-reduced-motion:reduce){[class*="st-key-jc_card_"]{transition:none!important}.st-key-jc_search [data-baseweb="input"]{transition:none!important}}
     </style>''', unsafe_allow_html=True)
     if query:
         q = normalize(query).removesuffix('계산기')
@@ -168,7 +208,7 @@ def render_catalog(items, groups, implemented):
                 summary = description.replace('계산 결과: ', '').split(' 적용 조건')[0]
                 meta = profile(name)
                 with col.container(key=card_key(name)):
-                    copy, actions = st.columns([2.35, 1], gap='small', vertical_alignment='center')
+                    copy, actions = st.columns([2.15, 1], gap='small', vertical_alignment='center')
                     icon = category_emoji(items[name][0])
                     copy.markdown(
                         f'<div class="hw-calc-card-copy"><span class="hw-calc-card-icon" aria-hidden="true">{icon}</span>'
@@ -178,7 +218,18 @@ def render_catalog(items, groups, implemented):
                         unsafe_allow_html=True,
                     )
                     with actions.container(key="jc_actions_"+card_key(name)):
-                        st.button('계산기 열기', key=card_key(name)+'_open', on_click=open_calculator, args=(name,), use_container_width=True)
+                        st.button(
+                            '현재 화면에서 열기',
+                            key=card_key(name)+'_open_here',
+                            on_click=open_calculator,
+                            args=(name,),
+                            use_container_width=True,
+                        )
+                        st.markdown(
+                            f'<a class="hw-calc-new-tab" href="{calculator_deep_link(name)}" '
+                            'target="_blank" rel="noopener noreferrer">새 탭으로 열기 ↗</a>',
+                            unsafe_allow_html=True,
+                        )
     if not found:
         st.info('일치하는 계산기가 없습니다. 다른 키워드를 입력하거나 분류를 전체로 바꿔보세요.')
     st.divider()

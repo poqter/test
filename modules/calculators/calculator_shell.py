@@ -10,6 +10,11 @@ from modules.calculators.visuals import category_label
 def _show_catalog(group: str = "전체") -> None:
     st.session_state.pop("jc_open", None)
     st.session_state.pop("jc_selected", None)
+    try:
+        if "calc" in st.query_params:
+            del st.query_params["calc"]
+    except (AttributeError, KeyError, TypeError):
+        pass
     st.session_state["jc_catalog_group"] = group
     st.session_state["jc_catalog_query"] = ""
     st.session_state["jc_search"] = ""
