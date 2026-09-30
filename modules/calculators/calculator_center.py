@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from hashlib import sha256
 from html import escape
 from zoneinfo import ZoneInfo
@@ -24,6 +24,13 @@ _GROUP_VISUALS = {
     "생활과 보장": "🛡️",
     "미래 준비": "🎯",
 }
+
+# 만원 단위 입력 중 실제 보험료처럼 1만원 미만 단위가 자주 필요한 항목만
+# 0.01만원(100원) 단위 입력을 허용합니다. 나머지 금액은 정수 만원으로 통일합니다.
+_DECIMAL_MONEY_FIELDS = frozenset({
+    ("total", "premium"),
+    ("waiver", "premium"),
+})
 
 
 @st.dialog("계산 가정과 입력 단위", width="large")
@@ -61,6 +68,23 @@ def _set_widget_value(key: str, value: object) -> None:
     commit_input("quick_calculators", key, value)
 
 
+def _money_allows_decimals(kind: str, key: str) -> bool:
+    return (kind, key) in _DECIMAL_MONEY_FIELDS
+
+
+def _normalize_numeric_widget_state(widget_key: str, *, decimals: bool) -> None:
+    """Keep existing sessions compatible when an input changes float/int type."""
+    quantum = Decimal(".01") if decimals else Decimal("1")
+    for state_key in (widget_key, "_ws_" + widget_key):
+        if state_key not in st.session_state:
+            continue
+        try:
+            number = Decimal(str(st.session_state[state_key])).quantize(quantum, rounding=ROUND_HALF_UP)
+        except Exception:
+            continue
+        st.session_state[state_key] = float(number) if decimals else int(number)
+
+
 def _set_mode_inputs(kind: str, fields: list[tuple], *, example: bool) -> None:
     if kind in ("age", "change"):
         birth = date(1990, 1, 1) if example else date.today()
@@ -68,12 +92,13 @@ def _set_mode_inputs(kind: str, fields: list[tuple], *, example: bool) -> None:
         _set_widget_value("a_reference", date.today())
     else:
         for key, _label, field_type, default, _low, _high in fields:
+            decimal_value = field_type == "rate" or (
+                field_type == "money" and _money_allows_decimals(kind, key)
+            )
             if example:
-                value = default
-            elif field_type in ("money", "rate"):
-                value = 0.0
+                value = float(default) if decimal_value else int(default)
             else:
-                value = 0
+                value = 0.0 if decimal_value else 0
             _set_widget_value(f"a_{kind}_{key}", value)
     st.session_state.pop("a_calculation", None)
     st.session_state.pop("a_review_token", None)
@@ -100,18 +125,34 @@ def _render_input(entry: tuple, kind: str) -> tuple[object, str]:
     key, label, field_type, default, low, high = entry
     widget_key = f"a_{kind}_{key}"
     if field_type == "money":
-        value = field(
-            "number_input",
-            label + " (만원)",
-            widget_key,
-            float(default),
-            min_value=float(low),
-            max_value=float(high),
-            step=0.01,
-            format="%.2f",
-            help="만원 단위로 입력합니다. 0.01만원은 100원입니다.",
-        )
-        raw = Decimal(str(value)).quantize(Decimal(".01"))
+        allow_decimals = _money_allows_decimals(kind, key)
+        _normalize_numeric_widget_state(widget_key, decimals=allow_decimals)
+        if allow_decimals:
+            value = field(
+                "number_input",
+                label + " (만원)",
+                widget_key,
+                float(default),
+                min_value=float(low),
+                max_value=float(high),
+                step=0.01,
+                format="%.2f",
+                help="실제 보험료를 반영할 수 있도록 0.01만원(100원) 단위로 입력합니다.",
+            )
+            raw = Decimal(str(value)).quantize(Decimal(".01"))
+        else:
+            value = field(
+                "number_input",
+                label + " (만원)",
+                widget_key,
+                int(default),
+                min_value=int(low),
+                max_value=int(high),
+                step=1,
+                format="%d",
+                help="만원 단위 정수로 입력합니다.",
+            )
+            raw = Decimal(int(value))
         won = raw * 10_000
         _render_amount_words(won)
         return won, f"{_format_manwon(raw)} ({int(won):,}원)"
