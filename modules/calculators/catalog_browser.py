@@ -53,7 +53,7 @@ def card_key(name):
 def calculator_deep_link(name, ids=None):
     '''Build a stable relative deep link; fall back to the current name for compatibility.'''
     value = (ids or {}).get(name, name)
-    return '?calc=' + quote(value, safe='')
+    return '?calc=' + quote(value, safe='') + '&view=single'
 
 
 def clear_calculator_query():
@@ -126,41 +126,44 @@ def render_catalog(items, groups, implemented, *, tags=None, ids=None):
     tags = tags or {}
     ids = ids or {}
 
-    st.markdown('#### 🔎 계산기 검색')
-    st.caption('계산기 이름 또는 고객의 상황으로 검색하세요.')
     st.session_state.setdefault('jc_catalog_query', st.session_state.get('jc_search', ''))
     st.session_state.setdefault('jc_catalog_group', st.session_state.get('jc_group', '전체'))
-    if 'jc_search' not in st.session_state:
-        st.session_state['jc_search'] = st.session_state['jc_catalog_query']
-
-    search, clear = st.columns([8, 1])
-    search.text_input(
-        '계산기 이름 또는 상담 목적',
-        key='jc_search',
-        on_change=save_query,
-        placeholder='예: 노후 생활비, 자녀 증여, 보험료 부담',
-        label_visibility='collapsed',
-    )
-    clear.button(
-        '초기화',
-        key='jc_search_clear',
-        on_click=set_query,
-        args=('',),
-        use_container_width=True,
-    )
-
-    with st.container(key='jc_purposes', horizontal=True):
-        for i, (label, query) in enumerate(PURPOSES):
-            st.button(
-                purpose_label(label),
-                key=f'jc_purpose_{i}',
-                on_click=set_query,
-                args=(query,),
-                type='tertiary',
-            )
-
     group = st.session_state['jc_catalog_group']
-    query = st.session_state['jc_catalog_query'].strip()
+    is_home = group == '전체'
+
+    if is_home:
+        st.markdown('#### 🔎 계산기 검색')
+        st.caption('계산기 이름 또는 고객의 상황으로 검색하세요.')
+        if 'jc_search' not in st.session_state:
+            st.session_state['jc_search'] = st.session_state['jc_catalog_query']
+        search, clear = st.columns([8, 1])
+        search.text_input(
+            '계산기 이름 또는 상담 목적',
+            key='jc_search',
+            on_change=save_query,
+            placeholder='예: 노후 생활비, 자녀 증여, 보험료 부담',
+            label_visibility='collapsed',
+        )
+        clear.button(
+            '초기화',
+            key='jc_search_clear',
+            on_click=set_query,
+            args=('',),
+            use_container_width=True,
+        )
+        with st.container(key='jc_purposes', horizontal=True):
+            for i, (label, purpose_query) in enumerate(PURPOSES):
+                st.button(
+                    purpose_label(label),
+                    key=f'jc_purpose_{i}',
+                    on_click=set_query,
+                    args=(purpose_query,),
+                    type='tertiary',
+                )
+        query = st.session_state['jc_catalog_query'].strip()
+    else:
+        # 업무 분류 화면은 탐색 결과에 집중합니다. 숨겨진 검색 상태를 적용하지 않습니다.
+        query = ''
 
     found = [
         (n, g, d)

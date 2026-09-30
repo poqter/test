@@ -4,6 +4,9 @@ import streamlit as st
 TARGETS=('가업승계 세부담계산기','증여세계산기','상속세계산기')
 
 def apply_pending():
+    if st.session_state.get('jc_isolated_single'):
+        st.session_state.pop('jc_valuation_transfer',None)
+        return
     pending=st.session_state.pop('jc_valuation_transfer',None)
     if not pending:return
     target,amount=pending
@@ -24,6 +27,9 @@ def apply_pending():
     st.session_state['jc_transfer_notice']=f'{target}에 평가액 {amount:,}원을 만원 단위로 반올림해 입력했습니다. 다른 재산·공제·적격요건을 확인한 뒤 계산하세요.'
 
 def render():
+    # 새 탭 독립 계산기에서는 다른 계산기로 이동하는 기능을 노출하지 않습니다.
+    if st.session_state.get('jc_isolated_single'):
+        return
     stored=st.session_state.get('coverage_result_비상장주식 평가계산기')
     if not stored:return
     args,result,_=stored

@@ -40,6 +40,57 @@ body:has(.hw-calculator-standalone) .st-key-hw_calc_shell{padding:15px!important
 body:has(.hw-calculator-standalone) [data-testid="stSidebar"] button{min-height:44px!important}}
 @media(prefers-reduced-motion:reduce){
 body:has(.hw-calculator-standalone) *,body:has(.hw-calculator-standalone) *::before,body:has(.hw-calculator-standalone) *::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+
+/* Independent single-calculator view: reuse the WORKSPACE login atmosphere. */
+body:has(.hw-calc-isolated-marker) .stApp,
+body:has(.hw-calc-isolated-marker) [data-testid="stAppViewContainer"],
+body:has(.hw-calc-isolated-marker) [data-testid="stMain"]{
+    background:radial-gradient(circle at 18% 78%,#244f79 0,#112b49 33%,#071a30 77%)!important;
+    color:#172d45!important;
+}
+body:has(.hw-calc-isolated-marker) [data-testid="stHeader"]{background:transparent!important}
+body:has(.hw-calc-isolated-marker) [data-testid="stSidebar"],
+body:has(.hw-calc-isolated-marker) [data-testid="stSidebarCollapsedControl"],
+body:has(.hw-calc-isolated-marker) [data-testid="stExpandSidebarButton"]{display:none!important}
+body:has(.hw-calc-isolated-marker) [data-testid="stMainBlockContainer"]{
+    display:block!important;max-width:1220px!important;min-height:100vh!important;
+    padding:42px 24px 56px!important;margin-inline:auto!important;
+}
+body:has(.hw-calc-isolated-marker) .st-key-hw_calc_isolated_shell{
+    position:relative;padding:28px 32px 24px!important;
+    border:1px solid rgba(188,229,239,.58)!important;
+    border-top-color:rgba(226,248,252,.82)!important;
+    border-radius:26px!important;
+    background:linear-gradient(135deg,rgba(249,252,255,.94),rgba(232,242,249,.89) 58%,rgba(220,235,245,.86))!important;
+    box-shadow:0 30px 78px rgba(0,9,22,.46),0 8px 22px rgba(0,9,22,.28),inset 0 1px 0 rgba(255,255,255,.78),inset 0 -1px 0 rgba(55,97,128,.12)!important;
+    backdrop-filter:blur(20px) saturate(1.08);-webkit-backdrop-filter:blur(20px) saturate(1.08);
+}
+body:has(.hw-calc-isolated-marker) .st-key-hw_calc_isolated_shell:before{
+    content:"";position:absolute;inset:0 0 auto 0;height:1px;border-radius:26px 26px 0 0;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.92),transparent);pointer-events:none;
+}
+body:has(.hw-calc-isolated-marker) .st-key-jc_back_catalog{display:none!important}
+.hw-calc-isolated-brand{display:flex;align-items:center;gap:10px;margin:0 0 22px;padding-bottom:17px;border-bottom:1px solid rgba(122,157,181,.28)}
+.hw-calc-isolated-brand>span{display:grid;place-items:center;width:38px;height:38px;border-radius:10px;background:#143c61;color:#d6f3f2;font-size:22px;font-weight:800;box-shadow:0 6px 16px rgba(20,60,97,.18)}
+.hw-calc-isolated-brand strong{display:block;color:#183750;font-size:16px;line-height:1.25}
+.hw-calc-isolated-brand small{display:block;margin-top:2px;color:#688197;font-size:12px;letter-spacing:.08em}
+.hw-calc-isolated-footer{margin-top:24px;padding-top:16px;border-top:1px solid rgba(122,157,181,.24);color:#6a8194;font-size:12px;text-align:right}
+body:has(.hw-calc-isolated-marker) .st-key-hw_calc_isolated_shell [data-testid="stVerticalBlockBorderWrapper"]>div{
+    background:rgba(255,255,255,.76)!important;border-color:#d6e2ec!important;box-shadow:0 6px 18px rgba(28,62,91,.05)!important;
+}
+body:has(.hw-calc-isolated-marker) .st-key-hw_calc_isolated_shell [data-testid="stExpander"]{
+    background:rgba(255,255,255,.74)!important;border-color:#d7e3ed!important;
+}
+body:has(.hw-calc-isolated-marker) .st-key-hw_calc_isolated_shell h1,
+body:has(.hw-calc-isolated-marker) .st-key-hw_calc_isolated_shell h2,
+body:has(.hw-calc-isolated-marker) .st-key-hw_calc_isolated_shell h3{color:#173c5c!important}
+@media(max-width:768px){
+body:has(.hw-calc-isolated-marker) [data-testid="stMainBlockContainer"]{padding:18px 10px 30px!important}
+body:has(.hw-calc-isolated-marker) .st-key-hw_calc_isolated_shell{padding:20px 14px 18px!important;border-radius:19px!important}
+.hw-calc-isolated-brand{margin-bottom:16px;padding-bottom:13px}
+.hw-calc-isolated-footer{text-align:left}}
+
 '''
 
 
