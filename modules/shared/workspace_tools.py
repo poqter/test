@@ -39,7 +39,7 @@ def text(value, limit=2000):
     return re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", str("" if value is None else value))[:limit]
 
 
-def field(kind, label, key, value=None, **kwargs):
+def field(kind, label, key, value=None, *, page=None, **kwargs):
     """Keep values across page changes without global/disk caches."""
     ui = "_ws_" + key
     if key not in st.session_state:
@@ -52,9 +52,9 @@ def field(kind, label, key, value=None, **kwargs):
             st.session_state['a_review_token'] = None
         if key.startswith('d_'):
             st.session_state['d_review'] = None
-        page = next((page for prefix, page in _PREFIX_PAGES.items() if key.startswith(prefix)), None)
-        if page:
-            commit_input(page, key, st.session_state[ui])
+        target_page = page or next((mapped for prefix, mapped in _PREFIX_PAGES.items() if key.startswith(prefix)), None)
+        if target_page:
+            commit_input(target_page, key, st.session_state[ui])
     return getattr(st, kind)(label, key=ui, on_change=remember, **kwargs)
 
 

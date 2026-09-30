@@ -1,4 +1,4 @@
-"""Generate and parse one result PDF for every calculator in the 80-item catalog."""
+"""Generate and parse one result PDF for every calculator in the 88-item catalog."""
 from __future__ import annotations
 
 import io

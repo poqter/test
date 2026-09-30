@@ -1,4 +1,4 @@
-"""Run deterministic default-scenario regression checks for all 80 calculators."""
+"""Run deterministic default-scenario regression checks for all 88 calculators."""
 from __future__ import annotations
 
 import importlib
@@ -90,8 +90,29 @@ def _special_cases() -> dict[str, tuple[Callable[[], Any], str]]:
     from modules.calculators.pension.pension_models import PensionPlan, calculate as pension_calculate
     from modules.calculators.pension import retirement_plan
     from modules.calculators.pension.retirement_remaining import FIELDS as RR_FIELDS, SAVE, saving, withdrawal
+    from modules.calculators.finance.finance_models import FinanceResult
+    from modules.calculators.calculator_core import calculate as quick_calculate
+    from modules.calculators.quick_calculators import age_result
+    from datetime import date
+
+    def quick_result(kind, values):
+        return FinanceResult(quick_calculate(kind, values), "검증용 화랑 간편 계산식", ["기본 대표 시나리오"])
+
+    def age_finance_result(next_change=False):
+        age, insurance_age, change = age_result(date(1990, 1, 1), date(2026, 9, 30))
+        metrics = ({"다음 상령일": change.isoformat(), "다음 변경일까지": f"{(change-date(2026,9,30)).days}일", "현재 보험나이": f"{insurance_age}세"}
+                   if next_change else {"신규 가입 보험나이": f"{insurance_age}세", "만 나이": f"{age}세", "다음 상령일": change.isoformat()})
+        return FinanceResult(metrics, "보험나이 기준 검증", ["신규 가입 참고용"])
 
     return {
+        "보험나이계산기": (lambda: age_finance_result(False), "quick.age"),
+        "다음 상령일계산기": (lambda: age_finance_result(True), "quick.change"),
+        "총 납입보험료계산기": (lambda: quick_result("total", {"premium": 100_000, "months": 240, "paid": 24}), "quick.total"),
+        "납입면제 효과계산기": (lambda: quick_result("waiver", {"premium": 100_000, "months": 120, "ratio": 100}), "quick.waiver"),
+        "가족 생활자금계산기": (lambda: quick_result("family", {"living": 2_500_000, "years": 10, "assets": 50_000_000}), "quick.family"),
+        "교육자금계산기": (lambda: quick_result("education", {"annual": 10_000_000, "years": 4, "wait": 10, "inflation": 0.02, "assets": 0}), "quick.education"),
+        "물가 반영 필요자금계산기": (lambda: quick_result("inflation", {"amount": 10_000_000, "years": 10, "inflation": 0.02}), "quick.inflation"),
+        "부채 정리자금계산기": (lambda: quick_result("debt", {"debt": 100_000_000, "assets": 30_000_000}), "quick.debt"),
         "미래가치계산기": (lambda: finance.future_value(), "finance.future_value"),
         "복리계산기": (lambda: finance.compound(), "finance.compound"),
         "수익률계산기": (lambda: finance.tvm("rate", principal=10_000_000, payment=500_000, target=100_000_000, years=10, frequency=12), "finance.tvm(rate)"),
