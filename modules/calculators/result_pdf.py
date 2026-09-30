@@ -1,17 +1,17 @@
-from modules.shared.pdf_brand import draw_brand
 """Branded, paginated calculation snapshots. No calculation or rounding changes."""
 from io import BytesIO
-from pathlib import Path
 from html import escape
 from decimal import Decimal
 import re
+
 from reportlab.lib import colors
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.lib.pagesizes import A4
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+
+from modules.shared.pdf_brand import draw_brand
+from modules.shared.report_fonts import korean_pdf_font
 
 
 def value_text(value):
@@ -26,9 +26,7 @@ def value_text(value):
 def build_result_pdf(name, inputs, result, stamp, *, include_results=True, include_inputs=True, include_basis=True, enlarge_results=False):
     if not any((include_results, include_inputs, include_basis)):
         raise ValueError("PDF에 포함할 항목을 하나 이상 선택해주세요.")
-    font = 'HwarangReport'
-    if font not in pdfmetrics.getRegisteredFontNames():
-        pdfmetrics.registerFont(TTFont(font, str(Path(__file__).resolve().parents[2] / 'assets/fonts/PretendardVariable.ttf')))
+    font = korean_pdf_font()
     navy, teal = colors.HexColor('#112b49'), colors.HexColor('#158391')
     body = ParagraphStyle('Body',fontName=font,fontSize=9,leading=14,textColor=navy,wordWrap='CJK')
     heading = ParagraphStyle('Heading',parent=body,fontSize=13,leading=19,spaceBefore=17,spaceAfter=9,keepWithNext=True)

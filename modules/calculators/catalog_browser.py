@@ -2,9 +2,9 @@
 import hashlib
 import json
 import re
-from urllib.parse import urlencode
 from html import escape
 import streamlit as st
+from modules.calculators.ux_profiles import profile
 
 PURPOSES = (
     ('보험료가 부담돼요', '보험료 부담'), ('노후를 준비해요', '노후 생활비'),
@@ -102,11 +102,6 @@ def scroll_memory(last, restore):
     </script>'''.replace('RESTORE', json.dumps(restore)).replace('SELECTOR', json.dumps(selector)), height=1)
 
 
-def new_tab_link(name):
-    from modules.calculators.dedicated_tab import launch_button
-    launch_button(name)
-
-
 def render_catalog(items, groups, implemented):
     st.caption('계산기 이름 또는 고객의 상황으로 검색하세요.')
     st.session_state.setdefault('jc_catalog_query', st.session_state.get('jc_search', ''))
@@ -140,11 +135,10 @@ def render_catalog(items, groups, implemented):
     .hw-calc-card-icon{display:grid;place-items:center;flex-shrink:0;width:42px;height:42px;border-radius:12px;background:#eef3fa;font-size:24px}
     .hw-calc-card-title{font-size:17px;font-weight:700;color:#203a58;line-height:1.45;margin-bottom:6px;word-break:keep-all;overflow-wrap:anywhere}
     .hw-calc-card-summary{font-size:13px;line-height:1.65;color:#657b91;word-break:keep-all;overflow-wrap:anywhere}
+    .hw-calc-card-core{font-size:12px;line-height:1.5;color:#426e98;margin-top:7px;word-break:keep-all;overflow-wrap:anywhere}
     [class*="st-key-jc_card_"] button{width:100%;min-height:38px!important;padding:9px 7px!important;border:1px solid #d0ddea!important;border-radius:8px!important;font-size:12px!important;line-height:1.4!important;transform:none!important;box-shadow:none!important}
     [class*="st-key-jc_card_"] [data-testid="stButton"] button{background:#e9f0f8!important;color:#214b76!important;justify-content:center!important}
     [class*="st-key-jc_card_"] button p{font-size:12px!important;white-space:nowrap!important}
-    .hw-calculator-newtab{background:#fff!important;color:#456381!important;font:600 12px/1.4 inherit;border:1px solid #cbd9e7;border-radius:8px;min-height:38px;padding:9px 12px;cursor:pointer;white-space:nowrap}
-    .hw-calculator-newtab:hover{background:#edf3fa!important}
     .st-key-jc_purposes button{font-size:12px!important;min-height:28px!important;padding:3px 9px!important;border-radius:16px!important;background:#edf2f7!important;color:#526982!important}
     .st-key-jc_purposes button p{font-size:12px!important}
     .st-key-jc_categories button{min-height:42px!important;font-weight:650!important}
@@ -171,13 +165,19 @@ def render_catalog(items, groups, implemented):
             cols = st.columns(2)
             for col, (name, description) in zip(cols, subset[start:start + 2]):
                 summary = description.replace('계산 결과: ', '').split(' 적용 조건')[0]
+                meta = profile(name)
                 with col.container(key=card_key(name)):
-                    copy, actions = st.columns([2.0, 1.1], gap='small', vertical_alignment='center')
+                    copy, actions = st.columns([2.35, 1], gap='small', vertical_alignment='center')
                     icon = ('🧾','🌿','🛡️','📈','🏢','📑')[list(groups).index(items[name][0])]
-                    copy.markdown(f'<div class="hw-calc-card-copy"><span class="hw-calc-card-icon" aria-hidden="true">{icon}</span><div><div class="hw-calc-card-title">{escape(name.removesuffix("계산기"))}</div><div class="hw-calc-card-summary">{escape(summary)}</div></div></div>', unsafe_allow_html=True)
+                    copy.markdown(
+                        f'<div class="hw-calc-card-copy"><span class="hw-calc-card-icon" aria-hidden="true">{icon}</span>'
+                        f'<div><div class="hw-calc-card-title">{escape(name.removesuffix("계산기"))}</div>'
+                        f'<div class="hw-calc-card-summary">{escape(summary)}</div>'
+                        f'<div class="hw-calc-card-core">먼저 입력 · {escape(meta.get("core", "핵심 조건"))}</div></div></div>',
+                        unsafe_allow_html=True,
+                    )
                     with actions.container(key="jc_actions_"+card_key(name)):
-                        st.button('현재 창에서 열기', key=card_key(name)+'_open', on_click=open_calculator, args=(name,), use_container_width=True)
-                        new_tab_link(name)
+                        st.button('계산기 열기', key=card_key(name)+'_open', on_click=open_calculator, args=(name,), use_container_width=True)
     if not found:
         st.info('일치하는 계산기가 없습니다. 다른 키워드를 입력하거나 분류를 전체로 바꿔보세요.')
     st.divider()
@@ -186,5 +186,3 @@ def render_catalog(items, groups, implemented):
     if last:
         st.markdown(f'<style>.st-key-{card_key(last)}[data-testid="stVerticalBlock"]{{border-color:#5584b2!important;box-shadow:0 0 0 2px #bcd3ea60!important}}</style>', unsafe_allow_html=True)
     scroll_memory(last, st.session_state.pop('jc_catalog_restore', False))
-    from modules.calculators.dedicated_tab import render_launcher
-    render_launcher([n for n, _, _ in found])

@@ -1,6 +1,4 @@
 from __future__ import annotations
-from modules.shared.pdf_brand import draw_brand
-from modules.shared.paths import PROJECT_ROOT
 
 import hashlib
 import html
@@ -8,7 +6,6 @@ import re
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
 from io import BytesIO
-from pathlib import Path
 from typing import Iterable
 
 import pandas as pd
@@ -21,9 +18,6 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.cidfonts import UnicodeCIDFont
-from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
     BaseDocTemplate,
     Frame,
@@ -33,6 +27,8 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
+
+from modules.shared.pdf_brand import draw_brand
 
 try:
     from modules.shared.ui_components import page_footer, page_header, section_intro, tool_guide
@@ -792,26 +788,9 @@ def build_accident_narrative(accident_date: str, place: str, course: str, body_p
 
 
 def _register_korean_font() -> str:
-    """프로젝트의 Pretendard TTF를 등록하고, 없으면 기본 한글 글꼴을 사용합니다."""
-    font_name = "Pretendard"
-    module_dir = Path(__file__).resolve().parent
-    font_candidates = [
-        PROJECT_ROOT / "assets" / "fonts" / "PretendardVariable.ttf",
-        module_dir / "assets" / "fonts" / "PretendardVariable.ttf",
-        Path.cwd() / "assets" / "fonts" / "PretendardVariable.ttf",
-    ]
-
-    font_path = next((path for path in font_candidates if path.is_file()), None)
-    if font_path is not None:
-        if font_name not in pdfmetrics.getRegisteredFontNames():
-            pdfmetrics.registerFont(TTFont(font_name, str(font_path)))
-        return font_name
-
-    fallback_name = "HYGoThic-Medium"
-    if fallback_name not in pdfmetrics.getRegisteredFontNames():
-        pdfmetrics.registerFont(UnicodeCIDFont(fallback_name))
-    return fallback_name
-
+    """Use ReportLab's built-in Korean CID font; no font file is bundled."""
+    from modules.shared.report_fonts import korean_pdf_font
+    return korean_pdf_font()
 
 def build_guide_pdf(selected_claims: list[str], docs: list[DocumentRule], accident_narrative: str = "", include_accident: bool = False) -> bytes:
     font_name = _register_korean_font()

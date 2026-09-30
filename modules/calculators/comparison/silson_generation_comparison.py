@@ -1,20 +1,16 @@
 from __future__ import annotations
-from modules.shared.pdf_brand import draw_brand
-from modules.shared.paths import PROJECT_ROOT
 
 from datetime import date
 from io import BytesIO
-from pathlib import Path
 from typing import Dict, Tuple
 
 import streamlit as st
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import mm
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.cidfonts import UnicodeCIDFont
-from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
+
+from modules.shared.pdf_brand import draw_brand
 
 try:
     from modules.shared.ui_components import page_footer, page_header, section_intro
@@ -230,20 +226,9 @@ def build_pdf(data: dict) -> bytes:
     output = BytesIO()
     page_w, page_h = landscape(A4)
     c = canvas.Canvas(output, pagesize=(page_w, page_h))
-    font_paths = [
-        PROJECT_ROOT / "assets" / "fonts" / "PretendardVariable.ttf",
-        Path(__file__).resolve().parent / "assets" / "fonts" / "PretendardVariable.ttf",
-    ]
-    font_path = next((path for path in font_paths if path.is_file()), None)
-    try:
-        if font_path:
-            pdfmetrics.registerFont(TTFont("PretendardPDF", str(font_path)))
-            font = "PretendardPDF"
-        else:
-            pdfmetrics.registerFont(UnicodeCIDFont("HYSMyeongJo-Medium"))
-            font = "HYSMyeongJo-Medium"
-    except Exception:
-        font = "Helvetica"
+    from modules.shared.report_fonts import korean_pdf_font
+    font = korean_pdf_font()
+
 
     navy, blue, teal, muted, line = colors.HexColor("#16324F"), colors.HexColor("#2D6EAD"), colors.HexColor("#2A918C"), colors.HexColor("#687F91"), colors.HexColor("#DCE6EE")
 

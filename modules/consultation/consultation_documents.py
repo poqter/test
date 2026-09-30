@@ -1,19 +1,17 @@
-from modules.shared.pdf_brand import draw_brand
 """Pure consultation composition and in-memory portrait PDF export."""
-from modules.shared.paths import PROJECT_ROOT
 import hashlib
 import html
 import io
 import json
 import re
-from pathlib import Path
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+
+from modules.shared.pdf_brand import draw_brand
+from modules.shared.report_fonts import korean_pdf_font
 
 NOTE = "상담 참고자료입니다. 입력한 사실과 가정을 바탕으로 작성했으며 가입·지급·수익을 보장하거나 개별 상품의 적합성을 자동 판정하지 않습니다."
 
@@ -55,9 +53,7 @@ def document_pdf(title, body, *, prepared_on, customer_label="", note=NOTE):
         raise ValueError("Empty consultation document")
     if len(body) > 24000:
         raise ValueError("Consultation document is too long")
-    font = "HwarangConsultation"
-    if font not in pdfmetrics.getRegisteredFontNames():
-        pdfmetrics.registerFont(TTFont(font, str(PROJECT_ROOT / "assets/fonts/PretendardVariable.ttf")))
+    font = korean_pdf_font()
     output = io.BytesIO()
     doc = SimpleDocTemplate(output, pagesize=A4, leftMargin=42, rightMargin=42,
                             topMargin=62, bottomMargin=50, title="화랑 WORKSPACE 상담자료", author="화랑 WORKSPACE")

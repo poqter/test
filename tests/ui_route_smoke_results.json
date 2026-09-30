@@ -1,0 +1,407 @@
+{
+  "count": 80,
+  "passed": 80,
+  "failed": 0,
+  "results": [
+    {
+      "name": "상속세계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "양도소득세계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "증여세계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "근로소득세계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "종합소득세계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "임대소득세계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "금융소득종합과세계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "ISA 절세계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "주택담보대출 이자공제계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "4대보험계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "창업중소기업 세액감면계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "연금계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "은퇴계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "퇴직금계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "연금저축·IRP 세액공제계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "국민연금 수령시기계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "주택연금계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "일시금·연금 세금비교계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "은퇴크레바스계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "3층연금 점검계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "연금 인출기간계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "사적연금 과세계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "IRP 적립계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "은퇴저축계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "연금 인출순서계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "사망보장 필요액계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "중대질병 보장계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "간병·장기요양 필요액계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "자녀보험 필요액계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "적정보험료계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "정기·종신 비교계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "의료비 부담계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "미래가치계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "복리계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "수익률계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "재무계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "투자수익계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "현재가치계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "비상자금 진단계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "목표자금 계획계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "기회비용계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "비상장주식 평가계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "인정이자계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "급여vs배당 비교계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "개인사업자·법인 비교계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "임원퇴직금 한도계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "가지급금 정밀진단계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "가업승계 세부담계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "명의신탁주식계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "이익소각계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "차등배당계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "법인청산 세부담계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "지주회사 수입배당금계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "합병 세부담계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "특정법인 증여의제계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "키맨리스크계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "지분 매입자금계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "승계 재원계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "법인세계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "업무용승용차 비용계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "접대비 한도계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "고용증대 세액공제계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "연구인력개발비 세액공제계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "직무발명보상금계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "특허권 자본화계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "이월결손금계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "주식매수선택권계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "사내근로복지기금계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "법인 4대보험계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "법인세 중간예납계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "부가세 예정신고 선택계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "법인 부동산 보유·양도 비교계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "취득세 중과계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "특수관계자 임대료계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "상여금·복리후생비 비교계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "DC부담금 한도계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "법인보험 만기계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "성실신고 대상판정계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "해외금융계좌 신고계산기",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "name": "정책자금 자격진단계산기",
+      "status": "PASS",
+      "error": ""
+    }
+  ]
+}

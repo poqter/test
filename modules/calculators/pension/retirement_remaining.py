@@ -18,7 +18,7 @@ def saving(name,values):
 
 def withdrawal(monthly,years,accounts,net=False):
  need=num(monthly)*period(years,120,True)*12
- if not 1<=len(accounts)<=3:raise ValueError('계좌는 1~3개를 입력해 주세요.')
+ if not 1<=len(accounts)<=5:raise ValueError('계좌는 1~5개를 입력해 주세요.')
  parsed=[]
  for i,(name,balance,rate) in enumerate(accounts):
   if not str(name).strip():raise ValueError('계좌 이름을 입력해 주세요.')
@@ -35,10 +35,13 @@ def withdrawal(monthly,years,accounts,net=False):
 def run_order():
  import streamlit as st
  from modules.calculators.coverage.coverage_calculator_ui import run as render
- net=st.radio('목표 금액 기준',['세전 인출액','세후 생활비'],key='wo_basis')=='세후 생활비'
- fields=[('월 목표액',3000000,'원',M),('기간',20,'년',120)]
- for i,(name,rate) in enumerate([('연금저축·IRP',5.5),('일반 투자계좌',0.0),('예적금',0.0)]):
-  fields.extend([(f'계좌 {i+1} 이름',name,'문자',100),(f'계좌 {i+1} 잔액',100000000,'원',M),(f'계좌 {i+1} 예상 실효세율',rate,'%',100)])
- title=ORDER+(' · 세후 목표' if net else ' · 세전 목표')
- def calc(name,v):return withdrawal(v[0],v[1],[tuple(v[i:i+3]) for i in (2,5,8)],net)
- render(title,{title:fields},calc,'계좌별 고정 실효세율 시나리오')
+ account_count=st.number_input('비교할 계좌 수',min_value=1,max_value=5,value=3,step=1,key='wo_account_count')
+ fields=[('목표 금액 기준','세전 인출액','선택',('세전 인출액','세후 생활비')),('월 목표액',3000000,'원',M),('기간',20,'년',120)]
+ defaults=[('연금저축·IRP',5.5),('일반 투자계좌',0.0),('예적금',0.0),('퇴직연금',5.5),('기타 계좌',0.0)]
+ for i in range(int(account_count)):
+  account_name,rate=defaults[i]
+  fields.extend([(f'계좌 {i+1} 이름',account_name,'문자',100),(f'계좌 {i+1} 잔액',100000000,'원',M),(f'계좌 {i+1} 예상 실효세율',rate,'%',100)])
+ def calc(name,v):
+  net=v[0]=='세후 생활비'
+  return withdrawal(v[1],v[2],[tuple(v[i:i+3]) for i in range(3,len(v),3)],net)
+ render(ORDER,{ORDER:fields},calc,'필요한 계좌만 추가해 고정 실효세율 기준의 인출 순서를 비교합니다.')

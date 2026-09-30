@@ -23,6 +23,7 @@ class AppSpec:
     order: int = 0
     enabled: bool = True
     source_status: str = "legacy"
+    external_app_key: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,7 +47,7 @@ GROUPS: Final[tuple[GroupSpec, ...]] = (
 
 APPS: Final[tuple[AppSpec, ...]] = (
     AppSpec("consultation_helper", "상담 질문지 제작기", "consultation", "필요한 질문을 골라 고객 맞춤 상담 질문지를 만듭니다.", ("상담", "질문지", "질문", "메모", "상담 준비", "PDF"), "modules.consultation.consultation_helper", icon_key="consultation", order=10, source_status="stage3"),
-    AppSpec("quick_calculators", "종합계산기(80개)", "calculators", "세금·연금·보장과 재무 계획에 필요한 금액을 계산합니다.", ("보험나이", "상령일", "총납입", "비상자금", "납입면제", "교육자금", "은퇴", "저축", "물가", "부채", "세금", "법인", "연금"), "modules.calculators.quick_calculators", icon_key="calculator", order=20, source_status="in_progress"),
+    AppSpec("quick_calculators", "종합계산기(80개)", "calculators", "세금·연금·보장과 재무 계획에 필요한 금액을 계산합니다.", ("보험나이", "상령일", "총납입", "비상자금", "납입면제", "교육자금", "은퇴", "저축", "물가", "부채", "세금", "법인", "연금"), "modules.calculators.quick_calculators", icon_key="calculator", order=20, source_status="standalone", external_app_key="calculator_url"),
     AppSpec("deposit_vs_shortpay", "적금 vs 단기납", "calculators", "10년 기준 적금과 단기납의 예상 결과를 비교합니다.", ("저축", "적금", "단기납", "환급"), "modules.calculators.comparison.deposit_vs_shortpay", icon_key="compare", order=30),
     AppSpec("renewal_vs_nonrenewal", "갱신 vs 비갱신", "calculators", "보험료 변동을 반영해 장기 총납입액을 비교합니다.", ("갱신보험료", "총납입", "갱신형", "비갱신형"), "modules.calculators.comparison.renewal_vs_nonrenewal", icon_key="compare", order=40),
     AppSpec("inheritance_tax", "상속세 계산기", "calculators", "예상 상속세와 부족한 현금성 납부재원을 계산합니다.", ("상속세", "상속", "재산", "납부재원"), "modules.calculators.tax.inheritance_tax", icon_key="tax", order=50, enabled=False),

@@ -1,10 +1,7 @@
 """HWARANG WORKSPACE entrypoint: auth, registry, navigation, and dispatch."""
 from __future__ import annotations
 
-import base64
 import hmac
-import textwrap
-from pathlib import Path
 
 import streamlit as st
 
@@ -19,21 +16,6 @@ st.set_page_config(page_title="화랑WORKSPACE", page_icon="H", layout="wide", i
 st.set_option("client.toolbarMode", "minimal")
 
 
-@st.cache_data(show_spinner=False)
-def _pretendard_font_data() -> str:
-    font_path = Path(__file__).resolve().parent / "assets" / "fonts" / "PretendardVariable.ttf"
-    return base64.b64encode(font_path.read_bytes()).decode("ascii") if font_path.is_file() else ""
-
-
-def inject_pretendard_font() -> None:
-    font_data = _pretendard_font_data()
-    if font_data:
-        st.html(
-            f"<style>@font-face{{font-family:'Pretendard';src:url(data:font/ttf;base64,{font_data}) format('truetype');font-weight:100 900;font-style:normal;font-display:swap}}</style>",
-        )
-
-
-inject_pretendard_font()
 inject_global_styles()
 
 NOTICE = {
@@ -109,21 +91,11 @@ def allowed_app_ids() -> list[str]:
 
 def main() -> None:
     initialize_state()
-    from modules.calculators.dedicated_tab import render_if_requested
-    if render_if_requested():
-        return
     if not render_login():
         st.stop()
     role = st.session_state.get("login_user")
     permitted = allowed_ids(role)
     st.session_state["ws_allowed_ids"] = permitted
-    requested_calculator = st.query_params.get("calculator")
-    if requested_calculator and "quick_calculators" in permitted:
-        from modules.calculators.jarvia_calculator_center import ITEMS
-        if requested_calculator in ITEMS:
-            st.session_state["active_app"] = "quick_calculators"
-            st.session_state["jc_link_entry"] = requested_calculator
-        del st.query_params["calculator"]
     active = normalize_route(st.session_state.get("active_app"), role)
     st.session_state["active_app"] = active
     render_sidebar(permitted, navigate, logout, NOTICE)

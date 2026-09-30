@@ -1,0 +1,59 @@
+{
+  "release_name": "insurance_tools_Test_calculator_split_complete",
+  "release_date": "2026-10-01",
+  "source_archive": {
+    "name": "insurance_tools_Test(10).zip",
+    "sha256": "a872b2ad610fcadbb8948fbe333c4ff53e619b6338d792e01b45e1caaf19bc85"
+  },
+  "entrypoints": {
+    "workspace": "app.py",
+    "calculator": "calculator_app.py"
+  },
+  "deployment_model": {
+    "repository": "same repository",
+    "streamlit_apps": 2,
+    "workspace_login": "existing password login retained",
+    "calculator_login": "public, no separate password",
+    "launch_mode": "new browser tab",
+    "calculator_url_configuration": "[external_apps].calculator_url in WORKSPACE Streamlit Secrets"
+  },
+  "completed_scope": [
+    "Separate public Calculator entrypoint for all 80 calculators",
+    "WORKSPACE home/sidebar/search links open Calculator in a new tab",
+    "Legacy grant, token, claim-window, one-hour lease, and revoke flow removed",
+    "All 80 checklist profiles connected to catalog and input guidance",
+    "Core/additional/assumption/confirmation input grouping",
+    "Priority conditional input rules for complex calculators",
+    "Table or dynamic-row improvements for reviewed repeat-input calculators",
+    "Stale-result warning after input changes",
+    "PDF output changed to built-in Korean CID font without bundled font binaries"
+  ],
+  "validation": {
+    "aggregate_release_checks": "8/8 PASS",
+    "project_module_imports": "149/149 PASS",
+    "calculator_engines": "80/80 PASS",
+    "calculator_initial_ui_routes": "80/80 PASS",
+    "calculator_result_pdfs": "80/80 PASS",
+    "representative_business_pdfs": "8/8 PASS",
+    "architecture_and_security_checks": "24/24 PASS",
+    "python_compileall": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "deployment_only_checks_remaining": [
+    "Actual Community Cloud new-tab behavior",
+    "WORKSPACE browser session persistence while Calculator tab is open",
+    "Sleep wake-up screen",
+    "Browser download behavior",
+    "Desktop and mobile visual layout",
+    "Real concurrent-user response time"
+  ],
+  "excluded_from_release": [
+    ".git",
+    ".venv*",
+    "__pycache__",
+    "*.pyc",
+    ".pytest_cache",
+    ".streamlit/secrets.toml",
+    "TTF/OTF/WOFF/WOFF2 font binaries"
+  ]
+}

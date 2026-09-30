@@ -1,0 +1,752 @@
+{
+  "count": 149,
+  "passed": 149,
+  "failed": 0,
+  "results": [
+    {
+      "module": "app",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "calculator_app",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.__init__",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.__init__",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.calculator_catalog",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.calculator_center",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.calculator_core",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.calculator_exports",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.calculator_shell",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.calculator_theme",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.catalog_browser",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.comparison.__init__",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.comparison.deposit_vs_shortpay",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.comparison.renewal_vs_nonrenewal",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.comparison.silson_generation_comparison",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.__init__",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.bonus_welfare",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.business_succession",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.carryforward_loss",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.corp_real_estate",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.corp_vs_individual",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.corporate_funding",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.corporate_insurance_maturity",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.corporate_interim_tax",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.corporate_liquidation",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.corporate_social_insurance",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.corporate_tax",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.dc_contribution",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.deemed_interest",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.deemed_interest_diagnostic",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.differential_dividend",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.employment_credit",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.entertainment_limit",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.executive_severance",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.family_corp_gift",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.holding_company",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.insurance_transfer",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.invention_compensation",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.merger_tax",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.nominee_trust",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.overseas_accounts",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.patent_capitalization",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.policy_fund",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.profit_retirement",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.related_party_rent",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.rnd_credit",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.salary_dividend",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.shareholder_distribution",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.sincere_report",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.specific_corp_transaction",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.stock_option",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.unlisted_valuation",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.vat_preliminary",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.vehicle_expense",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.corporate.welfare_fund",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.coverage.__init__",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.coverage.coverage_calculator_ui",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.coverage.coverage_models",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.finance.__init__",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.finance.finance_calculator_ui",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.finance.finance_models",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.input_design",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.jarvia_calculator_center",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.legacy_calculator_exports",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.pension.__init__",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.pension.housing_pension",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.pension.pension_calculator_ui",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.pension.pension_credit",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.pension.pension_models",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.pension.retirement_models",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.pension.retirement_plan",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.pension.retirement_remaining",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.pension.severance",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.quick_calculators",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.result_chart",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.result_pdf",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.structured_inputs",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.tax.__init__",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.tax.acquisition_tax",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.tax.capital_gains_tax",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.tax.dividend_grossup",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.tax.earned_income_tax",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.tax.estate_calculator",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.tax.estate_reports",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.tax.estate_studio",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.tax.gift_comparisons",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.tax.gift_planning",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.tax.gift_tax",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.tax.global_income_tax",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.tax.housing_surcharge",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.tax.inheritance_tax",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.tax.mortgage_deduction",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.tax.personal_tax_models",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.tax.rental_tax",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.tax.social_insurance",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.tax.startup_tax_credit",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.tax.transfer_tax_rules",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.ux_profiles",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.calculators.valuation_transfer",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.consultation.__init__",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.consultation.analyzer",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.consultation.claim_pdf_parser",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.consultation.claim_reports",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.consultation.claim_studio",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.consultation.claim_workflow",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.consultation.comparison_builder",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.consultation.consultation_documents",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.consultation.consultation_helper",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.consultation.customer_materials",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.consultation.enrollment_comparison",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.consultation.insurance_claim_guide",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.consultation.material_transfer",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.consultation.question_bank",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.consultation.question_pdf",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.consultation.question_studio",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.consultation.remodeling",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.performance.__init__",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.performance.commission_calculator",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.performance.convention",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.performance.manager_results",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.performance.summer",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.resources.__init__",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.resources.education_center",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.resources.education_content",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.resources.insurer_portal",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.resources.official_resources",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.resources.portal_repository",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.shared.__init__",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.shared.content_repository",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.shared.external_apps",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.shared.legacy_workflow",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.shared.page_layouts",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.shared.paths",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.shared.pdf_brand",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.shared.privacy_guard",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.shared.report_fonts",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.shared.session_store",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.shared.signature_theme",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.shared.task_theme",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.shared.ui_components",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.shared.upload_ui",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.shared.validators",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.shared.workbench",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.shared.workspace_tools",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.shared.xlsx_structure",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.shell.__init__",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.shell.app_registry",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.shell.navigation",
+      "status": "PASS",
+      "error": ""
+    },
+    {
+      "module": "modules.shell.workspace_v2",
+      "status": "PASS",
+      "error": ""
+    }
+  ]
+}

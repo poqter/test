@@ -189,7 +189,7 @@ def emergency(expense,months=6,cash=0,deposits=0,other=0,debt=0):
 
 
 def goals(items,budget=0):
-    if not 1<=len(items)<=3:raise ValueError('목표는 1~3개 입력해 주세요.')
+    if not 1<=len(items)<=5:raise ValueError('목표는 1~5개 입력해 주세요.')
     budget=num(budget);rows=[];total=ZERO
     for item in items:
         target=num(item.get('target',0));p=num(item.get('principal',0));y=num(item.get('years',10),1,120)

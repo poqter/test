@@ -23,6 +23,8 @@ def allowed_ids(role: str | None) -> list[str]:
 def normalize_route(page_id: str | None, role: str | None) -> str:
     if page_id == "home":
         return "home"
+    if page_id in APP_BY_ID and APP_BY_ID[page_id].external_app_key:
+        return "home"
     return page_id if page_id in allowed_ids(role) else "home"
 
 
@@ -40,13 +42,9 @@ def navigate(
     consume ``hw.ui.target_mode``.
     """
     session = st.session_state if state is None else state
-    if session.get("hw_calc_locked"):
-        return "quick_calculators"
     role = session.get("login_user")
     target = normalize_route(page_id, role)
     save_legacy_draft(str(session.get("active_app", "home")), state=session)
-    if target == "quick_calculators" and session.get("active_app", "home") == "home":
-        session["jc_home_entry"] = True
     session["active_app"] = target
     if mode and target != "home":
         session["hw.ui.target_mode"] = {"page": target, "mode": mode}
@@ -65,13 +63,14 @@ def navigate(
 
 def dispatch(page_id: str, *, role: str | None = None) -> Any:
     """Recheck permission, lazily import the page, and invoke its entrypoint."""
-    if st.session_state.get("hw_calc_locked"):
-        return None
     effective_role = role if role is not None else st.session_state.get("login_user")
     if page_id not in allowed_ids(effective_role):
         st.session_state["active_app"] = "home"
         return None
     spec = APP_BY_ID[page_id]
+    if spec.external_app_key:
+        st.session_state["active_app"] = "home"
+        return None
     try:
         module = import_module(spec.module_path)
         entrypoint = getattr(module, spec.entrypoint)
@@ -92,10 +91,6 @@ def dispatch(page_id: str, *, role: str | None = None) -> Any:
 
 def logout(*, state: MutableMapping[str, Any] | None = None, rerun: Callable[[], Any] | None = None) -> None:
     session = st.session_state if state is None else state
-    owner = session.get("hw_calc_owner")
-    if owner:
-        from modules.calculators.tab_access import access_store
-        access_store().revoke_owner(owner)
     clear_session(state=session)
     if rerun is None and state is None:
         st.rerun()

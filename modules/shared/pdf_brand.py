@@ -1,13 +1,10 @@
 """Shared PDF header/footer. No user or author signature."""
 from reportlab.lib.colors import HexColor, white
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from modules.shared.paths import PROJECT_ROOT
+
+from modules.shared.report_fonts import korean_pdf_font
 
 def draw_brand(c, page=None):
-    font='HwarangBrand'
-    if font not in pdfmetrics.getRegisteredFontNames():
-        pdfmetrics.registerFont(TTFont(font,str(PROJECT_ROOT/'assets/fonts/PretendardVariable.ttf')))
+    font = korean_pdf_font()
     w,h=c._pagesize
     c.saveState()
     c.setFillColor(HexColor('#112B49')); c.rect(0,h-38,w,38,fill=1,stroke=0)

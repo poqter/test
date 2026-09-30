@@ -5,11 +5,9 @@ from decimal import Decimal
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from modules.shared.paths import PROJECT_ROOT
 from modules.shared.pdf_brand import draw_brand
+from modules.shared.report_fonts import korean_pdf_font
 
 
 def money(v):
@@ -39,8 +37,7 @@ def summary_rows(result):
 
 
 def pdf_report(result, conditions, funding, stamp, alias='', note='', alignment='왼쪽'):
-    font='EstateReport'
-    if font not in pdfmetrics.getRegisteredFontNames():pdfmetrics.registerFont(TTFont(font,str(PROJECT_ROOT/'assets/fonts/PretendardVariable.ttf')))
+    font = korean_pdf_font()
     navy=colors.HexColor('#112B49'); pale=colors.HexColor('#EEF4F8')
     body=ParagraphStyle('estate',fontName=font,fontSize=9,leading=13,wordWrap='CJK',textColor=navy)
     def p(v,style=body):return Paragraph(escape(str(v)).replace('\n','<br/>'),style)

@@ -1,0 +1,127 @@
+{
+  "count": 24,
+  "passed": 24,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "catalog_count_80",
+      "status": "PASS",
+      "detail": "count=80"
+    },
+    {
+      "name": "catalog_names_unique",
+      "status": "PASS",
+      "detail": "unique=80"
+    },
+    {
+      "name": "catalog_group_counts",
+      "status": "PASS",
+      "detail": "{\"개인 · 세금\": 11, \"개인 · 연금·은퇴\": 14, \"개인 · 보장·설계\": 7, \"개인 · 재무계산\": 9, \"법인 · 대표 의사결정\": 17, \"법인 · 세무 실무\": 22}"
+    },
+    {
+      "name": "ux_profiles_exact_catalog",
+      "status": "PASS",
+      "detail": "profiles=80"
+    },
+    {
+      "name": "ux_profiles_complete",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "metadata_order_permutations",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "calculator_registry_external",
+      "status": "PASS",
+      "detail": "status=standalone, key=calculator_url"
+    },
+    {
+      "name": "external_route_not_dispatched",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "calculator_entrypoint_exists",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "calculator_entrypoint_public",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "calculator_entrypoint_first_render",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "external_url_from_secrets",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "external_url_scheme_validation",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "external_url_environment_fallback",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "workspace_uses_external_link_button",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "workspace_home_first_render",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "legacy_token_files_removed",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "legacy_token_references_removed",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "font_binaries_absent",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "real_streamlit_secrets_absent",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "secrets_example_present",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "no_hardcoded_deployed_url",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "direct_won_precision_rules",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "repeat_input_mappings",
+      "status": "PASS",
+      "detail": ""
+    }
+  ]
+}

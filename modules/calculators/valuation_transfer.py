@@ -24,7 +24,6 @@ def apply_pending():
     st.session_state['jc_transfer_notice']=f'{target}에 평가액 {amount:,}원을 만원 단위로 반올림해 입력했습니다. 다른 재산·공제·적격요건을 확인한 뒤 계산하세요.'
 
 def render():
-    if st.session_state.get("hw_calc_locked"):return
     stored=st.session_state.get('coverage_result_비상장주식 평가계산기')
     if not stored:return
     args,result,_=stored

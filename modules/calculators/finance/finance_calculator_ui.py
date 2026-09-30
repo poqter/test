@@ -98,15 +98,18 @@ def run(name):
                     cash=_money('현금·수시입출금',20000000),deposits=_money('단기 예적금'),other=_money('기타 즉시 현금화 자산'),debt=_money('1년 내 상환할 단기부채'))
                 calculate=engine.emergency
             elif name=='목표자금 계획계산기':
+                st.markdown('**목표를 필요한 만큼 추가해 계획하세요.**')
+                goal_count = st.number_input('계획할 목표 수', min_value=1, max_value=5, value=1, step=1, key=prefix+'_goal_count')
                 items=[]
-                for i,default_name in enumerate(('자녀 교육비','주택 자금','노후 자금')):
+                default_names=('자녀 교육비','주택 자금','노후 자금','사업 준비자금','기타 목표')
+                for i in range(int(goal_count)):
                     with st.expander(f'목표 {i+1}',expanded=i==0):
-                        label=st.text_input('목표 이름',value=default_name,key=prefix+f'_name_{i}')
+                        label=st.text_input('목표 이름 (선택)',value=default_names[i],key=prefix+f'_name_{i}')
                         target=_money('목표 금액',100000000 if i==0 else 0,key=prefix+f'_target_{i}')
                         principal=_money('현재 모은 금액',key=prefix+f'_principal_{i}')
                         years=_years(10+i*5,key=prefix+f'_years_{i}')
                         rate=_rate('연 유효수익률 (%)',key=prefix+f'_rate_{i}')
-                        items.append(dict(name=label,target=target,principal=principal,years=years,rate=rate))
+                        items.append(dict(name=label or f'목표 {i+1}',target=target,principal=principal,years=years,rate=rate))
                 args=dict(items=items,budget=_money('매달 저축 가능액'))
                 calculate=engine.goals
             else:

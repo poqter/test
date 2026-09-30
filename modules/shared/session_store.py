@@ -42,7 +42,7 @@ _SKIP_TOKENS = (
 # sessions saved by older releases, whose drafts contain button booleans.
 _CALCULATOR_ACTION_KEYS = frozenset({
     "jc_search_clear", "jc_back_catalog", "jc_transfer_apply",
-    "jc_home_entry", "jc_link_entry", "jc_valuation_transfer",
+    "jc_valuation_transfer",
     "estate_explain", "estate_pdf", "estate_excel", "estate_replace_note", "estate_transfer_open",
 })
 _CALCULATOR_ACTION_PREFIXES = ("jc_card_", "jc_purpose_", "jc_category_")
@@ -57,7 +57,7 @@ def _transient_draft_key(key: str) -> bool:
     )
 
 
-_AUTH_KEYS = frozenset({"password_correct", "login_user", "active_app", "hw_calc_owner"})
+_AUTH_KEYS = frozenset({"password_correct", "login_user", "active_app"})
 
 
 def _state(state: MutableMapping[str, Any] | None) -> MutableMapping[str, Any]:

@@ -1,12 +1,9 @@
 """Session-only UI helpers and in-memory, literal-text exports."""
 from __future__ import annotations
-from modules.shared.pdf_brand import draw_brand
-from modules.shared.paths import PROJECT_ROOT
 
 import html
 import io
 import re
-from pathlib import Path
 
 import streamlit as st
 from openpyxl import Workbook
@@ -14,10 +11,10 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import ParagraphStyle
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 
+from modules.shared.pdf_brand import draw_brand
+from modules.shared.report_fonts import korean_pdf_font
 from modules.shared.session_store import commit_input, reset_page
 
 CHECKED = "2026-09-21"
@@ -110,9 +107,7 @@ def workbook_bytes(title, headers, rows, notes=""):
 
 
 def pdf_bytes(title, headers, rows, notes="", *, center_table=False):
-    font = "WorkspacePretendard"
-    if font not in pdfmetrics.getRegisteredFontNames():
-        pdfmetrics.registerFont(TTFont(font, str(PROJECT_ROOT / "assets/fonts/PretendardVariable.ttf")))
+    font = korean_pdf_font()
     output = io.BytesIO()
     page = landscape(A4)
     doc = SimpleDocTemplate(output, pagesize=page, rightMargin=30, leftMargin=30, topMargin=58, bottomMargin=40)

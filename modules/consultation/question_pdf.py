@@ -1,15 +1,15 @@
-from modules.shared.pdf_brand import draw_brand
 """Branded, in-memory question sheet with handwriting space."""
 import html
 import io
+
 from reportlab.pdfgen import canvas
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.colors import HexColor
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import Paragraph
-from modules.shared.paths import PROJECT_ROOT
+
+from modules.shared.pdf_brand import draw_brand
+from modules.shared.report_fonts import korean_pdf_font
 
 
 def build_question_pdf(title, questions, customer='', consultation_date=''):
@@ -17,9 +17,7 @@ def build_question_pdf(title, questions, customer='', consultation_date=''):
         raise ValueError('제목과 선택한 질문 내용을 입력해 주세요.')
     if len(title)>80 or len(customer)>40 or any(len(q['text'])>500 for q in questions):
         raise ValueError('입력 길이를 확인해 주세요.')
-    font='HwarangQuestion'
-    if font not in pdfmetrics.getRegisteredFontNames():
-        pdfmetrics.registerFont(TTFont(font,str(PROJECT_ROOT/'assets/fonts/PretendardVariable.ttf')))
+    font = korean_pdf_font()
     class NumberedCanvas(canvas.Canvas):
         """Retain page drawing states to add accurate totals in a final pass."""
         def __init__(self, *args, **kwargs):

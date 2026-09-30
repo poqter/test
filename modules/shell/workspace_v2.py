@@ -8,6 +8,7 @@ import streamlit as st
 
 from modules.shell.app_registry import APP_BY_ID, SEARCH_ALIASES, AppSpec
 from modules.resources.insurer_portal import render_home_quick_search
+from modules.shared.external_apps import external_app_url
 
 _ICONS = {
     "family": '<svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><circle cx="17" cy="8" r="2.5"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M16 14a5 5 0 0 1 5 5v2"/></svg>',
@@ -28,6 +29,30 @@ _ICONS = {
 
 
 
+
+
+
+def _launch_widget(app: AppSpec, label: str, *, key: str, primary: bool = False, help_text: str | None = None) -> bool:
+    """Render an internal navigation button or a separate-app new-tab link."""
+    if app.external_app_key:
+        url = external_app_url(app.external_app_key)
+        st.link_button(
+            label + " ↗",
+            url or "https://example.invalid",
+            key=key,
+            help=help_text or ("새 탭에서 " + app.label + " 열기"),
+            type="primary" if primary else "secondary",
+            disabled=not bool(url),
+            use_container_width=True,
+        )
+        return False
+    return st.button(
+        label,
+        key=key,
+        help=help_text,
+        type="primary" if primary else "secondary",
+        use_container_width=True,
+    )
 
 def _search_text(app: AppSpec) -> str:
     return " ".join((app.label, app.description, *app.keywords)).lower()
@@ -80,7 +105,11 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
             any_match = True
             with st.expander(topic[0], expanded=bool(query) or st.session_state.get("active_app") in {app.id for app in apps}):
                 for app in apps:
-                    if st.button(app.label, key="v2_nav_" + app.id, type="primary" if st.session_state.get("active_app") == app.id else "secondary", use_container_width=True):
+                    launched = _launch_widget(
+                        app, app.label, key="v2_nav_" + app.id,
+                        primary=st.session_state.get("active_app") == app.id,
+                    )
+                    if launched:
                         navigate(app.id)
         if query and not any_match:
             st.caption("검색 결과가 없습니다.")
@@ -183,6 +212,10 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
                         icon_key, tone = _HOME_ICON_STYLES.get(app.id, (app.icon_key, "blue"))
                         icon = _ICONS.get(icon_key, _ICONS["materials"])
                         st.markdown(f'<div class="hw-tool-heading"><span class="hw-tool-symbol hw-icon-{tone}" aria-hidden="true">{icon}</span><h3>{html.escape(app.label)}</h3></div><p class="hw-dash-tool-desc">{html.escape(app.description)}</p>', unsafe_allow_html=True)
-                        if st.button(app.label+" 열기 →", key="hw_home_launch_" + app.id, help=f"{app.label} 열기", use_container_width=True):
+                        launched = _launch_widget(
+                            app, app.label + " 열기 →", key="hw_home_launch_" + app.id,
+                            help_text=("새 탭에서 " + app.label + " 열기") if app.external_app_key else f"{app.label} 열기",
+                        )
+                        if launched:
                             navigate(app.id, mode)
         st.markdown('<div class="hw-dash-footer">Planned &amp; Built by 박병선 팀장 · 보험 업무의 복잡함, 더 간단하게.</div>', unsafe_allow_html=True)

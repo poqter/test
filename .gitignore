@@ -16,3 +16,6 @@ venv/
 *.py[cod]
 .pytest_cache/
 *.log
+
+# External font binaries are intentionally not bundled.
+assets/fonts/
