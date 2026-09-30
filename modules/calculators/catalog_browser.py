@@ -1,4 +1,4 @@
-"""Calculator discovery UI. Keeps navigation state separate from widget state."""
+'''Calculator discovery UI. Keeps navigation state separate from widget state.'''
 import hashlib
 import json
 import re
@@ -51,7 +51,7 @@ def card_key(name):
 
 
 def calculator_deep_link(name, ids=None):
-    """Build a stable relative deep link; fall back to the current name for compatibility."""
+    '''Build a stable relative deep link; fall back to the current name for compatibility.'''
     value = (ids or {}).get(name, name)
     return '?calc=' + quote(value, safe='')
 
@@ -78,17 +78,12 @@ def back_to_catalog():
 
 
 def save_query():
-    query = st.session_state.get('jc_search', '')
-    st.session_state['jc_catalog_query'] = query
-    if query.strip():
-        # Search is global across all 88 tools; category filters remain for browsing only.
-        st.session_state['jc_catalog_group'] = '전체'
+    st.session_state['jc_catalog_query'] = st.session_state.get('jc_search', '')
 
 
 def set_query(query):
     st.session_state['jc_catalog_query'] = query
     st.session_state['jc_search'] = query
-    st.session_state['jc_catalog_group'] = '전체'
 
 
 def set_group(group):
@@ -96,8 +91,6 @@ def set_group(group):
 
 
 def scroll_memory(last, restore):
-    # One listener per Streamlit document, removed/replaced on each catalog render.
-    # Session storage holds only an interface position, never customer inputs.
     selector = '.st-key-' + card_key(last) if last else ''
     st.iframe('''<script>
     (() => {
@@ -122,7 +115,6 @@ def scroll_memory(last, restore):
           if (d.activeElement && /INPUT|TEXTAREA/.test(d.activeElement.tagName)) return;
           if (saved) { container.scrollTop = Math.min(saved.top,container.scrollHeight-container.clientHeight); w.scrollTo(0, saved.y); }
           else if (card) card.scrollIntoView({block:'center'});
-          // Restore position without taking focus away from search or keyboard navigation.
         };
         w.requestAnimationFrame(() => w.setTimeout(recover, 100));
       }
@@ -133,60 +125,90 @@ def scroll_memory(last, restore):
 def render_catalog(items, groups, implemented, *, tags=None, ids=None):
     tags = tags or {}
     ids = ids or {}
-    group_counts = {
-        group: sum(
-            1
-            for name, (item_group, _description) in items.items()
-            if name in implemented and item_group == group
-        )
-        for group in groups
-    }
-    total_count = sum(group_counts.values())
+
     st.markdown('#### 🔎 계산기 검색')
     st.caption('계산기 이름 또는 고객의 상황으로 검색하세요.')
     st.session_state.setdefault('jc_catalog_query', st.session_state.get('jc_search', ''))
     st.session_state.setdefault('jc_catalog_group', st.session_state.get('jc_group', '전체'))
     if 'jc_search' not in st.session_state:
         st.session_state['jc_search'] = st.session_state['jc_catalog_query']
+
     search, clear = st.columns([8, 1])
-    search.text_input('계산기 이름 또는 상담 목적', key='jc_search', on_change=save_query,
-                      placeholder='예: 노후 생활비, 자녀 증여, 보험료 부담', label_visibility='collapsed')
-    clear.button('초기화', key='jc_search_clear', on_click=set_query, args=('',), use_container_width=True)
+    search.text_input(
+        '계산기 이름 또는 상담 목적',
+        key='jc_search',
+        on_change=save_query,
+        placeholder='예: 노후 생활비, 자녀 증여, 보험료 부담',
+        label_visibility='collapsed',
+    )
+    clear.button(
+        '초기화',
+        key='jc_search_clear',
+        on_click=set_query,
+        args=('',),
+        use_container_width=True,
+    )
+
     with st.container(key='jc_purposes', horizontal=True):
         for i, (label, query) in enumerate(PURPOSES):
-            st.button(purpose_label(label), key=f'jc_purpose_{i}', on_click=set_query, args=(query,),
-                      type='tertiary')
-    st.caption('🗂️ 업무 분류')
+            st.button(
+                purpose_label(label),
+                key=f'jc_purpose_{i}',
+                on_click=set_query,
+                args=(query,),
+                type='tertiary',
+            )
+
     group = st.session_state['jc_catalog_group']
-    categories = ('전체', *groups)
-    with st.container(key='jc_categories'):
-        for start in range(0, len(categories), 3):
-            columns = st.columns(3, gap='small')
-            for offset, (column, category) in enumerate(zip(columns, categories[start:start + 3])):
-                index = start + offset
-                count = total_count if category == '전체' else group_counts.get(category, 0)
-                column.button(
-                    category_label(category, count),
-                    key=f'jc_category_{index}',
-                    on_click=set_group,
-                    args=(category,),
-                    type='primary' if group == category else 'secondary',
-                    use_container_width=True,
-                )
-    query = st.session_state['jc_catalog_query']
-    found = [(n, g, d) for n, (g, d) in items.items() if n in implemented
-             and (group == '전체' or group == g) and matches(n, g, d, tags.get(n, ()), query)]
-    st.markdown('#### ' + ('🔎 검색 결과' if query else category_label(group) + ' 계산기'))
+    query = st.session_state['jc_catalog_query'].strip()
+
+    found = [
+        (n, g, d)
+        for n, (g, d) in items.items()
+        if n in implemented
+        and (bool(query) or group == '전체' or group == g)
+        and matches(n, g, d, tags.get(n, ()), query)
+    ]
+
+    if query:
+        heading = '🔎 검색 결과'
+    elif group == '전체':
+        heading = '🧮 전체 계산기'
+    else:
+        heading = category_label(group) + ' 계산기'
+
+    st.markdown('#### ' + heading)
     st.caption(f'{len(found)}개 결과')
+
     st.markdown('''<style>
-    .st-key-jc_search [data-baseweb="input"]{
-        background:#fff!important;border:2px solid #b7c6d6!important;border-radius:12px!important;
-        box-shadow:0 1px 2px rgba(25,57,89,.05)!important;transition:border-color .16s,box-shadow .16s
+    .st-key-jc_search [data-baseweb="input"],
+    .st-key-jc_search [data-baseweb="base-input"],
+    .st-key-jc_search [data-testid="stTextInput"] > div > div{
+        background:#fff!important;
+        border:2px solid #b7c6d6!important;
+        border-radius:12px!important;
+        box-shadow:0 1px 3px rgba(25,57,89,.08)!important;
+        transition:border-color .16s ease,box-shadow .16s ease!important;
     }
-    .st-key-jc_search [data-baseweb="input"]:focus-within{
-        border-color:#4d7fab!important;box-shadow:0 0 0 3px rgba(77,127,171,.14)!important
+    .st-key-jc_search:hover [data-baseweb="input"],
+    .st-key-jc_search:hover [data-baseweb="base-input"],
+    .st-key-jc_search:hover [data-testid="stTextInput"] > div > div{
+        border-color:#8faac3!important;
     }
-    .st-key-jc_search input{background:transparent!important;color:#203a58!important;min-height:44px!important}
+    .st-key-jc_search [data-baseweb="input"]:focus-within,
+    .st-key-jc_search [data-baseweb="base-input"]:focus-within,
+    .st-key-jc_search [data-testid="stTextInput"] > div > div:focus-within{
+        border-color:#4d7fab!important;
+        box-shadow:0 0 0 3px rgba(77,127,171,.14)!important;
+    }
+    .st-key-jc_search input{
+        background:transparent!important;
+        color:#203a58!important;
+        min-height:44px!important;
+        border:0!important;
+        outline:0!important;
+        box-shadow:none!important;
+    }
     .st-key-jc_search input::placeholder{color:#8395a8!important;opacity:1!important}
     .st-key-jc_search_clear button{min-height:48px!important;border:1px solid #c9d6e3!important;border-radius:11px!important}
     [class*="st-key-jc_card_"][data-testid="stVerticalBlock"]{background:#fff;border:1px solid #dce5ef;border-radius:14px;padding:20px;transition:border-color .18s,box-shadow .18s}
@@ -197,8 +219,7 @@ def render_catalog(items, groups, implemented, *, tags=None, ids=None):
     .hw-calc-card-summary{font-size:13px;line-height:1.65;color:#657b91;word-break:keep-all;overflow-wrap:anywhere}
     .hw-calc-card-core{font-size:12px;line-height:1.5;color:#426e98;margin-top:7px;word-break:keep-all;overflow-wrap:anywhere}
     [class*="st-key-jc_actions_"][data-testid="stVerticalBlock"]{gap:8px!important;border-left:1px solid #edf1f6;padding-left:14px;justify-content:center}
-    [class*="st-key-jc_card_"] button,
-    .hw-calc-new-tab{width:100%;min-height:42px!important;padding:9px 8px!important;border-radius:9px!important;font-size:12px!important;line-height:1.35!important;transform:none!important;box-shadow:none!important}
+    [class*="st-key-jc_card_"] button,.hw-calc-new-tab{width:100%;min-height:42px!important;padding:9px 8px!important;border-radius:9px!important;font-size:12px!important;line-height:1.35!important;transform:none!important;box-shadow:none!important}
     [class*="st-key-jc_card_"] [data-testid="stButton"] button{background:#e9f0f8!important;color:#214b76!important;border:1px solid #cbd9e7!important;justify-content:center!important;font-weight:650!important}
     [class*="st-key-jc_card_"] [data-testid="stButton"] button:hover{background:#dfeaf6!important;border-color:#a9bfd5!important}
     [class*="st-key-jc_card_"] button p{font-size:12px!important;white-space:nowrap!important}
@@ -206,26 +227,23 @@ def render_catalog(items, groups, implemented, *, tags=None, ids=None):
     .hw-calc-new-tab:hover{background:#f5f8fc!important;border-color:#9fb7cf!important;color:#214b76!important;text-decoration:none!important}
     [class*="st-key-jc_actions_"] [data-testid="stMarkdownContainer"]{width:100%!important}
     [class*="st-key-jc_actions_"] [data-testid="stMarkdownContainer"] p{margin:0!important;width:100%!important}
+    .st-key-jc_purposes{padding:2px 0 12px;border-bottom:1px solid #e4ebf2;margin-bottom:10px}
     .st-key-jc_purposes button{font-size:12px!important;min-height:28px!important;padding:3px 9px!important;border-radius:16px!important;background:#edf2f7!important;color:#526982!important}
     .st-key-jc_purposes button p{font-size:12px!important}
-    .st-key-jc_categories{padding:2px 0 10px;border-bottom:1px solid #dce5ef;margin-bottom:10px}
-    .st-key-jc_categories [data-testid="stHorizontalBlock"]{gap:.55rem!important}
-    [class*="st-key-jc_category_"] button{min-height:48px!important;font-weight:650!important;white-space:normal!important;line-height:1.35!important}
-    [class*="st-key-jc_category_"] button:focus-visible,.hw-calc-new-tab:focus-visible{outline:3px solid rgba(45,106,213,.28)!important;outline-offset:2px!important}
+    [class*="st-key-jc_card_"] button:focus-visible,.hw-calc-new-tab:focus-visible{outline:3px solid rgba(45,106,213,.28)!important;outline-offset:2px!important}
     @media(max-width:768px){
-        .st-key-jc_categories [data-testid="stHorizontalBlock"]{flex-wrap:wrap!important}
-        .st-key-jc_categories [data-testid="stColumn"]{width:auto!important;min-width:0!important;flex:1 1 calc(50% - .55rem)!important}
         [class*="st-key-jc_card_"]>[data-testid="stHorizontalBlock"]{flex-direction:column!important}
         [class*="st-key-jc_card_"]>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]{width:100%!important;flex:1 1 100%!important}
         [class*="st-key-jc_actions_"][data-testid="stVerticalBlock"]{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px!important;border-left:0;border-top:1px solid #edf1f6;padding:12px 0 0;justify-content:stretch}
         [class*="st-key-jc_card_"] button,.hw-calc-new-tab{min-height:44px!important}
     }
-    @media(max-width:480px){
-        .st-key-jc_categories [data-testid="stColumn"]{flex-basis:100%!important}
-        [class*="st-key-jc_actions_"][data-testid="stVerticalBlock"]{grid-template-columns:1fr!important}
+    @media(max-width:480px){[class*="st-key-jc_actions_"][data-testid="stVerticalBlock"]{grid-template-columns:1fr!important}}
+    @media(prefers-reduced-motion:reduce){
+        [class*="st-key-jc_card_"]{transition:none!important}
+        .st-key-jc_search [data-baseweb="input"],.st-key-jc_search [data-baseweb="base-input"]{transition:none!important}
     }
-    @media(prefers-reduced-motion:reduce){[class*="st-key-jc_card_"]{transition:none!important}.st-key-jc_search [data-baseweb="input"]{transition:none!important}}
     </style>''', unsafe_allow_html=True)
+
     if query:
         q = normalize(query).removesuffix('계산기')
         def rank(item):
@@ -234,8 +252,11 @@ def render_catalog(items, groups, implemented, *, tags=None, ids=None):
         found.sort(key=rank)
         sections = [('이름 일치', [item for item in found if rank(item) < 2]),
                     ('관련 계산기', [item for item in found if rank(item) >= 2])]
-    else:
+    elif group == '전체':
         sections = [(category, [item for item in found if item[1] == category]) for category in groups]
+    else:
+        sections = [(group, found)]
+
     for category, section_items in sections:
         subset = [(n, d) for n, g, d in section_items]
         if not subset:
@@ -257,20 +278,14 @@ def render_catalog(items, groups, implemented, *, tags=None, ids=None):
                         unsafe_allow_html=True,
                     )
                     with actions.container(key="jc_actions_"+card_key(name)):
-                        st.button(
-                            '현재 화면에서 열기',
-                            key=card_key(name)+'_open_here',
-                            on_click=open_calculator,
-                            args=(name,),
-                            use_container_width=True,
-                        )
+                        st.button('현재 화면에서 열기',key=card_key(name)+'_open_here',on_click=open_calculator,args=(name,),use_container_width=True)
                         st.markdown(
                             f'<a class="hw-calc-new-tab" href="{calculator_deep_link(name, ids)}" '
                             f'aria-label="{escape(name)} 새 탭으로 열기" target="_blank" rel="noopener noreferrer">새 탭으로 열기 ↗</a>',
                             unsafe_allow_html=True,
                         )
     if not found:
-        st.info('일치하는 계산기가 없습니다. 다른 키워드를 입력하거나 분류를 전체로 바꿔보세요.')
+        st.info('일치하는 계산기가 없습니다. 다른 키워드를 입력해보세요.')
     last = st.session_state.get('jc_catalog_last')
     if last:
         st.markdown(f'<style>.st-key-{card_key(last)}[data-testid="stVerticalBlock"]{{border-color:#5584b2!important;box-shadow:0 0 0 2px #bcd3ea60!important}}</style>', unsafe_allow_html=True)
