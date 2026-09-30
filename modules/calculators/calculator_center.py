@@ -362,21 +362,41 @@ def run_legacy(integrated: bool = False) -> None:
         from modules.calculators.input_design import render_metrics
 
         render_metrics(dict(formatted_results(result["values"])), "insurance_basics")
-        try:
-            pdf_data = export_bytes(result, "pdf")
-        except Exception:
-            st.warning("PDF 출력을 만들지 못했습니다. 설치 상태를 확인해 주세요.")
-        else:
-            st.download_button(
-                "결과 PDF 저장",
-                pdf_data,
-                f"hwarang_calculator_{kind}.pdf",
-                "application/pdf",
-                key="a_export_pdf",
-                type="primary",
-                icon=":material/download:",
-                use_container_width=True,
+
+        # 다른 계산기와 동일하게 PDF에 포함할 내용을 먼저 선택합니다.
+        # 보험 기본·생활자금 계산은 기존 dict 결과를 공통 PDF 모델로 변환해
+        # 핵심 결과·입력 내용·산출 근거를 선택적으로 출력합니다.
+        from modules.calculators.finance.finance_models import FinanceResult
+        from modules.calculators.result_pdf import build_result_pdf, pdf_section_options
+
+        pdf_options = pdf_section_options("insurance_basics_pdf_scope")
+        if any(pdf_options.values()):
+            pdf_result = FinanceResult(
+                metrics=result["values"],
+                formula=result["formula"],
+                assumptions=[result["assumptions"]],
             )
+            try:
+                pdf_data = build_result_pdf(
+                    mode,
+                    result["inputs"],
+                    pdf_result,
+                    stamp,
+                    **pdf_options,
+                )
+            except Exception:
+                st.warning("PDF 출력을 만들지 못했습니다. 설치 상태를 확인해 주세요.")
+            else:
+                st.download_button(
+                    "결과 PDF 저장",
+                    pdf_data,
+                    f"hwarang_calculator_{kind}.pdf",
+                    "application/pdf",
+                    key="a_export_pdf",
+                    type="primary",
+                    icon=":material/download:",
+                    use_container_width=True,
+                )
 
         with st.expander("산출 내역 자세히 보기"):
             st.markdown("**입력 조건**")
