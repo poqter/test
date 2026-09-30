@@ -94,7 +94,7 @@ def input_panels(key):
         results=right.container(border=True, key='hw_calc_result_'+key)
         with results:
             hint=st.empty()
-            hint.info('입력 조건을 확인한 뒤 계산하기를 눌러주세요.')
+            hint.info('🧮 입력 조건을 확인한 뒤 계산하기를 눌러주세요.')
     @contextmanager
     def result_context():
         hint.empty()
@@ -102,10 +102,31 @@ def input_panels(key):
     return inputs,result_context()
 
 
+def _primary_metric_index(items):
+    """Prefer the first monetary result; otherwise keep the engine's first result."""
+    for index, (_label, value) in enumerate(items):
+        text = str(value).replace(" ", "")
+        if any(unit in text for unit in ("조원", "억원", "만원", "원")):
+            return index
+    return 0
+
+
 def render_metrics(display, prefix):
-    """One primary result, then compact supporting numbers; preserve metric semantics."""
-    for index, (label, value) in enumerate(display.items()):
-        with st.container(key=prefix+('_hero_result' if index == 0 else '_support_result_'+str(index))):
+    """Render one unmistakable representative result and compact support values."""
+    items = list(display.items())
+    if not items:
+        return
+    primary_index = _primary_metric_index(items)
+    primary_label, primary_value = items[primary_index]
+    with st.container(key=prefix + '_hero_result'):
+        st.markdown('<div class="hw-primary-result-kicker">✨ 대표 계산 결과</div>', unsafe_allow_html=True)
+        st.metric(primary_label, primary_value)
+    support_index = 0
+    for index, (label, value) in enumerate(items):
+        if index == primary_index:
+            continue
+        support_index += 1
+        with st.container(key=prefix + '_support_result_' + str(support_index)):
             st.metric(label, value)
 
 

@@ -90,7 +90,8 @@ border:1.5px solid #8ea3ba!important;background:#fff!important;border-radius:9px
 .st-key-hw_task_page .st-key-rm_live_summary h4{font-size:17px!important;line-height:1.5!important;word-break:keep-all;overflow-wrap:anywhere}
 .st-key-hw_task_page .st-key-rm_live_summary{padding:18px!important}
 .st-key-hw_task_page [class*="st-key-hw_calc_"] [data-testid="stVerticalBlockBorderWrapper"]{background:#fff!important;border-color:#d3deeb!important}
-.st-key-hw_task_page [class*="_hero_result"] [data-testid="stMetric"]{background:#eaf2ff!important;border:1px solid #bfd3ef!important}
+.st-key-hw_task_page .hw-primary-result-kicker{display:inline-flex;align-items:center;gap:6px;margin:0 0 7px;padding:5px 9px;border-radius:999px;background:#fff4cf;color:#805b00;font-size:12px;font-weight:750;letter-spacing:-.01em}
+.st-key-hw_task_page [class*="_hero_result"] [data-testid="stMetric"]{background:linear-gradient(135deg,#eaf3ff 0%,#f8fbff 62%,#fff7df 100%)!important;border:1px solid #9fbde5!important;border-left:5px solid #2d6ad5!important;box-shadow:0 8px 22px #23496f12!important}
 .st-key-hw_task_page [class*="_hero_result"] [data-testid="stMetricValue"]{font-size:30px!important}
 .st-key-hw_task_page [class*="_support_result"] [data-testid="stMetric"]{padding:10px 14px!important}
 .st-key-hw_task_page [class*="_support_result"] [data-testid="stMetricValue"]{font-size:21px!important}

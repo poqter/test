@@ -30,12 +30,12 @@
   ],
   "validation": {
     "aggregate_release_checks": "8/8 PASS",
-    "project_module_imports": "149/149 PASS",
+    "project_module_imports": "150/150 PASS",
     "calculator_engines": "80/80 PASS",
     "calculator_initial_ui_routes": "80/80 PASS",
     "calculator_result_pdfs": "80/80 PASS",
     "representative_business_pdfs": "8/8 PASS",
-    "architecture_and_security_checks": "24/24 PASS",
+    "architecture_and_security_checks": "27/27 PASS",
     "python_compileall": "PASS",
     "git_diff_check": "PASS"
   },
@@ -55,5 +55,11 @@
     ".pytest_cache",
     ".streamlit/secrets.toml",
     "TTF/OTF/WOFF/WOFF2 font binaries"
+  ],
+  "ui_followup_changes": [
+    "대표 계산 결과를 자동 선택해 강조 카드로 표시",
+    "계산기 카테고리·상황 탐색에 절제된 이모지 적용",
+    "WORKSPACE 종합계산기 새 탭 링크의 마우스오버 도움말 제거",
+    "cryptography 의존성 충돌 해소를 위해 cffi 2.0.0으로 정합화"
   ]
 }

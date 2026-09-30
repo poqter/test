@@ -56,7 +56,7 @@ def run(name):
     from modules.calculators.input_design import input_panels as work_panels
     _ui_0, _ui_1 = work_panels("finance_calculator_ui")
     with _ui_0:
-        st.caption("01 · 조건 입력")
+        st.caption("✍️ 01 · 조건 입력")
         with st.container(key=prefix+'_form_'+mode):
             args={}
             if name=='미래가치계산기':
@@ -129,7 +129,7 @@ def run(name):
             return
         _,result,calculated_on=saved
     with _ui_1:
-        st.caption("02 · 계산 결과")
+        st.caption("✨ 02 · 계산 결과")
         render_result(name,result,calculated_on,args,prefix)
     from modules.calculators.input_design import jump_to_result
     jump_to_result(submit, "finance_calculator_ui")
@@ -144,9 +144,8 @@ def render_result(name,result,calculated_on,args,prefix):
     display=result.display()
     with customer:
         st.subheader(name)
-        for index,(label,value) in enumerate(display.items()):
-            with st.container(key=prefix+('_hero_result' if index == 0 else '_support_result_'+str(index))):
-                st.metric(label,value)
+        from modules.calculators.input_design import render_metrics
+        render_metrics(display, prefix)
         st.caption('입력한 수익률과 조건에 따른 예상치입니다.')
         from modules.calculators.result_pdf import build_result_pdf, pdf_section_options
         pdf_options = pdf_section_options(prefix+'_pdf_scope')

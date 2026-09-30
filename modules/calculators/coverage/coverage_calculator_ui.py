@@ -90,7 +90,7 @@ def run(name, fields=None, calculator=None, caption=None):
     from modules.calculators.input_design import input_panels as work_panels
     input_panel, result_panel = work_panels("coverage_calculator_ui")
     with input_panel:
-        st.caption("01 · 조건 입력")
+        st.caption("✍️ 01 · 조건 입력")
         with st.container(key="coverage_" + name):
             values = [entry[1] for entry in entries]
             snapshot = _state_snapshot(name, entries)
@@ -207,7 +207,7 @@ def run(name, fields=None, calculator=None, caption=None):
         args, result, stamp = stored
 
     with result_panel:
-        st.caption("02 · 계산 결과")
+        st.caption("✨ 02 · 계산 결과")
         customer, advisor = (st.container(), st.expander("산출 내역 자세히 보기"))
         display = result.display()
         from modules.calculators.calculator_exports import build_exports

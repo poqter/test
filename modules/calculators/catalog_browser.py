@@ -5,6 +5,7 @@ import re
 from html import escape
 import streamlit as st
 from modules.calculators.ux_profiles import profile
+from modules.calculators.visuals import category_emoji, category_label, purpose_label
 
 PURPOSES = (
     ('보험료가 부담돼요', '보험료 부담'), ('노후를 준비해요', '노후 생활비'),
@@ -103,7 +104,7 @@ def scroll_memory(last, restore):
 
 
 def render_catalog(items, groups, implemented):
-    st.caption('계산기 이름 또는 고객의 상황으로 검색하세요.')
+    st.caption('🔎 계산기 이름 또는 고객의 상황으로 검색하세요.')
     st.session_state.setdefault('jc_catalog_query', st.session_state.get('jc_search', ''))
     st.session_state.setdefault('jc_catalog_group', st.session_state.get('jc_group', '전체'))
     if 'jc_search' not in st.session_state:
@@ -114,18 +115,18 @@ def render_catalog(items, groups, implemented):
     clear.button('초기화', key='jc_search_clear', on_click=set_query, args=('',), use_container_width=True)
     with st.container(key='jc_purposes', horizontal=True):
         for i, (label, query) in enumerate(PURPOSES):
-            st.button(label, key=f'jc_purpose_{i}', on_click=set_query, args=(query,),
+            st.button(purpose_label(label), key=f'jc_purpose_{i}', on_click=set_query, args=(query,),
                       type='tertiary')
-    st.caption('업무 분류')
+    st.caption('🗂️ 업무 분류')
     group = st.session_state['jc_catalog_group']
     with st.container(key='jc_categories', horizontal=True):
         for i, category in enumerate(('전체', *groups)):
-            st.button(category.split(' · ')[-1], key=f'jc_category_{i}', on_click=set_group, args=(category,),
+            st.button(category_label(category), key=f'jc_category_{i}', on_click=set_group, args=(category,),
                       type='primary' if group == category else 'secondary')
     query = st.session_state['jc_catalog_query']
     found = [(n, g, d) for n, (g, d) in items.items() if n in implemented
              and (group == '전체' or group == g) and matches(n, g, d, query)]
-    st.markdown('#### ' + ('검색 결과' if query else group + ' 계산기'))
+    st.markdown('#### ' + ('🔎 검색 결과' if query else category_label(group) + ' 계산기'))
     st.caption(f'{len(found)}개 결과')
     st.markdown('''<style>
     .st-key-jc_categories{padding:12px 0;border-bottom:1px solid #dce5ef;margin-bottom:10px}
@@ -160,7 +161,7 @@ def render_catalog(items, groups, implemented):
         subset = [(n, d) for n, g, d in section_items]
         if not subset:
             continue
-        st.markdown('##### ' + category)
+        st.markdown('##### ' + (category if category in ('이름 일치', '관련 계산기') else category_label(category)))
         for start in range(0, len(subset), 2):
             cols = st.columns(2)
             for col, (name, description) in zip(cols, subset[start:start + 2]):
@@ -168,7 +169,7 @@ def render_catalog(items, groups, implemented):
                 meta = profile(name)
                 with col.container(key=card_key(name)):
                     copy, actions = st.columns([2.35, 1], gap='small', vertical_alignment='center')
-                    icon = ('🧾','🌿','🛡️','📈','🏢','📑')[list(groups).index(items[name][0])]
+                    icon = category_emoji(items[name][0])
                     copy.markdown(
                         f'<div class="hw-calc-card-copy"><span class="hw-calc-card-icon" aria-hidden="true">{icon}</span>'
                         f'<div><div class="hw-calc-card-title">{escape(name.removesuffix("계산기"))}</div>'
@@ -181,7 +182,7 @@ def render_catalog(items, groups, implemented):
     if not found:
         st.info('일치하는 계산기가 없습니다. 다른 키워드를 입력하거나 분류를 전체로 바꿔보세요.')
     st.divider()
-    st.button('보험 기본·생활자금 계산 →', key=card_key('__basic__'), on_click=open_calculator, args=('__basic__',))
+    st.button('🧮 보험 기본·생활자금 계산 →', key=card_key('__basic__'), on_click=open_calculator, args=('__basic__',))
     last = st.session_state.get('jc_catalog_last')
     if last:
         st.markdown(f'<style>.st-key-{card_key(last)}[data-testid="stVerticalBlock"]{{border-color:#5584b2!important;box-shadow:0 0 0 2px #bcd3ea60!important}}</style>', unsafe_allow_html=True)

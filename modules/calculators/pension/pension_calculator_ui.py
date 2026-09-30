@@ -35,7 +35,7 @@ def run():
 
     input_panel, result_panel = work_panels("pension_calculator_ui")
     with input_panel:
-        st.caption("01 · 조건 입력")
+        st.caption("✍️ 01 · 조건 입력")
         with st.container(key="pension_plan"):
             st.markdown("#### 핵심 입력")
             with st.container(key="hw_required_group_pp_core"):
@@ -250,7 +250,7 @@ def run():
         _text, csv_data = build_exports("연금계산기", export_fields, list(saved.values()), result, stamp)
 
     with result_panel:
-        st.caption("02 · 계산 결과")
+        st.caption("✨ 02 · 계산 결과")
         st.caption("계산 시각: " + stamp + " · 입력 변경 후 계산하기를 눌러 결과를 갱신하세요.")
         customer, advisor = st.container(), st.expander("산출 내역 자세히 보기")
         with customer:

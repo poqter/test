@@ -1,6 +1,6 @@
 {
-  "count": 24,
-  "passed": 24,
+  "count": 27,
+  "passed": 27,
   "failed": 0,
   "checks": [
     {
@@ -75,6 +75,21 @@
     },
     {
       "name": "workspace_uses_external_link_button",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "calculator_link_has_no_hover_help",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "representative_result_prefers_money",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "calculator_category_visuals",
       "status": "PASS",
       "detail": ""
     },

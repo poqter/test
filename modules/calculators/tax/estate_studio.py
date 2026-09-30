@@ -86,8 +86,9 @@ def run():
     if not stored:return
     if stored[0]!=signature:st.info('입력 조건이 변경되었습니다. 다시 계산하면 결과와 다운로드가 표시됩니다.');return
     _,result,conditions,stamp=stored
-    st.divider();st.subheader('상속세·납부재원 결과')
-    for col,(label,value) in zip(st.columns(3),metrics(result,funding)):col.metric(label,value)
+    st.divider();st.subheader('✨ 상속세·납부재원 결과')
+    from modules.calculators.input_design import render_metrics
+    render_metrics(dict(metrics(result,funding)), 'estate')
     st.info(headline(result,funding))
     if funding is not None:st.table([{'납부재원':a,'금액':money(b)} for a,b in zip(['현금·예금','사망보험금','기타 자금','합계'],(*funding,sum(funding)))])
     st.markdown('**세액 계산 요약**');st.table([{'계산 단계':a,'금액':b} for a,b in summary_rows(result)])

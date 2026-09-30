@@ -173,6 +173,15 @@ def run() -> dict[str, Any]:
         link_events = [event for event in st._api.events if event["kind"] == "link_button"]
         link_ok = bool(link_events) and link_events[-1]["args"][1] == "https://example-calculator.streamlit.app" and link_events[-1]["kwargs"].get("disabled") is False
         check("workspace_uses_external_link_button", link_ok)
+        check("calculator_link_has_no_hover_help", bool(link_events) and link_events[-1]["kwargs"].get("help") is None)
+
+        from modules.calculators.input_design import _primary_metric_index
+        check(
+            "representative_result_prefers_money",
+            _primary_metric_index([("먼저 인출할 계좌", "일반 투자계좌"), ("기간 필요액", "720,000,000원")]) == 1,
+        )
+        from modules.calculators.visuals import category_label
+        check("calculator_category_visuals", category_label("개인 · 세금") == "🧾 세금")
 
         st.session_state.clear()
         st.session_state.update(password_correct=True, login_user="Admin", active_app="home")

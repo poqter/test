@@ -21,8 +21,9 @@ Streamlit Community Cloud에서 **Create app**을 선택하고 다음과 같이 
 - Branch: 테스트에 사용하는 동일 브랜치
 - Main file path: `calculator_app.py`
 - App URL: 원하는 Calculator 전용 주소
+- Advanced settings → Python version: **3.12**
 
-Calculator 앱에는 WORKSPACE의 `[passwords]` Secrets를 넣지 않아도 됩니다.
+Calculator 앱에는 WORKSPACE의 `[passwords]` Secrets를 넣지 않아도 됩니다. Python 3.12는 현재 고정된 pandas·PDF 라이브러리 조합과 맞추기 위한 배포 기준입니다.
 
 ### 2. 생성된 Calculator URL 확인
 

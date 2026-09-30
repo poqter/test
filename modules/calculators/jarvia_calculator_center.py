@@ -215,7 +215,8 @@ def run(run_legacy):
         return
     if active in ready:
         selected = active
-        st.subheader(selected)
+        from modules.calculators.visuals import calculator_title
+        st.subheader(calculator_title(selected, ITEMS[selected][0]))
         st.caption(ITEMS[selected][1])
         if selected in ('이익소각계산기','법인청산 세부담계산기'):
             from modules.calculators.corporate import profit_retirement; from modules.calculators.corporate import corporate_liquidation
@@ -469,9 +470,9 @@ def run(run_legacy):
                 _, _, output, formula = result
                 customer, advisor = st.tabs(['고객용 결과','설계사용 상세 계산'])
                 with customer:
-                    st.subheader(selected)
-                    for label, val in output.items():
-                        st.metric(label,val)
+                    st.subheader('✨ 계산 결과')
+                    from modules.calculators.input_design import render_metrics
+                    render_metrics(output, 'jc_general')
                     st.caption('입력한 조건에 따른 가정값입니다. 실제 수익이나 가입 결과를 보장하지 않습니다.')
                 with advisor:
                     st.markdown('**적용 조건**')

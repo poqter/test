@@ -14,7 +14,7 @@
       "name": "project_import_smoke",
       "status": "PASS",
       "returncode": 0,
-      "stdout": "{\n  \"count\": 149,\n  \"passed\": 149,\n  \"failed\": 0\n}",
+      "stdout": "{\n  \"count\": 150,\n  \"passed\": 150,\n  \"failed\": 0\n}",
       "stderr": ""
     },
     {
@@ -49,7 +49,7 @@
       "name": "architecture_validation",
       "status": "PASS",
       "returncode": 0,
-      "stdout": "{\n  \"count\": 24,\n  \"passed\": 24,\n  \"failed\": 0\n}",
+      "stdout": "{\n  \"count\": 27,\n  \"passed\": 27,\n  \"failed\": 0\n}",
       "stderr": ""
     },
     {

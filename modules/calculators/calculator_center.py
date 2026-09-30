@@ -92,11 +92,9 @@ def run_legacy(integrated=False):
         if result['token'] != token:
             st.warning('계산 조건이 변경되었습니다. 다시 계산하면 현재 조건의 결과와 다운로드가 표시됩니다.')
             return
-        st.subheader('계산 결과')
-        for label,value in formatted_results(result['values']):
-            with st.container(border=True):
-                st.caption(label)
-                st.subheader(value)
+        st.subheader('✨ 계산 결과')
+        from modules.calculators.input_design import render_metrics
+        render_metrics(dict(formatted_results(result['values'])), 'insurance_basics')
         with st.expander('이번 계산에 사용한 조건과 산식'):
             for label,value in result['inputs']: st.text(f'{label}: {value}')
             st.write(formula)

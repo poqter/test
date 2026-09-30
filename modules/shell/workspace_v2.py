@@ -40,7 +40,7 @@ def _launch_widget(app: AppSpec, label: str, *, key: str, primary: bool = False,
             label + " ↗",
             url or "https://example.invalid",
             key=key,
-            help=help_text or ("새 탭에서 " + app.label + " 열기"),
+            help=help_text,
             type="primary" if primary else "secondary",
             disabled=not bool(url),
             use_container_width=True,
@@ -214,7 +214,7 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
                         st.markdown(f'<div class="hw-tool-heading"><span class="hw-tool-symbol hw-icon-{tone}" aria-hidden="true">{icon}</span><h3>{html.escape(app.label)}</h3></div><p class="hw-dash-tool-desc">{html.escape(app.description)}</p>', unsafe_allow_html=True)
                         launched = _launch_widget(
                             app, app.label + " 열기 →", key="hw_home_launch_" + app.id,
-                            help_text=("새 탭에서 " + app.label + " 열기") if app.external_app_key else f"{app.label} 열기",
+                            help_text=None if app.external_app_key else f"{app.label} 열기",
                         )
                         if launched:
                             navigate(app.id, mode)

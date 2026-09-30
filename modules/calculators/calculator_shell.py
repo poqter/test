@@ -4,6 +4,7 @@ from __future__ import annotations
 import streamlit as st
 
 from modules.calculators.jarvia_calculator_center import GROUPS
+from modules.calculators.visuals import category_label
 
 
 def _show_catalog(group: str = "전체") -> None:
@@ -30,10 +31,10 @@ def render_sidebar() -> None:
         ):
             _show_catalog()
             st.rerun()
-        st.caption("업무 분류")
+        st.caption("🗂️ 업무 분류")
         current = st.session_state.get("jc_catalog_group", "전체")
         for index, group in enumerate(GROUPS):
-            label = group.split(" · ")[-1]
+            label = category_label(group)
             if st.button(
                 label,
                 key=f"calc_sidebar_group_{index}",
