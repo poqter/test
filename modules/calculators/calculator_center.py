@@ -26,11 +26,15 @@ _GROUP_VISUALS = {
 }
 
 # 만원 단위 입력 중 실제 보험료처럼 1만원 미만 단위가 자주 필요한 항목만
-# 0.01만원(100원) 단위 입력을 허용합니다. 나머지 금액은 정수 만원으로 통일합니다.
+# 0.01만원(100원) 단위까지 허용합니다. 정수값은 10.00이 아니라 10으로 표시합니다.
 _DECIMAL_MONEY_FIELDS = frozenset({
     ("total", "premium"),
     ("waiver", "premium"),
 })
+
+# Streamlit number_input은 printf 형식을 지원합니다. %g 계열을 사용하면
+# 10.00 → 10, 10.50 → 10.5, 10.25 → 10.25처럼 불필요한 0만 숨길 수 있습니다.
+_FLEXIBLE_NUMBER_FORMAT = "%.12g"
 
 
 @st.dialog("계산 가정과 입력 단위", width="large")
@@ -104,10 +108,14 @@ def _set_mode_inputs(kind: str, fields: list[tuple], *, example: bool) -> None:
     st.session_state.pop("a_review_token", None)
 
 
+def _format_compact_decimal(value: Decimal, *, grouped: bool = False) -> str:
+    """Hide only unnecessary trailing zeros while preserving up to 2 decimals."""
+    rendered = f"{value:,.2f}" if grouped else f"{value:.2f}"
+    return rendered.rstrip("0").rstrip(".")
+
+
 def _format_manwon(value: Decimal) -> str:
-    if value == value.to_integral_value():
-        return f"{int(value):,}만원"
-    return f"{value:,.2f}만원"
+    return f"{_format_compact_decimal(value, grouped=True)}만원"
 
 
 def _render_amount_words(won: Decimal) -> None:
@@ -136,8 +144,11 @@ def _render_input(entry: tuple, kind: str) -> tuple[object, str]:
                 min_value=float(low),
                 max_value=float(high),
                 step=0.01,
-                format="%.2f",
-                help="실제 보험료를 반영할 수 있도록 0.01만원(100원) 단위로 입력합니다.",
+                format=_FLEXIBLE_NUMBER_FORMAT,
+                help=(
+                    "기본 정수 금액은 소수점 없이 표시하고, 필요한 경우에만 "
+                    "0.01만원(100원) 단위까지 입력할 수 있습니다."
+                ),
             )
             raw = Decimal(str(value)).quantize(Decimal(".01"))
         else:
@@ -165,11 +176,11 @@ def _render_input(entry: tuple, kind: str) -> tuple[object, str]:
             min_value=float(low),
             max_value=float(high),
             step=0.1,
-            format="%.2f",
-            help="계산에 적용할 연간 가정값입니다.",
+            format=_FLEXIBLE_NUMBER_FORMAT,
+            help="정수 비율은 소수점 없이 표시하며, 필요한 경우 소수 비율을 입력할 수 있습니다.",
         )
-        raw = Decimal(str(value)).quantize(Decimal(".01"))
-        return raw / 100, f"{raw}%"
+        raw = Decimal(str(value)).quantize(Decimal(".01"), rounding=ROUND_HALF_UP)
+        return raw / 100, f"{_format_compact_decimal(raw)}%"
     value = field(
         "number_input",
         label,
