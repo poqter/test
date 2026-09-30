@@ -1,15 +1,15 @@
-"""Public, separately deployed entrypoint for the 80-calculator center."""
+"""Public, separately deployed entrypoint for the 88-calculator center."""
 from __future__ import annotations
 
 import streamlit as st
 
 from modules.calculators.calculator_shell import render_sidebar
-from modules.calculators.jarvia_calculator_center import ITEMS
+from modules.calculators.jarvia_calculator_center import ITEMS, ITEM_IDS
 from modules.calculators.calculator_theme import apply as apply_calculator_theme
 from modules.shared.ui_components import inject_global_styles
 
 st.set_page_config(
-    page_title="화랑 CALCULATOR",
+    page_title="종합 계산기 센터 (88개) | 화랑",
     page_icon="🧮",
     layout="wide",
     initial_sidebar_state="auto",
@@ -24,10 +24,11 @@ def _apply_calculator_deep_link() -> None:
         raw = None
     if isinstance(raw, (list, tuple)):
         raw = raw[-1] if raw else None
-    name = str(raw).strip() if raw else ""
-    if not name:
+    value = str(raw).strip() if raw else ""
+    if not value:
         return
-    if name not in ITEMS:
+    name = value if value in ITEMS else ITEM_IDS.get(value, "")
+    if not name:
         try:
             del st.query_params["calc"]
         except (AttributeError, KeyError, TypeError):
@@ -47,8 +48,6 @@ def main() -> None:
     with st.container(key="hw_calc_shell"):
         from modules.calculators.calculator_center import run
         run()
-    inject_global_styles()
-    apply_calculator_theme()
 
 
 if __name__ == "__main__":

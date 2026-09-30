@@ -255,8 +255,9 @@ def run():
         customer, advisor = st.container(), st.expander("산출 내역 자세히 보기")
         with customer:
             from modules.calculators.input_design import render_metrics
+            from modules.calculators.visuals import primary_result_labels
 
-            render_metrics(result.display(), "pp")
+            render_metrics(result.display(), "pp", primary_result_labels("연금계산기"))
             from modules.calculators.result_pdf import build_result_pdf, pdf_section_options
 
             pdf_options = pdf_section_options("pp_pdf_scope")

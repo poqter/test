@@ -1,6 +1,6 @@
 """Metadata-driven calculator input presentation.
 
-The profiles are generated from the 80-calculator usability review. Calculation
+The profiles cover the integrated 88-calculator usability review. Calculation
 engines and positional input contracts stay unchanged; this module only decides
 presentation order, grouping, short guidance, and conditionally visible fields.
 """

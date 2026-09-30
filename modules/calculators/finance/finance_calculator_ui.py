@@ -49,7 +49,15 @@ def run(name):
     is_tvm=name in ('수익률계산기','재무계산기','투자수익계산기')
     mode='future'
     if is_tvm:
-        mode=MODES[st.selectbox('계산할 항목',list(MODES),key=prefix+'_mode')]
+        mode_labels = list(MODES)
+        default_label = '필요 수익률' if name == '수익률계산기' else '미래 금액'
+        selected_mode = st.selectbox(
+            '계산할 항목',
+            mode_labels,
+            index=mode_labels.index(default_label),
+            key=prefix+'_mode',
+        )
+        mode = MODES[selected_mode]
     elif name=='현재가치계산기':
         mode=st.radio('현재가치 계산 방식',['미래 일시금','매년 정기 입금'],horizontal=True,key=prefix+'_mode')
     st.caption('금액은 만원 단위로 입력합니다. 입력값을 변경한 뒤 계산하기를 누르면 결과가 갱신됩니다.')
@@ -145,7 +153,8 @@ def render_result(name,result,calculated_on,args,prefix):
     with customer:
         st.subheader(name)
         from modules.calculators.input_design import render_metrics
-        render_metrics(display, prefix)
+        from modules.calculators.visuals import primary_result_labels
+        render_metrics(display, prefix, primary_result_labels(name))
         st.caption('입력한 수익률과 조건에 따른 예상치입니다.')
         from modules.calculators.result_pdf import build_result_pdf, pdf_section_options
         pdf_options = pdf_section_options(prefix+'_pdf_scope')

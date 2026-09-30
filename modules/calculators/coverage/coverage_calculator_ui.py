@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 import streamlit as st
 
 from modules.calculators.coverage.coverage_models import FIELDS, NAMES, calculate
-from modules.calculators.input_design import number_input
+from modules.calculators.input_design import number_input, uses_decimal_manwon, uses_won_precision
 from modules.calculators.structured_inputs import handled_indices, render as render_structured, state_keys as structured_state_keys
 from modules.calculators.ux_profiles import (
     active_condition_summary,
@@ -23,7 +23,7 @@ from modules.calculators.ux_profiles import (
 
 def _uses_won_precision(label: str) -> bool:
     """Match input_design.number_input's direct-won rule for per-unit values."""
-    return any(word in label for word in ("주당", "액면가", "행사가액"))
+    return uses_won_precision(label)
 
 
 def _widget_value(name: str, index: int, entry: tuple, *, example: bool) -> object:
@@ -47,11 +47,17 @@ def _set_inputs(name: str, entries: list[tuple], *, example: bool) -> None:
         base = f"cov_{name}_{index}"
         if unit == "원" and not _uses_won_precision(_label):
             value = Decimal(str(default if example else 0)) / 10_000
-            st.session_state[base + "_manwon_int"] = int(value.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+            if uses_decimal_manwon(_label):
+                st.session_state[base + "_manwon_decimal"] = float(value.quantize(Decimal(".01"), rounding=ROUND_HALF_UP))
+                st.session_state.pop(base + "_manwon_int", None)
+            else:
+                st.session_state[base + "_manwon_int"] = int(value.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+                st.session_state.pop(base + "_manwon_decimal", None)
             st.session_state.pop(base, None)
         else:
             st.session_state[base] = _widget_value(name, index, entry, example=example)
             st.session_state.pop(base + "_manwon_int", None)
+            st.session_state.pop(base + "_manwon_decimal", None)
     for key in structured_state_keys(name):
         st.session_state.pop(key, None)
     if structured_state_keys(name):
@@ -64,8 +70,12 @@ def _state_snapshot(name: str, entries: list[tuple]) -> dict[str, object]:
     for index, (label, default, unit, _maximum) in enumerate(entries):
         key = f"cov_{name}_{index}"
         if unit == "원" and not _uses_won_precision(label):
-            manwon = st.session_state.get(key + "_manwon_int")
-            result[label] = int(manwon) * 10_000 if manwon is not None else default
+            state_key = key + ("_manwon_decimal" if uses_decimal_manwon(label) else "_manwon_int")
+            manwon = st.session_state.get(state_key)
+            if manwon is None:
+                result[label] = default
+            else:
+                result[label] = int((Decimal(str(manwon)) * 10_000).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
         else:
             result[label] = st.session_state.get(key, default)
     return result
@@ -216,7 +226,8 @@ def run(name, fields=None, calculator=None, caption=None):
         with customer:
             st.subheader(name)
             from modules.calculators.input_design import render_metrics
-            render_metrics(display, "cov_" + name)
+            from modules.calculators.visuals import primary_result_labels
+            render_metrics(display, "cov_" + name, primary_result_labels(name))
             from modules.calculators.result_pdf import build_result_pdf, pdf_section_options
             pdf_options = pdf_section_options("cov_pdf_" + name)
             if any(pdf_options.values()):

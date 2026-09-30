@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from modules.calculators.jarvia_calculator_center import GROUPS
+from modules.calculators.jarvia_calculator_center import GROUPS, GROUP_COUNTS
 from modules.calculators.visuals import category_label
 
 
@@ -28,7 +28,7 @@ def render_sidebar() -> None:
             unsafe_allow_html=True,
         )
         if st.button(
-            "계산기 센터",
+            "종합 계산기 센터 (88개)",
             icon=":material/calculate:",
             key="calc_sidebar_home",
             type="primary" if not st.session_state.get("jc_open") else "secondary",
@@ -39,7 +39,7 @@ def render_sidebar() -> None:
         st.caption("🗂️ 업무 분류")
         current = st.session_state.get("jc_catalog_group", "전체")
         for index, group in enumerate(GROUPS):
-            label = category_label(group)
+            label = category_label(group, GROUP_COUNTS.get(group))
             if st.button(
                 label,
                 key=f"calc_sidebar_group_{index}",

@@ -30,7 +30,7 @@ def withdrawal(monthly,years,accounts,net=False):
   levy=gross*rate/100;received=gross-levy;left=max(D(0),left-(received if net else gross));total+=gross;tax+=levy
   rows.append({'순위':len(rows)+1,'계좌':name,'가정 실효세율 (%)':rate,'인출액':gross,'가정 세금':levy,'세후 조달액':received,'인출 후 잔액':balance-gross})
  first=next((r['계좌'] for r in rows if r['인출액']>0),'인출 없음')
- return FinanceResult({'먼저 인출할 계좌':first,'기간 필요액':need,'총 인출액':total,'가정 세금 합계':tax,'세후 조달액':total-tax,'부족액':left},'입력한 고정 실효세율 오름차순으로 배분; 세후 목표 모드는 인출액=필요액÷(1−실효세율)', ['입력값 기준의 정적 비교입니다. 실효세율은 인출액 전체 대비 예상 세금 비율이며 법정세율을 자동 적용하지 않습니다. 예적금 원금에 이자소득세율 15.4%를 그대로 입력하면 안 됩니다.','기본 세전 인출 목표 모드는 원본 비교 기준입니다. 세후 생활비 충족 여부는 세후 목표 모드를 선택하세요.','계좌 운용수익·물가·연금수령 한도·연도별 과세·건강보험료·계좌 내 법정 인출순서는 반영하지 않습니다. 실제 세금 최적화 결과를 의미하지 않습니다.'],rows)
+ return FinanceResult({'먼저 인출할 계좌':first,'기간 필요액':need,'총 인출액':total,'가정 세금 합계':tax,'세후 조달액':total-tax,'부족액':left},'입력한 고정 실효세율 오름차순으로 배분; 세후 목표 모드는 인출액=필요액÷(1−실효세율)', ['입력값 기준의 정적 비교입니다. 실효세율은 인출액 전체 대비 예상 세금 비율이며 법정세율을 자동 적용하지 않습니다. 예적금 원금에 이자소득세율 15.4%를 그대로 입력하면 안 됩니다.','기본 모드는 세전 인출 목표를 비교합니다. 세후 생활비 충족 여부를 보려면 세후 목표 모드를 선택하세요.','계좌 운용수익·물가·연금수령 한도·연도별 과세·건강보험료·계좌 내 법정 인출순서는 반영하지 않습니다. 실제 세금 최적화 결과를 의미하지 않습니다.'],rows)
 
 def run_order():
  import streamlit as st

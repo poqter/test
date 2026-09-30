@@ -1,4 +1,4 @@
-"""Four retirement modes, independently reconciled with observed JARVIA cases."""
+"""Four retirement planning modes with independently verified scenarios."""
 from modules.calculators.finance.finance_models import D, FinanceResult, num, period, coefficients
 
 MODES=('필요 은퇴자금','필요 월 저축액','가능 월 인출액','자금 지속기간')

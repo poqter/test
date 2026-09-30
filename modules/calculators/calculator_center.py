@@ -1,4 +1,9 @@
-"""Insurance basics and living-fund calculators with the shared Calculator UX."""
+"""Integrated insurance basics and living-fund calculators.
+
+These calculators are first-class entries in the 88-item Hwarang catalog. The
+calculation engines receive won and decimal rates; this module only manages the
+shared Streamlit input, result, and export experience.
+"""
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -14,16 +19,20 @@ from modules.calculators.calculator_core import calculate
 from modules.calculators.legacy_calculator_exports import export_bytes, formatted_results
 from modules.consultation.consultation_documents import fingerprint
 from modules.shared.session_store import commit_input, input_revision, save_result
-from modules.shared.ui_components import page_header
 from modules.shared.workspace_tools import field
 
 
-_GROUP_VISUALS = {
-    "전체": "🧮",
-    "보험 기본": "🧾",
-    "생활과 보장": "🛡️",
-    "미래 준비": "🎯",
+QUICK_CALCULATORS: dict[str, str] = {
+    "보험나이계산기": "보험나이",
+    "다음 상령일계산기": "다음 상령일",
+    "총 납입보험료계산기": "총 납입보험료",
+    "납입면제 효과계산기": "납입면제 효과",
+    "가족 생활자금계산기": "가족 생활자금",
+    "교육자금계산기": "교육자금",
+    "물가 반영 필요자금계산기": "물가 반영 필요자금",
+    "부채 정리자금계산기": "부채 정리자금",
 }
+QUICK_CALCULATOR_NAMES = tuple(QUICK_CALCULATORS)
 
 # 만원 단위 입력 중 실제 보험료처럼 1만원 미만 단위가 자주 필요한 항목만
 # 0.01만원(100원) 단위까지 허용합니다. 정수값은 10.00이 아니라 10으로 표시합니다.
@@ -31,9 +40,6 @@ _DECIMAL_MONEY_FIELDS = frozenset({
     ("total", "premium"),
     ("waiver", "premium"),
 })
-
-# Streamlit number_input은 printf 형식을 지원합니다. %g 계열을 사용하면
-# 10.00 → 10, 10.50 → 10.5, 10.25 → 10.25처럼 불필요한 0만 숨길 수 있습니다.
 _FLEXIBLE_NUMBER_FORMAT = "%.12g"
 
 
@@ -47,29 +53,28 @@ def assumptions_dialog(formula: str, assumptions: str) -> None:
 
 
 def run() -> None:
-    from modules.calculators.jarvia_calculator_center import run as run_new
+    """Render the complete 88-calculator center."""
+    from modules.calculators.jarvia_calculator_center import run as run_integrated
 
-    run_new(run_legacy=lambda: run_legacy(integrated=True))
+    run_integrated()
 
 
-def _format_group(group: str) -> str:
-    return f"{_GROUP_VISUALS.get(group, '🧮')} {group}"
+def _scope(kind: str) -> str:
+    return f"quick_calculator.{kind}"
 
 
 def _mode_core_text(kind: str, fields: list[tuple]) -> str:
     if kind in ("age", "change"):
         return "생년월일, 기준일"
     labels = [label for _key, label, field_type, _default, _low, _high in fields if field_type != "rate"]
-    if len(labels) <= 4:
-        return ", ".join(labels)
-    return ", ".join(labels[:4]) + " 등"
+    return ", ".join(labels if len(labels) <= 4 else labels[:4]) + ("" if len(labels) <= 4 else " 등")
 
 
-def _set_widget_value(key: str, value: object) -> None:
+def _set_widget_value(page: str, key: str, value: object) -> None:
     """Update the durable value and the current field widget in one callback."""
     st.session_state[key] = value
     st.session_state["_ws_" + key] = value
-    commit_input("quick_calculators", key, value)
+    commit_input(page, key, value)
 
 
 def _money_allows_decimals(kind: str, key: str) -> bool:
@@ -90,10 +95,11 @@ def _normalize_numeric_widget_state(widget_key: str, *, decimals: bool) -> None:
 
 
 def _set_mode_inputs(kind: str, fields: list[tuple], *, example: bool) -> None:
+    page = _scope(kind)
     if kind in ("age", "change"):
         birth = date(1990, 1, 1) if example else date.today()
-        _set_widget_value("a_birth", birth)
-        _set_widget_value("a_reference", date.today())
+        _set_widget_value(page, f"a_{kind}_birth", birth)
+        _set_widget_value(page, f"a_{kind}_reference", date.today())
     else:
         for key, _label, field_type, default, _low, _high in fields:
             decimal_value = field_type == "rate" or (
@@ -103,13 +109,11 @@ def _set_mode_inputs(kind: str, fields: list[tuple], *, example: bool) -> None:
                 value = float(default) if decimal_value else int(default)
             else:
                 value = 0.0 if decimal_value else 0
-            _set_widget_value(f"a_{kind}_{key}", value)
-    st.session_state.pop("a_calculation", None)
-    st.session_state.pop("a_review_token", None)
+            _set_widget_value(page, f"a_{kind}_{key}", value)
+    st.session_state.pop(f"a_calculation_{kind}", None)
 
 
 def _format_compact_decimal(value: Decimal, *, grouped: bool = False) -> str:
-    """Hide only unnecessary trailing zeros while preserving up to 2 decimals."""
     rendered = f"{value:,.2f}" if grouped else f"{value:.2f}"
     return rendered.rstrip("0").rstrip(".")
 
@@ -129,7 +133,7 @@ def _render_amount_words(won: Decimal) -> None:
     )
 
 
-def _render_input(entry: tuple, kind: str) -> tuple[object, str]:
+def _render_input(entry: tuple, kind: str, page: str) -> tuple[object, str]:
     key, label, field_type, default, low, high = entry
     widget_key = f"a_{kind}_{key}"
     if field_type == "money":
@@ -141,6 +145,7 @@ def _render_input(entry: tuple, kind: str) -> tuple[object, str]:
                 label + " (만원)",
                 widget_key,
                 float(default),
+                page=page,
                 min_value=float(low),
                 max_value=float(high),
                 step=0.01,
@@ -150,13 +155,14 @@ def _render_input(entry: tuple, kind: str) -> tuple[object, str]:
                     "0.01만원(100원) 단위까지 입력할 수 있습니다."
                 ),
             )
-            raw = Decimal(str(value)).quantize(Decimal(".01"))
+            raw = Decimal(str(value)).quantize(Decimal(".01"), rounding=ROUND_HALF_UP)
         else:
             value = field(
                 "number_input",
                 label + " (만원)",
                 widget_key,
                 int(default),
+                page=page,
                 min_value=int(low),
                 max_value=int(high),
                 step=1,
@@ -173,6 +179,7 @@ def _render_input(entry: tuple, kind: str) -> tuple[object, str]:
             label,
             widget_key,
             float(default),
+            page=page,
             min_value=float(low),
             max_value=float(high),
             step=0.1,
@@ -186,6 +193,7 @@ def _render_input(entry: tuple, kind: str) -> tuple[object, str]:
         label,
         widget_key,
         default,
+        page=page,
         min_value=low,
         max_value=high,
         step=1,
@@ -200,38 +208,37 @@ def _condition_summary(inputs: list[tuple[str, str]]) -> str:
     return " · ".join(shown)
 
 
-def run_legacy(integrated: bool = False) -> None:
-    if not integrated:
-        page_header(
-            "종합계산기(80개)",
-            "종합계산기(80개)",
-            "목적 선택 → 조건 입력 → 계산·검토 → 자료 내려받기",
-            "QC",
-        )
-    else:
-        st.subheader("🧮 보험 기본·생활자금 계산")
-        st.caption("보험나이·보험료·생활자금·미래 준비를 빠르게 계산합니다.")
+def _age_output(mode: str, birth: date, reference: date) -> dict[str, str]:
+    from modules.calculators.quick_calculators import age_result
 
-    merged = {"필요 보장액", "소득 공백·비상자금", "목표 달성 월 저축액", "미래 목표자금", "은퇴 생활자금"} if integrated else set()
-    with st.container(border=True, key="insurance_basics_selector"):
-        st.caption("계산 항목 선택")
-        group_column, mode_column = st.columns([1, 2], gap="medium")
-        group = group_column.selectbox(
-            "계산 분류",
-            ["전체", "보험 기본", "생활과 보장", "미래 준비"],
-            key="a_group",
-            format_func=_format_group,
-        )
-        choices = [
-            name
-            for name, spec in MODES.items()
-            if name not in merged and (group == "전체" or spec[1] == group)
-        ]
-        if st.session_state.get("a_mode") not in choices:
-            st.session_state["a_mode"] = choices[0]
-        mode = mode_column.selectbox("계산 항목", choices, key="a_mode")
+    age, insurance_age, change = age_result(birth, reference)
+    days = (change - reference).days
+    if mode == "다음 상령일":
+        return {
+            "다음 상령일": change.isoformat(),
+            "다음 변경일까지": f"{days}일",
+            "현재 만 나이": f"{age}세",
+            "현재 보험나이": f"{insurance_age}세",
+        }
+    return {
+        "신규 가입 보험나이": f"{insurance_age}세",
+        "만 나이": f"{age}세",
+        "다음 상령일": change.isoformat(),
+        "다음 변경일까지": f"{days}일",
+    }
+
+
+def render_quick_calculator(calculator_name: str) -> None:
+    """Render one of the eight integrated quick calculators."""
+    mode = QUICK_CALCULATORS.get(calculator_name)
+    if mode is None:
+        st.error("지원하지 않는 간편 계산기입니다.")
+        return
 
     kind, _group, fields, formula, assumptions = MODES[mode]
+    page = _scope(kind)
+    result_key = f"a_calculation_{kind}"
+
     st.markdown(
         f"**먼저 입력할 내용** · {_mode_core_text(kind, fields)}  \n"
         f"<span style='color:#61758b;font-size:13px'>{escape(assumptions)}</span>",
@@ -258,7 +265,7 @@ def run_legacy(integrated: bool = False) -> None:
 
     from modules.calculators.input_design import input_panels
 
-    input_panel, result_panel = input_panels("insurance_basics")
+    input_panel, result_panel = input_panels("insurance_basics_" + kind)
     submitted = False
     calculation_succeeded = False
     with input_panel:
@@ -266,7 +273,7 @@ def run_legacy(integrated: bool = False) -> None:
         with st.container(key="insurance_basics_" + kind):
             values: dict[str, object] = {}
             display_values: dict[str, str] = {}
-            stable_key = sha256(mode.encode("utf-8")).hexdigest()[:12]
+            stable_key = sha256(calculator_name.encode("utf-8")).hexdigest()[:12]
             with st.container(key="hw_required_group_" + stable_key):
                 st.markdown("**핵심 입력**")
                 st.markdown(
@@ -274,19 +281,24 @@ def run_legacy(integrated: bool = False) -> None:
                     unsafe_allow_html=True,
                 )
                 if kind in ("age", "change"):
+                    birth_key = f"a_{kind}_birth"
+                    reference_key = f"a_{kind}_reference"
                     birth = field(
                         "date_input",
                         "생년월일",
-                        "a_birth",
+                        birth_key,
                         date(1990, 1, 1),
+                        page=page,
                         min_value=date(1900, 1, 1),
                         max_value=date(2100, 12, 31),
                     )
+                    reference_label = "신규 가입 가정 기준일" if mode == "보험나이" else "기준일"
                     reference = field(
                         "date_input",
-                        "신규 가입 가정 기준일",
-                        "a_reference",
+                        reference_label,
+                        reference_key,
                         date.today(),
+                        page=page,
                         min_value=date(1900, 1, 1),
                         max_value=date(2100, 12, 31),
                     )
@@ -296,7 +308,7 @@ def run_legacy(integrated: bool = False) -> None:
                     for entry in fields:
                         if entry[2] == "rate":
                             continue
-                        value, display = _render_input(entry, kind)
+                        value, display = _render_input(entry, kind, page)
                         values[entry[0]] = value
                         display_values[entry[1]] = display
 
@@ -305,7 +317,7 @@ def run_legacy(integrated: bool = False) -> None:
                 with st.expander("가정 조정", expanded=False):
                     st.caption("수익률·물가 등 결과에 적용되는 가정입니다.")
                     for entry in rate_fields:
-                        value, display = _render_input(entry, kind)
+                        value, display = _render_input(entry, kind, page)
                         values[entry[0]] = value
                         display_values[entry[1]] = display
 
@@ -320,32 +332,29 @@ def run_legacy(integrated: bool = False) -> None:
                 + "</div>",
                 unsafe_allow_html=True,
             )
-            if st.button("산식·가정 자세히 보기", key="a_help", use_container_width=True):
+            if st.button("산식·가정 자세히 보기", key=f"a_help_{kind}", use_container_width=True):
                 assumptions_dialog(formula, assumptions)
-            token = fingerprint([mode, values, input_revision("quick_calculators")])
-            submitted = st.button("계산하기", key="a_calculate", type="primary", use_container_width=True)
+            token = fingerprint([calculator_name, values, input_revision(page)])
+            submitted = st.button(
+                "계산하기",
+                key=f"a_calculate_{kind}",
+                type="primary",
+                use_container_width=True,
+            )
             if submitted:
-                st.session_state.pop("a_review_token", None)
-                st.session_state.pop("a_calculation", None)
+                st.session_state.pop(result_key, None)
                 try:
-                    if kind in ("age", "change"):
-                        from modules.calculators.quick_calculators import age_result
-
-                        age, insurance, change = age_result(values["birth"], values["reference"])
-                        output = {
-                            "만 나이": f"{age}세",
-                            "신규 가입 보험나이": f"{insurance}세",
-                            "다음 상령일": change.isoformat(),
-                            "다음 변경일까지": f"{(change - values['reference']).days}일",
-                        }
-                    else:
-                        output = calculate(kind, values)
+                    output = (
+                        _age_output(mode, values["birth"], values["reference"])
+                        if kind in ("age", "change")
+                        else calculate(kind, values)
+                    )
                 except ValueError as exc:
                     st.error(str(exc))
                 else:
                     stamp = datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d %H:%M")
                     result = {
-                        "title": mode,
+                        "title": calculator_name,
                         "values": output,
                         "inputs": inputs,
                         "formula": formula,
@@ -354,11 +363,11 @@ def run_legacy(integrated: bool = False) -> None:
                         "prepared_at": stamp,
                         "token": token,
                     }
-                    st.session_state["a_calculation"] = result
-                    save_result("quick_calculators", result, rule_version="stage4.2")
+                    st.session_state[result_key] = result
+                    save_result(page, result, rule_version="quick.88.1")
                     calculation_succeeded = True
 
-        result = st.session_state.get("a_calculation")
+        result = st.session_state.get(result_key)
         if not result:
             return
         if result["token"] != token:
@@ -369,18 +378,20 @@ def run_legacy(integrated: bool = False) -> None:
         st.caption("✨ 02 · 계산 결과")
         stamp = result.get("prepared_at", result["prepared_on"])
         st.caption("아래 결과와 다운로드는 " + stamp + "에 계산한 입력값 기준입니다. 입력을 바꾸면 계산하기를 다시 눌러주세요.")
-        st.subheader(mode)
+        st.subheader(calculator_name)
         from modules.calculators.input_design import render_metrics
+        from modules.calculators.visuals import primary_result_labels
 
-        render_metrics(dict(formatted_results(result["values"])), "insurance_basics")
+        render_metrics(
+            dict(formatted_results(result["values"])),
+            "insurance_basics_" + kind,
+            primary_result_labels(calculator_name),
+        )
 
-        # 다른 계산기와 동일하게 PDF에 포함할 내용을 먼저 선택합니다.
-        # 보험 기본·생활자금 계산은 기존 dict 결과를 공통 PDF 모델로 변환해
-        # 핵심 결과·입력 내용·산출 근거를 선택적으로 출력합니다.
         from modules.calculators.finance.finance_models import FinanceResult
         from modules.calculators.result_pdf import build_result_pdf, pdf_section_options
 
-        pdf_options = pdf_section_options("insurance_basics_pdf_scope")
+        pdf_options = pdf_section_options(f"insurance_basics_{kind}_pdf_scope")
         if any(pdf_options.values()):
             pdf_result = FinanceResult(
                 metrics=result["values"],
@@ -389,7 +400,7 @@ def run_legacy(integrated: bool = False) -> None:
             )
             try:
                 pdf_data = build_result_pdf(
-                    mode,
+                    calculator_name,
                     result["inputs"],
                     pdf_result,
                     stamp,
@@ -401,9 +412,9 @@ def run_legacy(integrated: bool = False) -> None:
                 st.download_button(
                     "결과 PDF 저장",
                     pdf_data,
-                    f"hwarang_calculator_{kind}.pdf",
+                    f"hwarang_{kind}_result.pdf",
                     "application/pdf",
-                    key="a_export_pdf",
+                    key=f"a_export_pdf_{kind}",
                     type="primary",
                     icon=":material/download:",
                     use_container_width=True,
@@ -429,13 +440,13 @@ def run_legacy(integrated: bool = False) -> None:
                 st.download_button(
                     "상세 계산 Excel 저장",
                     excel_data,
-                    f"hwarang_calculator_{kind}.xlsx",
+                    f"hwarang_{kind}_detail.xlsx",
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    key="a_export_xlsx",
+                    key=f"a_export_xlsx_{kind}",
                     icon=":material/download:",
                     use_container_width=True,
                 )
 
     from modules.calculators.input_design import jump_to_result
 
-    jump_to_result(submitted and calculation_succeeded, "insurance_basics")
+    jump_to_result(submitted and calculation_succeeded, "insurance_basics_" + kind)

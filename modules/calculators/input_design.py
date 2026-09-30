@@ -25,11 +25,21 @@ def amount_words(won):
     return ' '.join(parts) + '원'
 
 
+def uses_won_precision(label):
+    """Keep unit-price inputs in won instead of converting them to manwon."""
+    return any(word in label for word in ('주당', '액면가', '행사가액'))
+
+
+def uses_decimal_manwon(label):
+    """Allow 100-won precision for recurring insurance-premium inputs."""
+    return any(word in label for word in ('월 보험료', '보험료 월납', '월납 보험료'))
+
+
 def number_input(label, **kwargs):
     if not re.search(r'(?<!만)원\)', label):
         return st.number_input(label, **kwargs)
-    # Per-share prices must retain won precision; only totals use integer manwon.
-    if any(word in label for word in ('주당', '액면가', '행사가액')):
+    # Per-unit values keep won precision. Monthly premiums use decimal manwon.
+    if uses_won_precision(label):
         kwargs['step'] = 1
         kwargs['format'] = '%d'
         for option in ('value', 'min_value', 'max_value'):
@@ -38,9 +48,13 @@ def number_input(label, **kwargs):
         return st.number_input(label, **kwargs)
     old_key = kwargs.pop('key', None)
     base = old_key or 'jc_money_' + hashlib.sha256(label.encode()).hexdigest()[:12]
-    key = base + '_manwon_int'
+    decimal_manwon = uses_decimal_manwon(label)
+    key = base + ('_manwon_decimal' if decimal_manwon else '_manwon_int')
     def rounded(value):
-        return int((Decimal(str(value))/10000).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+        raw = Decimal(str(value)) / 10000
+        if decimal_manwon:
+            return float(raw.quantize(Decimal('.01'), rounding=ROUND_HALF_UP))
+        return int(raw.quantize(Decimal('1'), rounding=ROUND_HALF_UP))
     for option in ('value', 'min_value', 'max_value', 'step'):
         if option in kwargs and kwargs[option] is not None:
             raw = Decimal(str(kwargs[option])) / 10000
@@ -51,15 +65,27 @@ def number_input(label, **kwargs):
                 from decimal import ROUND_FLOOR
                 kwargs[option] = int(raw.to_integral_value(rounding=ROUND_FLOOR))
             else: kwargs[option] = rounded(kwargs[option])
-    kwargs['step'] = max(1,kwargs.get('step',1))
-    kwargs['format'] = '%d'
+    if decimal_manwon:
+        kwargs['step'] = 0.01
+        kwargs['format'] = '%.12g'
+    else:
+        kwargs['step'] = max(1,kwargs.get('step',1))
+        kwargs['format'] = '%d'
     if key not in st.session_state:
-        if base + '_manwon' in st.session_state:
-            st.session_state[key] = int(Decimal(str(st.session_state[base+'_manwon'])).quantize(Decimal('1'),rounding=ROUND_HALF_UP))
-        elif old_key and old_key in st.session_state:
-            st.session_state[key] = rounded(st.session_state[old_key])
+        legacy_keys = (base + '_manwon_decimal', base + '_manwon_int', base + '_manwon')
+        for legacy_key in legacy_keys:
+            if legacy_key in st.session_state:
+                legacy_value = st.session_state[legacy_key]
+                if legacy_key.endswith('_manwon_int') or legacy_key.endswith('_manwon'):
+                    st.session_state[key] = float(legacy_value) if decimal_manwon else int(legacy_value)
+                else:
+                    st.session_state[key] = float(legacy_value) if decimal_manwon else int(Decimal(str(legacy_value)).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+                break
+        else:
+            if old_key and old_key in st.session_state:
+                st.session_state[key] = rounded(st.session_state[old_key])
     v = st.number_input(label.replace('원)', '만원)'), key=key, **kwargs)
-    won = int(v) * 10000
+    won = int((Decimal(str(v)) * 10000).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
     st.markdown(f'<div data-hw-money-label="{escape(label.replace("원)", "만원)"), quote=True)}" style="font-size:12px;color:#426e98;text-align:right;margin-top:-8px">{amount_words(won)}</div>', unsafe_allow_html=True)
     return won
 
@@ -102,8 +128,12 @@ def input_panels(key):
     return inputs,result_context()
 
 
-def _primary_metric_index(items):
-    """Prefer the first monetary result; otherwise keep the engine's first result."""
+def _primary_metric_index(items, preferred_labels=()):
+    """Select an audited primary label, then fall back to the first monetary value."""
+    labels = [label for label, _value in items]
+    for preferred in preferred_labels or ():
+        if preferred in labels:
+            return labels.index(preferred)
     for index, (_label, value) in enumerate(items):
         text = str(value).replace(" ", "")
         if any(unit in text for unit in ("조원", "억원", "만원", "원")):
@@ -111,12 +141,12 @@ def _primary_metric_index(items):
     return 0
 
 
-def render_metrics(display, prefix):
+def render_metrics(display, prefix, preferred_labels=()):
     """Render one unmistakable representative result and compact support values."""
     items = list(display.items())
     if not items:
         return
-    primary_index = _primary_metric_index(items)
+    primary_index = _primary_metric_index(items, preferred_labels)
     primary_label, primary_value = items[primary_index]
     with st.container(key=prefix + '_hero_result'):
         st.markdown('<div class="hw-primary-result-kicker">✨ 대표 계산 결과</div>', unsafe_allow_html=True)

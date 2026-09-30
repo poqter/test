@@ -9,20 +9,24 @@ from modules.calculators.ux_profiles import profile
 from modules.calculators.visuals import category_emoji, category_label, purpose_label
 
 PURPOSES = (
-    ('보험료가 부담돼요', '보험료 부담'), ('노후를 준비해요', '노후 생활비'),
-    ('자녀에게 물려줘요', '자녀 증여'), ('치료비가 걱정돼요', '치료비'),
-    ('대표 보수를 정해요', '급여 배당'), ('목돈을 모으고 싶어요', '목돈 저축'),
+    ('보험료·계약을 계산해요', '보험료 계약 상령일'),
+    ('치료·생활자금을 준비해요', '치료비 생활자금 보장'),
+    ('노후를 준비해요', '노후 은퇴 연금'),
+    ('목돈을 모으고 싶어요', '목돈 저축 투자'),
+    ('세금을 확인해요', '개인 부동산 세금'),
+    ('상속·증여를 준비해요', '상속 증여 승계'),
+    ('대표 전략을 검토해요', '대표 급여 배당 법인'),
+    ('사업 실무를 점검해요', '사업 법인 실무 세액공제'),
 )
 RULES = (
-    ('보험료 부담 비싸 줄이고 적정', ('적정보험료', '정기·종신', '기회비용')),
-    ('노후 생활비 은퇴 연금', ('은퇴', '연금')),
-    ('자녀 증여 물려 상속', ('증여', '상속', '승계')),
-    ('치료비 암 뇌 심장 질병 아프', ('중대질병', '의료비', '간병', '자녀보험')),
-    ('급여 배당 대표 보수 월급', ('급여vs배당', '근로소득', '4대보험')),
-    ('목돈 저축 모으', ('목표자금', '복리', '미래가치', '투자수익', '수익률')),
-    ('퇴직 퇴사', ('퇴직', '은퇴크레바스')),
-    ('집 매매 팔 부동산', ('양도', '주택')),
-    ('가지급 빌린', ('가지급', '인정이자')),
+    ('보험료 계약 상령 가입', ('보험나이', '상령일', '총 납입보험료', '납입면제', '적정보험료', '정기·종신')),
+    ('치료 생활자금 보장 질병 간병', ('가족 생활자금', '교육자금', '부채 정리자금', '비상자금', '사망보장', '중대질병', '간병', '자녀보험', '의료비')),
+    ('노후 은퇴 연금 퇴직', ('연금', '은퇴', '퇴직금', '크레바스', '3층연금')),
+    ('목돈 저축 투자 복리 재무', ('목표자금', '복리', '미래가치', '투자수익', '수익률', '현재가치', '기회비용', 'ISA')),
+    ('개인 부동산 세금 소득', ('양도소득', '근로소득', '종합소득', '임대소득', '금융소득', '주택담보', '4대보험', '취득세', '해외금융')),
+    ('상속 증여 승계 물려', ('상속', '증여', '비상장주식', '가업승계', '명의신탁', '차등배당', '특정법인', '지분 매입', '승계 재원')),
+    ('대표 급여 배당 법인 전략', ('인정이자', '급여vs배당', '개인사업자·법인', '임원퇴직금', '가지급금', '이익소각', '법인청산', '지주회사', '합병', '키맨', '특허권', '법인 부동산', '특수관계자', '법인보험')),
+    ('사업 법인 실무 세액공제', ('창업중소기업', '성실신고', '법인세', '부가세', '업무용승용차', '접대비', '고용증대', '연구인력', '직무발명', '이월결손금', '주식매수선택권', '사내근로복지기금', '법인 4대보험', '상여금', 'DC부담금', '정책자금')),
 )
 
 def normalize(text):
@@ -32,11 +36,12 @@ def initials(text):
     return ''.join('ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ'[(ord(c)-44032)//588]
                    if 44032 <= ord(c) < 55204 else c for c in text)
 
-def matches(name, group, description, query):
+def matches(name, group, description, item_tags, query):
     q = normalize(query)
     if not q:
         return True
-    if q in normalize(name + ' ' + group + ' ' + description) or q in initials(normalize(name)):
+    haystack = normalize(' '.join((name, group, description, *item_tags)))
+    if q in haystack or q in initials(normalize(name)):
         return True
     return any(any(k in q for k in keys.split()) and any(n in name for n in names)
                for keys, names in RULES)
@@ -45,9 +50,10 @@ def card_key(name):
     return 'jc_card_' + hashlib.sha256(name.encode()).hexdigest()[:12]
 
 
-def calculator_deep_link(name):
-    # Relative URL keeps the link valid for production, test and local Calculator apps.
-    return '?calc=' + quote(name, safe='')
+def calculator_deep_link(name, ids=None):
+    """Build a stable relative deep link; fall back to the current name for compatibility."""
+    value = (ids or {}).get(name, name)
+    return '?calc=' + quote(value, safe='')
 
 
 def clear_calculator_query():
@@ -72,7 +78,11 @@ def back_to_catalog():
 
 
 def save_query():
-    st.session_state['jc_catalog_query'] = st.session_state.get('jc_search', '')
+    query = st.session_state.get('jc_search', '')
+    st.session_state['jc_catalog_query'] = query
+    if query.strip():
+        # Search is global across all 88 tools; category filters remain for browsing only.
+        st.session_state['jc_catalog_group'] = '전체'
 
 
 def set_query(query):
@@ -120,7 +130,18 @@ def scroll_memory(last, restore):
     </script>'''.replace('RESTORE', json.dumps(restore)).replace('SELECTOR', json.dumps(selector)), height=1)
 
 
-def render_catalog(items, groups, implemented):
+def render_catalog(items, groups, implemented, *, tags=None, ids=None):
+    tags = tags or {}
+    ids = ids or {}
+    group_counts = {
+        group: sum(
+            1
+            for name, (item_group, _description) in items.items()
+            if name in implemented and item_group == group
+        )
+        for group in groups
+    }
+    total_count = sum(group_counts.values())
     st.markdown('#### 🔎 계산기 검색')
     st.caption('계산기 이름 또는 고객의 상황으로 검색하세요.')
     st.session_state.setdefault('jc_catalog_query', st.session_state.get('jc_search', ''))
@@ -137,13 +158,24 @@ def render_catalog(items, groups, implemented):
                       type='tertiary')
     st.caption('🗂️ 업무 분류')
     group = st.session_state['jc_catalog_group']
-    with st.container(key='jc_categories', horizontal=True):
-        for i, category in enumerate(('전체', *groups)):
-            st.button(category_label(category), key=f'jc_category_{i}', on_click=set_group, args=(category,),
-                      type='primary' if group == category else 'secondary')
+    categories = ('전체', *groups)
+    with st.container(key='jc_categories'):
+        for start in range(0, len(categories), 3):
+            columns = st.columns(3, gap='small')
+            for offset, (column, category) in enumerate(zip(columns, categories[start:start + 3])):
+                index = start + offset
+                count = total_count if category == '전체' else group_counts.get(category, 0)
+                column.button(
+                    category_label(category, count),
+                    key=f'jc_category_{index}',
+                    on_click=set_group,
+                    args=(category,),
+                    type='primary' if group == category else 'secondary',
+                    use_container_width=True,
+                )
     query = st.session_state['jc_catalog_query']
     found = [(n, g, d) for n, (g, d) in items.items() if n in implemented
-             and (group == '전체' or group == g) and matches(n, g, d, query)]
+             and (group == '전체' or group == g) and matches(n, g, d, tags.get(n, ()), query)]
     st.markdown('#### ' + ('🔎 검색 결과' if query else category_label(group) + ' 계산기'))
     st.caption(f'{len(found)}개 결과')
     st.markdown('''<style>
@@ -157,7 +189,6 @@ def render_catalog(items, groups, implemented):
     .st-key-jc_search input{background:transparent!important;color:#203a58!important;min-height:44px!important}
     .st-key-jc_search input::placeholder{color:#8395a8!important;opacity:1!important}
     .st-key-jc_search_clear button{min-height:48px!important;border:1px solid #c9d6e3!important;border-radius:11px!important}
-    .st-key-jc_categories{padding:12px 0;border-bottom:1px solid #dce5ef;margin-bottom:10px}
     [class*="st-key-jc_card_"][data-testid="stVerticalBlock"]{background:#fff;border:1px solid #dce5ef;border-radius:14px;padding:20px;transition:border-color .18s,box-shadow .18s}
     [class*="st-key-jc_card_"][data-testid="stVerticalBlock"]:hover{border-color:#9cb6d0;box-shadow:0 4px 14px #18395c0a}
     .hw-calc-card-copy{display:flex;align-items:flex-start;gap:12px;padding:5px 0}
@@ -177,14 +208,22 @@ def render_catalog(items, groups, implemented):
     [class*="st-key-jc_actions_"] [data-testid="stMarkdownContainer"] p{margin:0!important;width:100%!important}
     .st-key-jc_purposes button{font-size:12px!important;min-height:28px!important;padding:3px 9px!important;border-radius:16px!important;background:#edf2f7!important;color:#526982!important}
     .st-key-jc_purposes button p{font-size:12px!important}
-    .st-key-jc_categories button{min-height:42px!important;font-weight:650!important}
+    .st-key-jc_categories{padding:2px 0 10px;border-bottom:1px solid #dce5ef;margin-bottom:10px}
+    .st-key-jc_categories [data-testid="stHorizontalBlock"]{gap:.55rem!important}
+    [class*="st-key-jc_category_"] button{min-height:48px!important;font-weight:650!important;white-space:normal!important;line-height:1.35!important}
+    [class*="st-key-jc_category_"] button:focus-visible,.hw-calc-new-tab:focus-visible{outline:3px solid rgba(45,106,213,.28)!important;outline-offset:2px!important}
     @media(max-width:768px){
+        .st-key-jc_categories [data-testid="stHorizontalBlock"]{flex-wrap:wrap!important}
+        .st-key-jc_categories [data-testid="stColumn"]{width:auto!important;min-width:0!important;flex:1 1 calc(50% - .55rem)!important}
         [class*="st-key-jc_card_"]>[data-testid="stHorizontalBlock"]{flex-direction:column!important}
         [class*="st-key-jc_card_"]>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]{width:100%!important;flex:1 1 100%!important}
         [class*="st-key-jc_actions_"][data-testid="stVerticalBlock"]{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px!important;border-left:0;border-top:1px solid #edf1f6;padding:12px 0 0;justify-content:stretch}
         [class*="st-key-jc_card_"] button,.hw-calc-new-tab{min-height:44px!important}
     }
-    @media(max-width:480px){[class*="st-key-jc_actions_"][data-testid="stVerticalBlock"]{grid-template-columns:1fr!important}}
+    @media(max-width:480px){
+        .st-key-jc_categories [data-testid="stColumn"]{flex-basis:100%!important}
+        [class*="st-key-jc_actions_"][data-testid="stVerticalBlock"]{grid-template-columns:1fr!important}
+    }
     @media(prefers-reduced-motion:reduce){[class*="st-key-jc_card_"]{transition:none!important}.st-key-jc_search [data-baseweb="input"]{transition:none!important}}
     </style>''', unsafe_allow_html=True)
     if query:
@@ -226,14 +265,12 @@ def render_catalog(items, groups, implemented):
                             use_container_width=True,
                         )
                         st.markdown(
-                            f'<a class="hw-calc-new-tab" href="{calculator_deep_link(name)}" '
-                            'target="_blank" rel="noopener noreferrer">새 탭으로 열기 ↗</a>',
+                            f'<a class="hw-calc-new-tab" href="{calculator_deep_link(name, ids)}" '
+                            f'aria-label="{escape(name)} 새 탭으로 열기" target="_blank" rel="noopener noreferrer">새 탭으로 열기 ↗</a>',
                             unsafe_allow_html=True,
                         )
     if not found:
         st.info('일치하는 계산기가 없습니다. 다른 키워드를 입력하거나 분류를 전체로 바꿔보세요.')
-    st.divider()
-    st.button('🧮 보험 기본·생활자금 계산 →', key=card_key('__basic__'), on_click=open_calculator, args=('__basic__',))
     last = st.session_state.get('jc_catalog_last')
     if last:
         st.markdown(f'<style>.st-key-{card_key(last)}[data-testid="stVerticalBlock"]{{border-color:#5584b2!important;box-shadow:0 0 0 2px #bcd3ea60!important}}</style>', unsafe_allow_html=True)

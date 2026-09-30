@@ -1,16 +1,16 @@
-"""JARVIA's family-corp card actually implements Article45-3 work allocation."""
+"""Article 45-5 specific-corporation and Article 45-3 work-allocation gift calculations."""
 from modules.calculators.finance.finance_models import D, num, FinanceResult
 from modules.calculators.tax.personal_tax_models import AS_OF
 from modules.calculators.tax.gift_tax import ordinary_tax
 from modules.calculators.corporate import specific_corp_transaction as specific
 NAME='특정법인 증여의제계산기';M=10**12;KINDS=('중소기업','중견기업','그 밖의 기업');YN=('아니요','예')
-FIELDS={NAME:[('적용 제도','일감몰아주기 (45조의3)','선택',('일감몰아주기 (45조의3)','특정법인 거래 (45조의5)')),
+FIELDS={NAME:[('적용 제도','특정법인 거래 (45조의5)','선택',('특정법인 거래 (45조의5)','일감몰아주기 (45조의3)')),
  ('기업 규모',KINDS[0],'선택',KINDS),('조정 후 특수관계법인 거래비율',60,'%',100),('직접 보유 지분율',40,'%',100),
  ('과세제외·세무조정 반영 세후영업이익',500000000,'원',M),('조정 후 특수관계법인 매출액',3000000000,'원',M),
  ('지배주주·친족 및 기업 규모·조정 수치 확인','아니요','선택',YN),('간접 출자관계 있음','아니요','선택',YN),
  ('해당 기간 수혜법인 배당소득',0,'원',M),('사업연도 말 수혜법인 배당가능이익',0,'원',M),('배당 기간·금액 요건 확인','아니요','선택',YN),('기한 내 신고','예','선택',YN)]}
 FIELDS[NAME] += specific.FIELDS
-def allocation(regime='일감몰아주기 (45조의3)',kind=KINDS[0],trade=60,share=40,profit=500000000,sales=3000000000,confirmed='아니요',indirect='아니요',dividend=0,available=0,div_confirmed='아니요',timely='예', *specific_values):
+def allocation(regime='특정법인 거래 (45조의5)',kind=KINDS[0],trade=60,share=40,profit=500000000,sales=3000000000,confirmed='아니요',indirect='아니요',dividend=0,available=0,div_confirmed='아니요',timely='예', *specific_values):
  if regime=='특정법인 거래 (45조의5)':return specific.transaction(*specific_values,timely=timely)
  if regime!='일감몰아주기 (45조의3)':raise ValueError('적용 제도를 선택하세요.')
  if kind not in KINDS or any(x not in YN for x in (confirmed,indirect,div_confirmed,timely)):raise ValueError('계산 조건을 확인하세요.')
@@ -20,7 +20,7 @@ def allocation(regime='일감몰아주기 (45조의3)',kind=KINDS[0],trade=60,sh
  if trade>0 and sales==0:raise ValueError('특수관계 거래비율에 대응하는 매출액을 입력하세요.')
  if indirect=='예':raise ValueError('간접출자는 출자경로별 공제 순서와 과세제외매출 조정이 필요해 아직 지원하지 않습니다.')
  if dividend and (div_confirmed!='예' or available<=0 or share<=0):raise ValueError('배당공제는 적격 기간·배당가능이익·지분을 확인한 뒤 계산합니다.')
- notes=[f'법령 대조 기준일 {AS_OF} · 상증세법45조의3·47·55·56·69, 시행령34조의3. 원본 카드의 실제 기능인 일감몰아주기를 계산합니다. 45조의5 특정법인 무상·저가거래 계산이 아닙니다.',
+ notes=[f'법령 대조 기준일 {AS_OF} · 상증세법45조의3·47·55·56·69, 시행령34조의3. 일감몰아주기 증여의제를 계산합니다. 제45조의5 특정법인 무상·저가거래 계산과는 구분됩니다.',
  '단일 수혜법인·직접출자 주주·전체 사업연도 기준입니다. 지배주주/친족 여부, 규모, 과세제외매출과 세후영업이익을 확인한 수치를 사용합니다. 매출에 임의 이익률을 곱해 영업이익을 추정하지 않습니다.',
  '중소: 거래50%·보유10% 초과. 중견: 거래40%·보유10% 초과. 그 밖: 보유3% 초과이고 거래30% 초과 또는 거래20% 초과·특수관계 매출1천억원 초과.',
  '과세 진입기준과 계산 시 차감 비율은 다릅니다. 중견은 거래20%·보유5%를 차감하고, 그 밖의 기업은 거래5%만 차감합니다.',

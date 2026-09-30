@@ -40,7 +40,7 @@ def calculate(name,values):
         metrics={'추가 필요자금':max(D(0),present-cover),'월 본인부담액':burden,'현재가치 필요액':present}
         parts={'간병 시작 시점 필요액':start,'기존 보장 현재가치':cover}
         formula='월 비용 × 본인부담률의 월말 현금흐름을 실질할인율로 할인; 간병 시작까지 추가 할인; 기존 월 보장의 현재가치를 차감'
-        notes=['운용수익률 연 4%, 물가상승률 연 2.5% 가정. 본인부담률은 전체 비용에 적용하는 시나리오 입력값입니다.','기존 월 보장도 같은 실질할인율로 할인하는 원본 비교 모형입니다. 실제 정액 급부·비급여·보장기간은 계약별로 확인해야 합니다.']
+        notes=['운용수익률 연 4%, 물가상승률 연 2.5% 가정. 본인부담률은 전체 비용에 적용하는 시나리오 입력값입니다.','기존 월 보장도 같은 실질할인율로 할인하는 비교 모형입니다. 실제 정액 급부·비급여·보장기간은 계약별로 확인해야 합니다.']
     elif name==NAMES[3]:
         diagnosis,daily,days,surgery,education,insured=v;hospital=daily*days;total=diagnosis+hospital+surgery+education
         metrics={'추가 필요보장액':max(D(0),total-insured),'총 필요보장':total,'입원비 합계':hospital}
@@ -54,7 +54,7 @@ def calculate(name,values):
         units={'보장성 보험료 비중':'%','전체 보험료 비중':'%'}
         parts={'10% 참고금액':low,'12% 참고금액':high,'보장성 보험료':risk,'저축성 보험료':saving}
         formula='보장성 보험료 ÷ 월 소득 × 100; 참고금액 − 보장성 보험료'
-        notes=['10%·12%는 비교용 가정이며 법정 기준이나 가입 권고가 아닙니다. 지출·부채·보장내용을 함께 판단해야 합니다.','원본의 남은 여력은 10% 구간에서 기준이 바뀝니다. 화랑은 두 기준의 차액을 각각 표시합니다.']
+        notes=['10%·12%는 비교용 가정이며 법정 기준이나 가입 권고가 아닙니다. 지출·부채·보장내용을 함께 판단해야 합니다.','남은 여력은 10%·12% 두 비교 기준의 차액을 각각 표시합니다.']
     elif name==NAMES[5]:
         whole,term,years,coverage,rate=v;n=int(years)*12;delta=whole-term;monthly=max(D(0),delta);r=(1+rate/100)**(D(1)/12)-1
         end=fv(D(0),monthly,r,n)

@@ -88,7 +88,8 @@ def run():
     _,result,conditions,stamp=stored
     st.divider();st.subheader('✨ 상속세·납부재원 결과')
     from modules.calculators.input_design import render_metrics
-    render_metrics(dict(metrics(result,funding)), 'estate')
+    from modules.calculators.visuals import primary_result_labels
+    render_metrics(dict(metrics(result,funding)), 'estate', primary_result_labels("상속세계산기"))
     st.info(headline(result,funding))
     if funding is not None:st.table([{'납부재원':a,'금액':money(b)} for a,b in zip(['현금·예금','사망보험금','기타 자금','합계'],(*funding,sum(funding)))])
     st.markdown('**세액 계산 요약**');st.table([{'계산 단계':a,'금액':b} for a,b in summary_rows(result)])
