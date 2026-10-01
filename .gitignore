@@ -19,3 +19,8 @@ venv/
 
 # External font binaries are intentionally not bundled.
 assets/fonts/
+
+# Runtime/test artifacts are not source releases.
+artifacts/
+tests/*_results.json
+*.log

@@ -1,6 +1,7 @@
 """Validate before existing parsers without changing the UploadedFile object."""
 import streamlit as st
-from modules.shared.validators import ValidationError, validate_upload
+from modules.shared.validators import ValidationError, validate_upload, MAX_FILE_BYTES, MAX_SESSION_UPLOAD_BYTES
+from modules.shared.runtime_cache import cached, digest_bytes, clear_scope
 
 
 def other_upload_bytes(current, values):
@@ -20,10 +21,18 @@ def other_upload_bytes(current, values):
 
 def guarded_upload(*args, **kwargs):
     uploaded = st.file_uploader(*args, **kwargs)
+    scope = "upload:" + str(kwargs.get("key") or (args[0] if args else "file"))
     if uploaded is None:
+        clear_scope(scope)
         return None
     try:
-        validate_upload(uploaded.name, uploaded, session_total=other_upload_bytes(uploaded, list(st.session_state.values())))
+        content = uploaded.getvalue()
+        total = other_upload_bytes(uploaded, list(st.session_state.values()))
+        if len(content) > MAX_FILE_BYTES or total + len(content) > MAX_SESSION_UPLOAD_BYTES:
+            raise ValidationError("UPLOAD_TOO_LARGE", "업로드 처리 한도를 넘었습니다.")
+        from pathlib import Path
+        signature = "validation-v2:" + Path(uploaded.name).suffix.lower() + ":" + digest_bytes(content)
+        cached(scope, signature, lambda: validate_upload(uploaded.name, content))
     except ValidationError as error:
         st.error('파일을 처리할 수 없습니다. '+str(error))
         st.info('빈 파일·손상 여부와 형식을 확인한 뒤 다시 선택하세요. 파일당 처리 한도는 20MB입니다.')

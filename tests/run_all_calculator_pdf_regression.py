@@ -1,77 +1,76 @@
-"""Generate and parse one result PDF for every calculator in the 88-item catalog."""
+"""PDF contents from the actual 88 recorded inputs and calculated outputs.
+
+Text/snapshot checks and renderer bounds are separate from human visual review.
+Every section combination is generated; a parseable header alone is not PASS.
+"""
 from __future__ import annotations
-
-import io
-import json
-import sys
+import io,itertools,json,re,sys,unicodedata,os
 from pathlib import Path
-from typing import Any
-
+from decimal import Decimal
 from pypdf import PdfReader
-
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from tests.run_calculator_regression import CATALOG_NAMES, _discover, _special_cases, _validate_result
+ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
+from tests.streamlit_stub import install
+install()
+from tests.run_calculator_regression import CATALOG_NAMES,_discover,_special_cases
 from modules.calculators.result_pdf import build_result_pdf
+from modules.shared.report_fonts import pdf_text
 
+def normalized(text):return re.sub(r'\s+','',unicodedata.normalize('NFC',str(text)))
+def input_text(value):
+    if value is None:return '미적용'
+    if isinstance(value,bool):return '예' if value else '아니오'
+    if isinstance(value,(int,float,Decimal)):return format(value,',')
+    if isinstance(value,str) and re.fullmatch(r'-?\d+(?:\.\d+)?',value):return format(Decimal(value),',')
+    return str(value)
 
-def _validate_pdf(payload: bytes) -> tuple[int, int]:
-    if not isinstance(payload, (bytes, bytearray)) or not payload.startswith(b"%PDF"):
-        raise AssertionError("PDF signature missing")
-    reader = PdfReader(io.BytesIO(payload))
-    if not reader.pages:
-        raise AssertionError("PDF has no pages")
-    return len(payload), len(reader.pages)
-
-
-def run() -> dict[str, Any]:
-    discovered = _discover()
-    special = _special_cases()
-    results: list[dict[str, Any]] = []
+def run():
+    discovered,special=_discover(),_special_cases()
+    fixtures=json.loads((ROOT/'tests/fixtures/engine_baseline.json').read_text())['cases']
+    rows=[];combination_count=0;pages_total=0
+    evidence=os.environ.get('HW_PDF_EVIDENCE_DIR')
+    if evidence:Path(evidence).mkdir(parents=True,exist_ok=True)
     for name in CATALOG_NAMES:
-        source = ""
         try:
-            if name in special:
-                function, source = special[name]
-                result = function()
-                inputs = [("검증 시나리오", "기본·대표 조건")]
-            else:
-                calculate, values, source = discovered[name]
-                result = calculate(name, values)
-                inputs = [("검증 입력 수", len(values)), ("계산 모듈", source)]
-            _validate_result(result)
-            payload = build_result_pdf(name, inputs, result, "2026-09-30 23:50")
-            byte_count, page_count = _validate_pdf(payload)
-        except Exception as exc:
-            results.append({
-                "name": name,
-                "status": "FAIL",
-                "source": source,
-                "bytes": 0,
-                "pages": 0,
-                "error": f"{type(exc).__name__}: {exc}",
-            })
-        else:
-            results.append({
-                "name": name,
-                "status": "PASS",
-                "source": source,
-                "bytes": byte_count,
-                "pages": page_count,
-                "error": "",
-            })
-    passed = sum(item["status"] == "PASS" for item in results)
-    return {"count": len(results), "passed": passed, "failed": len(results) - passed, "results": results}
-
-
-if __name__ == "__main__":
-    report = run()
-    output = ROOT / "tests" / "all_calculator_pdf_regression_results.json"
-    output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps({key: report[key] for key in ("count", "passed", "failed")}, ensure_ascii=False, indent=2))
-    for item in report["results"]:
-        if item["status"] == "FAIL":
-            print("FAIL", item["name"], item["source"], item["error"])
-    raise SystemExit(0 if report["failed"] == 0 else 1)
+            result=special[name][0]() if name in special else discovered[name][0](name,discovered[name][1])
+            from modules.calculators.calculator_center import QUICK_CALCULATORS
+            from modules.calculators.calculator_catalog import MODES
+            if name in QUICK_CALCULATORS:
+                spec=MODES[QUICK_CALCULATORS[name]]
+                result.formula=spec[3];result.assumptions=[spec[4]]
+            inputs=[(v['label']+(' ('+v['unit']+')' if v['unit'] else ''),v['value']) for v in fixtures[name]['inputs']]
+            assert inputs,'actual input fixture required'
+            for flags in itertools.product((False,True),repeat=3):
+                if not any(flags):continue
+                for enlarged in ((False,True) if flags[0] else (False,)):
+                    payload=build_result_pdf(name,inputs,result,'2026-10-01 09:34',include_results=flags[0],include_inputs=flags[1],include_basis=flags[2],enlarge_results=enlarged)
+                    assert payload.startswith(b'%PDF')
+                    reader=PdfReader(io.BytesIO(payload));assert reader.pages
+                    text=normalized('\n'.join(page.extract_text() or '' for page in reader.pages))
+                    assert normalized(pdf_text(name)) in text
+                    assert 'CALCULATIONREPORT' not in text
+                    assert '계산시각' not in text
+                    assert '01계산' not in text and '02계산' not in text and '03산출' not in text
+                    if flags[2]:
+                        assert '산출근거및적용조건' in text
+                    if flags[0]:
+                        assert '계산결과' in text
+                        for label,value in result.display().items():
+                            assert normalized(pdf_text(value)) in text, 'missing displayed result: '+label
+                    if flags[1]:
+                        assert '계산에사용한입력' in text
+                        for label,value in inputs:
+                            assert normalized(pdf_text(label)) in text,'missing input label: '+label
+                            expected_value = normalized(pdf_text(input_text(value)))
+                            # Customer PDFs may suppress a redundant '(원)' rendering when the
+                            # same amount is already shown in 만원. Raw numeric fixtures remain exact.
+                            assert expected_value in text,'missing input value: '+label
+                    if flags[0] and flags[1]:
+                        assert text.index('계산에사용한입력') < text.index('계산결과')
+                    combination_count+=1;pages_total+=len(reader.pages)
+                    if evidence and flags==(True,True,True) and not enlarged:
+                        (Path(evidence)/(fixtures[name]['id']+'.pdf')).write_bytes(payload)
+            rows.append({'name':name,'status':'PASS'})
+        except Exception as exc:rows.append({'name':name,'status':'FAIL','detail':f'{type(exc).__name__}: {exc}'})
+    return {'scope':'actual_inputs_and_output_text_all_section_combinations','count':len(rows),'passed':sum(r['status']=='PASS' for r in rows),'variants':combination_count,'pages':pages_total,'results':rows}
+if __name__=='__main__':
+    report=run();print(json.dumps(report,ensure_ascii=False,indent=2));raise SystemExit(0 if report['count']==report['passed'] else 1)

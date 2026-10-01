@@ -99,6 +99,17 @@ def main() -> None:
     active = normalize_route(st.session_state.get("active_app"), role)
     st.session_state["active_app"] = active
     render_sidebar(permitted, navigate, logout, NOTICE)
+    from modules.shared.build_info import BUILD_ID
+    with st.sidebar:
+        st.caption("버전 " + BUILD_ID)
+        if role == "Admin":
+            settings_open = st.toggle("운영 설정", key="hw_admin_settings_open")
+        else:
+            settings_open = False
+    if settings_open:
+        from modules.shared.organization_ui import render as render_settings
+        render_settings()
+        return
     if active == "home":
         render_home(permitted, navigate, NOTICE)
         return

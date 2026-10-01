@@ -11,6 +11,10 @@ def inject_global_styles() -> None:
     inject_signature_styles()
     from modules.shared.task_theme import inject_task_styles
     inject_task_styles()
+    from modules.shared.input_states import inject_input_state_styles
+    inject_input_state_styles()
+    from modules.shared.design_tokens import CONTROL_CSS
+    st.markdown("<style>" + CONTROL_CSS + "</style>", unsafe_allow_html=True)
 
 
 def page_header(category: str, title: str, description: str, icon: str) -> None:

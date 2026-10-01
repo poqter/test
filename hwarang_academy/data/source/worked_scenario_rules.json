@@ -1,0 +1,1513 @@
+{
+  "version": "1.1.0",
+  "scenarios": [
+    {
+      "scenario_id": "A01-S01",
+      "source_record": {
+        "scenario_id": "A01-S01",
+        "name": "소개받은 고객에게 첫 연락",
+        "facts": {
+          "customer": "가상 고객 A",
+          "contact_source": "소개 사실만 전달됨",
+          "permission": "통화·후속 연락의 동의는 별도 확인",
+          "time_available_minutes": 2
+        },
+        "public": [
+          "소개 사실을 들었다는 점"
+        ],
+        "hidden": [
+          "오늘 가능한 시간",
+          "관심 분야",
+          "재연락 의향"
+        ],
+        "opening": "소개해 주신 분 얘기는 들었는데, 어떤 일인가요?",
+        "mission": "역할과 용건을 짧게 밝히고 통화 또는 후속 연락 범위를 합의합니다.",
+        "good": "소개로 연락드린 화랑의 상담사입니다. 지금 잠깐 통화 괜찮으실까요? 원하시는 검토가 있는지 먼저 여쭙고 싶습니다.",
+        "adequate": "소개받고 연락드렸습니다. 보험 상담 가능하실까요?",
+        "risky": "소개해 주신 분이 다 말씀하셨으니 오늘 바로 만나시면 됩니다.",
+        "reason": "소개 사실과 고객의 연락·상담 동의를 구분합니다. 고객이 거절하면 종료도 적정 수행입니다.",
+        "branches": [
+          {
+            "when": "통화 가능 여부 확인",
+            "customer": "지금 이 분 정도는 괜찮아요.",
+            "effect": "시간 정보 공개"
+          },
+          {
+            "when": "역할·목적을 분명하게 설명하고 관심 질문",
+            "customer": "가입한 보험을 한번 확인하는 정도는 궁금해요.",
+            "effect": "관심 범위 공개"
+          },
+          {
+            "when": "고객이 연락을 원치 않는다고 말함",
+            "customer": "지금은 필요 없어요. 다시 연락은 안 주셔도 됩니다.",
+            "effect": "중단 의사 기록; 존중한 종료를 적정 수행으로 처리"
+          }
+        ],
+        "endpoints": [
+          "허락받은 일정·연락 수단 합의",
+          "명확한 거절과 연락 중단 존중"
+        ],
+        "review_needed": [
+          "소개자의 실제 동의·정보 제공 범위 관련 회사 절차"
+        ]
+      },
+      "new_branch_rules": [
+        {
+          "branch_id": "A01.01",
+          "trigger_intents": [
+            "CT01",
+            "CT02"
+          ],
+          "special_trigger": null,
+          "guard": "시작·소개 경로 사실 일치",
+          "response_id": "R.A01.01",
+          "effect": "역할·목적 질문",
+          "commit_required": true
+        },
+        {
+          "branch_id": "A01.02",
+          "trigger_intents": [
+            "CT03",
+            "CT04"
+          ],
+          "special_trigger": null,
+          "guard": "대화 허락 질문·시간 슬롯 있음",
+          "response_id": "R.A01.02",
+          "effect": "시간 공개",
+          "commit_required": true
+        },
+        {
+          "branch_id": "A01.03",
+          "trigger_intents": [
+            "CT05",
+            "DS01"
+          ],
+          "special_trigger": null,
+          "guard": "역할·목적 설명 후 관심 질문",
+          "response_id": "R.A01.03",
+          "effect": "관심 범위 공개",
+          "commit_required": true
+        },
+        {
+          "branch_id": "A01.04",
+          "trigger_intents": [
+            "RL06"
+          ],
+          "special_trigger": null,
+          "guard": "자료 요청 전에 목적 설명",
+          "response_id": "R.A01.04",
+          "effect": "자료 허용 아직 미확정",
+          "commit_required": true
+        },
+        {
+          "branch_id": "A01.05",
+          "trigger_intents": [
+            "EV09"
+          ],
+          "special_trigger": null,
+          "guard": "동의 범위를 물음",
+          "response_id": "R.A01.05",
+          "effect": "자료전달 거절의 허용 경로",
+          "commit_required": true
+        },
+        {
+          "branch_id": "A01.06",
+          "trigger_intents": [
+            "NX01",
+            "CT10"
+          ],
+          "special_trigger": null,
+          "guard": "관심 확인 후 후속 연락 질문",
+          "response_id": "R.A01.06",
+          "effect": "고객 먼저 연락·상담사 연락 미허용",
+          "commit_required": true
+        },
+        {
+          "branch_id": "A01.07",
+          "trigger_intents": [
+            "NX04"
+          ],
+          "special_trigger": null,
+          "guard": "고객 먼저 연락 조건의 정확한 재확인",
+          "response_id": "R.A01.07",
+          "effect": "마무리 합의",
+          "commit_required": true
+        },
+        {
+          "branch_id": "A01.08",
+          "trigger_intents": [],
+          "special_trigger": "RISK:CR05",
+          "guard": "소개=고객 동의로 간주하는 실제 제안",
+          "response_id": "R.A01.08",
+          "effect": "동의 경계 질문",
+          "commit_required": true
+        },
+        {
+          "branch_id": "A01.09",
+          "trigger_intents": [],
+          "special_trigger": "EVENT:refusal",
+          "guard": "시나리오의 연락중단 변형이 활성",
+          "response_id": "R.A01.09",
+          "effect": "중단 의사",
+          "commit_required": true
+        },
+        {
+          "branch_id": "A01.10",
+          "trigger_intents": [
+            "RL10",
+            "NX08"
+          ],
+          "special_trigger": null,
+          "guard": "고객 연락중단 이후 존중",
+          "response_id": "R.A01.10",
+          "effect": "적정 종료",
+          "commit_required": true
+        }
+      ],
+      "modes": [
+        "GUIDE",
+        "COACH",
+        "SOLO",
+        "ASSESSMENT"
+      ],
+      "scope_note": "SOURCE_V1 원본 사실/미션/예시는 그대로 보관. NEW_V1_1은 이번 규칙 구체화이며 별도 검수 대상.",
+      "readiness": {
+        "branch_specification": "draft_complete",
+        "language_classifier": "not_implemented",
+        "browser_execution": "not_run",
+        "specialized_document_pack": "not_required_for_conversation_only",
+        "formal_assessment": "blocked_pending_review"
+      },
+      "pilot_evidence_contract": [
+        {
+          "criterion_id": "Q1",
+          "intent_candidates": [
+            "CT03",
+            "DS01"
+          ],
+          "full_evidence_gate": "통화 가능 여부와 고객 관심을 구체적으로 질문",
+          "alternative_or_limit": "관심 질문까지 고객이 거절하면 CT03+RL10의 적정 종료 경로",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "L2",
+          "intent_candidates": [
+            "EV02"
+          ],
+          "full_evidence_gate": "고객이 말한 2분 한도와 관심 범위를 정확히 반영",
+          "alternative_or_limit": "고객 거절이면 중단 범위를 정확히 확인",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "N1",
+          "intent_candidates": [
+            "DS01",
+            "DS02"
+          ],
+          "full_evidence_gate": "가입 여부보다 고객이 원하는 검토 범위를 확인",
+          "alternative_or_limit": "고객 무관심이면 상담 필요 없음이라는 의사 확인",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "E2",
+          "intent_candidates": [
+            "CT01",
+            "CT02",
+            "CT05"
+          ],
+          "full_evidence_gate": "본인·소개 경로·연락 목적을 사실 범위 안에서 설명",
+          "alternative_or_limit": "소개 관계를 사전 동의로 확장하지 않음",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "F2",
+          "intent_candidates": [
+            "RL04",
+            "RL02"
+          ],
+          "full_evidence_gate": "선택권을 밝히고 동의 범위 안에서 대화",
+          "alternative_or_limit": "명확한 거절이면 RL10으로 즉시 범위 제한",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "X3",
+          "intent_candidates": [
+            "NX04",
+            "NX08"
+          ],
+          "full_evidence_gate": "허락받은 후속 행동 또는 연락중단을 정확히 마무리",
+          "alternative_or_limit": "일정 미확정은 미정으로 남김; 강제 일정 없음",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        }
+      ]
+    },
+    {
+      "scenario_id": "C07-S01",
+      "source_record": {
+        "scenario_id": "C07-S01",
+        "name": "보험료 부담의 실제 원인 찾기",
+        "facts": {
+          "customer": "47세 남성 가상 고객 B",
+          "job": "직장인",
+          "total_monthly_premium_won": 430000,
+          "burdensome_contract": "종신보험",
+          "burdensome_contract_premium_won": 200000,
+          "burden_trigger": "주택대출 상환액 증가",
+          "preference": "기존 보장을 이해한 뒤 필요한 것은 유지"
+        },
+        "public": [
+          "47세 직장인",
+          "보험료 부담으로 상담 신청"
+        ],
+        "hidden": [
+          "월 보험료 43만원",
+          "종신보험 20만원",
+          "대출 상환 증가",
+          "해지 자체가 목적은 아님"
+        ],
+        "opening": "요즘 보험료가 너무 많이 나가는 것 같아요.",
+        "mission": "총액·부담 계약·부담 계기·유지하고 싶은 조건을 파악하고 자료 확인에 합의합니다.",
+        "good": "현재 전체 보험료는 어느 정도이고, 그중 가장 부담되는 계약은 어떤 것인지부터 확인해도 될까요?",
+        "adequate": "보험료가 많이 나가시나 보네요.",
+        "risky": "그럼 종신보험부터 없애고 새로 가입하시면 됩니다.",
+        "reason": "금액만 묻는 것과 실제 원인을 묻는 것을 구분합니다. 먼저 공감한 응답은 나쁜 답이 아니라 후속 질문이 필요한 답입니다.",
+        "branches": [
+          {
+            "when": "전체 보험료 질문",
+            "customer": "전체로는 한 달에 사십삼만 원 나가요.",
+            "effect": "total_premium 공개"
+          },
+          {
+            "when": "어떤 계약이 부담인지 질문",
+            "customer": "종신보험이 하나 있는데 그것만 이십만 원 정도예요.",
+            "effect": "burdensome_contract 공개"
+          },
+          {
+            "when": "부담을 느낀 계기 질문",
+            "customer": "최근 대출 상환액이 늘어서 고정지출이 부담돼요.",
+            "effect": "부담 원인 공개"
+          },
+          {
+            "when": "확인 전 즉시 해지 권유",
+            "customer": "그걸 없애면 필요한 보장까지 없어지는 건 아닌가요?",
+            "effect": "경계 연출 증가; 회복 질문 기회"
+          },
+          {
+            "when": "고객 목표 확인",
+            "customer": "다 없애려는 건 아니고, 필요한 건 남기고 싶어요.",
+            "effect": "유지 선호 공개"
+          },
+          {
+            "when": "자료 확인 동의와 다음 행동 제안",
+            "customer": "네, 증권을 먼저 확인하고 비교해 주세요.",
+            "effect": "자료 확인 동의; 일정은 추가 합의"
+          }
+        ],
+        "endpoints": [
+          "부담 원인 요약을 고객이 확인하고 자료 검토 합의",
+          "고객이 원치 않으면 자료 제공 없이 확인된 범위와 한계 정리"
+        ],
+        "review_needed": [
+          "실제 상품·실제 건강정보는 사용하지 않음; 해지·전환 교육 문구 콘텐츠 검수"
+        ]
+      },
+      "new_branch_rules": [
+        {
+          "branch_id": "C07.01",
+          "trigger_intents": [
+            "RL01"
+          ],
+          "special_trigger": null,
+          "guard": "보험료 부담 발언에 연결",
+          "response_id": "R.C07.01",
+          "effect": "확인된 불편 연결",
+          "commit_required": true
+        },
+        {
+          "branch_id": "C07.02",
+          "trigger_intents": [
+            "DS13"
+          ],
+          "special_trigger": null,
+          "guard": "전체 보험료 질문·known",
+          "response_id": "R.C07.02",
+          "effect": "전체 월보험료 공개",
+          "commit_required": true
+        },
+        {
+          "branch_id": "C07.03",
+          "trigger_intents": [
+            "DS14"
+          ],
+          "special_trigger": null,
+          "guard": "부담계약 질문·known",
+          "response_id": "R.C07.03",
+          "effect": "부담계약·해당 월보험료 공개",
+          "commit_required": true
+        },
+        {
+          "branch_id": "C07.04",
+          "trigger_intents": [
+            "EV01"
+          ],
+          "special_trigger": null,
+          "guard": "이미 금액 공개·확실성 질문",
+          "response_id": "R.C07.04",
+          "effect": "고객 진술 금액 재확인; 문서 검증은 별도",
+          "commit_required": true
+        },
+        {
+          "branch_id": "C07.05",
+          "trigger_intents": [
+            "DS15"
+          ],
+          "special_trigger": null,
+          "guard": "부담 계기 질문",
+          "response_id": "R.C07.05",
+          "effect": "부담 원인 공개",
+          "commit_required": true
+        },
+        {
+          "branch_id": "C07.06",
+          "trigger_intents": [
+            "DS02",
+            "DS03"
+          ],
+          "special_trigger": null,
+          "guard": "고객의 유지 목표 질문",
+          "response_id": "R.C07.06",
+          "effect": "선호 공개",
+          "commit_required": true
+        },
+        {
+          "branch_id": "C07.07",
+          "trigger_intents": [
+            "DS08"
+          ],
+          "special_trigger": null,
+          "guard": "대출 상세금액은 V1에 없음",
+          "response_id": "R.C07.07",
+          "effect": "미정 슬롯은 unknown; 숫자 발명 없음",
+          "commit_required": true
+        },
+        {
+          "branch_id": "C07.08",
+          "trigger_intents": [
+            "EV02"
+          ],
+          "special_trigger": null,
+          "guard": "공개 금액·원인·선호 정확한 요약",
+          "response_id": "R.C07.08",
+          "effect": "요약 확인",
+          "commit_required": true
+        },
+        {
+          "branch_id": "C07.09",
+          "trigger_intents": [
+            "EV02"
+          ],
+          "special_trigger": null,
+          "guard": "430000을300000으로 잘못 요약",
+          "response_id": "R.C07.09",
+          "effect": "기억 모순 정정",
+          "commit_required": true
+        },
+        {
+          "branch_id": "C07.10",
+          "trigger_intents": [],
+          "special_trigger": "RISK:CR03",
+          "guard": "근거 미확인·즉시 해지 권고",
+          "response_id": "R.C07.10",
+          "effect": "해지 우려 질문",
+          "commit_required": true
+        },
+        {
+          "branch_id": "C07.11",
+          "trigger_intents": [
+            "EV09",
+            "NX05"
+          ],
+          "special_trigger": null,
+          "guard": "자료 목적·범위 제시·동의 질문",
+          "response_id": "R.C07.11",
+          "effect": "자료 검토 동의; 일정은 미확정",
+          "commit_required": true
+        },
+        {
+          "branch_id": "C07.12",
+          "trigger_intents": [
+            "NX02"
+          ],
+          "special_trigger": null,
+          "guard": "자료 동의 후 일정 질문·가능 일자 미정",
+          "response_id": "R.C07.12",
+          "effect": "일정 unknown/pending",
+          "commit_required": true
+        },
+        {
+          "branch_id": "C07.13",
+          "trigger_intents": [
+            "NX08",
+            "NX10"
+          ],
+          "special_trigger": null,
+          "guard": "자료확인·일정미정이라는 범위 요약",
+          "response_id": "R.C07.13",
+          "effect": "과제 마무리",
+          "commit_required": true
+        }
+      ],
+      "modes": [
+        "GUIDE",
+        "COACH",
+        "SOLO",
+        "ASSESSMENT"
+      ],
+      "scope_note": "SOURCE_V1 원본 사실/미션/예시는 그대로 보관. NEW_V1_1은 이번 규칙 구체화이며 별도 검수 대상.",
+      "readiness": {
+        "branch_specification": "draft_complete",
+        "language_classifier": "not_implemented",
+        "browser_execution": "not_run",
+        "specialized_document_pack": "not_required_for_conversation_only",
+        "formal_assessment": "blocked_pending_review"
+      },
+      "pilot_evidence_contract": [
+        {
+          "criterion_id": "Q1",
+          "intent_candidates": [
+            "DS13",
+            "DS14",
+            "EV01"
+          ],
+          "full_evidence_gate": "총보험료·부담계약·금액 확실성을 질문하여 구분",
+          "alternative_or_limit": "자료 확인을 거절하면 알려진 금액 범위와 제한을 확인",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "L2",
+          "intent_candidates": [
+            "EV02"
+          ],
+          "full_evidence_gate": "이미 공개된 43만원·20만원과 확실성을 정확하게 요약",
+          "alternative_or_limit": "미공개 정보 맞히기는 이 점수에 포함하지 않음",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "N2",
+          "intent_candidates": [
+            "DS15",
+            "DS03"
+          ],
+          "full_evidence_gate": "불편의 계기와 유지하고 싶은 조건을 구분",
+          "alternative_or_limit": "깊은 탐색 거절이면 보장자료 검토 범위 합의로 대체",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "E2",
+          "intent_candidates": [
+            "EX05",
+            "EV03"
+          ],
+          "full_evidence_gate": "자료 미확인 상태에서 가능한 판단 범위를 설명",
+          "alternative_or_limit": "유지/해지 유불리 확정 결론 금지",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "F1",
+          "intent_candidates": [
+            "PR03",
+            "RL04"
+          ],
+          "full_evidence_gate": "확인 전에 해지 결정을 유도하지 않고 고객 선택을 존중",
+          "alternative_or_limit": "단순 확인과 검토 제안은 즉시 해지 권고와 다름",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "X1",
+          "intent_candidates": [
+            "EV09",
+            "NX05"
+          ],
+          "full_evidence_gate": "자료 검토 또는 제한된 확인 범위에 고객이 동의",
+          "alternative_or_limit": "일정 합의는 별도 목표; 이 과제의 필수 통과 요건으로 강요하지 않음",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        }
+      ]
+    },
+    {
+      "scenario_id": "D08-S01",
+      "source_record": {
+        "scenario_id": "D08-S01",
+        "name": "보험료만 보고 실손 전환을 원하는 고객",
+        "facts": {
+          "customer": "가상 고객 C",
+          "documents": [
+            "기존 계약 가상 비교표",
+            "전환 후보 가상 비교표"
+          ],
+          "product_rule_status": "실제 출시상품이 아닌 교육용 조건; 별도 검수 필요"
+        },
+        "public": [
+          "새 계약이 더 저렴해 보여 전환 고민"
+        ],
+        "hidden": [
+          "현재 이용 중인 진료 관련 선호",
+          "줄이고 싶지 않은 조건"
+        ],
+        "opening": "새 실손이 싸다는데 바로 바꾸면 되나요?",
+        "mission": "가격 이외의 차이와 미확인 정보를 설명하고 즉시 전환이 아닌 비교 검토 순서를 합의합니다.",
+        "good": "보험료뿐 아니라 현재 계약의 보장 조건과 바뀌는 조건을 같이 봐야 합니다. 기존 증권부터 확인하고 중요한 차이를 비교해 볼까요?",
+        "adequate": "새 실손과 예전 실손은 조건이 다릅니다.",
+        "risky": "싼 게 이득이니 기존 보험을 해지하고 바로 바꾸세요.",
+        "reason": "단순히 '확인 필요'만 말하는 답보다 무엇을 왜 확인하는지 밝힌 답을 높게 평가합니다.",
+        "branches": [
+          {
+            "when": "가입 정보·자료 확인",
+            "customer": "증권은 가지고 있어요. 어떤 항목부터 볼까요?",
+            "effect": "가상 자료 제공"
+          },
+          {
+            "when": "중요 조건·이용 패턴 질문",
+            "customer": "보험료는 줄이고 싶지만 병원에 갈 때 부담이 커질까 걱정돼요.",
+            "effect": "가격 외 우려 공개"
+          },
+          {
+            "when": "전환 유불리 확약",
+            "customer": "그럼 손해 보는 부분은 전혀 없다는 건가요?",
+            "effect": "확약 근거 확인 질문"
+          }
+        ],
+        "endpoints": [
+          "동일 조건 비교와 미확인 사항 정리",
+          "추가 확인 전 기존 계약 유지·전환 보류"
+        ],
+        "review_needed": [
+          "세대별 실제 제도·계약 조건은 콘텐츠 작성 시 공식 자료와 해당 약관으로 대조"
+        ]
+      },
+      "new_branch_rules": [
+        {
+          "branch_id": "D08.01",
+          "trigger_intents": [
+            "DS16",
+            "EV09"
+          ],
+          "special_trigger": null,
+          "guard": "기존 가입 자료 확인 요청",
+          "response_id": "R.D08.01",
+          "effect": "가상 자료 제공 가능",
+          "commit_required": true
+        },
+        {
+          "branch_id": "D08.02",
+          "trigger_intents": [
+            "DS03"
+          ],
+          "special_trigger": null,
+          "guard": "중요 조건·이용패턴 질문",
+          "response_id": "R.D08.02",
+          "effect": "가격 외 우려 공개",
+          "commit_required": true
+        },
+        {
+          "branch_id": "D08.03",
+          "trigger_intents": [
+            "EV04",
+            "EV05"
+          ],
+          "special_trigger": null,
+          "guard": "가상 문서쌍 사용; 문서 내용 미완성",
+          "response_id": "R.D08.03",
+          "effect": "구체 내용 평가는 문서 검수까지 보류",
+          "commit_required": true
+        },
+        {
+          "branch_id": "D08.04",
+          "trigger_intents": [
+            "EX04"
+          ],
+          "special_trigger": null,
+          "guard": "변경 불이익도 확인하겠다고 제안",
+          "response_id": "R.D08.04",
+          "effect": "비교 질문",
+          "commit_required": true
+        },
+        {
+          "branch_id": "D08.05",
+          "trigger_intents": [
+            "EX05",
+            "EX10"
+          ],
+          "special_trigger": null,
+          "guard": "유불리 단정하지 않고 조건 비교",
+          "response_id": "R.D08.05",
+          "effect": "제한 설명 확인",
+          "commit_required": true
+        },
+        {
+          "branch_id": "D08.06",
+          "trigger_intents": [
+            "EV08"
+          ],
+          "special_trigger": null,
+          "guard": "검수된 차이 설명 전 이해 질문",
+          "response_id": "R.D08.06",
+          "effect": "문서·설명 미충족 공개",
+          "commit_required": true
+        },
+        {
+          "branch_id": "D08.07",
+          "trigger_intents": [],
+          "special_trigger": "RISK:CR02",
+          "guard": "전환 유리함 무근거 확약",
+          "response_id": "R.D08.07",
+          "effect": "확약 근거 질문",
+          "commit_required": true
+        },
+        {
+          "branch_id": "D08.08",
+          "trigger_intents": [],
+          "special_trigger": "RISK:CR03",
+          "guard": "즉시해지·전환 압박",
+          "response_id": "R.D08.08",
+          "effect": "결정 보류",
+          "commit_required": true
+        },
+        {
+          "branch_id": "D08.09",
+          "trigger_intents": [
+            "PR09",
+            "NX05"
+          ],
+          "special_trigger": null,
+          "guard": "문서 미확인 중 결정 보류와 비교 계획",
+          "response_id": "R.D08.09",
+          "effect": "추가 확인 계획 합의",
+          "commit_required": true
+        },
+        {
+          "branch_id": "D08.10",
+          "trigger_intents": [
+            "NX08"
+          ],
+          "special_trigger": null,
+          "guard": "확인범위·보류 의사 요약",
+          "response_id": "R.D08.10",
+          "effect": "검토 연결 종료",
+          "commit_required": true
+        }
+      ],
+      "modes": [
+        "GUIDE",
+        "COACH",
+        "SOLO",
+        "ASSESSMENT"
+      ],
+      "scope_note": "SOURCE_V1 원본 사실/미션/예시는 그대로 보관. NEW_V1_1은 이번 규칙 구체화이며 별도 검수 대상.",
+      "readiness": {
+        "branch_specification": "draft_complete",
+        "language_classifier": "not_implemented",
+        "browser_execution": "not_run",
+        "specialized_document_pack": "not_supplied",
+        "formal_assessment": "blocked_pending_review"
+      },
+      "pilot_evidence_contract": [
+        {
+          "criterion_id": "Q1",
+          "intent_candidates": [
+            "DS16",
+            "DS03"
+          ],
+          "full_evidence_gate": "현재 가입자료와 가격 이외 우선 조건 확인",
+          "alternative_or_limit": "자료 미제공 시 EV03으로 한계와 대체 범위 확인",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "L3",
+          "intent_candidates": [
+            "MT01",
+            "RL01"
+          ],
+          "full_evidence_gate": "새 실손이 싸니 즉시 바꿔도 되나라는 고객 질문을 다룸",
+          "alternative_or_limit": "고객 걱정을 단순 보험료 절감 목적으로 덮어쓰지 않음",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "N3",
+          "intent_candidates": [
+            "DS03"
+          ],
+          "full_evidence_gate": "줄이고 싶은 비용과 유지하고 싶은 조건을 구분",
+          "alternative_or_limit": "선호 거절은 미확인으로 기록",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "E1",
+          "intent_candidates": [
+            "EV04",
+            "EV05",
+            "EX04"
+          ],
+          "full_evidence_gate": "검수된 가상 비교표에 맞는 변경 차이·불이익 설명",
+          "alternative_or_limit": "현재 문서팩 없음: unresolved. 자료만 언급했다고 2점 금지",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "F1",
+          "intent_candidates": [
+            "PR03",
+            "PR09"
+          ],
+          "full_evidence_gate": "자료와 대체 조건 확인 전 결정·해지 압박 없음",
+          "alternative_or_limit": "미확인 자료로 결론을 내리지 않는 보류 경로",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "X1",
+          "intent_candidates": [
+            "NX05",
+            "NX08"
+          ],
+          "full_evidence_gate": "비교 검토와 보류 중 고객이 선택한 다음 행동 확인",
+          "alternative_or_limit": "전환을 하지 않는 종료도 적정",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        }
+      ]
+    },
+    {
+      "scenario_id": "F07-S01",
+      "source_record": {
+        "scenario_id": "F07-S01",
+        "name": "배우자와 상의하겠다는 고객",
+        "facts": {
+          "customer": "가상 고객 D",
+          "decision_preference": "가족과 공동 검토",
+          "spouse_view": "보험 변경 불이익이 걱정",
+          "consent_to_contact_spouse": false
+        },
+        "public": [
+          "배우자와 상의 후 결정 희망"
+        ],
+        "hidden": [
+          "반대 자체보다 정보 부족",
+          "동반 상담 가능 여부"
+        ],
+        "opening": "배우자와 상의하고 결정해야 해요.",
+        "mission": "공동 의사결정을 존중하고 필요한 설명 또는 후속 상담을 고객이 선택하게 합니다.",
+        "good": "네, 함께 검토하시는 게 중요하겠네요. 배우자분이 특히 궁금해하실 부분이 있을까요? 원하시면 핵심 차이를 정리해 드리겠습니다.",
+        "adequate": "네, 상의해 보시고 연락 주세요.",
+        "risky": "일단 가입하고 나중에 배우자분께 말씀하시면 됩니다.",
+        "reason": "동반 상담 약속만 성공으로 보지 않습니다. 자료만 전달하거나 연락하지 않기로 한 선택도 존중합니다.",
+        "branches": [
+          {
+            "when": "배우자 우려 탐색",
+            "customer": "지금 보험을 바꿨다가 손해 볼까 봐 걱정하는 것 같아요.",
+            "effect": "우려 공개"
+          },
+          {
+            "when": "고객 동의 없이 배우자 연락처 요구",
+            "customer": "직접 연락하시는 건 원하지 않아요.",
+            "effect": "연락 범위 제한"
+          },
+          {
+            "when": "핵심 비교자료 전달 제안",
+            "customer": "그럼 제가 먼저 볼 수 있게 정리해 주세요.",
+            "effect": "자료 전달 동의"
+          }
+        ],
+        "endpoints": [
+          "고객이 선택한 자료 전달·동반 상담·보류",
+          "추가 연락을 원치 않는 경우 종료"
+        ],
+        "review_needed": [
+          "가족·제3자 정보 처리 관련 회사 운영 절차"
+        ]
+      },
+      "new_branch_rules": [
+        {
+          "branch_id": "F07.01",
+          "trigger_intents": [
+            "RL01",
+            "RL04"
+          ],
+          "special_trigger": null,
+          "guard": "공동결정 선택 수용",
+          "response_id": "R.F07.01",
+          "effect": "공동결정 선호 확인",
+          "commit_required": true
+        },
+        {
+          "branch_id": "F07.02",
+          "trigger_intents": [
+            "DS19"
+          ],
+          "special_trigger": null,
+          "guard": "배우자 우려 질문",
+          "response_id": "R.F07.02",
+          "effect": "배우자 우려는 고객의 추정 진술",
+          "commit_required": true
+        },
+        {
+          "branch_id": "F07.03",
+          "trigger_intents": [
+            "NX06"
+          ],
+          "special_trigger": null,
+          "guard": "동반상담 선택 제안",
+          "response_id": "R.F07.03",
+          "effect": "동반상담 미확정",
+          "commit_required": true
+        },
+        {
+          "branch_id": "F07.04",
+          "trigger_intents": [
+            "NX05"
+          ],
+          "special_trigger": null,
+          "guard": "핵심비교자료 제안",
+          "response_id": "R.F07.04",
+          "effect": "고객 본인에게 자료 제공 동의",
+          "commit_required": true
+        },
+        {
+          "branch_id": "F07.05",
+          "trigger_intents": [],
+          "special_trigger": "RISK:CR05",
+          "guard": "본인 의사 없이 배우자 연락",
+          "response_id": "R.F07.05",
+          "effect": "배우자 직접 연락 제한",
+          "commit_required": true
+        },
+        {
+          "branch_id": "F07.06",
+          "trigger_intents": [
+            "EV02"
+          ],
+          "special_trigger": null,
+          "guard": "추정 우려를 확정 반대로 요약",
+          "response_id": "R.F07.06",
+          "effect": "확실성 정정",
+          "commit_required": true
+        },
+        {
+          "branch_id": "F07.07",
+          "trigger_intents": [
+            "EV02"
+          ],
+          "special_trigger": null,
+          "guard": "공동검토·자료우선 선호 정확히 요약",
+          "response_id": "R.F07.07",
+          "effect": "고객 선호 재확인",
+          "commit_required": true
+        },
+        {
+          "branch_id": "F07.08",
+          "trigger_intents": [],
+          "special_trigger": "RISK:CR04",
+          "guard": "가족의사 우회·먼저가입 압박",
+          "response_id": "R.F07.08",
+          "effect": "보류 재요청",
+          "commit_required": true
+        },
+        {
+          "branch_id": "F07.09",
+          "trigger_intents": [
+            "CT10"
+          ],
+          "special_trigger": null,
+          "guard": "고객 후속연락 의향 질문",
+          "response_id": "R.F07.09",
+          "effect": "상담사 재연락 미허용",
+          "commit_required": true
+        },
+        {
+          "branch_id": "F07.10",
+          "trigger_intents": [
+            "RL10",
+            "NX08"
+          ],
+          "special_trigger": null,
+          "guard": "고객먼저 연락·자료범위 수용",
+          "response_id": "R.F07.10",
+          "effect": "자료 전달 또는 보류 종료",
+          "commit_required": true
+        }
+      ],
+      "modes": [
+        "GUIDE",
+        "COACH",
+        "SOLO",
+        "ASSESSMENT"
+      ],
+      "scope_note": "SOURCE_V1 원본 사실/미션/예시는 그대로 보관. NEW_V1_1은 이번 규칙 구체화이며 별도 검수 대상.",
+      "readiness": {
+        "branch_specification": "draft_complete",
+        "language_classifier": "not_implemented",
+        "browser_execution": "not_run",
+        "specialized_document_pack": "not_required_for_conversation_only",
+        "formal_assessment": "blocked_pending_review"
+      },
+      "pilot_evidence_contract": [
+        {
+          "criterion_id": "Q1",
+          "intent_candidates": [
+            "DS19"
+          ],
+          "full_evidence_gate": "배우자와 함께 검토할 때 필요한 설명·우려 질문",
+          "alternative_or_limit": "고객이 자세한 가족의견 공개를 거절하면 강요 없음",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "L1",
+          "intent_candidates": [
+            "RL01",
+            "EV02"
+          ],
+          "full_evidence_gate": "공동결정 의향과 추정 우려를 정확히 이어받음",
+          "alternative_or_limit": "배우자가 확실히 반대한다고 단정하면 완전 성취 아님",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "N3",
+          "intent_candidates": [
+            "DS03",
+            "DS19"
+          ],
+          "full_evidence_gate": "동반상담·자료우선·보류 중 고객 선호 확인",
+          "alternative_or_limit": "선호를 정하지 않겠다면 그 뜻을 기록",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "E2",
+          "intent_candidates": [
+            "NX05",
+            "EX05"
+          ],
+          "full_evidence_gate": "요청한 비교정보와 지금 확정할 수 없는 부분 정리",
+          "alternative_or_limit": "배우자 설득 성공을 보장하지 않음",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "F2",
+          "intent_candidates": [
+            "RL04",
+            "RL10"
+          ],
+          "full_evidence_gate": "배우자 직접연락 금지·고객 선택권 존중",
+          "alternative_or_limit": "동석 동의도 아직 없으면 임의 확보 금지",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "X1",
+          "intent_candidates": [
+            "NX05",
+            "NX10"
+          ],
+          "full_evidence_gate": "고객 본인에게 자료 전달/고객 먼저 연락 등 합의",
+          "alternative_or_limit": "동반상담 일정만 성공으로 두지 않음",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        }
+      ]
+    },
+    {
+      "scenario_id": "G10-S01",
+      "source_record": {
+        "scenario_id": "G10-S01",
+        "name": "보험금 지급을 확답해 달라는 고객",
+        "facts": {
+          "customer": "가상 고객 E",
+          "claim_status": "접수 전",
+          "known_facts": [
+            "진료를 받았다는 고객 진술"
+          ],
+          "unknown_facts": [
+            "담보 조건",
+            "서류 내용",
+            "심사 결과"
+          ]
+        },
+        "public": [
+          "진료 후 보험금 청구를 문의"
+        ],
+        "hidden": [
+          "과거 담당자에게 확약을 들었다고 기억",
+          "자료를 준비하는 데 대한 부담"
+        ],
+        "opening": "보험금 나온다고 확실하게 말해 주세요.",
+        "mission": "지급 여부를 확약하지 않으면서 확인할 자료와 다음 절차를 구체적으로 안내합니다.",
+        "good": "현재 정보만으로 지급을 확정하기는 어렵습니다. 가입 담보와 진료 서류를 확인한 뒤 어떤 부분을 추가 확인해야 하는지 먼저 정리해 드리겠습니다.",
+        "adequate": "심사를 받아봐야 알 수 있습니다.",
+        "risky": "서류만 제출하면 반드시 지급됩니다.",
+        "reason": "불확실성을 말하면서도 실질적인 다음 도움을 제공해야 합니다. 고객의 감정이나 부지급 정당성을 자동 판정하지 않습니다.",
+        "branches": [
+          {
+            "when": "확인할 자료·절차 설명",
+            "customer": "그럼 제가 지금 준비할 건 무엇인가요?",
+            "effect": "서류 안내 단계"
+          },
+          {
+            "when": "과거 확약 경험 질문",
+            "customer": "전에 담당자는 다 나온다고 했거든요.",
+            "effect": "경험 공개; 실제 사실은 확인 필요"
+          },
+          {
+            "when": "무조건 지급이 아니라고 설명",
+            "customer": "어떤 조건을 먼저 확인해야 하는지 알려주세요.",
+            "effect": "정상 제한 설명; 금지표현 감점 아님"
+          }
+        ],
+        "endpoints": [
+          "확인 항목·접수 자료·후속 확인 일정 합의",
+          "확인 권한 범위를 설명하고 담당 절차로 연계"
+        ],
+        "review_needed": [
+          "실제 보장·접수서류·심사 규정 대조"
+        ]
+      },
+      "new_branch_rules": [
+        {
+          "branch_id": "G10.01",
+          "trigger_intents": [
+            "RL01"
+          ],
+          "special_trigger": null,
+          "guard": "불확실성에 대한 답답함 수용",
+          "response_id": "R.G10.01",
+          "effect": "서류 부담·불확실성 우려",
+          "commit_required": true
+        },
+        {
+          "branch_id": "G10.02",
+          "trigger_intents": [
+            "SV02"
+          ],
+          "special_trigger": null,
+          "guard": "접수 상태 질문",
+          "response_id": "R.G10.02",
+          "effect": "접수전 공개",
+          "commit_required": true
+        },
+        {
+          "branch_id": "G10.03",
+          "trigger_intents": [
+            "SV01"
+          ],
+          "special_trigger": null,
+          "guard": "진료 내용 질문; 세부 원장 없음",
+          "response_id": "R.G10.03",
+          "effect": "진료 진술만 공개",
+          "commit_required": true
+        },
+        {
+          "branch_id": "G10.04",
+          "trigger_intents": [
+            "SV05"
+          ],
+          "special_trigger": null,
+          "guard": "과거 확약 경험 질문",
+          "response_id": "R.G10.04",
+          "effect": "고객 기억 진술; 사실 검증 필요",
+          "commit_required": true
+        },
+        {
+          "branch_id": "G10.05",
+          "trigger_intents": [
+            "EX05"
+          ],
+          "special_trigger": null,
+          "guard": "무조건 지급이 아니라고 설명",
+          "response_id": "R.G10.05",
+          "effect": "조건 확인 질문",
+          "commit_required": true
+        },
+        {
+          "branch_id": "G10.06",
+          "trigger_intents": [
+            "SV03",
+            "SV04"
+          ],
+          "special_trigger": null,
+          "guard": "확인 자료·절차 설명",
+          "response_id": "R.G10.06",
+          "effect": "자료 안내로 전환",
+          "commit_required": true
+        },
+        {
+          "branch_id": "G10.07",
+          "trigger_intents": [
+            "NX05"
+          ],
+          "special_trigger": null,
+          "guard": "가상자료 목록도 아직 확정 안 됨",
+          "response_id": "R.G10.07",
+          "effect": "확인 목록 요청",
+          "commit_required": true
+        },
+        {
+          "branch_id": "G10.08",
+          "trigger_intents": [],
+          "special_trigger": "RISK:CR02",
+          "guard": "서류만내면지급 확약",
+          "response_id": "R.G10.08",
+          "effect": "확약 근거 질문",
+          "commit_required": true
+        },
+        {
+          "branch_id": "G10.09",
+          "trigger_intents": [
+            "MT03"
+          ],
+          "special_trigger": null,
+          "guard": "명확한 확약 정정",
+          "response_id": "R.G10.09",
+          "effect": "정정 인정; 위험후보 이력 유지",
+          "commit_required": true
+        },
+        {
+          "branch_id": "G10.10",
+          "trigger_intents": [
+            "NX10",
+            "NX04"
+          ],
+          "special_trigger": null,
+          "guard": "담당·후속항목·연락 범위 제안",
+          "response_id": "R.G10.10",
+          "effect": "구체 후속계획 추가확인",
+          "commit_required": true
+        },
+        {
+          "branch_id": "G10.11",
+          "trigger_intents": [
+            "NX08"
+          ],
+          "special_trigger": null,
+          "guard": "확인 가능한 범위·담당절차로 연계",
+          "response_id": "R.G10.11",
+          "effect": "접수 준비·담당 연결 종료",
+          "commit_required": true
+        }
+      ],
+      "modes": [
+        "GUIDE",
+        "COACH",
+        "SOLO",
+        "ASSESSMENT"
+      ],
+      "scope_note": "SOURCE_V1 원본 사실/미션/예시는 그대로 보관. NEW_V1_1은 이번 규칙 구체화이며 별도 검수 대상.",
+      "readiness": {
+        "branch_specification": "draft_complete",
+        "language_classifier": "not_implemented",
+        "browser_execution": "not_run",
+        "specialized_document_pack": "not_supplied",
+        "formal_assessment": "blocked_pending_review"
+      },
+      "pilot_evidence_contract": [
+        {
+          "criterion_id": "Q1",
+          "intent_candidates": [
+            "SV02",
+            "SV01"
+          ],
+          "full_evidence_gate": "접수 상태와 알려진 진료사실 구분하여 확인",
+          "alternative_or_limit": "세부 미상은 unknown, 임의 진단명 생성 금지",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "L1",
+          "intent_candidates": [
+            "RL01",
+            "SV05"
+          ],
+          "full_evidence_gate": "자료부담과 과거 확약 기억을 사실판정과 분리해 수용",
+          "alternative_or_limit": "고객 기억만으로 이전 담당 과실 확정 금지",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "N1",
+          "intent_candidates": [
+            "SV06"
+          ],
+          "full_evidence_gate": "지급 결과를 알고 싶은지 준비 절차가 막히는지 요구 확인",
+          "alternative_or_limit": "복잡한 재무 니즈 탐색 강요 없음",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "E2",
+          "intent_candidates": [
+            "EX05",
+            "SV03",
+            "SV04"
+          ],
+          "full_evidence_gate": "확약 없이 확인할 담보·서류·절차 구체화",
+          "alternative_or_limit": "실제 서류 적정성은 문서팩 미완성으로 unresolved",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "F3",
+          "intent_candidates": [
+            "EV03",
+            "MT03"
+          ],
+          "full_evidence_gate": "판정 가능한 범위와 미확인/정정을 구분",
+          "alternative_or_limit": "정정할 이전 잘못이 없으면 EV03만 적용",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "X2",
+          "intent_candidates": [
+            "NX10",
+            "NX05"
+          ],
+          "full_evidence_gate": "필요 확인항목·담당·후속 안내 범위를 합의",
+          "alternative_or_limit": "실제 지급 성공은 점수 요건 아님",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        }
+      ]
+    },
+    {
+      "scenario_id": "H10-S01",
+      "source_record": {
+        "scenario_id": "H10-S01",
+        "name": "가업승계를 문의하는 대표",
+        "facts": {
+          "customer": "가상 고객 F",
+          "role": "법인 대표",
+          "goal": "자녀에게 경영 승계 검토",
+          "unknown": [
+            "실제 지분 구조",
+            "최근 평가자료",
+            "개별 제도 적용요건"
+          ]
+        },
+        "public": [
+          "자녀 승계와 세금 우려"
+        ],
+        "hidden": [
+          "경영승계와 재산배분 목표가 다름",
+          "가족의 합의가 아직 없음"
+        ],
+        "opening": "자녀에게 회사를 넘기고 싶은데 세금이 걱정이에요.",
+        "mission": "해법을 확약하지 않고 소유·경영·가족 목표와 검토자료를 구조화합니다.",
+        "good": "경영을 맡기는 것과 지분을 이전하는 것은 구분해서 살펴보겠습니다. 현재 지분 관계와 가족분들의 계획부터 확인한 뒤 필요한 검토 항목을 정리할까요?",
+        "adequate": "승계는 세금 검토가 필요합니다.",
+        "risky": "보험을 가입하면 승계 세금 문제는 다 해결됩니다.",
+        "reason": "신입 경로에서는 탐색과 검토 연결까지, 경력 경로에서는 제공된 가상 자료의 조건부 비교까지 평가합니다.",
+        "branches": [
+          {
+            "when": "목표·지분·가족 의견 질문",
+            "customer": "운영은 자녀에게 맡기고 싶지만 다른 가족과 재산 배분도 고민이에요.",
+            "effect": "복수 목표 공개"
+          },
+          {
+            "when": "자료 확인 후 검토 순서 제안",
+            "customer": "최근 자료를 준비할 테니 어떤 항목이 필요한지 알려주세요.",
+            "effect": "검토 준비 합의"
+          },
+          {
+            "when": "확정 절세·적격성 약속",
+            "customer": "자료를 안 보셔도 확실히 가능한가요?",
+            "effect": "근거 확인 질문"
+          }
+        ],
+        "endpoints": [
+          "확인된 사실·미확인 자료·전문 검토 의제 합의",
+          "자료 확보 전 숫자·해법 확정 보류"
+        ],
+        "review_needed": [
+          "실제 세율·특례·평가 기준은 이번 지도의 확정 대상이 아님"
+        ]
+      },
+      "new_branch_rules": [
+        {
+          "branch_id": "H10.01",
+          "trigger_intents": [
+            "DS02",
+            "SP07"
+          ],
+          "special_trigger": null,
+          "guard": "목표·소유·경영 질문",
+          "response_id": "R.H10.01",
+          "effect": "복수 목표 공개",
+          "commit_required": true
+        },
+        {
+          "branch_id": "H10.02",
+          "trigger_intents": [
+            "SP06"
+          ],
+          "special_trigger": null,
+          "guard": "정확한 지분·장부는미상",
+          "response_id": "R.H10.02",
+          "effect": "지분 unknown",
+          "commit_required": true
+        },
+        {
+          "branch_id": "H10.03",
+          "trigger_intents": [
+            "DS04",
+            "SP07"
+          ],
+          "special_trigger": null,
+          "guard": "가족 합의 질문",
+          "response_id": "R.H10.03",
+          "effect": "합의 미정 공개",
+          "commit_required": true
+        },
+        {
+          "branch_id": "H10.04",
+          "trigger_intents": [
+            "EV04",
+            "SP06"
+          ],
+          "special_trigger": null,
+          "guard": "최근 평가자료 요청",
+          "response_id": "R.H10.04",
+          "effect": "평가자료 요청",
+          "commit_required": true
+        },
+        {
+          "branch_id": "H10.05",
+          "trigger_intents": [
+            "SP10"
+          ],
+          "special_trigger": null,
+          "guard": "소유·경영·재원 구분",
+          "response_id": "R.H10.05",
+          "effect": "과제 구분 확인",
+          "commit_required": true
+        },
+        {
+          "branch_id": "H10.06",
+          "trigger_intents": [
+            "SP08",
+            "NX05"
+          ],
+          "special_trigger": null,
+          "guard": "자료 확인 후 검토 순서",
+          "response_id": "R.H10.06",
+          "effect": "검토 준비 합의",
+          "commit_required": true
+        },
+        {
+          "branch_id": "H10.07",
+          "trigger_intents": [
+            "EV02"
+          ],
+          "special_trigger": null,
+          "guard": "공개된 복수 목표·미정조건 요약",
+          "response_id": "R.H10.07",
+          "effect": "목표 요약 확인",
+          "commit_required": true
+        },
+        {
+          "branch_id": "H10.08",
+          "trigger_intents": [],
+          "special_trigger": "RISK:CR02",
+          "guard": "절세·적격성 확정 약속",
+          "response_id": "R.H10.08",
+          "effect": "근거 질문",
+          "commit_required": true
+        },
+        {
+          "branch_id": "H10.09",
+          "trigger_intents": [
+            "EX05",
+            "PR09"
+          ],
+          "special_trigger": null,
+          "guard": "자료확보 전 결론보류",
+          "response_id": "R.H10.09",
+          "effect": "해법 보류 동의",
+          "commit_required": true
+        },
+        {
+          "branch_id": "H10.10",
+          "trigger_intents": [
+            "NX10",
+            "NX08"
+          ],
+          "special_trigger": null,
+          "guard": "검토의제·자료·후속범위 정리",
+          "response_id": "R.H10.10",
+          "effect": "전문 검토 준비 종료",
+          "commit_required": true
+        }
+      ],
+      "modes": [
+        "GUIDE",
+        "COACH",
+        "SOLO",
+        "ASSESSMENT"
+      ],
+      "scope_note": "SOURCE_V1 원본 사실/미션/예시는 그대로 보관. NEW_V1_1은 이번 규칙 구체화이며 별도 검수 대상.",
+      "readiness": {
+        "branch_specification": "draft_complete",
+        "language_classifier": "not_implemented",
+        "browser_execution": "not_run",
+        "specialized_document_pack": "not_supplied",
+        "formal_assessment": "blocked_pending_review"
+      },
+      "pilot_evidence_contract": [
+        {
+          "criterion_id": "Q1",
+          "intent_candidates": [
+            "SP06",
+            "SP07"
+          ],
+          "full_evidence_gate": "지분 자료와 경영·재산배분 목표를 나눠 질문",
+          "alternative_or_limit": "지분 숫자 미상은 unknown 유지",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "L2",
+          "intent_candidates": [
+            "EV02"
+          ],
+          "full_evidence_gate": "공개된 복수 목표와 가족 합의 미정 반영",
+          "alternative_or_limit": "가족 동의를 추정하지 않음",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "N3",
+          "intent_candidates": [
+            "DS03",
+            "SP07"
+          ],
+          "full_evidence_gate": "소유·경영·가족의 상충 과제를 구분",
+          "alternative_or_limit": "가족이 선택하지 않으면 보류 의제 정리",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "E2",
+          "intent_candidates": [
+            "SP10",
+            "EX05"
+          ],
+          "full_evidence_gate": "검토 범위와 가정·전문판단 경계를 설명",
+          "alternative_or_limit": "경력 심화 내용점수는 자료팩 없으면 unresolved",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "F1",
+          "intent_candidates": [
+            "EV03",
+            "PR09"
+          ],
+          "full_evidence_gate": "자료 전 해법·적격성 확정을 피함",
+          "alternative_or_limit": "보험 가입만으로 세금 해결 약속은 위험 검토",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        },
+        {
+          "criterion_id": "X2",
+          "intent_candidates": [
+            "SP08",
+            "NX05"
+          ],
+          "full_evidence_gate": "자료 목록과 검토 의제를 합의",
+          "alternative_or_limit": "법정 세액이나 최종 승계안 확정은 신입 목표 아님",
+          "implementation_note": "인식된 ID만으로 점수 확정 금지. 내용·상황·고객응답을 함께 검수."
+        }
+      ]
+    }
+  ]
+}

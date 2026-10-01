@@ -1,0 +1,4 @@
+# Test-only tools; do not add to Community Cloud runtime requirements.
+pytest==9.0.2
+PyMuPDF==1.26.7
+playwright==1.57.0

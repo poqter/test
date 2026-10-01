@@ -175,7 +175,9 @@ def run() -> dict[str, Any]:
 
 if __name__ == "__main__":
     report = run()
-    output = ROOT / "tests" / "calculator_regression_results.json"
+    import os
+    output = Path(os.environ.get("HW_TEST_OUTPUT_DIR", str(ROOT / "artifacts" / "validation"))) / "calculator_regression_results.json"
+    output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps({key: report[key] for key in ("catalog_count", "unique_count", "passed", "failed", "missing_routes")}, ensure_ascii=False, indent=2))
     for item in report["results"]:

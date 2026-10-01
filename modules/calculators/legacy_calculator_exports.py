@@ -1,4 +1,6 @@
 """Identical formatted values in UI, TXT, Excel and PDF; memory-only."""
+
+from modules.shared.runtime_cache import session_export
 import io
 import math
 import unicodedata
@@ -24,6 +26,7 @@ def text_report(result):
         title+'\n'+'\n'.join(f'{k}: {v}' for k,v in rows) for title,rows in sections(result))+'\n\n'+NOTE
 
 
+@session_export("exports-v3")
 def export_bytes(result, kind):
     if kind == 'txt': return text_report(result).encode('utf-8-sig')
     if kind == 'xlsx':

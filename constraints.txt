@@ -1,4 +1,4 @@
-# Python 3.12.14 / Linux: installed versions used by the final validation
+# Deployment target: Python 3.12 / Linux. Clean-install verification is a separate CI gate.
 altair==6.3.0
 anyio==4.15.1
 attrs==26.1.0

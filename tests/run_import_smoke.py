@@ -14,10 +14,6 @@ if str(ROOT) not in sys.path:
 from tests.streamlit_stub import install
 install()
 
-# Altair is pinned in constraints.txt and is installed by Streamlit Cloud.
-# The offline validation container lacks it, so only its import name is stubbed.
-if "altair" not in sys.modules:
-    sys.modules["altair"] = types.ModuleType("altair")
 
 
 def run() -> dict:
@@ -40,7 +36,9 @@ def run() -> dict:
 
 if __name__ == "__main__":
     report = run()
-    output = ROOT / "tests" / "import_smoke_results.json"
+    import os
+    output = Path(os.environ.get("HW_TEST_OUTPUT_DIR", str(ROOT / "artifacts" / "validation"))) / "import_smoke_results.json"
+    output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps({key: report[key] for key in ("count", "passed", "failed")}, ensure_ascii=False, indent=2))
     for item in report["results"]:

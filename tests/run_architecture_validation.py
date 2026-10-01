@@ -283,11 +283,11 @@ def run() -> dict[str, Any]:
         check("calculator_category_visuals", category_label("보험 기본") == "🧾 보험 기본")
         check("calculator_category_count_label", category_label("사업·법인 실무", 17) == "🏢 사업·법인 실무 · 17")
         from modules.calculators.catalog_browser import calculator_deep_link, save_query
-        check("calculator_deep_link_uses_stable_id", calculator_deep_link("보험나이계산기", {"보험나이계산기": "calc-001"}) == "?calc=calc-001")
+        check("calculator_deep_link_uses_stable_id", calculator_deep_link("보험나이계산기", {"보험나이계산기": "calc-001"}) == "?calc=calc-001&view=single")
         st.session_state.clear()
         st.session_state.update(jc_search="보험나이", jc_catalog_group="법인·대표 전략")
         save_query()
-        check("calculator_search_is_global", st.session_state.get("jc_catalog_group") == "전체")
+        check("calculator_search_keeps_browse_category", st.session_state.get("jc_catalog_group") == "법인·대표 전략" and st.session_state.get("jc_catalog_query") == "보험나이")
 
         st.session_state.clear()
         st.session_state.update(password_correct=True, login_user="Admin", active_app="home")
@@ -353,13 +353,10 @@ def run() -> dict[str, Any]:
         and not _uses_won_precision("총재산 평가액")
     )
     check("direct_won_precision_rules", precision_ok)
-    from modules.calculators.input_design import uses_decimal_manwon
-    decimal_manwon_ok = (
-        uses_decimal_manwon("종신보험 월 보험료 (원)")
-        and uses_decimal_manwon("보장성 보험료 월납 (원)")
-        and not uses_decimal_manwon("월 생활비 (원)")
-    )
-    check("monthly_premium_decimal_manwon_rules", decimal_manwon_ok)
+    from modules.calculators.input_design import money_policy
+    check("monthly_premium_exact_won_policy", money_policy("종신보험 월 보험료 (원)")=="exact_won"
+          and money_policy("보장성 보험료 월납 (원)")=="exact_won"
+          and money_policy("월 생활비 (원)")=="plan_manwon")
 
     from modules.calculators.structured_inputs import handled_indices
 
@@ -376,7 +373,9 @@ def run() -> dict[str, Any]:
 
 if __name__ == "__main__":
     report = run()
-    output = ROOT / "tests" / "architecture_validation_results.json"
+    import os
+    output = Path(os.environ.get("HW_TEST_OUTPUT_DIR", str(ROOT / "artifacts" / "validation"))) / "architecture_validation_results.json"
+    output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps({key: report[key] for key in ("count", "passed", "failed")}, ensure_ascii=False, indent=2))
     for item in report["checks"]:

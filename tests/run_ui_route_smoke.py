@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -37,7 +38,8 @@ def smoke() -> dict:
 
 if __name__ == "__main__":
     report = smoke()
-    path = ROOT / "tests" / "ui_route_smoke_results.json"
+    path = Path(os.environ.get("HW_TEST_OUTPUT_DIR", str(ROOT / "artifacts" / "validation"))) / "ui_route_smoke_results.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps({k: report[k] for k in ("count", "passed", "failed")}, ensure_ascii=False, indent=2))
     for row in report["results"]:

@@ -21,8 +21,6 @@ body:has(.hw-calculator-standalone) button:focus-visible,
 body:has(.hw-calculator-standalone) a:focus-visible,
 body:has(.hw-calculator-standalone) input:focus-visible,
 body:has(.hw-calculator-standalone) select:focus-visible{outline:3px solid rgba(45,106,213,.28)!important;outline-offset:2px!important}
-body:has(.hw-calculator-standalone) [class*="st-key-hw_required_group_"]{background:#fff9db!important;border:1px solid #f2d670!important;border-radius:14px;padding:14px!important;margin:6px 0 12px}
-body:has(.hw-calculator-standalone) [class*="st-key-hw_required_group_"] [data-testid="stWidgetLabel"] p:after{content:" · 입력 필요";color:#a65f00;font-size:12px;font-weight:700}
 body:has(.hw-calculator-standalone) .hw-input-group-note{font-size:13px;color:#61758b;margin:-2px 0 10px}
 body:has(.hw-calculator-standalone) .hw-active-condition{background:#eef4ff;border:1px solid #cbdcff;border-radius:10px;padding:10px 12px;color:#355c87;font-size:13px;line-height:1.55;margin:8px 0 12px}
 body:has(.hw-calculator-standalone) .hw-primary-result-kicker{display:inline-flex;align-items:center;gap:6px;margin:0 0 7px;padding:5px 9px;border-radius:999px;background:#fff4cf;color:#805b00;font-size:12px;font-weight:750;letter-spacing:-.01em}
@@ -70,7 +68,6 @@ body:has(.hw-calc-isolated-marker) .st-key-hw_calc_isolated_shell:before{
     content:"";position:absolute;inset:0 0 auto 0;height:1px;border-radius:26px 26px 0 0;
     background:linear-gradient(90deg,transparent,rgba(255,255,255,.92),transparent);pointer-events:none;
 }
-body:has(.hw-calc-isolated-marker) .st-key-jc_back_catalog{display:none!important}
 .hw-calc-isolated-brand{display:flex;align-items:center;gap:10px;margin:0 0 22px;padding-bottom:17px;border-bottom:1px solid rgba(122,157,181,.28)}
 .hw-calc-isolated-brand>span{display:grid;place-items:center;width:38px;height:38px;border-radius:10px;background:#143c61;color:#d6f3f2;font-size:22px;font-weight:800;box-shadow:0 6px 16px rgba(20,60,97,.18)}
 .hw-calc-isolated-brand strong{display:block;color:#183750;font-size:16px;line-height:1.25}

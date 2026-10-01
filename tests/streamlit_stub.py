@@ -39,6 +39,8 @@ class DummyElement:
 
     def __getattr__(self, _name: str):
         def method(*_args: Any, **_kwargs: Any) -> "DummyElement":
+            if self.api is not None:
+                self.api.events.append({"kind": _name, "args": _args, "kwargs": _kwargs})
             return self
         return method
 
@@ -58,7 +60,17 @@ class DummyElement:
     # Widgets called on columns/containers delegate to the module API so their
     # return values match first-render Streamlit behavior.
     def button(self, *args: Any, **kwargs: Any) -> bool:
-        return False
+        if isinstance(self, DummyElement) and self.api is not None:
+            return self.api.button(*args, **kwargs)
+        self.events.append({"kind": "button", "args": args, "kwargs": kwargs})
+        key = kwargs.get("key", args[0] if args else "")
+        clicked = key in self.clicked and not kwargs.get("disabled", False)
+        if clicked:
+            self.clicked.discard(key)
+            callback = kwargs.get("on_click")
+            if callable(callback):
+                callback(*kwargs.get("args", ()), **kwargs.get("kwargs", {}))
+        return clicked
 
     def link_button(self, *args: Any, **kwargs: Any) -> "DummyElement":
         if self.api is not None:
@@ -66,10 +78,13 @@ class DummyElement:
         return DummyElement(self.api)
 
     def download_button(self, *args: Any, **kwargs: Any) -> bool:
+        api = self.api if isinstance(self, DummyElement) else self
+        if api is not None:
+            api.events.append({"kind": "download_button", "args": args, "kwargs": kwargs})
         return False
 
     def form_submit_button(self, *args: Any, **kwargs: Any) -> bool:
-        return False
+        return self.button(*args, **kwargs)
 
     def text_input(self, *args: Any, **kwargs: Any) -> str:
         return self.api.text_input(*args, **kwargs) if self.api else str(kwargs.get("value", ""))
@@ -105,6 +120,10 @@ class DummyElement:
         return self.api.select_slider(*args, **kwargs) if self.api else kwargs.get("value")
 
     def data_editor(self, data: Any, *args: Any, **kwargs: Any) -> Any:
+        api = self.api if isinstance(self, DummyElement) else self
+        if api is not None:
+            api.events.append({"kind": "data_editor", "args": args, "kwargs": kwargs})
+            data = api.edited_tables.get(kwargs.get("key"), data)
         return data.copy() if hasattr(data, "copy") else data
 
 
@@ -129,6 +148,9 @@ class StreamlitAPI:
     def __init__(self) -> None:
         self.session_state = SessionState()
         self.events: list[dict[str, Any]] = []
+        self.strict_numeric = False
+        self.clicked: set[str] = set()
+        self.edited_tables: dict[str, Any] = {}
         self.secrets: dict[str, Any] = {}
         self.query_params: dict[str, Any] = {}
         self.sidebar = DummyElement(self)
@@ -172,17 +194,30 @@ class StreamlitAPI:
         return DummyElement(self)
 
     def button(self, *args: Any, **kwargs: Any) -> bool:
-        return False
+        if isinstance(self, DummyElement) and self.api is not None:
+            return self.api.button(*args, **kwargs)
+        self.events.append({"kind": "button", "args": args, "kwargs": kwargs})
+        key = kwargs.get("key", args[0] if args else "")
+        clicked = key in self.clicked and not kwargs.get("disabled", False)
+        if clicked:
+            self.clicked.discard(key)
+            callback = kwargs.get("on_click")
+            if callable(callback):
+                callback(*kwargs.get("args", ()), **kwargs.get("kwargs", {}))
+        return clicked
 
     def link_button(self, *args: Any, **kwargs: Any) -> DummyElement:
         self.events.append({"kind": "link_button", "args": args, "kwargs": kwargs})
         return DummyElement(self)
 
     def download_button(self, *args: Any, **kwargs: Any) -> bool:
+        api = self.api if isinstance(self, DummyElement) else self
+        if api is not None:
+            api.events.append({"kind": "download_button", "args": args, "kwargs": kwargs})
         return False
 
     def form_submit_button(self, *args: Any, **kwargs: Any) -> bool:
-        return False
+        return self.button(*args, **kwargs)
 
     def text_input(self, label: str = "", value: str = "", *, key: str | None = None, **kwargs: Any) -> str:
         return str(self._state_value(key, value))
@@ -190,8 +225,15 @@ class StreamlitAPI:
     def text_area(self, label: str = "", value: str = "", *, key: str | None = None, **kwargs: Any) -> str:
         return str(self._state_value(key, value))
 
-    def number_input(self, label: str = "", *, value: Any = 0, key: str | None = None, **kwargs: Any) -> Any:
-        return self._state_value(key, value)
+    def number_input(self, label: str = "", *, value: Any = "min", key: str | None = None, **kwargs: Any) -> Any:
+        self.events.append({"kind": "number_input", "args": (label,), "kwargs": {"value": value, "key": key, **kwargs}})
+        numeric = [v for v in (value, kwargs.get("min_value"), kwargs.get("max_value"), kwargs.get("step")) if v is not None and v != "min"]
+        if self.strict_numeric:
+            kinds = {type(v) for v in numeric}
+            if len(kinds) > 1 or not kinds.issubset({int, float}):
+                raise TypeError("Streamlit numeric contract: value/min/max/step types must match")
+        default = kwargs.get("min_value", 0.0 if any(isinstance(v, float) for v in numeric) else 0) if value == "min" else value
+        return self._state_value(key, default)
 
     def date_input(self, label: str = "", value: Any = None, *, key: str | None = None, **kwargs: Any) -> Any:
         return self._state_value(key, value if value is not None else date.today())
@@ -227,6 +269,10 @@ class StreamlitAPI:
         return self._state_value(key, value if value is not None else choices[0])
 
     def data_editor(self, data: Any, *args: Any, **kwargs: Any) -> Any:
+        api = self.api if isinstance(self, DummyElement) else self
+        if api is not None:
+            api.events.append({"kind": "data_editor", "args": args, "kwargs": kwargs})
+            data = api.edited_tables.get(kwargs.get("key"), data)
         return data.copy() if hasattr(data, "copy") else data
 
     def file_uploader(self, *args: Any, **kwargs: Any) -> None:
@@ -248,13 +294,21 @@ class StreamlitAPI:
 
     def __getattr__(self, _name: str):
         def no_op(*args: Any, **kwargs: Any) -> DummyElement:
+            self.events.append({"kind": _name, "args": args, "kwargs": kwargs})
             return DummyElement(self)
         return no_op
 
 
-def install() -> types.ModuleType:
-    """Install the stub as ``streamlit`` and return its module object."""
+def install(*, strict_numeric: bool = False) -> types.ModuleType:
+    """Install one adapter per process; never silently replace a real runtime."""
+    existing = sys.modules.get("streamlit")
+    if existing is not None and "_api" in existing.__dict__:
+        existing._api.strict_numeric = existing._api.strict_numeric or strict_numeric
+        return existing
+    if existing is not None and existing.__dict__.get("__version__"):
+        raise RuntimeError("Run adapter tests in a separate process from real Streamlit tests")
     api = StreamlitAPI()
+    api.strict_numeric = strict_numeric
     module = types.ModuleType("streamlit")
     module.__dict__["_api"] = api
     for name in dir(api):

@@ -102,7 +102,9 @@ def run() -> dict:
 
 if __name__ == "__main__":
     report = run()
-    output = ROOT / "tests" / "pdf_smoke_results.json"
+    import os
+    output = Path(os.environ.get("HW_TEST_OUTPUT_DIR", str(ROOT / "artifacts" / "validation"))) / "pdf_smoke_results.json"
+    output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps({k: report[k] for k in ("count", "passed", "failed")}, ensure_ascii=False, indent=2))
     for row in report["results"]:

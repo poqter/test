@@ -1,0 +1,1 @@
+"""Academy engine acceptance fixtures."""

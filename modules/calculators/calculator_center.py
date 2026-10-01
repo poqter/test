@@ -34,8 +34,8 @@ QUICK_CALCULATORS: dict[str, str] = {
 }
 QUICK_CALCULATOR_NAMES = tuple(QUICK_CALCULATORS)
 
-# 만원 단위 입력 중 실제 보험료처럼 1만원 미만 단위가 자주 필요한 항목만
-# 0.01만원(100원) 단위까지 허용합니다. 정수값은 10.00이 아니라 10으로 표시합니다.
+# 실제 월 보험료는 원 단위로 보존하고 계획 금액은 만원 단위로 표시합니다.
+# 표시 형식만 간결하게 하며 고객이 입력한 원 단위 수치를 반올림하지 않습니다.
 _DECIMAL_MONEY_FIELDS = frozenset({
     ("total", "premium"),
     ("waiver", "premium"),
@@ -49,14 +49,14 @@ def assumptions_dialog(formula: str, assumptions: str) -> None:
     st.write(formula)
     st.subheader("가정과 미반영 조건")
     st.write(assumptions)
-    st.caption("금액 입력은 만원, 결과는 원 단위로 표시합니다. 수익률·물가율은 사용자 시나리오입니다.")
+    st.caption("실제 월 보험료는 원 단위, 계획 금액은 만원 단위로 입력하며 결과는 원 단위로 표시합니다. 수익률·물가율은 사용자 시나리오입니다.")
 
 
-def run() -> None:
+def run(*, isolated=False, fixed_name=None) -> None:
     """Render the complete 88-calculator center."""
     from modules.calculators.jarvia_calculator_center import run as run_integrated
 
-    run_integrated()
+    run_integrated(isolated=isolated, fixed_name=fixed_name)
 
 
 def _scope(kind: str) -> str:
@@ -109,12 +109,20 @@ def _set_mode_inputs(kind: str, fields: list[tuple], *, example: bool) -> None:
                 value = float(default) if decimal_value else int(default)
             else:
                 value = 0.0 if decimal_value else 0
-            _set_widget_value(page, f"a_{kind}_{key}", value)
+            if field_type == "money":
+                from modules.calculators.input_design import set_money_state
+                policy = "exact_won" if _money_allows_decimals(kind, key) else "plan_manwon"
+                set_money_state(f"a_{kind}_{key}", _label, Decimal(str(value)) * 10_000 if example else None, policy=policy)
+                st.session_state["hw.quick_money_migrated.a_" + kind + "_" + key] = True
+            else:
+                _set_widget_value(page, f"a_{kind}_{key}", value)
     st.session_state.pop(f"a_calculation_{kind}", None)
 
 
 def _format_compact_decimal(value: Decimal, *, grouped: bool = False) -> str:
-    rendered = f"{value:,.2f}" if grouped else f"{value:.2f}"
+    rendered = f"{value:,f}" if grouped else f"{value:f}"
+    if "." not in rendered:
+        return rendered
     return rendered.rstrip("0").rstrip(".")
 
 
@@ -137,42 +145,21 @@ def _render_input(entry: tuple, kind: str, page: str) -> tuple[object, str]:
     key, label, field_type, default, low, high = entry
     widget_key = f"a_{kind}_{key}"
     if field_type == "money":
-        allow_decimals = _money_allows_decimals(kind, key)
-        _normalize_numeric_widget_state(widget_key, decimals=allow_decimals)
-        if allow_decimals:
-            value = field(
-                "number_input",
-                label + " (만원)",
-                widget_key,
-                float(default),
-                page=page,
-                min_value=float(low),
-                max_value=float(high),
-                step=0.01,
-                format=_FLEXIBLE_NUMBER_FORMAT,
-                help=(
-                    "기본 정수 금액은 소수점 없이 표시하고, 필요한 경우에만 "
-                    "0.01만원(100원) 단위까지 입력할 수 있습니다."
-                ),
-            )
-            raw = Decimal(str(value)).quantize(Decimal(".01"), rounding=ROUND_HALF_UP)
-        else:
-            value = field(
-                "number_input",
-                label + " (만원)",
-                widget_key,
-                int(default),
-                page=page,
-                min_value=int(low),
-                max_value=int(high),
-                step=1,
-                format="%d",
-                help="만원 단위 정수로 입력합니다.",
-            )
-            raw = Decimal(int(value))
-        won = raw * 10_000
-        _render_amount_words(won)
-        return won, f"{_format_manwon(raw)} ({int(won):,}원)"
+        from modules.calculators.input_design import number_input, read_money_state, set_money_state
+        policy = "exact_won" if _money_allows_decimals(kind, key) else "plan_manwon"
+        # Prior quick-calculator widgets stored manwon; migrate once, without rounding.
+        marker = "hw.quick_money_migrated." + widget_key
+        if not st.session_state.get(marker):
+            previous = st.session_state.get("_ws_" + widget_key, st.session_state.get(widget_key))
+            if previous is not None:
+                from modules.shared.numeric import integer_won, decimal_number
+                set_money_state(widget_key, label, integer_won(decimal_number(previous) * 10_000), policy=policy)
+            st.session_state[marker] = True
+        won = number_input(label + " (원)", key=widget_key, value=int(default * 10_000),
+                           min_value=int(low * 10_000), max_value=int(high * 10_000), money_policy=policy)
+        if won is None:
+            return None, "입력 필요"
+        return Decimal(won), f"{won:,}원" if policy == "exact_won" else f"{_format_manwon(Decimal(won) / 10_000)} ({won:,}원)"
     if field_type == "rate":
         value = field(
             "number_input",
@@ -335,8 +322,23 @@ def render_quick_calculator(calculator_name: str) -> None:
             if st.button("산식·가정 자세히 보기", key=f"a_help_{kind}", use_container_width=True):
                 assumptions_dialog(formula, assumptions)
             token = fingerprint([calculator_name, values, input_revision(page)])
+            missing_fields = [key for key, value in values.items() if value is None]
+            missing = bool(missing_fields)
+            if missing:
+                from modules.shared.input_states import apply_input_states
+                from modules.calculators.input_design import money_widget_key
+                widget_keys = []
+                for entry in fields:
+                    key, _label, field_type, _default, _low, _high = entry
+                    if key not in missing_fields:
+                        continue
+                    base = f"a_{kind}_{key}"
+                    widget_keys.append(money_widget_key(base) if field_type == "money" else "_ws_" + base)
+                apply_input_states(missing=widget_keys)
+                st.info("입력 필요: 금액과 기간을 확인해 주세요.")
             submitted = st.button(
                 "계산하기",
+                disabled=missing,
                 key=f"a_calculate_{kind}",
                 type="primary",
                 use_container_width=True,
@@ -367,6 +369,9 @@ def render_quick_calculator(calculator_name: str) -> None:
                     save_result(page, result, rule_version="quick.88.1")
                     calculation_succeeded = True
 
+        if missing:
+            st.session_state.pop(result_key, None)
+            return
         result = st.session_state.get(result_key)
         if not result:
             return

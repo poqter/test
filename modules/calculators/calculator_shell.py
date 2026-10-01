@@ -55,3 +55,5 @@ def render_sidebar() -> None:
             unsafe_allow_html=True,
         )
         st.caption("Planned & Built by 박병선 팀장")
+        from modules.shared.build_info import BUILD_ID
+        st.caption("버전 " + BUILD_ID)

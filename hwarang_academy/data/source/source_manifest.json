@@ -1,0 +1,46 @@
+{
+  "version": "1.1.0",
+  "source_file": "hwarang_consultation_map_v1.json",
+  "source_sha256": "c01f9cf41945e6f6b55086f19f113646600fb828fb3a07e3fb3a997b0ebf7c1e",
+  "source_preserved": [
+    "8개 분류",
+    "97개 유형 ID·명칭·목표·관찰행동·종료 조건",
+    "194개 슬롯 ID",
+    "6개 대표 원본",
+    "4모드",
+    "Q/L/N/E/F/X 및 대분류 배점",
+    "CR01~CR05"
+  ],
+  "new_design": [
+    "110개 의도 후보·예문·오판방지",
+    "유형별 관찰행동과 의도 묶음 연결",
+    "상태 변화 초안",
+    "고객 반응 분기 명세",
+    "18개 평가 관찰 기준",
+    "검토필요 점수구간 규칙",
+    "밝은 채팅창 확정"
+  ],
+  "not_claimed": [
+    "모든 한국어 자유발화 이해",
+    "194개 시나리오 완성",
+    "법령·약관 검수",
+    "실제 앱 실행",
+    "교육효과·인식률 검증",
+    "정식 인증 운영"
+  ],
+  "counts": {
+    "intents": 110,
+    "bindings": 97,
+    "action_bindings": 291,
+    "scenario_slots": 194,
+    "worked_scenarios": 6,
+    "response_groups": 88,
+    "response_texts": 112,
+    "branch_rules": 64,
+    "evaluation_criteria": 18,
+    "state_rules": 18,
+    "utterance_cases": 378,
+    "worked_rubric_bindings": 36
+  },
+  "rule_format": "guard・trigger는 자연어를 포함하는 설계 조건입니다. 실행 코드가 아니며 eval로 실행하지 않습니다."
+}

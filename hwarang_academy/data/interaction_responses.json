@@ -1,0 +1,87 @@
+{
+  "version": "1.2.1",
+  "provenance": "Implementation dialogue-repair additions; fixed facts are inherited from source scenario C07-S01. No verified product terms added.",
+  "responses": [
+    {
+      "response_id": "DIALOGUE.GREETING",
+      "variants": [
+        "안녕하세요. 제가 궁금한 부분부터 이야기해 보면 좋겠어요."
+      ],
+      "scope": "shared",
+      "effect": "conversation_only; no automatic skill credit"
+    },
+    {
+      "response_id": "DIALOGUE.REVIEW",
+      "variants": [
+        "네, 같이 확인해 주세요. 제가 아는 내용은 말씀드릴게요."
+      ],
+      "scope": "shared",
+      "effect": "conversation_only; no automatic skill credit"
+    },
+    {
+      "response_id": "DIALOGUE.ACK",
+      "variants": [
+        "네, 이어서 말씀해 주세요."
+      ],
+      "scope": "shared",
+      "effect": "conversation_only; no automatic skill credit"
+    },
+    {
+      "response_id": "DIALOGUE.CLARIFY_TOPIC",
+      "variants": [
+        "보험료를 확인하자는 말씀이신가요, 아니면 보장 내용을 확인하자는 말씀이신가요?"
+      ],
+      "scope": "shared",
+      "effect": "conversation_only; no automatic skill credit"
+    },
+    {
+      "response_id": "DIALOGUE.CLARIFY_OTHER",
+      "variants": [
+        "어떤 내용을 확인하고 싶으신지 다시 말씀해 주시겠어요?"
+      ],
+      "scope": "shared",
+      "effect": "conversation_only; no automatic skill credit"
+    },
+    {
+      "response_id": "DIALOGUE.PREMIUM_SCOPE",
+      "variants": [
+        "보험료 말씀이라는 건 이해했어요. 전체 금액을 여쭤보시는 건가요, 아니면 어떤 계약이 부담되는지 물으시는 건가요?"
+      ],
+      "scope": "shared",
+      "effect": "conversation_only; no automatic skill credit"
+    },
+    {
+      "response_id": "C07.CONTRACT_REVIEW",
+      "variants": [
+        "종신보험이 하나 있어요. 정확한 보장 내용과 가입금액은 지금 확인이 필요해요.",
+        "가입한 보험을 함께 보자는 말씀이시군요. 종신보험이 있다는 건 말씀드릴 수 있지만, 자세한 보장 내용은 확인이 필요해요."
+      ],
+      "scope": "C07-S01",
+      "effect": "conversation_only; no automatic skill credit"
+    },
+    {
+      "response_id": "C07.COVERAGE_UNKNOWN",
+      "variants": [
+        "정확한 보장 내용과 담보별 가입금액은 지금 잘 모르겠어요. 자료를 확인하고 말씀드릴게요."
+      ],
+      "scope": "C07-S01",
+      "effect": "conversation_only; no automatic skill credit"
+    },
+    {
+      "response_id": "C07.PREMIUM_TOPIC",
+      "variants": [
+        "보험료 말씀하시는 거군요. 전체로는 한 달에 사십삼만 원 나가요."
+      ],
+      "scope": "C07-S01",
+      "effect": "conversation_only; no automatic skill credit"
+    },
+    {
+      "response_id": "C07.PREMIUM_REPEAT",
+      "variants": [
+        "전체 월 보험료는 앞서 말씀드린 사십삼만 원이에요."
+      ],
+      "scope": "C07-S01",
+      "effect": "conversation_only; no automatic skill credit"
+    }
+  ]
+}

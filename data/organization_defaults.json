@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "organizations": {
+    "hwarang": {
+      "revisions": [
+        {
+          "revision": 0,
+          "effective_from": "2026-01-01",
+          "brand_name": "화랑 WORKSPACE",
+          "header_color": "#112B49",
+          "accent_color": "#158391",
+          "allowed_tools": [
+            "consultation_helper",
+            "quick_calculators",
+            "deposit_vs_shortpay",
+            "renewal_vs_nonrenewal",
+            "analyzer",
+            "remodeling",
+            "silson_generation_comparison",
+            "comparison_builder",
+            "insurance_claim_guide",
+            "education_center",
+            "insurer_portal",
+            "convention",
+            "summer",
+            "manager_results",
+            "commission_calculator"
+          ],
+          "commission_default_payout_percent": 65.0,
+          "payout_rule_label": "기존 수수료 예시표 기준",
+          "changed_by": "initial",
+          "changed_at": "2026-10-01T00:00:00+00:00"
+        }
+      ]
+    }
+  }
+}

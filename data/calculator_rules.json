@@ -1,0 +1,2056 @@
+{
+  "version": 1,
+  "pack_version": "2026.10.01-input-v3",
+  "calculators": {
+    "보험나이계산기": {
+      "id": "calc-001",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "보험 기본",
+      "engine": "quick.age",
+      "source_file": "modules/calculators/calculator_catalog.py",
+      "applies_to": "신규 가입 참고용입니다. 기존 계약의 연령 증가일과 상품별 예외는 반영하지 않습니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "신규 가입 참고용입니다. 기존 계약의 연령 증가일과 상품별 예외는 반영하지 않습니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-001",
+      "formula_summary": "생일로부터 6개월이 되는 기준으로 보험나이를 계산합니다."
+    },
+    "다음 상령일계산기": {
+      "id": "calc-002",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "보험 기본",
+      "engine": "quick.change",
+      "source_file": "modules/calculators/calculator_catalog.py",
+      "applies_to": "월말은 해당 월 말일로 보정합니다. 보험료 인상률을 예측하지 않습니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "월말은 해당 월 말일로 보정합니다. 보험료 인상률을 예측하지 않습니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-002",
+      "formula_summary": "현재 기준일 이후의 다음 보험나이 변경일과 남은 일수를 계산합니다."
+    },
+    "총 납입보험료계산기": {
+      "id": "calc-003",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "보험 기본",
+      "engine": "quick.total",
+      "source_file": "modules/calculators/calculator_catalog.py",
+      "applies_to": "보험료가 일정하다고 가정합니다. 갱신·할인·감액·중도해지는 제외합니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "보험료가 일정하다고 가정합니다. 갱신·할인·감액·중도해지는 제외합니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-003",
+      "formula_summary": "월 보험료 × 납입 개월. 기납입과 향후 납입액을 분리합니다."
+    },
+    "납입면제 효과계산기": {
+      "id": "calc-004",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "보험 기본",
+      "engine": "quick.waiver",
+      "source_file": "modules/calculators/calculator_catalog.py",
+      "applies_to": "면제 사유 충족을 가정한 금액입니다. 실제 면제 여부·제외 특약·갱신 후 적용 여부를 판정하지 않습니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "면제 사유 충족을 가정한 금액입니다. 실제 면제 여부·제외 특약·갱신 후 적용 여부를 판정하지 않습니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-004",
+      "formula_summary": "월 보험료 × 남은 개월 × 대상 비율 ÷ 100"
+    },
+    "적정보험료계산기": {
+      "id": "calc-005",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "보험 기본",
+      "engine": "modules.calculators.coverage.coverage_models",
+      "source_file": "modules/calculators/coverage/coverage_models.py",
+      "applies_to": "10%·12%는 비교용 가정이며 법정 기준이나 가입 권고가 아닙니다. 지출·부채·보장내용을 함께 판단해야 합니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "10%·12%는 비교용 가정이며 법정 기준이나 가입 권고가 아닙니다. 지출·부채·보장내용을 함께 판단해야 합니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-005"
+    },
+    "정기·종신 비교계산기": {
+      "id": "calc-006",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "보험 기본",
+      "engine": "modules.calculators.coverage.coverage_models",
+      "source_file": "modules/calculators/coverage/coverage_models.py",
+      "applies_to": "연 유효수익률 4% 가정. 세금·투자비용·종신보험 해지환급금은 반영하지 않습니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "연 유효수익률 4% 가정. 세금·투자비용·종신보험 해지환급금은 반영하지 않습니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-006"
+    },
+    "가족 생활자금계산기": {
+      "id": "calc-007",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "보장·생활자금",
+      "engine": "quick.family",
+      "source_file": "modules/calculators/calculator_catalog.py",
+      "applies_to": "생활비만 계산합니다. 부채·교육비·물가·수익·세금은 제외합니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "생활비만 계산합니다. 부채·교육비·물가·수익·세금은 제외합니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-007",
+      "formula_summary": "max(0, 월 생활비 × 12 × 기간 − 확보 재원)"
+    },
+    "교육자금계산기": {
+      "id": "calc-008",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "보장·생활자금",
+      "engine": "quick.education",
+      "source_file": "modules/calculators/calculator_catalog.py",
+      "applies_to": "첫 교육비는 시작 시점에 발생합니다. 재원의 투자수익·세금은 제외합니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "첫 교육비는 시작 시점에 발생합니다. 재원의 투자수익·세금은 제외합니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-008",
+      "formula_summary": "각 교육연도의 비용 = 현재 연 교육비 × (1+물가율)^(시작까지 기간+해당 연차). 각 연도 비용을 합한 뒤 재원을 차감합니다."
+    },
+    "부채 정리자금계산기": {
+      "id": "calc-009",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "보장·생활자금",
+      "engine": "quick.debt",
+      "source_file": "modules/calculators/calculator_catalog.py",
+      "applies_to": "이자·중도상환수수료·분할상환 일정은 계산하지 않습니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "이자·중도상환수수료·분할상환 일정은 계산하지 않습니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-009",
+      "formula_summary": "max(0, 정리할 부채 − 사용 가능한 재원)"
+    },
+    "비상자금 진단계산기": {
+      "id": "calc-010",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "보장·생활자금",
+      "engine": "finance.emergency",
+      "source_file": "special",
+      "applies_to": "자산은 즉시 사용할 수 있는 금액으로 입력합니다. 부채가 자산을 넘으면 사용 가능한 순유동자산은 0으로 표시합니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-010"
+    },
+    "사망보장 필요액계산기": {
+      "id": "calc-011",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "보장·생활자금",
+      "engine": "modules.calculators.coverage.coverage_models",
+      "source_file": "modules/calculators/coverage/coverage_models.py",
+      "applies_to": "운용수익률 연 4%, 물가상승률 연 2.5% 가정. 유족연금·퇴직금은 별도 반영하지 않습니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "운용수익률 연 4%, 물가상승률 연 2.5% 가정. 유족연금·퇴직금은 별도 반영하지 않습니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-011"
+    },
+    "중대질병 보장계산기": {
+      "id": "calc-012",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "보장·생활자금",
+      "engine": "modules.calculators.coverage.coverage_models",
+      "source_file": "modules/calculators/coverage/coverage_models.py",
+      "applies_to": "입력한 가정에 따른 재무 시나리오",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-012"
+    },
+    "간병·장기요양 필요액계산기": {
+      "id": "calc-013",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "보장·생활자금",
+      "engine": "modules.calculators.coverage.coverage_models",
+      "source_file": "modules/calculators/coverage/coverage_models.py",
+      "applies_to": "운용수익률 연 4%, 물가상승률 연 2.5% 가정. 본인부담률은 전체 비용에 적용하는 시나리오 입력값입니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "운용수익률 연 4%, 물가상승률 연 2.5% 가정. 본인부담률은 전체 비용에 적용하는 시나리오 입력값입니다.",
+        "기존 월 보장도 같은 실질할인율로 할인하는 비교 모형입니다. 실제 정액 급부·비급여·보장기간은 계약별로 확인해야 합니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-013"
+    },
+    "자녀보험 필요액계산기": {
+      "id": "calc-014",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "보장·생활자금",
+      "engine": "modules.calculators.coverage.coverage_models",
+      "source_file": "modules/calculators/coverage/coverage_models.py",
+      "applies_to": "입력한 가정에 따른 재무 시나리오",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-014"
+    },
+    "의료비 부담계산기": {
+      "id": "calc-015",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "보장·생활자금",
+      "engine": "modules.calculators.coverage.coverage_models",
+      "source_file": "modules/calculators/coverage/coverage_models.py",
+      "applies_to": "급여 비율 60%, 급여 자기부담 20%, 비급여 자기부담 30%, 의료비 상승률 4%의 단순 시나리오입니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "연간 의료비는 건강보험 적용 후 실손 청구 대상 본인부담액입니다. 면책·공제금·한도·보험료는 제외하며 실제 보험금 산정용이 아닙니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-015"
+    },
+    "연금계산기": {
+      "id": "calc-016",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "연금·은퇴",
+      "engine": "pension.calculate",
+      "source_file": "special",
+      "applies_to": "모든 결과는 오늘 구매력 기준입니다. 월 저축액도 실질금액을 유지하도록 물가만큼 증가하는 가정입니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "모든 결과는 오늘 구매력 기준입니다. 월 저축액도 실질금액을 유지하도록 물가만큼 증가하는 가정입니다.",
+        "월말 납입·인출을 가정하고 국민연금은 개시 나이 도달 후 첫 달 말부터 반영합니다. 실제 최초 지급월과 지급일은 공단 예상연금액 자료로 확인해야 합니다.",
+        "수익률·물가·연금 증가율은 고정 가정이며 세금·수수료는 자산 현금흐름에서 제외합니다.",
+        "국민연금 자동 조정은 수령 자격을 충족한 경우의 단순 전액 수령 가정입니다. 가입기간·소득에 따른 자격/감액 및 부양가족연금은 별도입니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-016"
+    },
+    "은퇴계산기": {
+      "id": "calc-017",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "연금·은퇴",
+      "engine": "retirement_plan.calculate",
+      "source_file": "special",
+      "applies_to": "모든 금액은 현재 구매력 기준입니다. 월 저축·인출액은 물가에 맞춰 명목금액이 증가하는 실질 고정액입니다. 세금·수수료는 제외합니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "모든 금액은 현재 구매력 기준입니다. 월 저축·인출액은 물가에 맞춰 명목금액이 증가하는 실질 고정액입니다. 세금·수수료는 제외합니다.",
+        "연 실질수익률=(1+운용수익률)/(1+물가상승률)−1; 이를 월 유효수익률로 환산합니다. 월말 저축·인출 가정입니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-017"
+    },
+    "퇴직금계산기": {
+      "id": "calc-018",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "연금·은퇴",
+      "engine": "modules.calculators.pension.severance",
+      "source_file": "modules/calculators/pension/severance.py",
+      "applies_to": "세법 공제표 적용: 2023년 이후 퇴직 · 법령 대조 기준일 2026-09-26",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "임금총액은 상여·연차수당 산입분 및 법정 제외기간을 반영한 금액을 입력합니다. 제외기간이 있으면 산정일수도 조정합니다. 1일 통상임금과 비교해 큰 금액을 적용합니다.",
+        "중간정산은 새 산정 시작일부터 급여를 계산합니다. 이전 금액을 단순 차감하지 않습니다. 이전 소득·납부세액 입력 시 입사일부터의 연속 근속기간으로 세금 합산을 추정합니다. 중복근무·기간 제외·복수 정산 특례는 별도 반영하지 않습니다.",
+        "퇴직 위로금에 근속연수별 자동 비과세나 일률적 60% 감면을 적용하지 않습니다. 비과세액은 해당 법정 근거가 확인된 경우에만 입력합니다."
+      ],
+      "source_urls": [
+        "https://s.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7880&mi=6600",
+        "https://www.moel.go.kr/retirementpayCal.do"
+      ],
+      "declared_laws": [],
+      "fixture_id": "calc-018"
+    },
+    "연금저축·IRP 세액공제계산기": {
+      "id": "calc-019",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "연금·은퇴",
+      "engine": "modules.calculators.pension.retirement_models",
+      "source_file": "modules/calculators/pension/retirement_models.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 소득세법 제59조의3",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "실제 환급액이 아닌 공제 가능액입니다. 납부할 소득세·다른 공제에 따라 사용 가능한 공제액이 제한됩니다. ISA 전환 추가한도와 이전·퇴직금 재원은 제외합니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032880515"
+      ],
+      "declared_laws": [
+        "소득세법 제59조의3"
+      ],
+      "fixture_id": "calc-019"
+    },
+    "국민연금 수령시기계산기": {
+      "id": "calc-020",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "연금·은퇴",
+      "engine": "modules.calculators.pension.retirement_models",
+      "source_file": "modules/calculators/pension/retirement_models.py",
+      "applies_to": "제도 확인일 2026-09-26 · 국민연금공단 안내",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "제도 확인일 2026-09-26 · 국민연금공단 안내",
+        "조기·연기 수급 자격 충족, 전액 수령 가정. 소득활동 감액·세금·물가·부분 연기는 제외합니다."
+      ],
+      "source_urls": [
+        "https://www.nps.or.kr/pnsinfo/ntpsklg/getOHAF0100M0.do"
+      ],
+      "declared_laws": [],
+      "fixture_id": "calc-020"
+    },
+    "주택연금계산기": {
+      "id": "calc-021",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "연금·은퇴",
+      "engine": "modules.calculators.pension.housing_pension",
+      "source_file": "modules/calculators/pension/housing_pension.py",
+      "applies_to": "지급표 적용일 2026-06-01 · 자료 확인일 2026-09-26",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": "2026-06-01",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "지급표 적용일 2026-06-01 · 자료 확인일 2026-09-26"
+      ],
+      "source_urls": [
+        "https://www.hf.go.kr/ko/sub03/sub03_01_01_02.do"
+      ],
+      "declared_laws": [],
+      "fixture_id": "calc-021"
+    },
+    "일시금·연금 세금비교계산기": {
+      "id": "calc-022",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "연금·은퇴",
+      "engine": "modules.calculators.pension.retirement_models",
+      "source_file": "modules/calculators/pension/retirement_models.py",
+      "applies_to": "적용 기준일 2026-01-01 · 대조일 2026-09-26",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": "2026-01-01",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "동일한 재원을 각 수령연차에 받았을 때의 비교입니다. 전체 퇴직금을 여러 해에 나눠 받을 때는 연차별 인출액에 배분해야 합니다. 연금수령 요건·한도 충족 가정."
+      ],
+      "source_urls": [
+        "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7888&mi=2312"
+      ],
+      "declared_laws": [],
+      "fixture_id": "calc-022"
+    },
+    "은퇴크레바스계산기": {
+      "id": "calc-023",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "연금·은퇴",
+      "engine": "modules.calculators.pension.retirement_models",
+      "source_file": "modules/calculators/pension/retirement_models.py",
+      "applies_to": "운용수익률 3.5%, 물가상승률 2.5%의 고정 가정입니다. 필요자금은 퇴직 시점 구매력 기준입니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "운용수익률 3.5%, 물가상승률 2.5%의 고정 가정입니다. 필요자금은 퇴직 시점 구매력 기준입니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-023"
+    },
+    "3층연금 점검계산기": {
+      "id": "calc-024",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "연금·은퇴",
+      "engine": "modules.calculators.pension.retirement_models",
+      "source_file": "modules/calculators/pension/retirement_models.py",
+      "applies_to": "동일한 수령 시점·화폐가치의 월액을 입력합니다. 물가와 세금은 별도 반영하지 않습니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "동일한 수령 시점·화폐가치의 월액을 입력합니다. 물가와 세금은 별도 반영하지 않습니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-024"
+    },
+    "연금 인출기간계산기": {
+      "id": "calc-025",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "연금·은퇴",
+      "engine": "modules.calculators.pension.retirement_models",
+      "source_file": "modules/calculators/pension/retirement_models.py",
+      "applies_to": "월 인출액은 현재 구매력 유지 가정입니다. 마지막 부분 인출은 전액 인출 횟수에서 제외합니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "월 인출액은 현재 구매력 유지 가정입니다. 마지막 부분 인출은 전액 인출 횟수에서 제외합니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-025"
+    },
+    "사적연금 과세계산기": {
+      "id": "calc-026",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "연금·은퇴",
+      "engine": "modules.calculators.pension.retirement_models",
+      "source_file": "modules/calculators/pension/retirement_models.py",
+      "applies_to": "세제 기준일 2026-01-01 · 대조일 2026-09-26",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": "2026-01-01",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "세액공제 받은 납입액·운용수익 재원만 입력합니다. 이연퇴직소득·과세제외 원금·부득이한 인출은 제외합니다. 1500만원 초과 시 종합과세 선택과의 유불리는 별도입니다."
+      ],
+      "source_urls": [
+        "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7888&mi=2312"
+      ],
+      "declared_laws": [],
+      "fixture_id": "calc-026"
+    },
+    "IRP 적립계산기": {
+      "id": "calc-027",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "연금·은퇴",
+      "engine": "modules.calculators.pension.retirement_models",
+      "source_file": "modules/calculators/pension/retirement_models.py",
+      "applies_to": "세액공제 법령 대조일 2026-09-26",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "전 기간 동일 소득·공제한도를 가정합니다. 공제액은 재투자하지 않습니다. 세후 자산은 적법한 연금수령으로 분산 인출하는 단순 가정이며 일시금 실수령액이 아닙니다. 실제 연간 과세대상액·나이·공제 사용 여부에 따라 세금이 달라집니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032880515",
+        "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7888&mi=2312"
+      ],
+      "declared_laws": [],
+      "fixture_id": "calc-027"
+    },
+    "은퇴저축계산기": {
+      "id": "calc-028",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "연금·은퇴",
+      "engine": "retirement_remaining.saving",
+      "source_file": "special",
+      "applies_to": "목표·저축액은 오늘 구매력 기준입니다. 매월 명목 납입액을 물가만큼 늘려 실질 저축액을 유지합니다. 세금·수수료는 제외합니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "목표·저축액은 오늘 구매력 기준입니다. 매월 명목 납입액을 물가만큼 늘려 실질 저축액을 유지합니다. 세금·수수료는 제외합니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-028"
+    },
+    "연금 인출순서계산기": {
+      "id": "calc-029",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "연금·은퇴",
+      "engine": "retirement_remaining.withdrawal",
+      "source_file": "special",
+      "applies_to": "입력값 기준의 정적 비교입니다. 실효세율은 인출액 전체 대비 예상 세금 비율이며 법정세율을 자동 적용하지 않습니다. 예적금 원금에 이자소득세율 15.4%를 그대로 입력하면 안 됩니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-029"
+    },
+    "미래가치계산기": {
+      "id": "calc-030",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "재무·투자",
+      "engine": "finance.future_value",
+      "source_file": "special",
+      "applies_to": "수익률 일정, 세금·수수료·물가 미반영.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "수익률 일정, 세금·수수료·물가 미반영."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-030"
+    },
+    "복리계산기": {
+      "id": "calc-031",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "재무·투자",
+      "engine": "finance.compound",
+      "source_file": "special",
+      "applies_to": "수익률 일정, 세금·수수료·물가 미반영.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "수익률 일정, 세금·수수료·물가 미반영."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-031"
+    },
+    "수익률계산기": {
+      "id": "calc-032",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "재무·투자",
+      "engine": "finance.tvm(rate)",
+      "source_file": "special",
+      "applies_to": "수익률 일정, 세금·수수료·물가 미반영.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "수익률 일정, 세금·수수료·물가 미반영."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-032"
+    },
+    "재무계산기": {
+      "id": "calc-033",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "재무·투자",
+      "engine": "finance.tvm(future)",
+      "source_file": "special",
+      "applies_to": "수익률 일정, 세금·수수료·물가 미반영.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "수익률 일정, 세금·수수료·물가 미반영."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-033"
+    },
+    "투자수익계산기": {
+      "id": "calc-034",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "재무·투자",
+      "engine": "finance.investment",
+      "source_file": "special",
+      "applies_to": "월 저축액을 복리 주기별로 합산하여 각 주기 말에 투입합니다. 분기 복리는 월 저축액의 3배를 분기 말에 납입합니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "수익률 일정, 세금·수수료·물가 미반영."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-034"
+    },
+    "현재가치계산기": {
+      "id": "calc-035",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "재무·투자",
+      "engine": "finance.present_value",
+      "source_file": "special",
+      "applies_to": "연간 할인, 세금·수수료 미반영.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "연간 할인, 세금·수수료 미반영."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-035"
+    },
+    "목표자금 계획계산기": {
+      "id": "calc-036",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "재무·투자",
+      "engine": "finance.goals",
+      "source_file": "special",
+      "applies_to": "각 목표의 준비 자금을 중복 배정하지 마세요. 물가·세금·수수료 미반영.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "각 목표의 준비 자금을 중복 배정하지 마세요. 물가·세금·수수료 미반영."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-036"
+    },
+    "기회비용계산기": {
+      "id": "calc-037",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "재무·투자",
+      "engine": "finance.opportunity",
+      "source_file": "special",
+      "applies_to": "수익률 일정, 세금·수수료·물가 미반영.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "수익률 일정, 세금·수수료·물가 미반영."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-037"
+    },
+    "물가 반영 필요자금계산기": {
+      "id": "calc-038",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "재무·투자",
+      "engine": "quick.inflation",
+      "source_file": "modules/calculators/calculator_catalog.py",
+      "applies_to": "물가율은 사용자가 정한 시나리오이며 경제 예측이 아닙니다. 음수 물가에서는 미래 필요액이 감소합니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "물가율은 사용자가 정한 시나리오이며 경제 예측이 아닙니다. 음수 물가에서는 미래 필요액이 감소합니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-038",
+      "formula_summary": "현재 필요액 × (1+연 물가상승률)^기간"
+    },
+    "ISA 절세계산기": {
+      "id": "calc-039",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "재무·투자",
+      "engine": "modules.calculators.tax.personal_tax_models",
+      "source_file": "modules/calculators/tax/personal_tax_models.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 조세특례제한법 제91조의18 (2026-09-18 시행본).",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 산식 동작 기준값 대조",
+      "limitations": [
+        "신규 계좌·연초 정액 납입·3년 이상 유지 가정. 연 납입액 최대 2천만원, 총 1억원. 미사용 한도 이월·중도인출·기존 재형저축 등은 미반영.",
+        "가입 자격은 금융기관에서 확인해야 합니다. 전 수익이 과세대상 이자라고 가정한 비교로, 국내주식 매매차익·손실통산·수수료·금융소득종합과세는 미반영합니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [
+        "조세특례제한법 제91조의18"
+      ],
+      "fixture_id": "calc-039"
+    },
+    "양도소득세계산기": {
+      "id": "calc-040",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "개인·부동산 세금",
+      "engine": "modules.calculators.tax.capital_gains_tax",
+      "source_file": "modules/calculators/tax/capital_gains_tax.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 소득세법 제55·95·103·104조, 시행령 제160조.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "1주택 비과세 자격은 취득 당시 조정대상지역·거주 요건 등을 별도 확인한 값입니다. 예외적 2년 미만 비과세는 지원하지 않습니다. 주거용 오피스텔은 주택으로 입력합니다.",
+        "조정대상지역 다주택은 법정 제외 주택 등을 반영한 주택·권리 수와 중과 판단을 확인합니다. 중과 대상이면2주택20%p/3개 이상30%p를 가산하고 장기보유공제를 배제하며 단기세액과 비교합니다. 2년 이상 보유의2026-05-09 이전 양도 및 계약·허가 경과규정을 구별합니다.",
+        "경과규정은 시행령167조의3·167조의10 등(2026-07-01 시행본)을 기준으로 계약·허가·계약금 증빙과4/6개월 기한을 검토합니다. 6개월 지역은 서울의 강남·서초·송파·용산 외21개구와 경기도 수원 장안·팔달·영통, 성남 수정·중원·분당, 안양 동안, 과천, 용인 수지, 광명, 하남, 의왕입니다. 조정대상지역 지정 자체 및 다른 제외 사유는 자동 조회하지 않습니다.",
+        "지정지역 비사업용 토지 추가 중과를 선택하면 공고 전 계약 등 제외사유 없이 법104조4항 적용이 확인된 것으로 보고 비사업용10%p에10%p를 더합니다.",
+        "원 단위 반올림 예상치입니다. 지방세는 국세의 10%로 추산하며 별도 감면·가산세·신고서 단수처리는 미반영입니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/소득세법"
+      ],
+      "declared_laws": [
+        "소득세법"
+      ],
+      "fixture_id": "calc-040",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "근로소득세계산기": {
+      "id": "calc-041",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "개인·부동산 세금",
+      "engine": "modules.calculators.tax.earned_income_tax",
+      "source_file": "modules/calculators/tax/earned_income_tax.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 2026년 귀속 · 소득세법 제47조·제59조~제59조의4. 자녀공제는 법률 제21548호 부칙 경과규정 적용.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "자녀는 기본공제 요건을 충족한 2026년 9세 이상(2017년생 제외) 인원입니다. 기본공제 대상은 소득·나이 요건과 다른 가족의 중복 공제 여부를 확인한 인원만 입력합니다.",
+        "의료비는 보전받은 금액과 비공제 비용을 제외한 적격 비용입니다. 일반→한도 없는 비용→미숙아→난임 순서로 급여3% 문턱을 차감하며 일반 항목만 700만원 한도를 적용합니다.",
+        "교육비·기부금·주택자금은 자격·개인별 한도 등을 적용한 공제 대상액입니다. 기부금 종류별 한도·이월금, 정치자금·고향사랑, 월세, 신용카드, 출산입양 공제, 추가 인적공제, 세액감면은 아직 미반영합니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/소득세법"
+      ],
+      "declared_laws": [
+        "소득세법 제47조"
+      ],
+      "fixture_id": "calc-041",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "종합소득세계산기": {
+      "id": "calc-042",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "개인·부동산 세금",
+      "engine": "modules.calculators.tax.global_income_tax",
+      "source_file": "modules/calculators/tax/global_income_tax.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 2026년 귀속 · 소득세법 제55조·제59조의3·제59조의4제9항.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "각 소득은 과세대상 소득금액입니다. 분리과세·비과세 금액과 금융소득은 제외합니다. 결손금·이월결손금·소득공제 종합한도는 자동 판정하지 않습니다.",
+        "공적연금은 확인된 실제 납부액만 반영합니다. 연금저축600만원·IRP합산900만원 한도, 종합소득4500만원 이하15%/초과12% 국세 공제율을 적용합니다.",
+        "성실사업자12만원은 법정 성실사업자 요건과 조세특례제한법 제122조의3 공제 미신청 조건을 확인한 경우입니다. 근로소득자13만원은 특별소득·특별세액·월세공제 미신청 요건을 충족해야 합니다.",
+        "기장공제 자동 계산은 소득세법 제56조의2에 따라 간편장부 대상자의 자발적 복식부기·신고서류 제출·5년 보관 요건을 확인한 경우 적용합니다. 20% 이상 소득 누락이면 공제하지 않습니다. 기장의무자 판정과 최저한세·다른 감면과의 조합은 별도 검증 대상입니다.",
+        "근로소득세액공제는 아직 확인액 입력입니다. 기장공제 수동 입력과 자동 계산을 중복 적용하지 않습니다.",
+        "추가 공제에 이미 입력한 공제를 중복 입력하지 마세요. 표준공제와 양립하지 않는 특별공제가 있으면 표준공제 미적용을 선택해야 합니다. 세액감면·농특세·가산세 및 신고서 단수처리는 미반영합니다.",
+        "11월 중간예납은 당해 예상세액의 절반으로 확정하지 않으므로 표시하지 않습니다. 고객 결과는 입력한 확인 공제액을 전제로 한 추정입니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/소득세법"
+      ],
+      "declared_laws": [
+        "소득세법 제55조",
+        "조세특례제한법 제122조의3",
+        "소득세법 제56조의2"
+      ],
+      "fixture_id": "calc-042",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "임대소득세계산기": {
+      "id": "calc-043",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "개인·부동산 세금",
+      "engine": "modules.calculators.tax.rental_tax",
+      "source_file": "modules/calculators/tax/rental_tax.py",
+      "applies_to": "법령 기준일 2026-09-26 · 2026년 귀속 · 소득세법 제25조, 시행령 제53조(2026-07-01), 시행규칙 제23조(2026-05-22), 국세청 주택임대소득 안내.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "고가2주택의 12억원은 과세 대상 판정 기준입니다. 계산식의 차감액은 3억원입니다. 소형주택(40㎡ 이하·기준시가 2억원 이하)은 2026년 간주임대료 주택 수와 보증금에서 제외합니다.",
+        "분리과세 등록요건은 지자체·세무서 등록과 임대료 증가율 5% 이하 등 충족을 의미합니다. 등록·미등록 혼합, 임대기간별 배분, 소형주택 세액감면은 미반영합니다.",
+        "입력한 국세 공제액을 두 종합과세 시나리오에 동일 적용합니다. 소득 변화에 따라 공제액이 달라지면 재산출해야 합니다. 지방세는 국세의 10% 비교 추정, 기납부세액·가산세·건강보험료 미반영."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/소득세법"
+      ],
+      "declared_laws": [
+        "소득세법 제25조"
+      ],
+      "fixture_id": "calc-043",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "금융소득종합과세계산기": {
+      "id": "calc-044",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "개인·부동산 세금",
+      "engine": "modules.calculators.tax.personal_tax_models",
+      "source_file": "modules/calculators/tax/personal_tax_models.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 소득세법 제62조 (2026-07-01 시행본), 국세청 기본세율표.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "국내에서 14% 국세가 원천징수되는 일반 이자·배당만 지원합니다. 배당가산 대상 국내 배당은 별도 입력하며 일반 배당에 중복 입력하지 마세요. 비영업대금, 국외 미원천징수, 비과세·분리과세 특례 소득은 입력하지 마세요.",
+        "배당세액공제를 제외한 근로·사업 등 다른 소득의 세액공제·감면 및 기납부세액은 미반영합니다. 표시액은 실제 확정신고 납부액 또는 환급액이 아닙니다.",
+        "원 단위 반올림 비교치이며, 신고서 단수처리·지방세 별도 공제는 이 비교 모델에 포함하지 않습니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/소득세법"
+      ],
+      "declared_laws": [
+        "소득세법 제62조"
+      ],
+      "fixture_id": "calc-044",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "주택담보대출 이자공제계산기": {
+      "id": "calc-045",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "개인·부동산 세금",
+      "engine": "modules.calculators.tax.mortgage_deduction",
+      "source_file": "modules/calculators/tax/mortgage_deduction.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 2026년 귀속 · 소득세법 제52조 제5·6항, 시행령 제112조 제8·9항.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "고정금리는 차입금 70% 이상을 상환기간 중 고정(5년 이상 단위 변경 포함)하는 법정 방식입니다. 비거치식은 거치 1년 이내 및 법정 매년 최소 원금상환 기준을 확인한 경우만 선택합니다.",
+        "최초 차입 날짜의 예외 인정은 자동 판정하지 않습니다. 실제 금융기관 증명서와 등기자료를 확인해 주세요.",
+        "다른 주택공제액은 개별 자격을 확인한 값입니다. 고객 결과와 상세 결과는 같은 입력 시나리오를 사용합니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/소득세법"
+      ],
+      "declared_laws": [
+        "소득세법 제52조"
+      ],
+      "fixture_id": "calc-045",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "4대보험계산기": {
+      "id": "calc-046",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "개인·부동산 세금",
+      "engine": "modules.calculators.tax.social_insurance",
+      "source_file": "modules/calculators/tax/social_insurance.py",
+      "applies_to": "요율·법령 대조 기준일 2026-09-26 · 2026년 9월 일반 사업장 근로자 기준.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "국민연금 상·하한은 1~6월 40만~637만원, 7~12월 41만~659만원입니다. 월액의 12배는 동일 조건 가정이며 7월 한도변경·보수변동·정산을 반영한 연간 확정액이 아닙니다.",
+        "산재는 사업주 전액 부담입니다. 요율을 모르면 회사 총액을 0원으로 채우지 않고 미확인으로 표시합니다. 고지서의 출퇴근재해·개별실적 등을 포함한 실제 총요율을 입력합니다.",
+        "지역가입자, 공무원·사학, 외국인 특례, 두루누리 등 지원·감면, 복수 사업장 안분, 보수 외 소득 보험료 및 연말정산은 현재 미반영합니다. 실제 고지액이 우선하며, 개별 단수처리 최종 검증 전 추정입니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-046",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "취득세 중과계산기": {
+      "id": "calc-047",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "개인·부동산 세금",
+      "engine": "modules.calculators.tax.acquisition_tax",
+      "source_file": "modules/calculators/tax/acquisition_tax.py",
+      "applies_to": "법령 대조일 2026-09-27 · 지방세법 제11조·제13조제2항·제13조의2. 확인된 법인 유상 승계취득의 취득세 본세 계산입니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-27",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "법령 대조일 2026-09-27 · 지방세법 제11조·제13조제2항·제13조의2. 확인된 법인 유상 승계취득의 취득세 본세 계산입니다.",
+        "취득대금만이 아닌 확인된 취득세 과세표준을 입력합니다. 부대비용·부가세 등의 포함 여부를 자동 판정하지 않습니다.",
+        "대도시 중과는 주소와 법인 설립 연수만으로 확정하지 않습니다. 지점 설치·전입, 산업단지 제외, 중과 제외 업종, 취득 목적과 시기를 함께 확인해야 합니다.",
+        "일반 비주택 4%, 제13조제2항 대도시 중과 8%, 법인 주택 중과 12%의 확인된 세 가지 경우만 계산합니다. 주택 중과 제외·농지·무상취득·원시취득·고급주택 등 다른 중과 및 중복 적용·조례 조정·감면은 별도 검증 대상입니다.",
+        "주택 결과의 4% 비교액은 중과 산식의 기준입니다. 중과 제외 주택에 실제 적용할 일반세율로 해석하지 않습니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/지방세법"
+      ],
+      "declared_laws": [
+        "지방세법 제11조"
+      ],
+      "fixture_id": "calc-047",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "해외금융계좌 신고계산기": {
+      "id": "calc-048",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "개인·부동산 세금",
+      "engine": "modules.calculators.corporate.overseas_accounts",
+      "source_file": "modules/calculators/corporate/overseas_accounts.py",
+      "applies_to": "법령 대조일 2026-09-27 · 국제조세조정법 제53·54조 및 시행령 제147조. 현행 기본 과태료 기준을 적용한 참고 계산입니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-27",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "면제에는 법정 단기 외국인 거주자, 재외국민의 국내 거소일수 요건, 법정 기관, 다른 신고로 확인되는 계좌 등의 요건이 있습니다. 확인된 자격을 입력해야 하며 자동 거주자 판정은 하지 않습니다.",
+        "해외 금융소득은 신고 잔액·과태료에 더하지 않습니다. 국내 소득세·외국납부세액공제·해외신탁 신고는 별도 의무입니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-048",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "상속세계산기": {
+      "id": "calc-049",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "상속·증여·승계",
+      "engine": "modules.calculators.tax.estate_calculator",
+      "source_file": "modules/calculators/tax/estate_calculator.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 2026년 거주자 일반 상속 · 상속세및증여세법 제19~27조.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "배우자 단독 상속이면 일괄5억원을 선택하지 않습니다. 공동상속 지분은 배우자1.5 대 직계존비속 각1이며 포기 전 구성을 입력합니다. 실제 상속5억원 이상은 분할·등기·신고 요건 확인이 필요합니다.",
+        "공제 종합한도에서 사전증여 관련 금액을 차감하는 규정은 과세가액5억원 초과 때에만 적용합니다. 기타 유증·상속포기 금액은 별도 차감합니다.",
+        "대습상속은 민법1001조 요건이 확인된 금액만 제외합니다. 사망 외 법정 상속결격·상속권상실도 해당 조문과 상속개시일별 적용 요건을 확인해야 하며 상속포기와 혼동하지 않습니다. 자동 가족관계·법률자격 판정은 하지 않습니다.",
+        "할증비율 분모는 불산입 제외 상속재산과 합산 사전증여이며 채무·장례비 차감 전입니다. 30%·40%·대습 제외 금액은 서로 중복되지 않아야 합니다.",
+        "이번 연결 화면은 비거주자, 주식 평가/할증, 가업·영농 자격 자동심사, 증여세액공제 수증자별 한도 자동계산을 아직 지원하지 않습니다. 해당 사례의 확정 계산으로 사용하지 않습니다.",
+        "가업상속은 확인된 적격 재산과 계속 경영기간으로300억/400억/600억원 한도를 적용합니다(제18조의2). 기업·상속인·중견기업 납부능력·사후관리·동일재산 영농공제 배제 등 자격은 사전에 확인해야 합니다. 자동 계산한 가업공제를 기타 공제에 다시 입력하지 마세요. 추가 주식 평가액은 본래 총평가액에 더해지므로 중복을 제외합니다. 영농·재해 등은 개별 요건·한도·중복제한을 검토한 공제액만 입력합니다. 실제 현금재원은 금융재산 과세평가액과 별도로 입력합니다. 보험금이 간주상속재산이면 과세재산에 포함해 계산합니다.",
+        "기존 보고서와 동일한 계산식에 원화 입력 및 고객/설계사 출력을 연결했습니다. 원 단위 반올림 예상치이며 확인 입력 외 특례·신고서별 단수처리는 포함하지 않습니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/상속세및증여세법"
+      ],
+      "declared_laws": [],
+      "fixture_id": "calc-049",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "증여세계산기": {
+      "id": "calc-050",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "상속·증여·승계",
+      "engine": "modules.calculators.tax.gift_planning",
+      "source_file": "modules/calculators/tax/gift_planning.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 상속세및증여세법 제47·53·53의2·55~58·68·69조, 시행령 제46의3조.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "일반 과세대상 증여의 확인된 평가액을 계산합니다. 주식 할증·평가액 산정, 합산배제 증여·가업/창업 특례, 외국납부 공제, 가산세는 현재 자동 계산 범위 밖입니다. 비거주자는 국내 과세대상 재산만 입력합니다.",
+        "과거 합산은 동일 증여자 기준이며 증여자가 직계존속이면 그 배우자를 포함합니다. 과거 합계 1천만원 미만은 합산 제외하되 이미 사용한 공제는 별도 차감합니다.",
+        "과거 금액은 10년 기간과 신고서를 대조한 합계를 입력합니다. 여러 신고서에 반복된 합산액·산출세액을 중복 입력하지 않습니다. 납부세액공제에는 실제 납부액이 아닌 신고공제 전 해당 재산의 산출세액(할증 별도)을 사용합니다. 기간 경계·제척기간·다른 과거 증여의 영향은 검증이 남아 있습니다.",
+        "혼인·출산 공제는 두 유형을 합쳐 수증자 누적1억원 한도입니다. 자녀 수 또는10년 경과로 한도가 새로 생기지 않습니다. 날짜·신고사실 등 요건을 확인한 금액만 적용합니다.",
+        "손자녀 등 세대생략은30%, 미성년 수증자의 합산 포함 재산20억원 초과는40%. 최근친 사망 예외와 과거 할증액을 별도로 반영합니다.",
+        "원 단위 반올림 추정치입니다. 신고기한 표시는 월말 기준일이며 토요일·공휴일·기한연장 여부는 별도 달력 대조가 남아 있습니다. 기한후 신고를 선택하면3%공제를 제외하지만 가산세를0원으로 확정하지 않습니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/상속세및증여세법"
+      ],
+      "declared_laws": [],
+      "fixture_id": "calc-050",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "비상장주식 평가계산기": {
+      "id": "calc-051",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "상속·증여·승계",
+      "engine": "modules.calculators.corporate.unlisted_valuation",
+      "source_file": "modules/calculators/corporate/unlisted_valuation.py",
+      "applies_to": "법령 기준·대조일 2026-09-27. 상증세법 제63조, 시행령 제53~56조, 시행규칙 제17조. 시행령은 2026-09-18 시행본, 환원율 연 10%.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-27",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "할증 제외는 법정 자격을 확인하여 선택합니다. 계속 결손은 회계상 3개년 적자와 동일하지 않습니다. 최대주주 할증은 해당 주주의 주식에만 적용하며 전체 참고액은 회사의 실제 거래가격이 아닙니다.",
+        "업종 보정·경영권 프리미엄은 사용자가 선택한 가정이며 법정 세무 평가나 검증된 시장가격이 아닙니다. 액면가는 참고 입력입니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/상속세및증여세법"
+      ],
+      "declared_laws": [],
+      "fixture_id": "calc-051",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "가업승계 세부담계산기": {
+      "id": "calc-052",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "상속·증여·승계",
+      "engine": "modules.calculators.corporate.business_succession",
+      "source_file": "modules/calculators/corporate/business_succession.py",
+      "applies_to": "법령 대조일 2026-09-26 · 조세특례제한법30조의6(2026-09-18 시행), 시행령27조의6, 상증세법18조의2. 일반 증여 계산은 기존 증여세 엔진을 공유합니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "확인된 최종 주식평가액을 입력합니다. 비상장주식 평가계산기에서 순손익·순자산 가중평가, 순자산 하한, 부동산 비율 및 최대주주 할증 조건을 계산한 뒤 이전 주식 수를 지정해 이 화면에 평가액을 전달할 수 있습니다. 인정 시가 우선 및 법정 평가 조건은 확인해야 합니다.",
+        "산출세액끼리 비교하며 일반 증여의3% 신고공제도 이 비교에서는 적용하지 않습니다. 일반 증여는 거주자인 자녀에게 최초 증여하는 경우만 지원합니다. 이전 증여가 있으면 기존 증여세 계산기를 사용해 계산 내역을 확인할 수 있습니다.",
+        "중소·중견기업, 업종·자산·매출·지분·대표재직·수증자 거주와 가업종사·기한내 신청·사후관리 등은 확인 입력입니다. 나이와 업력만으로 적격 판정하지 않습니다. 과거 특례·여러 수증자·일부 사업무관자산·한도초과·상장차익·추징은 미지원입니다.",
+        "상속공제는 별도 상속요건을 충족한 가업재산의 한도 시뮬레이션이며 상속세 계산 결과가 아닙니다. 일반 증여세에서 상속공제액을 빼지 않습니다. 전체 상속재산·공제한도·사전증여 합산은 상속세 통합 검증이 남아 있습니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/상속세및증여세법"
+      ],
+      "declared_laws": [
+        "조세특례제한법"
+      ],
+      "fixture_id": "calc-052",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "명의신탁주식계산기": {
+      "id": "calc-053",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "상속·증여·승계",
+      "engine": "modules.calculators.corporate.nominee_trust",
+      "source_file": "modules/calculators/corporate/nominee_trust.py",
+      "applies_to": "법령 대조일 2026-09-26 · 상속세 및 증여세법4조의2·45조의2·47·55·56. 2026년 최초 명의신탁의 증여의제 산출세액을 계산합니다.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "주식 평가액과 명의신탁 성립일은 확인 입력입니다. 미명의개서의 의제시기·취득일 평가, 과거 연도, 주식평가 자동화는 지원하지 않습니다.",
+        "실제 소유자에게 환원하는 거래 자체와 최초 명의신탁 과세는 별개입니다. 환원이 확인돼도 최초 명의신탁 증여세·배당소득세 등이 사라지지 않습니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/상속세및증여세법"
+      ],
+      "declared_laws": [
+        "상속세 및 증여세법"
+      ],
+      "fixture_id": "calc-053",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "차등배당계산기": {
+      "id": "calc-054",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "상속·증여·승계",
+      "engine": "modules.calculators.corporate.differential_dividend",
+      "source_file": "modules/calculators/corporate/differential_dividend.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 상증세법41조의2, 시행령31조의2, 시행규칙10조의3 및 별지10호의5.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "초과배당=(실제 배당−지분 비례 배당)의 양수 부분×전체 과소배당 중 특수관계 최대주주 귀속 비율. 단일 증여자·한 번의 거래만 지원합니다. 최대주주·특수관계·귀속비율 판정은 입력 전에 확인합니다.",
+        "정산용 실제 소득세액은 시행규칙10조의3제2항 기준으로 확인한 초과배당 귀속 국세입니다. 전체 배당 원천징수액, 지방세 포함 금액, 배당세액공제 후 임의 증분과 혼동하지 마세요. 정산 자동계산은 확인된 해당 연도 종합소득 과세표준에서 초과배당 유무에 따른 기본세율 세액 차이와 초과배당14% 중 큰 금액을 적용합니다. 분리과세는 확인된 국세율을 적용하고 적격 과세제외·비과세는0원입니다. 소득구분·과세표준·세율은 확인 입력이며, 신고서 전체 과세표준을 역산하지 않습니다.",
+        "미성년이라는 이유만으로 세대생략 할증을 적용하지 않습니다. 부모→자녀와 조부모→손자녀를 구분합니다. 과거 증여가 세대생략 대상인 복합 사례는 이 화면에서 지원하지 않습니다.",
+        "일반 증여세 공통 계산식을 사용합니다. 과거 증여의 10년 합산·공제사용액·산출세액은 확인된 금액만 입력하세요. 혼인출산 공제·외국납부·가산세는 미지원입니다.",
+        "전체 배당의 종합소득세는 배당가산 여부 미확인 시 자동 확정하지 않습니다. 가산 대상 확인 모드는 공통 배당가산·비교세액 계산을 사용합니다. 확정세액 모드는 전체 배당으로 증가한 국세·지방세 결정세액입니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-054",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "특정법인 증여의제계산기": {
+      "id": "calc-055",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "상속·증여·승계",
+      "engine": "modules.calculators.corporate.family_corp_gift",
+      "source_file": "modules/calculators/corporate/family_corp_gift.py",
+      "applies_to": "법령 대조일2026-09-27 · 상증세법45조의5·47·53·55·69, 시행령34조의5(2026-09-18 시행). 일감몰아주기 증여의제와 구별되는 특정법인 거래 계산입니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-27",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "단일 거래·단일 수증 주주·과거 합산 증여 없음·국내 거주자·세대생략 없음 조건입니다. 법정 관계와 직접·간접 보유비율, 자본거래 평가액, 공제 자격은 확인된 값을 입력합니다. 서로 다른 거래 유형을 임의 합산하지 않습니다.",
+        "지배주주·친족 보유 합계30% 이상인 법인을 대상으로 합니다. 저가·고가 거래는 차액이 시가30% 이상 또는3억원 이상인 경우입니다. 금전대여·용역 무상사용·반복거래·해산 특례는 별도 계산 대상입니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/상속세및증여세법"
+      ],
+      "declared_laws": [],
+      "fixture_id": "calc-055",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "지분 매입자금계산기": {
+      "id": "calc-056",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "상속·증여·승계",
+      "engine": "modules.calculators.corporate.corporate_funding",
+      "source_file": "modules/calculators/corporate/corporate_funding.py",
+      "applies_to": "회사 전체 지분 가치와 입력 지분율의 단순 비례 추정입니다. 부채 포함 기업가치 대신 주주 지분 가치를 입력합니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "시가 평가·경영권 프리미엄·종류주식·당사자 합의·자기주식 취득 요건을 자동 판단하지 않습니다. 세금·수수료·조달 이자는 제외합니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-056",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "승계 재원계산기": {
+      "id": "calc-057",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "상속·증여·승계",
+      "engine": "modules.calculators.corporate.corporate_funding",
+      "source_file": "modules/calculators/corporate/corporate_funding.py",
+      "applies_to": "세액을 새로 산출하는 계산기가 아닙니다. 세금 계산기에서 검토한 예상 납부세액을 입력하며 주식 평가액은 설명용 참고값입니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "연부연납·분납·물납·차입·보험금 지급 시점과 이자·운영자금의 기간별 흐름은 미반영입니다. 준비 재원과 운영자금을 중복 계상하지 않습니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/상속세및증여세법"
+      ],
+      "declared_laws": [],
+      "fixture_id": "calc-057",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "인정이자계산기": {
+      "id": "calc-058",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "법인·대표 전략",
+      "engine": "modules.calculators.corporate.deemed_interest",
+      "source_file": "modules/calculators/corporate/deemed_interest.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 법인세법 시행령53·88·89조, 시행규칙43조.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "단일 특수관계인·동일 적용금리·2026년 기준입니다. 가중평균차입이자율이 원칙이며 당좌4.6% 선택 시 해당 사업연도와 이후2개 사업연도 적용 요건 등을 확인합니다. 금리와 자격은 자동 판정하지 않습니다.",
+        "평균 추정은 기중 변동을 재현하지 않습니다. 날짜별 기록은 각 날짜부터 유효한 확정 잔액이며 당일 포함·다음 변경일 제외입니다. 거래 원장의 초일·말일 처리에 맞게 유효일을 정리해야 합니다.",
+        "가수금은 동일인·상계 가능 요건을 확인한 잔액만 입력합니다. 각 구간에서 음수 순잔액을0으로 처리하여 다른 기간의 대여금과 잘못 상계하지 않습니다.",
+        "인정이자 대상과 지급이자 부인 대상은 별도로 판정한 적수입니다. 직원대여 등 제외요건, 별도 상환·이자약정, 다른 지급이자 손금불산입 우선순위는 수동 검토 범위입니다.",
+        "소득처분과 원천징수세액은 귀속자·사외유출 사실을 확인해야 하므로 자동 확정하지 않습니다. 이 결과는 추가 법인세 자체가 아니라 소득금액 조정액입니다. 복수 금리·복수 귀속자·연도를 걸치는 사업연도·신고 단수처리는 미지원입니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/법인세법"
+      ],
+      "declared_laws": [
+        "법인세법"
+      ],
+      "fixture_id": "calc-058",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "급여vs배당 비교계산기": {
+      "id": "calc-059",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "법인·대표 전략",
+      "engine": "modules.calculators.corporate.salary_dividend",
+      "source_file": "modules/calculators/corporate/salary_dividend.py",
+      "applies_to": "법령·요율 대조일 2026-09-27 · 2026년 개시 12개월 법인·국내 거주 개인의 일반 급여/배당 시나리오. 법인세 10/20/22/25%, 소규모 해당 시 첫 구간 20%.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-27",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "동일한 본인 세전 추가 수령액을 비교합니다. 회사의 동일 비용 예산 비교가 아닙니다. 지분율 100% 미만이면 전체 주주에게 필요한 비례 배당액도 표시합니다. 차등배당은 제외합니다.",
+        "근로소득공제는 자동 반영합니다. 입력 공통 소득공제를 모든 시나리오에 동일 적용하며, 보험료 증가에 따른 소득공제 변화·근로소득 및 특별세액공제·감면은 미반영입니다. 따라서 실수령 확정액이나 최적 절세안이 아닌 공제 가정에 따른 비교입니다.",
+        "급여를 12개월 균등 지급하고 해당 월 법정 상하한·요율을 적용하는 보험료 시나리오입니다. 임원은 고용·산재 적용 여부가 다르므로 기본적으로 제외합니다. 납부예외·지역가입·정산·보수신고 시차는 제외합니다.",
+        "배당에 따른 보수 외 보험료는 현재 2026년 요율이 동일하게 적용된다고 가정한 연간 비교이며 실제 다음 연도 고지액이 아닙니다. 다른 보수 외 소득·보험료 공제 시차는 반영하지 않습니다.",
+        "배당가능이익은 상법상 검토한 전체 주주 지급 가능액이며 회사 당기 세전이익과 다릅니다. 자금 조달·유동성·퇴직금 증가·공제감면·최저한세·특별 법인지방세 조정은 별도 검토합니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-059",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "개인사업자·법인 비교계산기": {
+      "id": "calc-060",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "법인·대표 전략",
+      "engine": "modules.calculators.corporate.corp_vs_individual",
+      "source_file": "modules/calculators/corporate/corp_vs_individual.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 소득세법55·59·62·129조, 법인세법55조, 지방세법103조의20. 공통 소득세·법인세 산식 재사용.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "확인 입력 방식은 원천징수액이 아니라 배당 포함 총 결정세액과 미포함 결정세액의 차액을 넣습니다. 자동 방식에서는 추가 세액 확인액을0으로 둡니다. 적격 배당 확인액은 실제 배당의 일부이며 중복 가산하지 않습니다.",
+        "그 밖의 소득·연금저축·특별공제·법인 공제감면·최저한세·설립 양도세·취득세·건강보험 보수외소득 추가부담·급여 손금 적격 판정은 미반영합니다. 기본공제 인원은 본인 포함, 자격을 확인한 인원입니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/법인세법"
+      ],
+      "declared_laws": [
+        "소득세법",
+        "법인세법",
+        "지방세법"
+      ],
+      "fixture_id": "calc-060",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "임원퇴직금 한도계산기": {
+      "id": "calc-061",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "법인·대표 전략",
+      "engine": "modules.calculators.corporate.executive_severance",
+      "source_file": "modules/calculators/corporate/executive_severance.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 소득세법22조(개인 퇴직소득)와 법인세법 시행령44조(법인 손금)는 서로 다른 한도입니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "현실적인 퇴직, 연속된 단일 임원 재직기간을 가정합니다. 마지막으로 재직한 날을 입력하며 1개월 미만 잔여기간을 올림합니다. 중간정산·재입사·다른 법인 합산기간은 미지원입니다.",
+        "최근 급여는 2020년 이후 재직기간과 퇴직 전3년 중 짧은 기간의 총급여를 연평균 환산합니다. 과거 급여는2012~2019재직기간과2019년 말 이전3년 중 짧은 기간을 사용합니다. 비과세 급여 제외입니다.",
+        "정관 배수를 개인 한도의2배·3배와 혼동하지 않습니다. 법인 손금 한도는 정관·위임 지급규정에 따른 금액 등을 확인한 값이며 이 화면에서 자격을 자동 확정하지 않습니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/법인세법"
+      ],
+      "declared_laws": [
+        "소득세법",
+        "법인세법"
+      ],
+      "fixture_id": "calc-061",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "가지급금 정밀진단계산기": {
+      "id": "calc-062",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "법인·대표 전략",
+      "engine": "modules.calculators.corporate.deemed_interest_diagnostic",
+      "source_file": "modules/calculators/corporate/deemed_interest_diagnostic.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 법인세법 시행령88·89·106조, 소득세법55·59조. 기본 인정이자계산기와 근로소득세계산기의 공통 산식을 사용합니다.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "금리 적용요건·귀속자·사외유출·소득처분은 사실관계 확인이 필요합니다. 익금산입액이 항상 대표자 상여가 되는 것은 아닙니다. 본 화면은 대표자 상여임이 확인된 사례만 계산합니다.",
+        "이자를 지급해도 가지급금 원금이 자동 감소하지 않습니다. 원금 상환·배당·이익소각·부동산 대물변제는 별도 비교가 필요하며 본 결과를 전체 해결비용으로 보지 않습니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/법인세법"
+      ],
+      "declared_laws": [
+        "법인세법",
+        "소득세법"
+      ],
+      "fixture_id": "calc-062",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "이익소각계산기": {
+      "id": "calc-063",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "법인·대표 전략",
+      "engine": "modules.calculators.corporate.profit_retirement",
+      "source_file": "modules/calculators/corporate/profit_retirement.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 소득세법17조2항1·3호, 17조3·4항, 62조. 국내 거주 개인 주주의 일반 국내 의제배당만 지원합니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "취득가액은 해당 소각·분배 대상 주식의 세무상 취득금액입니다. 회사 납입자본금과 다를 수 있습니다. 취득가액 불분명·증여주식·무상주식의 세무상 금액은 별도 확인하세요.",
+        "배당가산 대상 확인 모드는 10% 가산과 비교세액 한도를 적용합니다. 다른 금융소득은 배당가산 비대상으로 가정합니다. 해당 여부 미확인 시 2천만원 초과 최종세액을 표시하지 않습니다. 비대상 확인 모드는 다른 금융소득도 배당가산 비대상인 경우만 사용합니다.",
+        "확인 세액은 거래 전후 국세·지방세 결정세액 차이입니다. 원천징수 후 추가 납부액이 아니며 원천징수액을 다시 더하지 않습니다. 원천징수 추정은 최종세액과 별도입니다.",
+        "비거주자·법인주주·해외배당·분리과세 특례·부당행위계산·증여·양도소득세·증권거래세·건강보험료 및 신고 단수처리는 미지원입니다. 법률상 소각 여부·거래 시가·재원은 별도 검토합니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/소득세법"
+      ],
+      "declared_laws": [
+        "소득세법"
+      ],
+      "fixture_id": "calc-063",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "법인청산 세부담계산기": {
+      "id": "calc-064",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "법인·대표 전략",
+      "engine": "modules.calculators.corporate.corporate_liquidation",
+      "source_file": "modules/calculators/corporate/corporate_liquidation.py",
+      "applies_to": "법인세법79·83조, 지방세법103조의41·42. 2026년 세율 기준 일반 내국 영리법인 해산이며 합병·분할·조직변경은 미지원입니다.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "자기자본은 납입자본금만이 아닙니다. 잉여금, 환급법인세 가산, 잉여금 한도 결손금 상계, 2년 내 자본전입을 검토한 조정 후 금액을 입력합니다. 음수 자기자본과 특수 청산은 지원하지 않습니다.",
+        "현물 평가, 재산 환가, 결손금 원장과 자기자본 조정은 자동 판정하지 않습니다. 기납부 청산세가 없는 단일 최종분배 가정이며 분할분배·중간신고·기납부·가산세·지방세 안분은 미지원입니다.",
+        "취득가액은 해당 소각·분배 대상 주식의 세무상 취득금액입니다. 회사 납입자본금과 다를 수 있습니다. 취득가액 불분명·증여주식·무상주식의 세무상 금액은 별도 확인하세요.",
+        "배당가산 대상 확인 모드는 10% 가산과 비교세액 한도를 적용합니다. 다른 금융소득은 배당가산 비대상으로 가정합니다. 해당 여부 미확인 시 2천만원 초과 최종세액을 표시하지 않습니다. 비대상 확인 모드는 다른 금융소득도 배당가산 비대상인 경우만 사용합니다.",
+        "확인 세액은 거래 전후 국세·지방세 결정세액 차이입니다. 원천징수 후 추가 납부액이 아니며 원천징수액을 다시 더하지 않습니다. 원천징수 추정은 최종세액과 별도입니다.",
+        "비거주자·법인주주·해외배당·분리과세 특례·부당행위계산·증여·양도소득세·증권거래세·건강보험료 및 신고 단수처리는 미지원입니다. 법률상 소각 여부·거래 시가·재원은 별도 검토합니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/법인세법"
+      ],
+      "declared_laws": [
+        "법인세법",
+        "지방세법",
+        "소득세법"
+      ],
+      "fixture_id": "calc-064",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "지주회사 수입배당금계산기": {
+      "id": "calc-065",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "법인·대표 전략",
+      "engine": "modules.calculators.corporate.holding_company",
+      "source_file": "modules/calculators/corporate/holding_company.py",
+      "applies_to": "법령 대조일 2026-09-27 · 법인세법18조의2(2026-07-01), 시행령17조의2(2026-02-27). 단일 국내 피출자법인의 현행 일반 익금불산입 규정입니다.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-27",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "지분율50% 이상100%,20% 이상50% 미만80%,20% 미만30%. 배당기준일 현재3개월 이상 계속 보유한 주식 기준 지분입니다. 최근 취득주식 배당 등 적용 제외 금액을 섞지 않습니다.",
+        "이자 차감=법정 차입금 이자×해당 주식 세무상 장부가액 적수÷자산총액 적수×익금불산입률. 이미 손금불산입한 이자는 제외하고, 국가·지자체 현물출자 주식 등 법정 조정을 확인합니다. 적수는 일별 잔액 합계이며 기말잔액이 아닙니다.",
+        "배당 유형·보유기간·지급법인·수취법인에 따른 적용 제외는 확인 입력입니다. 여러 피출자법인의 차감 합산·일별 원장·적격 판정 자동화·외국법인 배당·종전 지주회사 경과규정은 미지원입니다.",
+        "국세 절감은 익금불산입 전후 산출세액 차이입니다. 기존 법인세 엔진을 공유하며2026년 개시12개월 사업연도 기준입니다. 조정소득은 수입배당금 포함, 익금불산입 전 금액입니다. 이월결손금·공제감면·최저한세·지방세·기납부·단기사업연도는 미반영합니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/법인세법"
+      ],
+      "declared_laws": [
+        "법인세법"
+      ],
+      "fixture_id": "calc-065",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "합병 세부담계산기": {
+      "id": "calc-066",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "법인·대표 전략",
+      "engine": "modules.calculators.corporate.merger_tax",
+      "source_file": "modules/calculators/corporate/merger_tax.py",
+      "applies_to": "법령 대조일 2026-09-26 · 법인세법44조·55조. 2026년 개시 국내 피합병법인의 일반소득 국세 산출세액 비교입니다.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "기존 법인세 누진 계산식을 공유합니다. 1년 미만 사업연도는 과표를12개월로 환산해 세율 적용 후 월수/12를 곱합니다. 법정 월수는 확인 입력이며 날짜 자동산정은 지원하지 않습니다.",
+        "적격 요건 및 장부가액 적용을 확인한 경우 양도손익0을 적용합니다. 사업계속·주식대가80%·주주보유·고용승계 등 요건과 예외는 자동 판정하지 않습니다.",
+        "이월결손금·공제감면·최저한세·추가법인세·기납부세액은 미반영입니다. 음수 증감은 당기 산출세액 감소이며 환급 확정액이 아닙니다. 합병 전 손실은 당기 손실만 입력합니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/법인세법"
+      ],
+      "declared_laws": [
+        "법인세법"
+      ],
+      "fixture_id": "calc-066",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "키맨리스크계산기": {
+      "id": "calc-067",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "법인·대표 전략",
+      "engine": "modules.calculators.corporate.corporate_funding",
+      "source_file": "modules/calculators/corporate/corporate_funding.py",
+      "applies_to": "사용자 가정에 따른 현금 부족 시나리오입니다. 채무가 즉시 전액 상환된다고 자동 판단하지 않으며 실제 필요한 상환액을 입력합니다.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": null,
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "사용자 가정에 따른 현금 부족 시나리오입니다. 채무가 즉시 전액 상환된다고 자동 판단하지 않으며 실제 필요한 상환액을 입력합니다.",
+        "영업손실·대체비용·채무에 같은 현금 소요를 중복 넣지 않습니다. 보장액은 같은 사건에서 실제 사용 가능한 금액이며 지급 시점·수익자·면책·세금은 별도 확인합니다.",
+        "물가·할인·차입금 이자와 지급시차는 미반영입니다. 계산된 부족액이 보험 가입 권고액이나 보장 지급 확정액은 아닙니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-067",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "특허권 자본화계산기": {
+      "id": "calc-068",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "법인·대표 전략",
+      "engine": "modules.calculators.corporate.patent_capitalization",
+      "source_file": "modules/calculators/corporate/patent_capitalization.py",
+      "applies_to": "법령 대조일 2026-09-27 · 소득세법14조3항8호·21조1항7호·55조·47조·84조, 시행령87조. 국내 거주자의 개인 소유 특허를 적정 대가로 양도하고 기타소득으로 종합과세하는 시나리오입니다.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-27",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "급여 비교는 기존 총급여에 같은 금액을 더한 뒤 근로소득공제를 다시 계산합니다. 기존 근로소득공제와 종합소득 누진세율 엔진을 공유합니다. 기존 금융소득 종합과세의 비교과세 등은 지원하지 않습니다.",
+        "개인 금액은 종합과세 국세 산출세액 증분입니다. 근로소득세액공제·특별세액공제·지방소득세·원천징수·건강보험료는 미반영이므로 최종 실수령액 또는 확정 절세액으로 표시하지 않습니다. 단일 거래의 기타소득금액 5만원 이하는 과세하지 않습니다. 원천징수 요건을 충족한 연간 선택적 분리과세 기타소득 합계 300만원 이하는 국세20% 분리과세를 선택할 수 있습니다. 다른 기타소득 한도 입력은 기존 종합소득금액에 자동 가산하지 않으므로 선택 과세 방식에 맞게 기존 소득을 입력하세요.",
+        "법인은 특허 취득대가 전액을 즉시 비용으로 간주하지 않습니다. 확인된 당기 손금 인정 상각액만 입력해2026년 개시12개월 일반법인 국세 산출세액 차이를 계산합니다. 내용연수·월할·가치평가·손금한도 자동산정과 소규모 특례법인·결손금·공제감면은 미지원입니다.",
+        "서로 다른 기간의 법인 세금 감소와 개인 세금을 상계해 순 절세로 단정하지 않습니다. 부가가치세·시가 부인·대금 지급방식은 별도 검증 항목입니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/소득세법"
+      ],
+      "declared_laws": [
+        "소득세법"
+      ],
+      "fixture_id": "calc-068",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "법인 부동산 보유·양도 비교계산기": {
+      "id": "calc-069",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "법인·대표 전략",
+      "engine": "modules.calculators.corporate.corp_real_estate",
+      "source_file": "modules/calculators/corporate/corp_real_estate.py",
+      "applies_to": "법령 대조일 2026-09-27 · 2026년 단일 국내 부동산 매각의 국세 비교. 소득세법 제95·103·104조 및 법인세법 제55·55조의2.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-27",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "개인은 기존 양도소득세 계산을 공유합니다. 등기된 직접 매입·단독 소유·단일 양도이며 다주택 중과·지정지역 추가 중과·분양권·겸용 등 특례는 지원하지 않습니다. 취득가액은 감가상각 등 필요한 세무상 조정을 반영한 값입니다.",
+        "법인은 2026년 개시 12개월 일반법인입니다. 소규모 특례법인·결손금·감면·공제·다른 부동산 양도손익 통산은 미반영합니다. 양도 장부가액과 비용은 개인 취득가액과 별도로 확인합니다.",
+        "법인 일반세액은 매각 반영 전후 누진세액 차이입니다. 매각손실로 인한 음수 세액은 기존 소득에 대한 당기 산출세액 감소를 뜻합니다. 과세표준은0원 하한이며 초과손실의 이월 효과는 계산하지 않습니다. 토지등 추가과세는 양도가액−장부가액에 확인된 세율을 적용하며 일반소득의 양도비용을 다시 빼지 않습니다.",
+        "추가과세 적용·제외는 별도 확인합니다. 주택 임대 유형·비사업용 판정 등 요건 자동심사는 지원하지 않습니다. 미등기·권리 양도는 대상이 아닙니다.",
+        "국세만 비교합니다. 지방소득세·취득세·보유세·부가가치세·배당 등 법인 자금 인출 세금·가산세·신고 단수처리는 제외합니다. 법인과 개인 중 어느 소유 방식이 전체적으로 유리한지를 단정하지 않습니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/법인세법"
+      ],
+      "declared_laws": [
+        "소득세법",
+        "법인세법"
+      ],
+      "fixture_id": "calc-069",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "특수관계자 임대료계산기": {
+      "id": "calc-070",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "법인·대표 전략",
+      "engine": "modules.calculators.corporate.related_party_rent",
+      "source_file": "modules/calculators/corporate/related_party_rent.py",
+      "applies_to": "법령 대조일 2026-09-26 · 법인세법 시행령88조1항6·7호 및3항,89조1·2·4·5항, 시행규칙6조. 정기예금이자율 연3.1%.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "연간 일정한 임대조건·동일 보증금 기준·부가세 제외 금액을 비교합니다. 단기 계약·기간 중 조건변경·현물 대가·개인 상대방 과세는 별도 검토합니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/법인세법"
+      ],
+      "declared_laws": [
+        "법인세법"
+      ],
+      "fixture_id": "calc-070",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "법인보험 만기계산기": {
+      "id": "calc-071",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "법인·대표 전략",
+      "engine": "modules.calculators.corporate.corporate_insurance_maturity",
+      "source_file": "modules/calculators/corporate/corporate_insurance_maturity.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 법인세법15·19·55조, 국세청 보험료 자산·손금 구분 해석 및 공통 법인세 계산식 · 2026년12개월 내국법인.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "보험료의 비용·자산 구분은 보험계약과 수익자·환급조건에 따라 달라집니다. 이 화면은 그 적정성을 자동 판정하지 않고 확인된 세무상 잔액을 사용합니다.",
+        "보험 정산 전 소득에는 이번 보험손익을 중복 포함하지 않습니다. 이월결손금·비과세·소득공제·세액공제·최저한세·특별세 등은 미반영입니다. 손실은0으로 버리지 않고 당기 소득 감소에 반영하되, 남는 결손금의 미래 세금효과는 계산하지 않습니다.",
+        "대표자에게 계약을 넘기는 거래는 별도 분기이며 실제 퇴직·한도 확인 없이 전액 퇴직급여로 간주하지 않습니다. 개인의 보험차익 비과세 요건을 법인에 그대로 적용하지 않습니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/법인세법"
+      ],
+      "declared_laws": [
+        "법인세법"
+      ],
+      "fixture_id": "calc-071",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "창업중소기업 세액감면계산기": {
+      "id": "calc-072",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "사업·법인 실무",
+      "engine": "modules.calculators.tax.startup_tax_credit",
+      "source_file": "modules/calculators/tax/startup_tax_credit.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 2026년 귀속 · 조세특례제한법 제6조 제1·5·6·13항 및 시행령 제5조.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "달력연도 과세기간의 일반 창업·청년·소규모 및 확인된 신성장서비스업을 지원합니다. 법인 결산월이 다르거나 창업벤처·에너지신기술·보육센터 유형은 아직 미지원합니다.",
+        "청년은 창업 당시 15~34세(법정 병역기간 최대6년 차감), 법인 대표자 최대주주 등과 공동사업 요건을 확인한 경우만 선택합니다. 현재 나이만으로 판정하지 않습니다.",
+        "지역은 법정 과밀억제권역·인구감소지역 지정과 소재지 변경 이력을 확인해야 합니다. 법인 전환·사업 승계·동종 재창업 등은 실질 창업에서 제외될 수 있습니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/조세특례"
+      ],
+      "declared_laws": [
+        "조세특례제한법 제6조"
+      ],
+      "fixture_id": "calc-072",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "성실신고 대상판정계산기": {
+      "id": "calc-073",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "사업·법인 실무",
+      "engine": "modules.calculators.corporate.sincere_report",
+      "source_file": "modules/calculators/corporate/sincere_report.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 2026년 귀속 개인사업자 · 소득세법 시행령133·208조, 소득세법70조의2, 조세특례제한법126조의6.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "직전연도가 아니라 해당 과세기간 수입금액입니다. 순이익이 아니며 사업용 유형자산 양도 수입은 제외합니다. 동일 개인의 단독사업장·겸영업종 수입을 해당 기준군별로 합산합니다.",
+        "15억원: 농림어업·광업·도소매(상품중개 제외)·법정 부동산매매 등. 7.5억원: 제조·숙박음식·운수창고·정보통신·금융보험·상품중개·해당 건설 등. 5억원: 임대·전문과학기술·교육·보건·예술·기타 해당 서비스 등.",
+        "별표3의3 사업서비스업은5억원 기준군으로 입력합니다. 비주거용 건물 건설업 등 예외가 있으므로 업종명만으로 임의 분류하지 않습니다. 실제 업종분류·주업종이 동일 수입인 경우 및 공동사업장별 판정은 별도 확인 대상입니다.",
+        "이 화면은 개인사업자 판정입니다. 법인 성실신고확인 대상은 지분·상시근로자·수입구조·법인전환 등 별도 요건이며 본 수입금액 기준을 적용하지 않습니다.",
+        "대상자는 확인서를 제출하는 경우 다음 해6월30일까지 신고·납부하는 일반 규정이 적용됩니다. 기한 연장·공휴일 특례 등은 별도입니다.",
+        "비용공제는 직접 사용한 적격 비용과 제출·추징에 따른 제한 여부를 확인합니다. 표시액은 산식상 금액이며 당기 세액한도·이월·추징은 미계산입니다. 미제출 가산세를 수입금액만으로 확정하지 않습니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/소득세법"
+      ],
+      "declared_laws": [
+        "소득세법",
+        "조세특례제한법"
+      ],
+      "fixture_id": "calc-073",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "법인세계산기": {
+      "id": "calc-074",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "사업·법인 실무",
+      "engine": "modules.calculators.corporate.corporate_tax",
+      "source_file": "modules/calculators/corporate/corporate_tax.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 법인세법13·55조, 조세특례제한법132조, 지방세법103조의20.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "중소기업·졸업유예·소규모법인 자격은 별도 확인합니다. 최저한세 대상과 제외 공제는 분리 입력하며 항목별 자격·적용 순서·이월가능 여부는 자동 판정하지 않습니다.",
+        "국세 공제감면액을 지방세에 자동 적용하지 않습니다. 지방세는 표준세율 기준이며 조례·사업장 안분·외국납부 조정은 미지원입니다. 농특세는 과세·비과세 구분 후 확인된 세액을 별도 입력합니다.",
+        "음수는 해당 세목의 예상 환급입니다. 세목별 납부·환급은 별도 처리되므로 단순합계를 실제 일괄납부액으로 보지 않습니다. 가산세·신고 단수처리 미반영."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/법인세법"
+      ],
+      "declared_laws": [
+        "법인세법",
+        "조세특례제한법",
+        "지방세법"
+      ],
+      "fixture_id": "calc-074",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "법인세 중간예납계산기": {
+      "id": "calc-075",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "사업·법인 실무",
+      "engine": "modules.calculators.corporate.corporate_interim_tax",
+      "source_file": "modules/calculators/corporate/corporate_interim_tax.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 법인세법55·63·63조의2·64조 · 2026년12월 결산 일반 내국법인.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "직전 세액에서 토지등양도 추가법인세·투자상생세액은 제외합니다. 직전연도 중간예납세액 자체를 원천징수·수시부과에 넣지 않습니다. 가결산 과표는 결손금·비과세·소득공제 등 검토 후 금액입니다.",
+        "휴업 무수입 확인·납부기한 경과 시 강제 직전방식 등은 자동 판정하지 않습니다. 8월31일 기한 내 신고 비교 시나리오이며 기한 후 납부지연가산세는 별도입니다.",
+        "공제감면 입력은 중간예납기간 적용요건·최저한세 검토 후 확인된 적용액입니다. 과표 계산·최저한세·공제 이월을 이 화면이 자동 판단하지 않습니다.",
+        "2026 직권연장은 대상 확인 시 납부기한만 반영하며 신고기한은8월31일입니다. 개별 신청 연장·다른 결산월은 지원하지 않습니다. 지방소득세를 임의로10% 더하지 않습니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/법인세법"
+      ],
+      "declared_laws": [
+        "법인세법"
+      ],
+      "fixture_id": "calc-075",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "부가세 예정신고 선택계산기": {
+      "id": "calc-076",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "사업·법인 실무",
+      "engine": "modules.calculators.corporate.vat_preliminary",
+      "source_file": "modules/calculators/corporate/vat_preliminary.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 부가가치세법48조, 시행령90조·107조 · 계속사업 일반과세자 예정신고 판단.",
+      "income_year": null,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "직전 납부세액은 법48조의 공제·감면과 결정·경정 등을 반영한 금액입니다. 현재 예상세액은 매출·매입세액과 공제 등을 별도로 계산한 확인액이며 공급가액만으로 산출하지 않습니다.",
+        "일반 환급액은 예정신고만으로 즉시 환급되지 않습니다. 조기환급은 영세율·사업설비 등 법정 자격과 적격 신고를 따로 확인한 경우에만 신청 추정액으로 표시합니다.",
+        "법정 예정기간은1~3월 및7~9월이며 종료 후25일 이내 신고·납부합니다. 공휴일·토요일 및 개별 기한 연장 적용은 실제 고지서와 신고 안내를 확인하세요. 신설·폐업·면세·간이과세자·수시부과·세무서 별도 미징수 사유는 이 화면 범위 밖입니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-076",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "업무용승용차 비용계산기": {
+      "id": "calc-077",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "사업·법인 실무",
+      "engine": "modules.calculators.corporate.vehicle_expense",
+      "source_file": "modules/calculators/corporate/vehicle_expense.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 법인세법27조의2, 시행령50조의2·42조2항, 시행규칙27조의2 · 2026년12개월 사업연도, 차량1대.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "미작성 시 총비용과 연1500만원 기준으로 업무비율을 계산한 후 감가상각 한도를 별도로 적용합니다. 소규모 부동산임대 등 적격 법인은 각각500만원·400만원. 보유·임차월수로 안분하며 월 미만은1개월입니다.",
+        "리스 수선비 미구분 시 보험료·자동차세 차감 후 금액의7%를 사용합니다. 임차료에 들어 있는 비용을 별도 유지비에 다시 넣지 않습니다. 금융리스 세무상 소유자 특례는 제외합니다.",
+        "업무사용 불인정액과 상각 한도초과 이월액은 구분합니다. 과거 이월액 추인은 연중 계속 사용 조건이며, 매각·임차종료·해산·처분손실 및 개인사업자 차량은 별도 검증 대상입니다. 세액 감소나 대표자 상여세액을 확정하지 않습니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/법인세법"
+      ],
+      "declared_laws": [
+        "법인세법"
+      ],
+      "fixture_id": "calc-077",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "접대비 한도계산기": {
+      "id": "calc-078",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "사업·법인 실무",
+      "engine": "modules.calculators.corporate.entertainment_limit",
+      "source_file": "modules/calculators/corporate/entertainment_limit.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 법인세법25조, 시행령42조, 조세특례제한법136조3항, 2026년 별지23호서식(갑) 기준.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "기업업무추진비는 종전 접대비입니다. 일반법인 기본1200만원, 확인된 중소기업3600만원을 사업연도 월수로 안분합니다. 수입금액별 한도에는 월수를 다시 곱하지 않습니다.",
+        "특수관계 거래는 총수입에 이미 포함된 금액입니다. 일반수입에 먼저 누진구간을 적용한 뒤 나머지 구간의10%를 계산합니다. 특수관계 거래만 별도 최저구간부터 계산하지 않습니다.",
+        "문화비는 총 지출에 포함된 적격 금액이며 다시 지출에 더하지 않습니다. 증빙 미충족액은 세법상 예외를 검토한 금액을 입력합니다. 일반 지출3만원·경조20만원 초과 시 적격증빙 여부를 확인하며 단순 영수증 누락금액과 같지 않을 수 있습니다.",
+        "소규모 해당은 지배주주 지분50% 초과, 부동산임대 주업 또는 임대·이자·배당 수입비중50% 이상, 상시근로자5명 미만 등의 모든 법정 요건을 확인한 경우입니다.",
+        "전통시장·온누리·지역사랑상품권 별도 추가한도, 정부출자기관70% 특례, 금융업 수입특례 자동조정 및 자산계상 지출의 배부는 아직 미반영입니다. 해당 사례에 이 결과를 최종 한도로 사용하지 않습니다. 추가 법인세는 과세표준 없이 계산하지 않습니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/법인세법"
+      ],
+      "declared_laws": [
+        "법인세법",
+        "조세특례제한법"
+      ],
+      "fixture_id": "calc-078",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "고용증대 세액공제계산기": {
+      "id": "calc-079",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "사업·법인 실무",
+      "engine": "modules.calculators.corporate.employment_credit",
+      "source_file": "modules/calculators/corporate/employment_credit.py",
+      "applies_to": "법령 대조일 2026-09-27 · 조세특례제한법29조의8 및 시행령26조의8(2026-09-18). 2025·2026년이 각각1월1일~12월31일인 계속사업자의2026년 신규 기본공제만 계산합니다.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-27",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "근로자 수는 적격 상시근로자의 법정 연평균 확인값입니다. 임원·최대주주와 친족·근로기간 및 시간 요건 등 제외, 청년·장애·60세이상·경력단절 등의 자격을 확인한 값을 입력합니다. 단순 연말 재직인원이 아닙니다.",
+        "2024년1월1일 개시 연도는 현행 비교대상에서 제외되므로 이 범위의2026년 계산은2025년 대비 항목만 적용합니다. 2027·2028년의 유지분 가산, 비달력 사업연도·창업·합병·다지역·기업규모 전환·종전 공제의 경과규정은 미지원입니다.",
+        "산출 공제액이며 실제 납부세금 감소나 환급액이 아닙니다. 최저한세·중복공제 배제·이월·농어촌특별세·육아휴직 복귀 등 추가공제는 별도 검증 중입니다. 구제도의 추징 설명을2026년 신규 기본공제에 일괄 적용하지 않습니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/조세특례"
+      ],
+      "declared_laws": [
+        "조세특례제한법"
+      ],
+      "fixture_id": "calc-079",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "연구인력개발비 세액공제계산기": {
+      "id": "calc-080",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "사업·법인 실무",
+      "engine": "modules.calculators.corporate.rnd_credit",
+      "source_file": "modules/calculators/corporate/rnd_credit.py",
+      "applies_to": "법령 대조일 2026-09-27 · 2026년 일반 연구·인력개발비 · 조세특례제한법 제10조, 시행령 제9조. 당기 및 과거 입력 연도는 각각 12개월이고 합병·분할·사업양수 등은 없는 조건입니다.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-27",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "입력 비용은 적격성 확인 및 출연금 등 제외 후 금액입니다. 연구소 인정만으로 모든 지출이 공제되는 것은 아닙니다. 비용별 적격 판정과 증빙 자동검토는 지원하지 않습니다.",
+        "중소기업 졸업 경과는 유예기간 종료와 최초 제외 시점을 확인한 경우에만 선택합니다. 중견기업은 이 공제의 법정 요건 충족 기준이며 명칭만으로 판정하지 않습니다.",
+        "표시액은 사용 한도 적용 전 발생 공제액입니다. 최저한세·공제 순서·다른 감면·이월공제·당기 납부세액·지방세는 미반영이므로 현금 환급이나 실제 세금 감소액이 아닙니다.",
+        "신성장·원천기술 및 국가전략기술 별도 공제, 단기 사업연도와 조직재편 내역, 기업 구분 자동판정은 별도 검증 대상입니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/조세특례"
+      ],
+      "declared_laws": [
+        "조세특례제한법 제10조"
+      ],
+      "fixture_id": "calc-080",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "직무발명보상금계산기": {
+      "id": "calc-081",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "사업·법인 실무",
+      "engine": "modules.calculators.corporate.invention_compensation",
+      "source_file": "modules/calculators/corporate/invention_compensation.py",
+      "applies_to": "법령 대조일 2026-09-27 · 2026년 귀속 · 소득세법 시행령 제17조의3·제18조. 재직 중 근로소득과 퇴직 후 기타소득을 구분합니다.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-27",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "개인 사용자의 친족, 법인 사용자의 지배주주등 및 법정 친족·경영지배관계 해당자는 비과세에서 제외합니다. 단순 주주 여부와 같지 않으며 관계를 확인한 뒤 선택합니다.",
+        "퇴직 후 보상금은 소득세법21조1항22의2의 기타소득입니다. 근로소득 및 기타소득에 이미 적용한 비과세액을 연간700만원 한도에서 차감합니다. 시행령87조의 60% 의제경비 대상이 아니므로 과세 보상금에 대응하는 확인된 실제 경비만 입력합니다.",
+        "결과는 근로소득세액공제까지 반영한 국세 비교입니다. 특별·표준·자녀·연금계좌 세액공제, 감면, 지방소득세, 사회보험료, 원천징수와 신고 단수처리는 미반영입니다. 확정 절세액·실수령액으로 사용하지 않습니다.",
+        "비과세 효과는 동일 보상금 전액을 과세급여로 가정했을 때와 비교합니다. 총급여 변동에 따른 다른 공제 요건 변화는 별도 검토해야 합니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/소득세법"
+      ],
+      "declared_laws": [
+        "소득세법"
+      ],
+      "fixture_id": "calc-081",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "이월결손금계산기": {
+      "id": "calc-082",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "사업·법인 실무",
+      "engine": "modules.calculators.corporate.carryforward_loss",
+      "source_file": "modules/calculators/corporate/carryforward_loss.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 법인세법13조, 시행령10조, 법률17652호 부칙 · 2026년1월1일~12월31일 사업연도.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "발생연도도 달력연도 사업연도인 일반 내국법인에 한합니다. 2009~2019 발생분10년, 2020년 이후15년. 2009년 이전 결손금·합병분할 승계·연결납세·사업연도 변경은 별도 검토 대상입니다.",
+        "신고·경정으로 인정된 미사용 잔액만 입력합니다. 소급공제 환급, 자산수증·채무면제이익 보전 등 이미 사용한 금액은 제외합니다. 회계상 누적손실을 그대로 입력하지 않습니다.",
+        "100%는 중소기업 또는 시행령상 회생계획 이행 등 적격 법인임을 확인한 경우만 선택합니다. 이 화면은 해당 자격을 자동 판정하지 않습니다.",
+        "세액 감소는 공제·감면·비과세·다른 소득공제와 기납부세액 반영 전입니다. 지방세는 동일 과세표준 및 표준세율을 가정하며 실제 환급액이나 확정 절세액이 아닙니다. 올해 말 만료분은 다음 해 이월액에서 제외합니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/법인세법"
+      ],
+      "declared_laws": [
+        "법인세법"
+      ],
+      "fixture_id": "calc-082",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "주식매수선택권계산기": {
+      "id": "calc-083",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "사업·법인 실무",
+      "engine": "modules.calculators.corporate.stock_option",
+      "source_file": "modules/calculators/corporate/stock_option.py",
+      "applies_to": "법령 대조일 2026-09-27 · 조세특례제한법 제16조의2 (2026-09-18 시행) · 2026년 귀속.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-27",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "벤처기업 표시만으로 비과세되지 않습니다. 적격 벤처기업 임원·종업원, 2027-12-31 이전 부여 및 법정 부여 방식·신청 요건을 확인한 경우에 선택합니다. 벤처기업육성법 제16조의3에 따른 부여 또는 코넥스기업의 상법상 부여가 대상입니다.",
+        "국내 재직 근로소득만 있는 경우입니다. 공통 근로소득공제·근로소득세액공제 엔진으로 행사 전후를 비교합니다. 기타 공제·감면, 지방소득세, 사회보험, 신고 단수처리는 제외합니다.",
+        "퇴직 후 기타소득, 외국 근무·외국 법인, 납부특례 및 양도 시 과세 특례, 매각 시 양도소득세는 별도 계산 대상입니다. 행사차익은 주식 평가상 이익이며 현금 실수령이 아닙니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/조세특례"
+      ],
+      "declared_laws": [
+        "조세특례제한법 제16조의2"
+      ],
+      "fixture_id": "calc-083",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "사내근로복지기금계산기": {
+      "id": "calc-084",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "사업·법인 실무",
+      "engine": "modules.calculators.corporate.welfare_fund",
+      "source_file": "modules/calculators/corporate/welfare_fund.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 법인세법 시행령19조22호, 근로복지기본법62조 및 시행령46조4항1호.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "해당 내국법인이 적법하게 설립한 자체 사내근로복지기금에 현금으로 출연하는 경우입니다. 현물·자기주식·다른 법인의 기금·공동기금 및 별도 출연 세액공제는 이 화면 범위 밖입니다.",
+        "기존 기본재산 추가 사용·공동기금 지원 특례·운용수익은 제외합니다. 출연액 전액을 직원에게 당장 지급 가능한 금액으로 표시하지 않습니다. 1인당 평균은 비교 지표이며 균등 현금 지급 권리가 아닙니다.",
+        "직원 수혜항목별 소득·증여세 및 급여 대체 가능 여부는 판정하지 않습니다. 모든 복지급부를 자동 비과세로 가정하지 않습니다.",
+        "세액 차이는2026년 일반 표준세율 및 동일 지방세 과표 가정, 공제감면·최저한세·결손금 이월효과 반영 전입니다. 실제 환급액이 아니며 출연금이 소득보다 커도 당기 세액 감소는 출연 전 산출세액을 넘지 않습니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/법인세법"
+      ],
+      "declared_laws": [
+        "법인세법"
+      ],
+      "fixture_id": "calc-084",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "법인 4대보험계산기": {
+      "id": "calc-085",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "사업·법인 실무",
+      "engine": "modules.calculators.corporate.corporate_social_insurance",
+      "source_file": "modules/calculators/corporate/corporate_social_insurance.py",
+      "applies_to": "요율·법령 대조 기준일 2026-09-26 · 2026년9월 · 기존4대보험계산기의 공통 계산식 사용.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "전 직원이 국민연금·건강·장기요양·고용·산재 일반 부과대상이고 각 보험 신고기준 보수가 동일한 경우입니다. 대표자·임원·65세 이후 채용·납부예외·일용직·외국인 등은 개별 가입조건을 별도로 검토해야 합니다.",
+        "총급여 방식은 모든 직원에게 같은 보수를 가정합니다. 총급여와 인원만 같아도 실제 급여분포에 따라 상한 적용 결과가 달라지므로 확정 고지액이 아닙니다.",
+        "사업장 규모 선택은 이 화면의 인원만으로 자동 확정하지 않습니다. 우선지원 여부·기업 단위 상시인원·보험료율 유예를 확인합니다. 요율 유예·두루누리 등 지원은 미반영입니다.",
+        "산재율 미입력은 면제가 아닙니다. 회사 총액을 미확인으로 표시하고 산재 제외 소계를 구분합니다. 출퇴근재해·개별실적 등을 포함한 실제 적용 총요율을 입력합니다.",
+        "월액의12배는 같은 조건의 비교이며7월 연금한도 변경·보수변동·보험료 정산을 반영한 연간 확정액이 아닙니다. 법인세 절감액은 별도이며 비용 전체를 세금 절감으로 표시하지 않습니다."
+      ],
+      "source_urls": [],
+      "declared_laws": [],
+      "fixture_id": "calc-085",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "상여금·복리후생비 비교계산기": {
+      "id": "calc-086",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "사업·법인 실무",
+      "engine": "modules.calculators.corporate.bonus_welfare",
+      "source_file": "modules/calculators/corporate/bonus_welfare.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 소득세법20·47·55·59조 및 공통 근로소득세 계산식. 2026년 연간 비교이며 지급월 원천징수액이 아닙니다.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "복리후생비라는 계정명이나 현물·상품권 지급만으로 비과세가 되지 않습니다. 법정 근거가 확인되지 않은 명절 상여·선물은 두 안 모두 과세 가정입니다. 30만원을 보편적인 비과세 기준으로 적용하지 않습니다.",
+        "동일한 급여·기본공제·보험료 조건의 직원 집단만 비교합니다. 급여가 다른 직원을 평균급여로 묶으면 실제 합계와 달라집니다. 특별공제·자녀·세액감면 등 다른 항목은0으로 가정합니다.",
+        "추가 보험료는 지급월 즉시 일률 부과되는 것이 아닙니다. 보험별 보수 정의·상한·정산·국민연금 반영시기를 확인한 금액을 입력하세요. 본인 보험료가 빈칸이면 추가 보험료 공제 전 소득세만 표시하고 순혜택은 미확인으로 남깁니다.",
+        "0,0,0은 본인 추가보험료가 실제0으로 확인된 경우에만 입력합니다. 회사보험료는 산재 및 고용안정분 등을 포함한 확인액입니다. 두 안 모두 입력해야 차이를 계산합니다.",
+        "현물의 순혜택은 평가금액에서 세금·보험료를 뺀 경제적 비교이며 현금 실수령액이 아닙니다. 물품 취득원가와 평가액 차이·부가세·회사 법인세 효과·임원상여 손금한도는 미반영입니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/소득세법"
+      ],
+      "declared_laws": [
+        "소득세법"
+      ],
+      "fixture_id": "calc-086",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "DC부담금 한도계산기": {
+      "id": "calc-087",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "사업·법인 실무",
+      "engine": "modules.calculators.corporate.dc_contribution",
+      "source_file": "modules/calculators/corporate/dc_contribution.py",
+      "applies_to": "법령 대조 기준일 2026-09-26 · 근로자퇴직급여 보장법20조, 법인세법 시행령44조의2(3), 법인세법55조, 지방세법103조의20.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-26",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "1/12은 직원 최소 부담금이며 손금 상한이 아닙니다. 계획 모드는 적격 DC에 해당 금액을 실제 납입한다는 가정입니다. 실제 방식은 납입액 전액을 손금으로 계산하고 부족액을 별도 표시합니다.",
+        "임원 퇴직 계산은 동일 임원 1명 기준입니다. 여러 명의 한도와 부담금을 합쳐 상계하지 마세요. 한도 금액은 정관·규정 등 법인세법상 적격 금액을 확인한 값입니다.",
+        "2026년 연간 일반 법인 표준세율 기준이며 공제감면·최저한세·결손금 이월효과·퇴직충당금 전환·지연이자·휴직기간 특례는 미반영합니다. 음수 세액감소는 세부담 증가입니다.",
+        "직원별 가입기간·임금·최저부담금 충족 여부는 각각 확인해야 하며 직원 총액의 부족액0이 개별 직원 충족을 보장하지 않습니다."
+      ],
+      "source_urls": [
+        "https://www.law.go.kr/법령/법인세법"
+      ],
+      "declared_laws": [
+        "법인세법",
+        "지방세법"
+      ],
+      "fixture_id": "calc-087",
+      "source_kind": "원본에 기재된 법령명을 찾기 위한 공식 조회 경로; 이번 작업의 조문 전수 대조는 아님"
+    },
+    "정책자금 자격진단계산기": {
+      "id": "calc-088",
+      "rule_version": "2026.10.01-input-v3",
+      "category": "사업·법인 실무",
+      "engine": "modules.calculators.corporate.policy_fund",
+      "source_file": "modules/calculators/corporate/policy_fund.py",
+      "applies_to": "공고·법령 대조일 2026-09-27. 중소기업기본법 시행령 제3조·제8조·별표1·별표3(2025-09-01 개정), 중진공 세부사업 안내 및 2026년 융자계획 변경공고 기준 사전 진단입니다.",
+      "income_year": 2026,
+      "effective_from": null,
+      "source_declared_review_date": "2026-09-27",
+      "legal_reverification_date": null,
+      "verification_status": "기존 엔진 동작 기준값 대조; 세법 전체 정답 인증 아님",
+      "limitations": [
+        "입력 매출은 단순 당년 매출이 아니라 법정 평균매출액등입니다. 자산은 5천억원 미만, 업종별 매출은 기준 이하입니다. 관계기업·독립성·유예 및 세부 업종 코드를 확인해야 최종 중소기업 판정이 가능합니다.",
+        "목록은 추가 검토할 사업입니다. 신청 가능·승인·대출 한도를 확정하지 않습니다. 체납·휴폐업·신용·부채비율·지원이력·소상공인 제외와 예외·예산·접수 일정은 공고별 심사가 필요합니다.",
+        "업력은 정확한 사업개시일을 기준으로 계산합니다. 법인전환 등은 최초 사업의 개시일을 입력합니다. 청년전용의 3~7년 예외 추천 유형은 별도 검토합니다.",
+        "혁신성장·긴급자금을 일괄 추천하지 않습니다. 긴급자금은 경영애로 사유가 확인된 경우만 후보로 표시합니다. 벤처 인증만으로 기술보증 승인이나 정책대출 자격을 단정하지 않습니다.",
+        "입력 상시근로자 20명, 수도권 아니오, 벤처 아니오. 이 정보는 사업별 우대·제외 확인에 사용되며 중소기업 매출 규모 판정 자체를 바꾸지 않습니다. 신용·기술보증부 대출은 각각 보증기관의 별도 심사 대상입니다."
+      ],
+      "source_urls": [
+        "https://www.kosmes.or.kr/nsh/SH/SBI/SHSBI004M0.do",
+        "https://www.kosmes.or.kr/nsh/SH/SBI/SHSBI007M0.do",
+        "https://www.kosmes.or.kr/nsh/SH/SBI/SHSBI006M0.do"
+      ],
+      "declared_laws": [],
+      "fixture_id": "calc-088"
+    }
+  }
+}

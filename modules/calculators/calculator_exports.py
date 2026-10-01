@@ -1,8 +1,11 @@
 """One snapshot supplies both customer and advisor exports."""
+
+from modules.shared.runtime_cache import session_export
 import csv
 import io
 from modules.calculators.finance.finance_calculator_ui import csv_safe
 
+@session_export("exports-v3")
 def build_exports(name,fields,values,result,stamp):
  display=result.display()
  inputs=[(f'{f[0]} ({f[2]})',str(v)) for f,v in zip(fields,values)]

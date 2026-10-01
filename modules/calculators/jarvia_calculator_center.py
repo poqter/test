@@ -22,25 +22,53 @@ NAME_TO_ID = {name: item_id for item_id, name in ITEM_IDS.items()}
 assert len(ITEMS) == 88
 assert sum(GROUP_COUNTS.values()) == 88
 
-def run():
+def run(*, isolated=False, fixed_name=None):
+    from modules.calculators.drafts import activate, capture
     from modules.calculators.valuation_transfer import apply_pending
-    apply_pending()
+    isolated = bool(isolated)
+    st.session_state['jc_isolated_single'] = isolated
+    if isolated:
+        if fixed_name not in ITEMS:
+            st.error('유효한 독립 계산기 링크가 아닙니다.')
+            return
+        selected = fixed_name
+        st.session_state.pop('jc_valuation_transfer', None)
+    else:
+        pending = st.session_state.get('jc_valuation_transfer')
+        selected = pending[0] if pending else st.session_state.get('jc_open')
+    if selected:
+        activate(selected)
+    else:
+        # Catalog navigation ends the widget lifetime, not the durable draft.
+        from modules.calculators.drafts import ACTIVE_KEY
+        st.session_state.pop(ACTIVE_KEY, None)
+    if not isolated:
+        apply_pending()
+    try:
+        return _render(isolated=isolated, fixed_name=fixed_name)
+    finally:
+        if selected:
+            capture(selected)
+
+
+def _render(*, isolated=False, fixed_name=None):
     notice = st.session_state.pop('jc_transfer_notice', None)
     if notice:
         st.info(notice)
-    if not st.session_state.get('jc_open'):
+    if not isolated and not st.session_state.get('jc_open'):
         page_header('화랑 CALCULATOR', '종합 계산기 센터 (88개)', '보험·생활자금·연금·재무·세금·법인 의사결정을 위한 88개 통합 계산 도구', 'QC')
     if notice:
         st.session_state['jc_open'] = st.session_state.get('jc_selected')
     from modules.calculators.catalog_browser import render_catalog, back_to_catalog
-    active = st.session_state.get('jc_open')
+    active = fixed_name if isolated else st.session_state.get('jc_open')
     if active:
         st.iframe("""<script>(()=>{const w=window.parent,d=w.document;
         if(!w.__hwOpenCalculator)return;w.__hwOpenCalculator=false;
         const main=d.querySelector('[data-testid="stMain"]');
         if(main)main.scrollTop=0;w.scrollTo(0,0);
         })();</script>""",height=1)
-        st.button('← 계산기 목록', key='jc_back_catalog', on_click=back_to_catalog)
+        if not isolated:
+            st.button('← 계산기 목록', key='jc_back_catalog', on_click=back_to_catalog)
     # The audited catalog is the single source of truth for public routes.
     # UI-route regression tests exercise every one of the 88 entries.
     implemented = set(ITEMS)
@@ -56,6 +84,8 @@ def run():
         from modules.calculators.visuals import calculator_title
         st.subheader(calculator_title(selected, ITEMS[selected][0]))
         st.caption(ITEMS[selected][1])
+        from modules.calculators.rule_metadata import render_scope
+        render_scope(selected)
         if selected in QUICK_CALCULATOR_NAMES:
             from modules.calculators.calculator_center import render_quick_calculator
             render_quick_calculator(selected)
@@ -118,7 +148,8 @@ def run():
             from modules.calculators.coverage.coverage_calculator_ui import run as render_valuation
             render_valuation(selected,mod.FIELDS,mod.calculate,'법령 대조일 2026-09-27 · 보충적 주식 평가 · 가정 참고값 분리')
             from modules.calculators.valuation_transfer import render as render_transfer
-            render_transfer()
+            if not isolated:
+                render_transfer()
             return
         if selected == '취득세 중과계산기':
             from modules.calculators.tax import acquisition_tax as mod

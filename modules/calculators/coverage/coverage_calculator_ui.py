@@ -9,7 +9,8 @@ from zoneinfo import ZoneInfo
 import streamlit as st
 
 from modules.calculators.coverage.coverage_models import FIELDS, NAMES, calculate
-from modules.calculators.input_design import number_input, uses_decimal_manwon, uses_won_precision
+from modules.calculators.input_design import number_input, uses_decimal_manwon, uses_won_precision, read_money_state, set_money_state
+from modules.calculators.input_policy import policy_for_field
 from modules.calculators.structured_inputs import handled_indices, render as render_structured, state_keys as structured_state_keys
 from modules.calculators.ux_profiles import (
     active_condition_summary,
@@ -42,42 +43,29 @@ def _widget_value(name: str, index: int, entry: tuple, *, example: bool) -> obje
 
 
 def _set_inputs(name: str, entries: list[tuple], *, example: bool) -> None:
+    from modules.calculators.structured_inputs import reset_table
     for index, entry in enumerate(entries):
-        _label, default, unit, _maximum = entry
+        label, default, unit, maximum = entry
         base = f"cov_{name}_{index}"
-        if unit == "원" and not _uses_won_precision(_label):
-            value = Decimal(str(default if example else 0)) / 10_000
-            if uses_decimal_manwon(_label):
-                st.session_state[base + "_manwon_decimal"] = float(value.quantize(Decimal(".01"), rounding=ROUND_HALF_UP))
-                st.session_state.pop(base + "_manwon_int", None)
-            else:
-                st.session_state[base + "_manwon_int"] = int(value.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
-                st.session_state.pop(base + "_manwon_decimal", None)
-            st.session_state.pop(base, None)
+        if unit == "원":
+            set_money_state(base, label, default if example else None,
+                            policy=policy_for_field(name, index, label))
         else:
-            st.session_state[base] = _widget_value(name, index, entry, example=example)
-            st.session_state.pop(base + "_manwon_int", None)
-            st.session_state.pop(base + "_manwon_decimal", None)
-    for key in structured_state_keys(name):
-        st.session_state.pop(key, None)
-    if structured_state_keys(name):
-        st.session_state["ux_table_reset_mode_" + name] = "example" if example else "clear"
+            # A cleared numeric value is missing, not an invented zero.
+            value = _widget_value(name, index, entry, example=example)
+            st.session_state[base] = value if example or unit in ("선택", "날짜", "문자") else None
+    reset_table(name, example=example)
     st.session_state.pop("coverage_result_" + name, None)
+    from modules.shared.runtime_cache import clear_scope
+    clear_scope("export:")
 
 
 def _state_snapshot(name: str, entries: list[tuple]) -> dict[str, object]:
-    result: dict[str, object] = {}
+    result = {}
     for index, (label, default, unit, _maximum) in enumerate(entries):
-        key = f"cov_{name}_{index}"
-        if unit == "원" and not _uses_won_precision(label):
-            state_key = key + ("_manwon_decimal" if uses_decimal_manwon(label) else "_manwon_int")
-            manwon = st.session_state.get(state_key)
-            if manwon is None:
-                result[label] = default
-            else:
-                result[label] = int((Decimal(str(manwon)) * 10_000).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
-        else:
-            result[label] = st.session_state.get(key, default)
+        base = f"cov_{name}_{index}"
+        result[label] = (read_money_state(base, label, default, policy=policy_for_field(name, index, label))
+                         if unit == "원" else st.session_state.get(base, default))
     return result
 
 
@@ -105,9 +93,12 @@ def run(name, fields=None, calculator=None, caption=None):
             values = [entry[1] for entry in entries]
             snapshot = _state_snapshot(name, entries)
             consumed = handled_indices(name)
+            table_errors = []
+            rendered = set()
 
             def render_field(index: int) -> None:
                 label, default, unit, maximum = entries[index]
+                rendered.add(index)
                 key = f"cov_{name}_{index}"
                 help_text = field_help(label, unit)
                 if unit == "선택":
@@ -149,6 +140,7 @@ def run(name, fields=None, calculator=None, caption=None):
                         max_value=maximum,
                         value=default,
                         step=10_000 if unit == "원" else 1,
+                        money_policy=policy_for_field(name, index, label) if unit == "원" else None,
                         key=key,
                         help=help_text,
                     )
@@ -175,6 +167,7 @@ def run(name, fields=None, calculator=None, caption=None):
             # This preserves the reviewed flow: purpose → core values → detailed rows.
             if consumed:
                 render_structured(name, entries, values)
+                table_errors = list(st.session_state.get("hw.table_errors." + name, []))
 
             labels = {
                 "additional": ("추가 조건", "해당하는 공제·예외·과거 자료만 입력합니다."),
@@ -195,7 +188,25 @@ def run(name, fields=None, calculator=None, caption=None):
             summary = active_condition_summary(name, snapshot)
             if summary:
                 st.markdown('<div class="hw-active-condition"><b>현재 적용 조건</b><br>' + " · ".join(summary) + "</div>", unsafe_allow_html=True)
-            submitted = st.button("계산하기", type="primary", width="stretch")
+            missing_indices = [i for i in rendered if values[i] is None]
+            missing = [entries[i][0] for i in missing_indices]
+            if missing_indices:
+                from modules.shared.input_states import apply_input_states
+                from modules.calculators.input_design import money_widget_key
+                missing_keys = []
+                invalid_keys = []
+                for i in missing_indices:
+                    label, _default, unit, _maximum = entries[i]
+                    base = f"cov_{name}_{i}"
+                    widget_key = money_widget_key(base) if unit == "원" else base
+                    raw = st.session_state.get(widget_key)
+                    if raw not in (None, ""):
+                        invalid_keys.append(widget_key)
+                    else:
+                        missing_keys.append(widget_key)
+                apply_input_states(missing=missing_keys, invalid=invalid_keys)
+                st.info("입력 필요: " + ", ".join(missing))
+            submitted = st.button("계산하기", key="calculate_" + name, type="primary", width="stretch", disabled=bool(missing or table_errors))
 
         result_key = "coverage_result_" + name
         if submitted:
@@ -208,6 +219,9 @@ def run(name, fields=None, calculator=None, caption=None):
             except ValueError as exc:
                 st.session_state.pop(result_key, None)
                 st.error(str(exc))
+        if missing or table_errors:
+            st.session_state.pop(result_key, None)
+            return
         stored = st.session_state.get(result_key)
         if not stored:
             return

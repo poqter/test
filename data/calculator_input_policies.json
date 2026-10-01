@@ -1,0 +1,1904 @@
+{
+  "version": "money-v3",
+  "notes": "확인된 값은 원 단위. 계획값은 만원 표시이나 원 단위까지 보존. 누락/라벨 변경 필드는 원 단위로 안전하게 처리.",
+  "calculators": {
+    "상여금·복리후생비 비교계산기": {
+      "0": {
+        "label": "1인당 추가 지급·혜택 금액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "1인당 추가 지급 전 연간 과세 총급여",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "기존 연간 국민연금 납부액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "5": {
+        "label": "기존 연간 건강·요양보험료",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "6": {
+        "label": "기존 연간 고용보험료",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "7": {
+        "label": "복지안 중 법정 비과세·근로소득 제외 확인액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "가업승계 세부담계산기": {
+      "0": {
+        "label": "이번 이전 주식의 확인된 최종 평가액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "이월결손금계산기": {
+      "1": {
+        "label": "2026년 당기 세무상 소득금액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "법인 부동산 보유·양도 비교계산기": {
+      "3": {
+        "label": "양도가액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "개인 취득가액 (세무상 조정·부대비용 반영)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "5": {
+        "label": "개인 별도 필요경비",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "6": {
+        "label": "법인 양도 당시 세무상 장부가액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "7": {
+        "label": "법인 일반소득에서 손금 인정되는 양도비용",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "8": {
+        "label": "매각 반영 전 법인 과세표준 (결손금 없는 경우)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "13": {
+        "label": "개인 올해 남은 양도 기본공제",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "개인사업자·법인 비교계산기": {
+      "0": {
+        "label": "대표 급여 차감 전 연간 사업이익",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "법인 대표 총급여",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "실제 배당 인출액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "5": {
+        "label": "배당 외 일반 금융소득",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "6": {
+        "label": "배당 반영에 따른 추가 국세·지방세 확인액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "8": {
+        "label": "법인만 추가되는 손금 비용 (회사 보험료·유지비 등)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "9": {
+        "label": "대표 실제 국민연금 납부액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "10": {
+        "label": "대표 실제 건강·장기요양보험료",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "11": {
+        "label": "대표 실제 고용보험료",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "12": {
+        "label": "개인사업자 실제 국민연금 납부액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "14": {
+        "label": "실제 배당 중 배당가산 적격 확인액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "키맨리스크계산기": {
+      "0": {
+        "label": "월 영업손실 예상액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "인력 대체 비용",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "상환 필요 연대보증 채무",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "즉시 동원 가능 자금",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "5": {
+        "label": "이 상황에 지급 가능한 기존 보장액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "지분 매입자금계산기": {
+      "0": {
+        "label": "회사 전체 지분 가치",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "이미 준비된 자금",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "승계 재원계산기": {
+      "0": {
+        "label": "승계 주식 평가액 (참고)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "별도 계산한 예상 상속·증여세",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "승계 운영자금",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "이미 준비된 재원",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "법인보험 만기계산기": {
+      "1": {
+        "label": "원천징수 전 수령액 / 계약 이전 시 확인 평가액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "제거할 회계 장부상 보험자산",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "세무조정 반영 후 세무상 보험자산 잔액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "7": {
+        "label": "실제 원천징수된 국세·지방세 합계",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "9": {
+        "label": "대표가 법인에 실제 지급하는 대가",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "10": {
+        "label": "해당 이전의 법인 손금 인정 보수액 (확인액)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "11": {
+        "label": "이번 보험 외 동일 퇴직의 과세 퇴직급여",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "12": {
+        "label": "개인 소득세법상 전체 임원퇴직소득 한도 (2011년 이전 인정분 포함)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "14": {
+        "label": "보험 이전 제외 연간 과세 총급여",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "15": {
+        "label": "공통 근로소득공제 외 소득공제",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "법인세 중간예납계산기": {
+      "0": {
+        "label": "직전 사업연도 산출국세 (가산세 제외)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "직전 가산세",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "직전 공제·감면세액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "직전 원천징수·수시부과세액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "7": {
+        "label": "2026년1~6월 가결산 과세표준",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "8": {
+        "label": "상반기 적용 가능한 공제·감면 확인액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "9": {
+        "label": "상반기 원천징수·수시부과세액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "법인청산 세부담계산기": {
+      "0": {
+        "label": "세무조정 후 청산 잔여재산가액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "조정 후 자기자본 총액 (자본금+잉여금 등)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "청산 법인세 차감 전 실제 분배 가능 재산",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "6": {
+        "label": "해당 주식 세무상 취득가액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "7": {
+        "label": "다른 일반 금융소득 (배당가산 비대상)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "8": {
+        "label": "기타 종합소득금액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "9": {
+        "label": "적용 가능한 소득공제 합계",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "11": {
+        "label": "이 거래로 증가하는 국세·지방세 결정세액 (확인 모드만)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "법인 4대보험계산기": {
+      "2": {
+        "label": "월 보수 총액 (비과세 제외)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "법인세계산기": {
+      "0": {
+        "label": "세무상 소득 계산 전 이익 (법인세비용 차감 전)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "소득 가산 세무조정",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "소득 차감 세무조정·당기 손실",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "적격 이월결손금 (발생연도·신고·사용액 확인)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "7": {
+        "label": "최저한세 대상 공제·감면 신청액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "8": {
+        "label": "최저한세 제외 공제·감면 확인액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "9": {
+        "label": "국세 기납부세액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "10": {
+        "label": "별도 법인지방소득세 공제·감면 확인액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "11": {
+        "label": "지방세 기납부세액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "12": {
+        "label": "별도 확인된 농어촌특별세 납부세액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "DC부담금 한도계산기": {
+      "0": {
+        "label": "가입 직원 연간 임금총액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "직원 실제 납입액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "임원 당기 실제 부담금",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "5": {
+        "label": "퇴직 임원 과거 누적 부담금",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "6": {
+        "label": "퇴직 임원 법인세법상 한도 확인액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "8": {
+        "label": "DC 손금 반영 전 법인 과세표준",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "인정이자계산기": {
+      "3": {
+        "label": "기초 순대여 잔액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "기말 순대여 잔액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "10": {
+        "label": "회사에 계상한 해당 수입이자",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "14": {
+        "label": "안분 대상 지급이자",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "가지급금 정밀진단계산기": {
+      "0": {
+        "label": "연중 일정한 가지급금 잔액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "대표 연간 총급여",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "6": {
+        "label": "실제 국민연금 납부액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "7": {
+        "label": "실제 건강·장기요양보험료",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "8": {
+        "label": "실제 고용보험료",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "차등배당계산기": {
+      "0": {
+        "label": "회사 총 배당금",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "수혜주주 세전 배당금",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "7": {
+        "label": "정산용 초과배당 실제 소득세액 (국세·시행규칙 기준)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "9": {
+        "label": "최초 신고 증여세액 (정산 차액 계산용)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "11": {
+        "label": "관계군 10년 내 이미 사용한 일반 공제",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "12": {
+        "label": "10년 합산 대상 과거 증여가액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "13": {
+        "label": "합산 재산에 적용한 과거 공제",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "14": {
+        "label": "과거 합산 대상 과세표준",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "15": {
+        "label": "과거 산출세액 공제 확인액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "19": {
+        "label": "다른 일반 금융소득 (배당가산 비대상)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "20": {
+        "label": "기타 종합소득금액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "21": {
+        "label": "적용 가능한 소득공제 합계",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "23": {
+        "label": "이 거래로 증가하는 국세·지방세 결정세액 (확인 모드만)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "25": {
+        "label": "초과배당 발생연도 종합소득 과세표준 (확인액)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "고용증대 세액공제계산기": {},
+    "접대비 한도계산기": {
+      "0": {
+        "label": "총 수입금액 (특수관계 거래 포함)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "총 수입 중 특수관계인 거래",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "기업업무추진비 총 지출 (문화비 포함, 사적 지출 제외)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "증빙요건 미충족 손금불산입액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "적격 문화비 (총 지출에 포함된 금액)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "임원퇴직금 한도계산기": {
+      "2": {
+        "label": "퇴직 전 법정 기간 총급여 연평균 환산액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "2019년 말 이전 법정 기간 총급여 연평균 환산액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "지급 예정 퇴직급여",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "5": {
+        "label": "2011년 말 퇴직 가정 금액 (해당자 별도 확인)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "6": {
+        "label": "법인 정관·지급규정 등에 따른 손금 한도 확인액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "특정법인 증여의제계산기": {
+      "4": {
+        "label": "과세제외·세무조정 반영 세후영업이익",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "5": {
+        "label": "조정 후 특수관계법인 매출액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "8": {
+        "label": "해당 기간 수혜법인 배당소득",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "9": {
+        "label": "사업연도 말 수혜법인 배당가능이익",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "13": {
+        "label": "45조의5 시가 또는 확인된 거래 이익",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "14": {
+        "label": "45조의5 실제 대가",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "17": {
+        "label": "45조의5 거래 포함 법인 사업연도 소득금액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "18": {
+        "label": "45조의5 법인 산출세액−공제감면 (토지등 추가세 제외)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "19": {
+        "label": "45조의5 이번 적용 가능한 증여재산공제 (확인 후)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "지주회사 수입배당금계산기": {
+      "1": {
+        "label": "수입배당금",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "손금불산입 이자 제외 후 법정 차입금 이자",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "8": {
+        "label": "익금불산입 전 배당 포함 조정소득",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "9": {
+        "label": "익금불산입 전 당기 손실",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "직무발명보상금계산기": {
+      "0": {
+        "label": "이번 직무발명보상금",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "이번 보상금 제외 연간 과세 총급여",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "같은 해 먼저 적용한 근로소득 직무발명 비과세액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "5": {
+        "label": "공통 소득공제 (근로소득공제 제외)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "7": {
+        "label": "퇴직 후 보상금에 대응하는 확인된 실제 필요경비",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "8": {
+        "label": "같은 해 먼저 적용한 기타소득 직무발명 비과세액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "10": {
+        "label": "근로소득 외 기존 종합소득금액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "11": {
+        "label": "다른 선택적 분리과세 기타소득금액 (한도 판정용)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "합병 세부담계산기": {
+      "0": {
+        "label": "세무상 확정 양도가액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "세무상 자산 장부가액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "세무상 부채 장부가액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "합병손익 반영 전 과세소득 (손실은 다음 칸)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "합병손익 반영 전 당기 손실",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "명의신탁주식계산기": {
+      "1": {
+        "label": "명의신탁일 기준 확인된 주식 평가액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "해외금융계좌 신고계산기": {
+      "0": {
+        "label": "월말 합산 잔액 중 최대액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "해외 금융소득 (참고)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "미신고·과소신고 금액 (과소신고 선택 시)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "특허권 자본화계산기": {
+      "0": {
+        "label": "특허권 양도대가",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "입증된 실제 필요경비",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "기존 연간 총급여",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "근로소득 외 기존 종합소득금액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "공통 소득공제",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "6": {
+        "label": "법인 당기 손금 인정 상각액 (별도 확인)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "7": {
+        "label": "상각 전 법인 과세표준 단순 추정",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "10": {
+        "label": "다른 선택적 분리과세 기타소득금액 (연간 한도 판정용)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "정책자금 자격진단계산기": {
+      "1": {
+        "label": "법정 산정 평균매출액등",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "자산총계",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "이익소각계산기": {
+      "0": {
+        "label": "소각 대가",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "소각 대상 주식 세무상 취득가액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "다른 일반 금융소득 (배당가산 비대상)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "기타 종합소득금액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "적용 가능한 소득공제 합계",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "6": {
+        "label": "이 거래로 증가하는 국세·지방세 결정세액 (확인 모드만)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "특수관계자 임대료계산기": {
+      "1": {
+        "label": "실제 연간 임대료",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "확인된 시가 연간 임대료",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "부동산 시가",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "5": {
+        "label": "임대보증금",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "연구인력개발비 세액공제계산기": {
+      "0": {
+        "label": "당기 적격 일반 연구·인력개발비",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "직전연도 적격 일반 연구·인력개발비",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "2년 전 적격 일반 연구·인력개발비",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "3년 전 적격 일반 연구·인력개발비",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "4년 전 적격 일반 연구·인력개발비",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "5": {
+        "label": "당기 수입금액 (기업회계 매출액)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "급여vs배당 비교계산기": {
+      "0": {
+        "label": "추가 인출 전 세무상 법인소득",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "적격 미사용 이월결손금",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "현재 연간 과세 총급여",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "기존 일반 금융소득 (배당가산 비대상)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "5": {
+        "label": "추가로 받을 세전 금액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "12": {
+        "label": "공통 소득공제 (근로소득공제 제외)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "13": {
+        "label": "전체 주주에게 지급 가능한 배당가능이익 확인액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "성실신고 대상판정계산기": {
+      "0": {
+        "label": "15억원 기준 업종의 해당 연도 수입금액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "7억5천만원 기준 업종의 해당 연도 수입금액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "5억원 기준 업종의 해당 연도 수입금액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "성실신고 확인에 직접 사용한 비용",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "주식매수선택권계산기": {
+      "0": {
+        "label": "행사 시 1주당 시가",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "1주당 행사가액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "행사이익 제외 연간 과세 총급여",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "7": {
+        "label": "같은 해 이미 적용한 비과세액 (전체 벤처기업)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "8": {
+        "label": "해당 벤처기업 누적 기사용 비과세액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "9": {
+        "label": "공통 소득공제 (근로소득공제 제외)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "비상장주식 평가계산기": {
+      "2": {
+        "label": "액면가 (평가 산식에는 미사용)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "6": {
+        "label": "자산 장부가",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "8": {
+        "label": "부채 장부가",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "부가세 예정신고 선택계산기": {
+      "1": {
+        "label": "직전6개월 법정 조정 후 납부세액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "직전6개월 공급가액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "이번3개월 공급가액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "5": {
+        "label": "이번3개월 예상세액 절댓값",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "업무용승용차 비용계산기": {
+      "1": {
+        "label": "구입 차량 세무상 취득가액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "당기 이전 누적 상각액 (구입)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "유류·보험·세금·수선 등 별도 비용 (임차료와 중복 제외)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "5": {
+        "label": "당기 리스·렌트료",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "6": {
+        "label": "리스료에 포함된 보험료·자동차세",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "8": {
+        "label": "리스료에 포함된 실제 수선비",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "14": {
+        "label": "전기 감가상각 한도초과 이월액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "사내근로복지기금계산기": {
+      "0": {
+        "label": "당기 현금 출연액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "출연 전 과세표준",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "사망보장 필요액계산기": {
+      "0": {
+        "label": "유족 월 생활비",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "자녀 교육비 총액",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "남은 부채",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "비상자금",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "5": {
+        "label": "즉시 현금화 가능 자산",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "6": {
+        "label": "기존 사망보장액",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      }
+    },
+    "중대질병 보장계산기": {
+      "0": {
+        "label": "예상 치료비",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "월 소득",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "간병·요양 추가비용",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "기존 진단비 보장액",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      }
+    },
+    "간병·장기요양 필요액계산기": {
+      "0": {
+        "label": "월 간병·요양비",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "기존 간병보험 월 보장액",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      }
+    },
+    "자녀보험 필요액계산기": {
+      "0": {
+        "label": "진단비 목표액",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "1일 입원비",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "수술 대비 자금",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "교육 연속성 자금",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "5": {
+        "label": "기존 자녀보험 보장액",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      }
+    },
+    "적정보험료계산기": {
+      "0": {
+        "label": "월 소득",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "보장성 보험료 월납",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "저축성 보험료 월납",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "정기·종신 비교계산기": {
+      "0": {
+        "label": "종신보험 월 보험료",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "정기보험 월 보험료",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "보장금액",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      }
+    },
+    "의료비 부담계산기": {
+      "0": {
+        "label": "연간 의료비",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      }
+    },
+    "주택연금계산기": {
+      "1": {
+        "label": "주택 시세",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      }
+    },
+    "은퇴크레바스계산기": {
+      "2": {
+        "label": "월 생활비",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "공백기 월 소득",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      }
+    },
+    "국민연금 수령시기계산기": {
+      "0": {
+        "label": "정상 월 연금액",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      }
+    },
+    "3층연금 점검계산기": {
+      "0": {
+        "label": "목표 월 생활비",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "국민연금 월액",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "퇴직연금 월액",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "개인연금 월액",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      }
+    },
+    "연금 인출기간계산기": {
+      "0": {
+        "label": "은퇴 시점 자산",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "월 인출액",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      }
+    },
+    "연금저축·IRP 세액공제계산기": {
+      "0": {
+        "label": "소득금액 (근로소득만 있으면 총급여)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "연금저축 연 납입액",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "IRP 연 납입액",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      }
+    },
+    "사적연금 과세계산기": {
+      "0": {
+        "label": "연간 과세대상 사적연금",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      }
+    },
+    "일시금·연금 세금비교계산기": {
+      "0": {
+        "label": "퇴직금 총액",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "일시금 퇴직소득세 (지방세 포함)",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      }
+    },
+    "IRP 적립계산기": {
+      "0": {
+        "label": "IRP 연 납입액",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "연간 총급여",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "별도 연금저축 연 납입액",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      }
+    },
+    "퇴직금계산기": {
+      "3": {
+        "label": "평균임금 산입 3개월 임금총액",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "5": {
+        "label": "1일 통상임금",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "7": {
+        "label": "추가 퇴직 위로금 (과세대상)",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "8": {
+        "label": "확인된 법정 비과세액 (총액에 포함)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "9": {
+        "label": "이전 중간정산 퇴직소득금액 (세금 합산 시)",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      },
+      "10": {
+        "label": "이전 중간정산 소득세 (지방세 제외)",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      }
+    },
+    "취득세 중과계산기": {
+      "0": {
+        "label": "확인된 취득세 과세표준",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "양도소득세계산기": {
+      "4": {
+        "label": "양도가액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "5": {
+        "label": "취득가액 (취득 부대비용 포함)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "6": {
+        "label": "별도 필요경비 (취득가액과 중복 제외)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "7": {
+        "label": "올해 남은 양도소득 기본공제",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "근로소득세계산기": {
+      "0": {
+        "label": "연간 총급여 (비과세 제외)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "국민연금 등 공적연금 실제 납부액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "건강·장기요양보험 실제 본인부담액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "5": {
+        "label": "고용보험 실제 본인부담액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "6": {
+        "label": "주택자금 소득공제액 (요건·한도 확인 후)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "7": {
+        "label": "연금저축 공제 대상 납입액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "8": {
+        "label": "IRP 공제 대상 납입액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "9": {
+        "label": "일반 보장성보험료",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "10": {
+        "label": "장애인 전용 보장성보험료",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "11": {
+        "label": "일반 의료비 (실손 보전액 등 제외)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "12": {
+        "label": "본인·6세 이하·65세 이상 등 한도 없는 의료비",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "13": {
+        "label": "미숙아·선천성이상아 의료비",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "14": {
+        "label": "난임시술비",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "15": {
+        "label": "교육비 공제 대상액 (개인별 한도 적용 후)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "16": {
+        "label": "당해연도 일반·특례 기부금 공제 대상액 (한도 적용 후)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "상속세계산기": {
+      "1": {
+        "label": "본래 상속재산 총평가액 (금융재산 포함)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "추정·간주 상속재산 (과세 보험금·퇴직금 등)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "위 재산 중 비과세·불산입액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "공과금",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "5": {
+        "label": "확정 채무 합계 (금융채무 포함)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "6": {
+        "label": "실제 일반 장례비용",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "7": {
+        "label": "실제 봉안시설·자연장지 비용",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "8": {
+        "label": "10년 이내 상속인 사전증여 합산액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "9": {
+        "label": "5년 이내 비상속인 사전증여 합산액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "17": {
+        "label": "배우자 실제 상속금액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "19": {
+        "label": "합산된 배우자 사전증여 과세표준",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "20": {
+        "label": "총재산에 포함된 적격 금융재산 (최대주주 주식 등 제외)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "21": {
+        "label": "확정 채무 합계에 포함된 금융채무",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "22": {
+        "label": "요건 확인된 동거주택 순가액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "23": {
+        "label": "요건·법정 한도 확인된 기타 공제 (아래 자동 가업공제 제외)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "24": {
+        "label": "선순위 상속인이 아닌 수유자 유증액 (위 총재산에 포함)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "25": {
+        "label": "선순위 상속포기로 다음 순위가 받은 금액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "26": {
+        "label": "합산 사전증여액 중 증여재산 공제 등을 차감한 공제한도 차감액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "27": {
+        "label": "적격 감정평가수수료 공제액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "28": {
+        "label": "수증자별 법정 한도를 적용한 증여세액공제 확인액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "29": {
+        "label": "외국납부 등 그 밖의 확인된 세액공제",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "31": {
+        "label": "실제 동원 가능한 현금성 납부재원 (재산가액과 별개)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "32": {
+        "label": "30% 세대생략 대상 재산 합계 (합산 증여 포함·대습 제외)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "33": {
+        "label": "40% 대상 재산 합계 (각 미성년 수령액 20억원 초과자만)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "34": {
+        "label": "민법1001조 대습상속 확인 재산 (위 할증 대상에서 제외)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "35": {
+        "label": "위 총재산에 더할 비상장주식 최종 평가액 (중복 제외)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "36": {
+        "label": "전체 재산에 포함된 적격 가업상속재산가액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "증여세계산기": {
+      "3": {
+        "label": "부동산 세법상 평가액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "현금·예금",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "5": {
+        "label": "상장주식 최종 평가액 (필요한 할증 반영 후)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "6": {
+        "label": "비상장주식 최종 평가액 (필요한 할증 반영 후)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "7": {
+        "label": "채권·증권 최종 평가액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "8": {
+        "label": "기타 과세대상 재산 평가액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "9": {
+        "label": "객관적으로 입증된 인수채무 (부담부증여)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "10": {
+        "label": "해당 관계군에서 지난 10년간 사용한 일반 증여공제 총액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "12": {
+        "label": "혼인·출산 공제를 이미 받은 누적 금액 (10년 제한 없음)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "13": {
+        "label": "이번 혼인·출산 공제 신청액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "14": {
+        "label": "이번 적격 감정평가수수료 (법정 한도 확인 후)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "15": {
+        "label": "이번 적격 재해손실 공제액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "16": {
+        "label": "10년 이내 동일인 과거 증여 과세가액 합계 (직계존속 배우자 포함)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "17": {
+        "label": "위 합산 재산의 과거 공제·평가수수료 합계 (중복 없이)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "18": {
+        "label": "위 합산 재산에 대응하는 과거 과세표준 (공제한도 검토용)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "19": {
+        "label": "위 합산 재산의 과거 산출세액 (신고공제 전·할증 제외·중복 없이)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "20": {
+        "label": "위 과거 재산 중 세대생략 할증 대상 재산가액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "21": {
+        "label": "위 과거 재산에 종전에 납부한 세대생략 할증액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "종합소득세계산기": {
+      "0": {
+        "label": "사업 수입금액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "사업 필요경비",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "근로소득금액 (근로소득공제 차감 후)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "종합과세 임대소득금액 (필요경비 차감 후)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "종합과세 연금소득금액 (소득공제 차감 후)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "5": {
+        "label": "종합과세 기타소득금액 (필요경비 차감 후)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "7": {
+        "label": "국민연금 등 실제 공적연금 납부액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "8": {
+        "label": "연금저축 공제 대상 납입액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "9": {
+        "label": "IRP 공제 대상 납입액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "12": {
+        "label": "기장세액공제 (적격 여부·한도 확인액)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "13": {
+        "label": "근로소득세액공제 (확인액)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "14": {
+        "label": "추가 소득공제 (공적연금·본인공제 외 확인액)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "15": {
+        "label": "추가 국세 세액공제 (위 공제 외 확인액)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "19": {
+        "label": "공제 대상 장부로 계산한 사업소득금액 (임대 포함)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "주택담보대출 이자공제계산기": {
+      "0": {
+        "label": "연간 실제 이자상환액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "연간 총급여 (비과세 제외)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "취득 당시 주택 기준시가 (매매가 아님)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "10": {
+        "label": "다른 주택자금·청약저축 공제액 (개별 요건·한도 적용 후)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "12": {
+        "label": "공적연금 실제 본인 납부액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "13": {
+        "label": "건강·장기요양보험 실제 본인 납부액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "14": {
+        "label": "고용보험 실제 본인 납부액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "ISA 절세계산기": {
+      "0": {
+        "label": "연간 납입액",
+        "policy": "plan_manwon",
+        "minimum_precision_won": 1
+      }
+    },
+    "금융소득종합과세계산기": {
+      "0": {
+        "label": "일반 이자소득",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "1": {
+        "label": "배당가산 대상이 아닌 일반 배당소득",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "그 밖의 종합소득금액 (필요경비 차감 후)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "적용 가능한 소득공제 합계",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "4": {
+        "label": "배당가산 대상 국내 배당소득 (확인된 금액)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "임대소득세계산기": {
+      "0": {
+        "label": "연간 월세 수입",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "5": {
+        "label": "간주임대료 대상 주택의 보증금 합계",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "8": {
+        "label": "보증금 운용 관련 확인된 금융수익",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "10": {
+        "label": "임대 외 종합소득금액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "11": {
+        "label": "종합과세 필요경비 (확인액 또는 시나리오)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "12": {
+        "label": "종합과세 소득공제 합계 (본인 포함)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "13": {
+        "label": "종합과세 국세 세액공제 (확인액)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "4대보험계산기": {
+      "1": {
+        "label": "국민연금 신고 소득월액 (비과세 제외)",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "2": {
+        "label": "건강보험 신고 보수월액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      },
+      "3": {
+        "label": "고용·산재보험 보수월액",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    },
+    "창업중소기업 세액감면계산기": {
+      "0": {
+        "label": "감면 대상 사업소득에 대응하는 산출국세",
+        "policy": "exact_won",
+        "minimum_precision_won": 1
+      }
+    }
+  }
+}

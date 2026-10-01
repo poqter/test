@@ -1,6 +1,8 @@
 """Session-only UI helpers and in-memory, literal-text exports."""
 from __future__ import annotations
 
+from modules.shared.runtime_cache import session_export
+
 import html
 import io
 import re
@@ -14,7 +16,7 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 
 from modules.shared.pdf_brand import draw_brand
-from modules.shared.report_fonts import korean_pdf_font
+from modules.shared.report_fonts import korean_pdf_font, pdf_text
 from modules.shared.session_store import commit_input, reset_page
 
 CHECKED = "2026-09-21"
@@ -31,7 +33,6 @@ SOURCES = {
 _PREFIX_PAGES = {
     "a_": "quick_calculators", "b_": "consultation_helper",
     "c_": "comparison_builder", "e_": "education_center", "f_": "insurer_portal",
-    "d_": "customer_materials",
 }
 
 
@@ -77,6 +78,7 @@ def session_notice(prefix):
 
 
 
+@session_export("exports-v3")
 def workbook_bytes(title, headers, rows, notes=""):
     wb = Workbook()
     ws = wb.active
@@ -106,6 +108,7 @@ def workbook_bytes(title, headers, rows, notes=""):
     return buffer.getvalue()
 
 
+@session_export("exports-v3")
 def pdf_bytes(title, headers, rows, notes="", *, center_table=False):
     font = korean_pdf_font()
     output = io.BytesIO()
@@ -113,9 +116,9 @@ def pdf_bytes(title, headers, rows, notes="", *, center_table=False):
     doc = SimpleDocTemplate(output, pagesize=page, rightMargin=30, leftMargin=30, topMargin=58, bottomMargin=40)
     style = ParagraphStyle("body", fontName=font, fontSize=10, leading=15, wordWrap="CJK", textColor=colors.HexColor("#17233C"))
     heading = ParagraphStyle("heading", parent=style, fontSize=20, leading=27, spaceAfter=12)
-    cell = lambda value: Paragraph(html.escape(text(value, 16000)).replace("\n", "<br/>"), style)
+    cell = lambda value: Paragraph(html.escape(pdf_text(text(value, 16000))).replace("\n", "<br/>"), style)
     table_style = ParagraphStyle("table_body", parent=style, alignment=1 if center_table else 0)
-    table_cell = lambda value: Paragraph(html.escape(text(value,16000)).replace("\n", "<br/>"), table_style)
+    table_cell = lambda value: Paragraph(html.escape(pdf_text(text(value,16000))).replace("\n", "<br/>"), table_style)
     table = Table([[table_cell(v) for v in headers]] + [[table_cell(v) for v in row] for row in rows], colWidths=[(doc.width-12)/len(headers)]*len(headers), repeatRows=1, hAlign="LEFT", splitInRow=1)
     table.setStyle(TableStyle([("BACKGROUND", (0,0),(-1,0), colors.HexColor("#ECE8DF")), ("GRID",(0,0),(-1,-1),.5, colors.HexColor("#D4D6DB")), ("VALIGN",(0,0),(-1,-1),"MIDDLE" if center_table else "TOP"), ("ALIGN",(0,0),(-1,-1),"CENTER" if center_table else "LEFT"), ("TOPPADDING",(0,0),(-1,-1),8), ("BOTTOMPADDING",(0,0),(-1,-1),8)]))
     def footer(canvas, document):

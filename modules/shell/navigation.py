@@ -17,7 +17,8 @@ from modules.shared.session_store import clear_session, save_legacy_draft
 def allowed_ids(role: str | None) -> list[str]:
     """Return enabled pages for *role* in registry order."""
     permitted = ROLE_PERMISSIONS.get(role or "", frozenset())
-    return [app_id for app_id in APP_IDS if app_id in permitted and APP_BY_ID[app_id].enabled]
+    from modules.shared.organization import permitted_tools
+    return permitted_tools([app_id for app_id in APP_IDS if app_id in permitted and APP_BY_ID[app_id].enabled])
 
 
 def normalize_route(page_id: str | None, role: str | None) -> str:
@@ -45,6 +46,10 @@ def navigate(
     role = session.get("login_user")
     target = normalize_route(page_id, role)
     save_legacy_draft(str(session.get("active_app", "home")), state=session)
+    from modules.shared.runtime_cache import clear_scope
+    old_page = str(session.get("active_app", "home"))
+    if old_page != target:
+        clear_scope("parse:" + old_page + ":", state=session)
     session["active_app"] = target
     if mode and target != "home":
         session["hw.ui.target_mode"] = {"page": target, "mode": mode}
@@ -76,16 +81,9 @@ def dispatch(page_id: str, *, role: str | None = None) -> Any:
         entrypoint = getattr(module, spec.entrypoint)
         return entrypoint()
     except Exception as error:
-        # Do not expose uploaded content, filenames, parser messages, or a traceback.
-        reference = uuid4().hex[:8]
-        frames = traceback.extract_tb(error.__traceback__)
-        locations = " > ".join(f"{Path(f.filename).name}:{f.lineno}:{f.name}" for f in frames)
-        # Log code locations only; exception messages can contain customer data.
-        logging.getLogger(__name__).error(
-            "PAGE_RUN_FAILED ref=%s page=%s type=%s locations=%s",
-            reference, page_id, type(error).__name__, locations,
-        )
-        st.error(f"화면을 불러오지 못했습니다. 메뉴에서 다시 열어 주세요. 오류 번호: {reference}")
+        from modules.shared.error_reporting import record_error, user_message
+        reference = record_error(error, page_id)
+        st.error(user_message(reference))
         return None
 
 

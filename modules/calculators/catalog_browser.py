@@ -175,17 +175,27 @@ def render_catalog(items, groups, implemented, *, tags=None, ids=None):
 
     if query:
         heading = '🔎 검색 결과'
+        st.markdown('#### ' + heading)
+        st.caption(f'{len(found)}개 결과')
     elif group == '전체':
         heading = '🧮 전체 계산기'
+        st.markdown('#### ' + heading)
+        st.caption(f'{len(found)}개')
     else:
+        # A category page already has one clear heading. Keep the item count on
+        # the same line and start the calculator cards immediately below it.
         heading = category_label(group) + ' 계산기'
-
-    st.markdown('#### ' + heading)
-    st.caption(f'{len(found)}개 결과')
+        st.markdown(
+            '<div class="hw-catalog-category-title"><span>' + escape(heading) + '</span>'
+            '<b>' + str(len(found)) + '개</b></div>',
+            unsafe_allow_html=True,
+        )
 
     st.markdown('''<style>
+    .hw-catalog-category-title{display:flex;align-items:center;gap:9px;margin:5px 0 13px;min-width:0}
+    .hw-catalog-category-title span{font-size:20px;font-weight:700;line-height:1.4;color:#203a58;letter-spacing:-.025em;word-break:keep-all}
+    .hw-catalog-category-title b{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;min-height:25px;padding:2px 9px;border:1px solid #cbd9e7;border-radius:999px;background:#edf3f9;color:#426588;font-size:12px;font-weight:700;line-height:1}
     .st-key-jc_search [data-baseweb="input"],
-    .st-key-jc_search [data-baseweb="base-input"],
     .st-key-jc_search [data-testid="stTextInput"] > div > div{
         background:#fff!important;
         border:2px solid #b7c6d6!important;
@@ -194,12 +204,10 @@ def render_catalog(items, groups, implemented, *, tags=None, ids=None):
         transition:border-color .16s ease,box-shadow .16s ease!important;
     }
     .st-key-jc_search:hover [data-baseweb="input"],
-    .st-key-jc_search:hover [data-baseweb="base-input"],
     .st-key-jc_search:hover [data-testid="stTextInput"] > div > div{
         border-color:#8faac3!important;
     }
     .st-key-jc_search [data-baseweb="input"]:focus-within,
-    .st-key-jc_search [data-baseweb="base-input"]:focus-within,
     .st-key-jc_search [data-testid="stTextInput"] > div > div:focus-within{
         border-color:#4d7fab!important;
         box-shadow:0 0 0 3px rgba(77,127,171,.14)!important;
@@ -258,13 +266,16 @@ def render_catalog(items, groups, implemented, *, tags=None, ids=None):
     elif group == '전체':
         sections = [(category, [item for item in found if item[1] == category]) for category in groups]
     else:
-        sections = [(group, found)]
+        # The selected category is already named in the page heading above.
+        # A second identical subheading only adds vertical space.
+        sections = [(None, found)]
 
     for category, section_items in sections:
         subset = [(n, d) for n, g, d in section_items]
         if not subset:
             continue
-        st.markdown('##### ' + (category if category in ('이름 일치', '관련 계산기') else category_label(category)))
+        if category is not None:
+            st.markdown('##### ' + (category if category in ('이름 일치', '관련 계산기') else category_label(category)))
         for start in range(0, len(subset), 2):
             cols = st.columns(2)
             for col, (name, description) in zip(cols, subset[start:start + 2]):

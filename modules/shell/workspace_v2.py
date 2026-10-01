@@ -131,7 +131,7 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
 # Home tabs only change the visible tool set; registered destinations and permissions stay authoritative.
 _HOME_TOPICS = (
     ("고객 상담", "CUSTOMER CONSULTING", "고객 상담을 준비하세요", "보장을 살펴보고, 고객에게 맞는 제안을 정리합니다.",
-     ("analyzer", "remodeling", "consultation_helper", "comparison_builder", "customer_materials", "insurance_claim_guide")),
+     ("analyzer", "remodeling", "consultation_helper", "comparison_builder", "insurance_claim_guide")),
     ("보험 비교 · 계산", "COMPARE & CALCULATE", "선택지를 명확하게 비교하세요", "보장과 숫자를 나란히 놓고 판단할 수 있습니다.",
      ("silson_generation_comparison", "quick_calculators", "deposit_vs_shortpay", "renewal_vs_nonrenewal", "inheritance_tax")),
     ("실적 관리", "PERFORMANCE MANAGEMENT", "업무 결과를 한눈에 확인하세요", "실적과 수수료를 정리하고 흐름을 살펴봅니다.",

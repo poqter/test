@@ -22,9 +22,11 @@ def apply_pending():
         st.session_state['gift_mode']='증여세 상세 계산'
         st.session_state[f'cov_{target}_6']=amount
     index = 0 if target == TARGETS[0] else 35 if target == TARGETS[2] else 6
-    st.session_state[f'cov_{target}_{index}_manwon_int'] = int((Decimal(str(amount))/10000).quantize(Decimal('1'),rounding=ROUND_HALF_UP))
+    from modules.calculators.input_design import set_money_state
+    # The adapter chooses an exact value, not a rounded display-unit transfer.
+    set_money_state(f"cov_{target}_{index}", "확인된 평가액", amount, policy="exact_won")
     st.session_state.pop('coverage_result_'+target,None)
-    st.session_state['jc_transfer_notice']=f'{target}에 평가액 {amount:,}원을 만원 단위로 반올림해 입력했습니다. 다른 재산·공제·적격요건을 확인한 뒤 계산하세요.'
+    st.session_state['jc_transfer_notice']=f'{target}에 평가액 {amount:,}원을 원 단위로 입력했습니다. 다른 재산·공제·적격요건을 확인한 뒤 계산하세요.'
 
 def render():
     # 새 탭 독립 계산기에서는 다른 계산기로 이동하는 기능을 노출하지 않습니다.
