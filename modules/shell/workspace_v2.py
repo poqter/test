@@ -137,7 +137,7 @@ _HOME_TOPICS = (
     ("실적 관리", "PERFORMANCE MANAGEMENT", "업무 결과를 한눈에 확인하세요", "실적과 수수료를 정리하고 흐름을 살펴봅니다.",
      ("convention", "summer", "manager_results", "commission_calculator")),
     ("자료 · 교육", "RESOURCES & LEARNING", "업무 자료를 찾아보세요", "원수사 정보와 교육 자료를 한곳에서 확인합니다.",
-     ("insurer_portal", "education_center")),
+     ("insurer_portal", "academy")),
 )
 
 
@@ -152,7 +152,7 @@ _HOME_ICON_STYLES = {
     "inheritance_tax": ("family", "violet"),
     "quick_calculators": ("calculator", "amber"),
     "consultation_helper": ("consultation", "violet"),
-    "education_center": ("education", "violet"),
+    "academy": ("education", "violet"),
     "convention": ("performance", "teal"),
     "summer": ("performance", "amber"),
     "manager_results": ("performance", "violet"),
@@ -213,7 +213,7 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
                         icon = _ICONS.get(icon_key, _ICONS["materials"])
                         st.markdown(f'<div class="hw-tool-heading"><span class="hw-tool-symbol hw-icon-{tone}" aria-hidden="true">{icon}</span><h3>{html.escape(app.label)}</h3></div><p class="hw-dash-tool-desc">{html.escape(app.description)}</p>', unsafe_allow_html=True)
                         launched = _launch_widget(
-                            app, app.label + " 열기 →", key="hw_home_launch_" + app.id,
+                            app, app.label + (" 열기" if app.external_app_key else " 열기 →"), key="hw_home_launch_" + app.id,
                             help_text=None if app.external_app_key else f"{app.label} 열기",
                         )
                         if launched:

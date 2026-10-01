@@ -19,7 +19,6 @@ LEGACY_PREFIXES: dict[str, tuple[str, ...]] = {
     "quick_calculators": ("a_", "jc_", "finance_", "cov_", "coverage_", "pp_", "gift_", "wo_", "retirement_", "estate_"),
     "consultation_helper": ("b_",),
     "comparison_builder": ("c_", "enroll_", "comparison_mode"),
-    "education_center": ("e_",),
     "insurer_portal": ("f_", "home_insurer_"),
     "convention": ("convention_",),
     "summer": ("summer_",),

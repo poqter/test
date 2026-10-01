@@ -39,7 +39,7 @@ GROUPS: Final[tuple[GroupSpec, ...]] = (
     GroupSpec("calculators", "재무·보험 계산", "조건과 가정을 확인하며 수치를 계산합니다.", 20),
     GroupSpec("analysis", "보험자료 분석", "보험 자료를 검토하고 분석 결과를 만듭니다.", 30),
     GroupSpec("materials", "고객 전달자료", "비교표와 청구 안내를 준비합니다.", 40),
-    GroupSpec("education", "교육·체크리스트", "용어와 상담 절차를 익히고 연습합니다.", 50),
+    GroupSpec("education", "화랑 ACADEMY", "교육·실습·평가를 별도 아카데미에서 진행합니다.", 50),
     GroupSpec("official", "원수사·공식정보", "보험사 전산과 공식 업무자료를 찾습니다.", 60),
     GroupSpec("performance", "실적·수수료", "계약 자료와 실적·수수료를 집계합니다.", 70),
 )
@@ -56,7 +56,7 @@ APPS: Final[tuple[AppSpec, ...]] = (
     AppSpec("silson_generation_comparison", "실손보험 세대 비교", "analysis", "현재 가입 실손과 5세대 실손의 보험료와 입원 보장을 비교합니다.", ("실손", "실비", "세대", "입원"), "modules.calculators.comparison.silson_generation_comparison", icon_key="medical", order=80),
     AppSpec("comparison_builder", "고객용 비교표 제작기", "materials", "가입안별 보험료·보장을 비교하고 고객용 PDF로 전달합니다.", ("비교표", "가입안", "보험료", "PDF"), "modules.consultation.comparison_builder", icon_key="materials", order=90, source_status="stage5"),
     AppSpec("insurance_claim_guide", "보험금 청구 가이드", "materials", "청구 항목별 필요서류를 확인하고 관련 담보를 찾습니다.", ("청구서류", "진단서", "보험금", "안내문"), "modules.consultation.insurance_claim_guide", icon_key="claim", order=100),
-    AppSpec("education_center", "교육·체크리스트 센터", "education", "용어·상담 연습·오답 복습·체크리스트와 수동 연구노트를 제공합니다.", ("교육", "용어", "설명의무", "퀴즈", "신입", "FAQ", "연구노트", "오답"), "modules.resources.education_center", icon_key="education", order=110, source_status="stage6"),
+    AppSpec("academy", "화랑 ACADEMY", "education", "교육·실습·평가·상담 시뮬레이션을 별도 아카데미에서 진행합니다.", ("교육", "아카데미", "실습", "상담 시뮬레이터", "신입", "평가", "인증", "성장"), "academy_app", icon_key="education", order=110, source_status="standalone", external_app_key="academy_url"),
     AppSpec("insurer_portal", "원수사·공식자료 포털", "official", "보험사 전산·연락처·서식과 공식기관 자료를 찾습니다.", ("전산", "원수사", "보험사", "서식", "공공사이트", "콜센터", "포털"), "modules.resources.insurer_portal", icon_key="official", order=120, source_status="stage7"),
     AppSpec("convention", "컨벤션 계산기", "performance", "계약 실적을 환산하고 컨벤션 달성 여부를 확인합니다.", ("실적", "달성", "컨벤션", "환산"), "modules.performance.convention", icon_key="performance", order=130),
     AppSpec("summer", "썸머 계산기", "performance", "7·8월 업적을 반영해 썸머 업적을 계산합니다.", ("실적", "썸머", "업적", "여름"), "modules.performance.summer", icon_key="performance", order=140),
@@ -72,9 +72,9 @@ _ALL = frozenset(APP_IDS)
 ROLE_PERMISSIONS: Final[Mapping[str, frozenset[str]]] = MappingProxyType({
     "Admin": _ALL,
     "Manager1": _ALL,
-    "Basic": frozenset({"analyzer", "insurer_portal", "insurance_claim_guide", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "education_center"}),
-    "Crew": frozenset({"analyzer", "deposit_vs_shortpay", "renewal_vs_nonrenewal", "insurer_portal", "insurance_claim_guide", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "education_center"}),
-    "Dream": frozenset({"analyzer", "remodeling", "deposit_vs_shortpay", "renewal_vs_nonrenewal", "inheritance_tax", "insurer_portal", "insurance_claim_guide", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "education_center"}),
+    "Basic": frozenset({"analyzer", "insurer_portal", "insurance_claim_guide", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "academy"}),
+    "Crew": frozenset({"analyzer", "deposit_vs_shortpay", "renewal_vs_nonrenewal", "insurer_portal", "insurance_claim_guide", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "academy"}),
+    "Dream": frozenset({"analyzer", "remodeling", "deposit_vs_shortpay", "renewal_vs_nonrenewal", "inheritance_tax", "insurer_portal", "insurance_claim_guide", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "academy"}),
 })
 
 # Search aliases are static public labels only. Customer input never enters this index.

@@ -32,7 +32,7 @@ SOURCES = {
 
 _PREFIX_PAGES = {
     "a_": "quick_calculators", "b_": "consultation_helper",
-    "c_": "comparison_builder", "e_": "education_center", "f_": "insurer_portal",
+    "c_": "comparison_builder", "f_": "insurer_portal",
 }
 
 

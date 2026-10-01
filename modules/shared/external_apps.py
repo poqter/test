@@ -13,13 +13,16 @@ def external_app_url(key: str) -> str:
 
         [external_apps]
         calculator_url = "https://...streamlit.app"
+        ACADEMY_URL = "https://...streamlit.app"
 
-    Local development may instead set ``HW_CALCULATOR_URL``.
+    Secret keys are matched case-insensitively, so ``academy_url`` and
+    ``ACADEMY_URL`` are equivalent. Environment fallbacks use ``HW_<KEY>``.
     """
     value = ""
     try:
-        section = st.secrets.get("external_apps", {})
-        value = str(section.get(key, "") or "").strip()
+        section = dict(st.secrets.get("external_apps", {}))
+        normalized = {str(name).lower(): item for name, item in section.items()}
+        value = str(normalized.get(key.lower(), "") or "").strip()
     except (FileNotFoundError, KeyError, TypeError, ValueError, AttributeError):
         value = ""
     if not value:
@@ -32,3 +35,7 @@ def external_app_url(key: str) -> str:
 
 def calculator_url() -> str:
     return external_app_url("calculator_url")
+
+
+def academy_url() -> str:
+    return external_app_url("academy_url")

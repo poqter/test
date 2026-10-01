@@ -1,4 +1,4 @@
-"""Separate Streamlit Academy entrypoint; existing WORKSPACE/Calculator untouched."""
+"""Separate Streamlit Academy production entrypoint."""
 from __future__ import annotations
 from pathlib import Path
 from urllib.parse import urlsplit,urlunsplit
