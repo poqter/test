@@ -2,7 +2,7 @@
 from __future__ import annotations
 from decimal import Decimal, ROUND_HALF_UP
 from .content import SCENARIOS, CRITERIA, CATEGORIES, AXES
-from .engine import Session
+from .engine import Session, completion_gate
 
 # Each group requires ALL flags. Several groups = independently observable
 # portions of the full-evidence gate. Gate source: pilot_evidence_contract V1.1.
@@ -132,12 +132,40 @@ def _learning_signals(s:Session) -> dict:
     gate=completion_gate(s)
     labels={
         'premium':'전체 보험료 확인','contract':'부담 계약 확인','trigger':'보험료 부담 계기 확인','preference':'유지하고 싶은 조건 확인',
+        'reduction_preference':'보험료 절감 기준 확인','analysis_handoff':'증권 상세 분석 합의','followup_confirmed':'다음 상담 일정 또는 후속 연락 시점 확정',
         'numeric_summary_confirmed':'확인 내용 요약','limitation_explained':'확인 범위·한계 설명','material_consent':'자료 확인 또는 전달 합의',
         'closure_confirmed':'다음 단계 또는 종료 합의','review_before_decision':'변경 전 자료 검토',
     }
     for key in gate.get('missing',[]):unresolved.append(labels.get(key,key))
     if state.top_pending():unresolved.append('고객의 마지막 질문 또는 선택 요청에 대한 응답')
     return {'missed_signals':missed,'unnecessary_repetition':repeated,'unresolved_items':list(dict.fromkeys(unresolved))}
+
+def _mission_outcome(s:Session) -> dict:
+    gate=completion_gate(s)
+    if s.scenario_id!='C07-S01':
+        return {
+            'final_complete':bool(gate.get('complete')),
+            'final_goal':gate.get('final_goal','상담 목표 완료'),
+            'intermediate':[],
+        }
+    labels={
+        'premium':'현재 월 보험료 확인',
+        'contract':'주요·부담 계약 확인',
+        'trigger':'보험료 부담이 커진 이유 확인',
+        'preference':'유지하고 싶은 보장·조건 확인',
+        'reduction_preference':'원하는 보험료 절감 기준 확인',
+        'material_consent':'증권 확인·전달 동의',
+        'analysis_handoff':'사무실 상세 분석 합의',
+    }
+    req=list(gate.get('intermediate_required') or [])
+    return {
+        'final_complete':bool(gate.get('final_complete')),
+        'final_goal':gate.get('final_goal','다음 상담 일정 또는 후속 연락 시점 확정'),
+        'intermediate':[{'id':x,'label':labels.get(x,x),'done':x in s.flags} for x in req],
+        'followup_schedule':getattr(s,'v5_state',None).agreements.get('followup_schedule') if getattr(s,'v5_state',None) else None,
+        'note':'최종 목표 달성 여부와 상담 완성도 평가는 별개입니다. 중간 목표 일부가 누락되어도 다음 상담 일정이 확정되면 미션은 종료됩니다.',
+    }
+
 
 def report(s:Session) -> dict:
     spec=SCENARIOS[s.scenario_id]
@@ -180,7 +208,10 @@ def report(s:Session) -> dict:
         axes.append({'id':axis,'name':AXES[axis],'lower':round(l/float(d)*100,1),'upper':round(h/float(d)*100,1),'weight':weight})
     unresolved=sum(r['state']=='unresolved' for r in rows)
     lower=float(low.quantize(Decimal('.1'),rounding=ROUND_HALF_UP));upper=float(high.quantize(Decimal('.1'),rounding=ROUND_HALF_UP))
+    mission=_mission_outcome(s)
     state='검토 필요' if unresolved or risk_turns else '기준 충족 · 잠정' if lower>=80 else '재연습 권장'
+    if mission.get('final_complete'):
+        state='미션 완료 · 검토 필요' if unresolved or risk_turns else ('미션 완료 · 기준 충족 · 잠정' if lower>=80 else '미션 완료 · 보완 필요')
     if not s.turns:lower=upper=None;state='평가할 대화 없음'
     if s.end_reason=='turn_limit':state='진행 한도 종료 · 복기 필요'
     achievements=[]
@@ -198,5 +229,5 @@ def report(s:Session) -> dict:
             'conversation_contracts':list(getattr(s,'v5_state',None).conversation_contracts) if getattr(s,'v5_state',None) else [],
             'critical_moments':_critical_moments(s),
             'missed_signals':learning['missed_signals'],'unnecessary_repetition':learning['unnecessary_repetition'],'unresolved_items':learning['unresolved_items'],
-            'scenario_seed':f'{s.seed:08X}',
+            'scenario_seed':f'{s.seed:08X}','mission_outcome':mission,
             'certificate':False,'notice':'규칙 기반 잠정 평가입니다. 친절함·감정·전문 판단 전체를 측정하거나 공식 인증을 발급하지 않습니다.'}

@@ -106,7 +106,7 @@ class Session:
     dialogue_memory: DialogueMemory = field(default_factory=DialogueMemory)
     world: dict=field(default_factory=dict)
     v5_state: DialogueStateV5=field(default_factory=DialogueStateV5)
-    scenario_version: str='5.2-core'
+    scenario_version: str='5.3-golden-core26'
     customer_seed: int|None=None
     event_log: list[dict]=field(default_factory=list)
     user_id: str|None=None
@@ -713,10 +713,15 @@ def _choose(s:Session,rid:str,number:int)->str:
 def training_stage(s:Session) -> str:
     if s.ended:return 'COMPLETE'
     if s.scenario_id=='C07-S01':
-        if 'premium' not in s.flags or 'contract' not in s.flags:return 'DISCOVER'
-        if 'trigger' not in s.flags or 'preference' not in s.flags:return 'DEEPEN'
-        if 'material_consent' not in s.flags:return 'HANDLE'
-        return 'CLOSE'
+        if 'analysis_handoff' in s.flags or s.v5_state.stage in ('ANALYSIS_HANDOFF','FOLLOW_UP'):
+            return 'FOLLOW-UP'
+        if 'reduction_preference' in s.flags or 'preference' in s.flags:
+            return 'ALIGN'
+        if 'document_opened' in s.flags or 'material_consent' in s.flags:
+            return 'REVIEW'
+        if 'premium' in s.flags or 'trigger' in s.flags or 'contract' in s.flags:
+            return 'DISCOVER'
+        return 'OPEN'
     # Generic stage by evidence density for the five other reviewed scenarios.
     n=len([k for k in s.flags if not k.startswith(('engine_','event_'))])
     return 'DISCOVER' if n<2 else 'DEEPEN' if n<4 else 'HANDLE' if n<6 else 'CLOSE'
@@ -725,12 +730,27 @@ def training_stage(s:Session) -> str:
 def completion_gate(s:Session) -> dict:
     gates={
       'A01-S01':{'QUICK':['time','interest'],'STANDARD':['time','interest','closure_confirmed'],'DEEP':['time','interest','choice_respected','closure_confirmed']},
-      'C07-S01':{'QUICK':['premium','contract','material_consent'],'STANDARD':['premium','contract','trigger','preference','material_consent'],'DEEP':['premium','contract','trigger','preference','numeric_summary_confirmed','limitation_explained','material_consent']},
       'D08-S01':{'QUICK':['documents','preference'],'STANDARD':['documents','preference','limitation_explained','review_consent'],'DEEP':['documents','preference','limitation_explained','review_consent']},
       'F07-S01':{'QUICK':['preference','spouse_concern'],'STANDARD':['preference','spouse_concern','material_consent'],'DEEP':['preference','spouse_concern','material_consent','choice_respected']},
       'G10-S01':{'QUICK':['claim_status','limitation_explained'],'STANDARD':['claim_status','health_unknown','limitation_explained','check_plan'],'DEEP':['claim_status','health_unknown','previous_assurance','limitation_explained','check_plan','material_scope']},
       'H10-S01':{'QUICK':['goals','ownership_unknown'],'STANDARD':['goals','ownership_unknown','family_unknown','review_consent'],'DEEP':['goals','ownership_unknown','family_unknown','goals_separated','limitation_explained','review_consent']},
     }
+    if s.scenario_id=='C07-S01':
+        quality={
+          'QUICK':['premium','trigger','analysis_handoff'],
+          'STANDARD':['premium','contract','trigger','preference','reduction_preference','analysis_handoff'],
+          'DEEP':['premium','contract','trigger','preference','reduction_preference','material_consent','analysis_handoff'],
+        }
+        required=quality[s.session_length]
+        done=[x for x in required if x in s.flags]
+        final_flags=['followup_confirmed']
+        final_complete=any(x in s.flags for x in final_flags)
+        return {
+            'done':len(done),'total':len(required),'complete':final_complete,'final_complete':final_complete,
+            'final_goal':'다음 상담 일정 또는 후속 연락 시점 확정',
+            'missing':[x for x in required if x not in s.flags],
+            'intermediate_done':done,'intermediate_required':required,
+        }
     required=gates[s.scenario_id][s.session_length]
     done=[x for x in required if x in s.flags]
     return {'done':len(done),'total':len(required),'complete':len(done)==len(required),'missing':[x for x in required if x not in s.flags]}
@@ -910,17 +930,17 @@ def guide(s:Session) -> dict|None:
     suggestion=source['good'];direction=source['reason']
     if s.scenario_id=='C07-S01':
         total=_won(int(s.facts['total_monthly_premium_won']));contract=_won(int(s.facts['burdensome_contract_premium_won']));cname=str(s.facts['burdensome_contract'])
-        steps=[('premium','전체로 한 달에 내시는 보험료는 어느 정도 되실까요?','전체 보험료와 한 계약의 보험료를 구분해 보세요.'),
+        steps=[('premium','전체로 한 달에 내시는 보험료는 어느 정도 되실까요?','현재 부담의 규모를 먼저 확인해 보세요.'),
         ('contract','그중 어떤 계약이 가장 부담되세요?','부담을 느끼는 계약을 고객이 직접 특정하게 합니다.'),
-        ('certainty_checked','말씀하신 금액은 기억하시는 금액인가요, 자료로 확인된 금액인가요?','고객 진술과 문서 검증은 별개입니다.'),
-        ('trigger','최근 들어 보험료가 더 부담스럽게 느껴진 계기가 있을까요?','표면적인 금액과 부담이 커진 배경을 구분합니다.'),
+        ('trigger','잘 납입하시다가 최근 더 부담스럽게 느껴진 이유가 있을까요?','보험료 숫자와 부담이 커진 배경을 구분합니다.'),
         ('preference','보험료를 조정하더라도 꼭 유지하고 싶은 보장이나 조건이 있을까요?','줄이는 것만 목표로 두지 말고 고객의 유지 기준을 확인합니다.'),
-        ('numeric_summary_confirmed',f'지금까지 말씀은 전체 {total}, 그중 {cname}이 {contract} 정도이고 최근 부담이 커졌다는 뜻으로 이해하면 될까요?','공개된 사실만 사용해 요약하고 고객의 확인을 받습니다.'),
-        ('limitation_explained','증권과 계약 조건을 확인하기 전에는 유지나 해지 여부를 먼저 결정하지 않겠습니다.','자료가 없는 상태에서 결론을 앞서 내리지 않습니다.'),
-        ('material_consent','비교에 필요한 항목만 같이 확인할 수 있도록 증권이나 계약 자료를 봐도 괜찮을까요?','자료의 목적과 범위를 설명하고 동의를 요청합니다.')]
+        ('reduction_preference','어느 정도 줄어들면 부담이 덜하실까요? 정확한 금액이 아니어도 괜찮습니다.','목표 보험료 숫자를 강요하지 말고 고객의 절감 기준을 확인합니다.'),
+        ('material_consent','증권이나 계약 자료를 같이 확인해도 괜찮을까요?','분석에 필요한 자료를 고객 동의 아래 확인합니다.'),
+        ('analysis_handoff','오늘 바로 결론내리기보다 증권을 가져가 자세히 분석한 뒤 다시 설명드려도 될까요?','현장에서 성급하게 계약 변경을 확정하지 않고 분석 후 재상담 흐름으로 전환합니다.'),
+        ('followup_confirmed','그럼 분석 결과를 설명드릴 다음 상담 날짜나 연락 시점을 정해볼까요?','C07의 최종 목표입니다. 일정 또는 후속 연락 시점이 확정되면 상담이 종료됩니다.')]
         for flag,suggestion,direction in steps:
             if flag not in s.flags:break
-        else:suggestion='자료를 먼저 확인하고 일정은 따로 정하는 범위로 오늘 상담을 마치겠습니다.';direction='아직 정해지지 않은 일정은 확정으로 기록하지 않습니다.'
+        else:suggestion='다음 상담 일정이 확정되었습니다.';direction='최종 목표를 달성했으므로 상담이 종료되고, 빠진 중간 목표는 복기에서 평가합니다.'
     elif s.scenario_id in ('A01-S01','D08-S01','F07-S01','G10-S01','H10-S01'):
         sequences = {
           'A01-S01':[('introduced','CT01','자신의 역할과 연락 경로를 먼저 밝힙니다.'),('time','CT03','지금 대화해도 되는지 확인합니다.'),('interest','DS01','고객이 원하는 상담 범위를 묻습니다.'),('customer_initiates','CT10','고객에게 허락받은 후속 연락 범위를 확인합니다.'),('closure_confirmed','NX08','고객이 먼저 연락한다는 의사를 존중하고 마무리합니다.')],

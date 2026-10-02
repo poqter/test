@@ -99,6 +99,29 @@ _PROFILE_CONTEXT = {
     "C07-RENEWAL": {"family":"배우자 있음","health":["최근 혈압약 복용 시작 · 상세는 C07 과제에서 자동 공개하지 않음"],"claims":[],"attitude":{"insurance_knowledge":"보통","premium_sensitivity":"높음","change_resistance":"높음","existing_agent_relation":"보통"},"document":{"access":"spouse_managed","location":"배우자가 전체 증권 관리","can_open_now":False,"can_send":False}},
 }
 
+_PROFILE_TRAINING_PREFERENCES = {
+    "C07-BASE": {
+        "premium_target": {"type":"range","comfortable_min_won":330000,"comfortable_max_won":380000,"reduction_won":50000,"certainty":"medium","statement":"가능하면 30만원대 중후반 정도까지는 내려가면 좋겠어요. 다만 필요한 보장을 없애면서까지 줄이고 싶지는 않아요."},
+        "availability": ["화요일 저녁 7시 이후", "목요일 저녁 7시 이후"],
+        "contact_fallback": "내일 오후 3시 이후",
+    },
+    "C07-CASHFLOW": {
+        "premium_target": {"type":"reduction","comfortable_min_won":390000,"comfortable_max_won":430000,"reduction_won":80000,"certainty":"low","statement":"정확히 얼마라고 정해둔 건 아닌데, 지금보다 8만~10만원 정도만 줄어도 부담이 훨씬 덜할 것 같아요."},
+        "availability": ["수요일 오후 4시 이후", "금요일 오후 5시 이후"],
+        "contact_fallback": "내일 오후 2시 이후",
+    },
+    "C07-FAMILY": {
+        "premium_target": {"type":"range","comfortable_min_won":300000,"comfortable_max_won":330000,"reduction_won":50000,"certainty":"medium","statement":"30만원 초반 정도면 좋겠어요. 실손이랑 큰 질병 보장은 가능하면 그대로 두고 싶어요."},
+        "availability": ["화요일 저녁 8시", "토요일 오전 11시"],
+        "contact_fallback": "내일 저녁 7시 이후",
+    },
+    "C07-RENEWAL": {
+        "premium_target": {"type":"criteria","comfortable_min_won":None,"comfortable_max_won":None,"reduction_won":None,"certainty":"low","statement":"정확한 목표 금액보다 갱신 때문에 불필요하게 오른 부분이 있는지 먼저 알고 싶어요. 치료 관련 보장을 줄이는 건 조심하고 싶고요."},
+        "availability": ["목요일 저녁 6시 30분", "토요일 오후 2시"],
+        "contact_fallback": "내일 점심시간 이후",
+    },
+}
+
 _ALIASES = {
     "종신보험": ["종신","종신보험"],
     "갱신형 건강보험": ["갱신형건강보험","갱신건강보험","건강보험"],
@@ -229,6 +252,9 @@ def build_customer_world(scenario_id:str, profile_id:str, facts:dict, seed:int) 
         p.setdefault("surrender_value_state","이번 과제 미확인")
         p.setdefault("change_history",[])
         p.setdefault("claim_links",[])
+        if p.get("name")=="실손의료보험":
+            year=int(p.get("start_year") or 0)
+            p.setdefault("indemnity_generation", "4세대" if year>=2021 else "3세대" if year>=2017 else "2세대" if year>=2009 else "1세대")
         p["aliases"]=list(dict.fromkeys([p["name"],*_ALIASES.get(p["name"],[])]))
         for c in p.get("coverages",[]):
             c.setdefault("status","정상")
@@ -241,7 +267,16 @@ def build_customer_world(scenario_id:str, profile_id:str, facts:dict, seed:int) 
     ctx=deepcopy(_PROFILE_CONTEXT.get(key,_PROFILE_CONTEXT["C07-BASE"]))
     base["family"]=ctx["family"];base["health"]=ctx["health"];base["claims"]=ctx["claims"];base["attitude"]=ctx["attitude"]
     base["document"].update(ctx["document"])
-    base["financial"]={"burden_trigger":facts.get("burden_trigger"),"preference":facts.get("preference")}
+    training_pref=deepcopy(_PROFILE_TRAINING_PREFERENCES.get(key,_PROFILE_TRAINING_PREFERENCES["C07-BASE"]))
+    base["financial"]={
+        "burden_trigger":facts.get("burden_trigger"),
+        "preference":facts.get("preference"),
+        "premium_target":training_pref["premium_target"],
+    }
+    base["availability"]={
+        "followup_options":list(training_pref.get("availability") or []),
+        "contact_fallback":training_pref.get("contact_fallback"),
+    }
     base["goals"]=[
         {"priority":1,"goal":"보험료 부담 완화","source":"상담 신청"},
         {"priority":2,"goal":str(facts.get("preference") or "필요한 보장 유지"),"source":"숨은/조건부 니즈"},
@@ -336,6 +371,14 @@ def premium_total(world:dict, *, from_document:bool=False)->int|None:
     k=world.get("knowledge",{}).get("total_premium",{})
     return k.get("truth") if from_document else k.get("memory")
 
+def _object_particle(word:str)->str:
+    text=str(word or '')
+    if not text:return '을'
+    code=ord(text[-1])
+    if 0xAC00 <= code <= 0xD7A3:
+        return '을' if (code-0xAC00)%28 else '를'
+    return '을'
+
 def open_document(world:dict)->tuple[bool,str]:
     d=world["document"]
     if d.get("can_open_now"):
@@ -343,7 +386,8 @@ def open_document(world:dict)->tuple[bool,str]:
         k=world.get("knowledge",{})
         k.get("total_premium",{})["document_state"]="confirmed"
         for v in k.get("policies",{}).values():v["document_state"]="confirmed"
-        return True, f"{d.get('location','증권')}을 열었어요."
+        loc=d.get('location','증권')
+        return True, f"{loc}{_object_particle(loc)} 열었어요."
     return False, document_access_message(world)
 
 def document_access_message(world:dict)->str:

@@ -97,6 +97,41 @@ def _money_mentions(text:str)->list[int]:
         out.append(round(val*(10000 if unit=='만원' else 1000 if unit=='천원' else 1)))
     return out
 
+def _schedule_matches_availability(text:str,world:dict)->bool:
+    """Conservative simulation-only availability check.
+
+    If the customer already offered weekday choices, a newly proposed weekday
+    outside those choices should not be accepted just to finish the mission.
+    """
+    options=list(world.get('availability',{}).get('followup_options') or [])
+    if not options:return True
+    weekdays=['월요일','화요일','수요일','목요일','금요일','토요일','일요일','주말']
+    proposed=next((d for d in weekdays if d in text),None)
+    if not proposed:return True
+    return any(proposed in opt for opt in options)
+
+def _clean_schedule_phrase(text:str)->str:
+    """Return the concrete time phrase rather than the learner's whole sentence.
+
+    Follow-up confirmations are displayed back to the learner/customer.  Echoing
+    an entire utterance such as "제가 분석해보고 다음주 화요일 8시에..."
+    produced unnatural responses.  Prefer the smallest explicit schedule span.
+    """
+    raw=str(text or '').strip()
+    temporal_patterns=[
+        r'(?:(?:다음주|이번주)\s*)?(?:월요일|화요일|수요일|목요일|금요일|토요일|일요일|주말)\s*(?:(?:오전|오후|저녁|점심)\s*)?\d{1,2}\s*시(?:\s*\d{1,2}\s*분)?(?:\s*(?:이후|쯤|경))?',
+        r'(?:내일|모레)\s*(?:(?:오전|오후|저녁|점심)\s*)?\d{1,2}\s*시(?:\s*\d{1,2}\s*분)?(?:\s*(?:이후|쯤|경))?',
+        r'(?:내일|모레)\s*(?:오전|오후|저녁|점심)(?:\s*(?:이후|쯤|경))?',
+        r'(?:오전|오후|저녁|점심)\s*\d{1,2}\s*시(?:\s*\d{1,2}\s*분)?(?:\s*(?:이후|쯤|경))?',
+    ]
+    for pat in temporal_patterns:
+        m=re.search(pat,raw)
+        if m:return re.sub(r'\s+',' ',m.group(0)).strip()
+    clean=raw.strip(' ?？.')
+    clean=re.sub(r'(?:로|으로)?\s*(?:할까요|하죠|할게요|잡을까요|정할까요|보죠|볼까요|만날까요)[?？]?$', '', clean).strip()
+    clean=re.sub(r'(은|는)?\s*(어떠세요|어때요|괜찮으세요|가능하세요)[?？]?$', '', clean).strip()
+    return clean
+
 def _policy_id_for_name(world:dict,name:str)->str|None:
     for p in policies(world):
         if p['name']==name:return p['id']
@@ -119,6 +154,7 @@ def parse_move(text:str,state:DialogueStateV5,world:dict)->ParsedMoveV5:
     if re.search(r'(무슨일|어떤일|왜그렇|왜.*부담|왜.*줄|부담.*이유|부담.*계기|무슨문제|계기가|최근.*지출.*늘|지출.*증가)',n):_add(move,'ask_burden_reason')
     if re.search(r'(어느부분.*궁금|어떤부분.*궁금|어떤게.*궁금|뭐가.*궁금|무엇이.*궁금|원하는게|어떤게.*신경|뭐가.*신경|제일.*궁금|어떤부분.*보고싶|어떤게.*보고싶|뭘.*보고싶)',n):_add(move,'ask_customer_concern')
     if re.search(r'(유지.*싶|남기.*싶|꼭.*유지|중요.*보장|줄이더라도)',n):_add(move,'ask_preference')
+    if re.search(r'(얼마|얼만큼|어느정도|몇만|몇십만|어디까지).*(줄|낮|절감)|(?:줄|낮).*(얼마|얼만큼|어느정도)|목표.*보험료|원하는.*보험료|부담.*덜.*(?:금액|보험료)|부담되지.*(?:월|보험료)|적정.*보험료',n):_add(move,'ask_reduction_target')
 
     # Premium / contract inventory questions.
     generic_amount=bool(re.search(r'(얼마|어느정도|금액|월지출|매달.*나가|한달.*나가|납입.*금액)',n))
@@ -129,6 +165,10 @@ def parse_move(text:str,state:DialogueStateV5,world:dict)->ParsedMoveV5:
     if re.search(r'(각각|각보험|보험별|계약별).*(금액|보험료)|세부.*금액|각각.*얼마',n):_add(move,'ask_policy_premiums')
     if move.policy_ids and generic_amount and re.search(r'보험료|납입|금액|얼마',n):_add(move,'ask_selected_policy_premium')
     if 'ask_policy_premiums' in move.actions and 'ask_total_premium' in move.actions:move.actions.remove('ask_total_premium')
+    if re.search(r'(건강보험.*만|보장성.*만|연금.*포함|저축.*포함|연금이나저축|어떤보험.*포함|무엇.*포함|뭐.*포함|전체.*구성)',n):
+        _add(move,'ask_total_composition')
+        for stale in ('ask_total_premium','ask_selected_policy_premium'):
+            if stale in move.actions:move.actions.remove(stale)
 
     # Coverage questions.
     if re.search(r'(보장내용|담보내용|어떤보장|무슨보장|보장|담보).*(알|아시|아세|기억)',n):_add(move,'ask_coverage_knowledge')
@@ -151,7 +191,15 @@ def parse_move(text:str,state:DialogueStateV5,world:dict)->ParsedMoveV5:
         if 'ask_coverage_amount' in move.actions:move.actions.remove('ask_coverage_amount')
     if re.search(r'(세부|구체|자세히|정확히).*(보장|담보|내용)|(?:그|이).*(보장|담보).*(뭐|무엇|내용)|뭐냐고|무엇이냐|어떤내용이',n):_add(move,'request_detail')
     if 'request_detail' in move.actions and 'ask_coverage_knowledge' in move.actions:move.actions.remove('ask_coverage_knowledge')
+    if 'ask_indemnity_generation' in move.actions:
+        for stale in ('ask_coverage_details','request_detail','ask_coverage_knowledge'):
+            if stale in move.actions:move.actions.remove(stale)
+    if 'ask_policy_start_year' in move.actions:
+        for stale in ('ask_coverage_details','request_detail','ask_coverage_knowledge'):
+            if stale in move.actions:move.actions.remove(stale)
     if re.search(r'(입원.*한도|통원.*한도|한도.*입원|한도.*통원)',n):_add(move,'ask_indemnity_limits')
+    if re.search(r'(몇세대|세대.*실손|실손.*세대|실비.*세대)',n):_add(move,'ask_indemnity_generation')
+    if re.search(r'(몇년도|몇년|언제).*(가입|들었|시작)|가입.*(?:년도|연도|시기|언제)',n):_add(move,'ask_policy_start_year')
     if state.active_policy_id and re.fullmatch(r'(보장|보장이요|보장내용|담보|담보요|세부보장)',n):_add(move,'ask_coverage_details')
 
     # Document / material lifecycle.
@@ -163,8 +211,10 @@ def parse_move(text:str,state:DialogueStateV5,world:dict)->ParsedMoveV5:
     if re.search(r'(어떻게|어디서).*(확인|찾|열|보면|봐)',n):_add(move,'ask_document_method')
     if re.search(r'(증권|파일|자료).*(전달|보내|보내주|공유)|그파일.*(보내|전달)',n):_add(move,'request_document_transfer')
     if 'request_document_transfer' in move.actions and 'ask_document_possession' in move.actions:move.actions.remove('ask_document_possession')
-    if re.search(r'(분석|검토|살펴|봐보고|보고).*(다시|다음|추후).*(찾아|만나|미팅|상담|말씀|설명)|다음미팅|다시찾아',n):_add(move,'propose_analysis_followup')
-    if re.search(r'(언제|몇시|날짜|일정).*(만나|미팅|상담|볼까요|뵐까요)|다음주|이번주|(월요일|화요일|수요일|목요일|금요일|주말).*(다시|상담|미팅|만나)',n):_add(move,'schedule_followup')
+    if re.search(r'(사무실|돌아가|가져가|제가|제가요)?.*(분석|검토|자세히확인|확인해보고|살펴보고|재조정).*(다시|다음|추후|설명|제안|찾아|만나|미팅|상담)|분석해서.*(?:다시|다음)|다음미팅|다시찾아|부족.*보장.*제안',n):_add(move,'propose_analysis_followup')
+    if re.search(r'(언제|몇시|날짜|일정|시간).*(괜찮|가능|만나|미팅|상담|볼까요|뵐까요|정하|잡)|다음상담.*(?:날짜|일정|시간)|다음미팅.*(?:날짜|일정|시간)|다시.*(?:언제|시간)|다음주|이번주|(?:내일|모레).*(?:연락|전화|상담|다시|설명)|(월요일|화요일|수요일|목요일|금요일|토요일|일요일|주말).*(다시|상담|미팅|만나|괜찮|가능|설명)',n):_add(move,'schedule_followup')
+    if 'propose_analysis_followup' in move.actions and 'request_document_open' in move.actions and not re.search(r'(증권|파일|자료).*(열어|열|같이확인|함께확인|보죠|볼까요)',n):
+        move.actions.remove('request_document_open')
 
     # Context restoration and generic continuation.
     if re.search(r'(보고있는중|보고있었|보던중|확인중|확인하고있).*증권|증권.*(보고있는|보고있었|보던)',n):_add(move,'restore_document_context')
@@ -181,7 +231,7 @@ def parse_move(text:str,state:DialogueStateV5,world:dict)->ParsedMoveV5:
         elif pending.kind=='transfer_method':
             if re.search(r'(카톡|카카오톡|문자|메일|이메일|메신저|사진으로|여기로|여기에|이채팅|채팅으로)',n):_add(move,'answer_transfer_method')
         elif pending.kind=='followup_schedule':
-            if re.search(r'(다음주|이번주|월요일|화요일|수요일|목요일|금요일|주말|오전|오후|시)',n):_add(move,'answer_followup_schedule')
+            if re.search(r'(다음주|이번주|내일|모레|월요일|화요일|수요일|목요일|금요일|토요일|일요일|주말|오전|오후|저녁|점심|\d+시|\d+분|연락)',n):_add(move,'answer_followup_schedule')
 
     # If user simply names a policy while a document is open, treat as selection.
     if len(move.policy_ids)==1 and len(n)<=24 and state.active_document and not any(a.startswith('ask_') for a in move.actions):
@@ -193,6 +243,9 @@ def parse_move(text:str,state:DialogueStateV5,world:dict)->ParsedMoveV5:
         if 'ask_total_premium' in move.actions:move.actions.remove('ask_total_premium')
         _add(move,'ask_selected_policy_premium')
     if move.coverage_key and 'ask_selected_policy_premium' in move.actions:move.actions.remove('ask_selected_policy_premium')
+    if 'ask_reduction_target' in move.actions:
+        for stale in ('ask_total_premium','ask_selected_policy_premium','ask_policy_premiums'):
+            if stale in move.actions:move.actions.remove(stale)
 
     # Domain context inference for "무슨 내용이 보이시나요" after document open.
     if state.active_document and re.search(r'(무슨내용|어떤내용|뭐가보|무슨항목|어떤항목)',n):_add(move,'ask_document_contents')
@@ -261,7 +314,8 @@ def _track_answered(state:DialogueStateV5,key:str,turn:int,plan:V5Plan)->None:
 def _resolve_pending_selection(move:ParsedMoveV5,state:DialogueStateV5,world:dict,turn:int)->V5Plan|None:
     p=state.top_pending()
     if not p:return None
-    if 'select_policy' in move.actions and len(move.policy_ids)==1:
+    substantive=[a for a in move.actions if a.startswith('ask_') or a in ('request_detail','request_document_transfer','propose_analysis_followup','schedule_followup')]
+    if 'select_policy' in move.actions and len(move.policy_ids)==1 and not substantive:
         pid=move.policy_ids[0];pol=_policy_by_id(world,pid)
         if pol:
             _set_active_policy(state,pid,world);state.clear_pending();state.metrics['pending_resolutions']+=1
@@ -278,8 +332,11 @@ def _resolve_pending_selection(move:ParsedMoveV5,state:DialogueStateV5,world:dic
         state.clear_pending();state.metrics['pending_resolutions']+=1;state.agreements['document_transfer_method']=move.text
         channel='카카오톡' if re.search(r'카톡|카카오톡',_norm(move.text)) else '현재 채팅' if re.search(r'여기|채팅',_norm(move.text)) else '말씀하신 방법'; return V5Plan(True,f'네, {channel}으로 증권 파일을 보내드릴게요. 확인하신 뒤 다시 설명해 주세요.',{'document_transfer_agreed','material_consent','transfer_channel_confirmed'},actions=move.actions)
     if 'answer_followup_schedule' in move.actions:
-        state.clear_pending();state.metrics['pending_resolutions']+=1;state.metrics['followup_agreements']+=1;state.agreements['followup_schedule']=move.text
-        clean=re.sub(r'(은|는)?\s*(어떠세요|어때요|괜찮으세요|가능하세요)[?？]?$', '', move.text.strip()).strip(' ?？.'); return V5Plan(True,f"네, {clean or '말씀하신 일정'}에 다시 확인하는 걸로 할게요. 증권 분석 후 그때 이어서 보죠.",{'followup_agreed','closure_confirmed'},actions=move.actions)
+        if not _schedule_matches_availability(move.text,world):
+            opts=list(world.get('availability',{}).get('followup_options') or [])
+            return V5Plan(True,f"그 시간은 조금 어려워요. 저는 {' 또는 '.join(opts[:2])}가 괜찮아요. 둘 중 하나로 정할 수 있을까요?",{'followup_pending'},actions=move.actions)
+        state.clear_pending();state.metrics['pending_resolutions']+=1;state.metrics['followup_agreements']+=1;state.stage='COMPLETE';clean=_clean_schedule_phrase(move.text);state.agreements['followup_schedule']=clean or move.text
+        return V5Plan(True,f"네, {clean or '말씀하신 일정'}에 다시 상담하는 걸로 할게요. 증권 분석 결과를 그때 설명해 주세요.",{'followup_agreed','followup_confirmed','closure_confirmed'},terminal='mission_complete',actions=move.actions)
     return None
 
 
@@ -316,15 +373,35 @@ def plan_c07(session:Any,text:str,turn:int)->V5Plan:
         plan.handled=True;plan.text='제가 제일 궁금한 건 보험료가 왜 이렇게 많이 나가는지예요. 필요한 보장은 가능하면 유지하면서 부담을 줄일 수 있는지도 알고 싶어요.'
         _disclose(plan,'고객의 현재 관심사','보험료 부담 원인과 필요한 보장 유지 가능성');return plan
 
+    if re.search(r'매출.*(떨어|감소|줄었)',_norm(text)):
+        reason=str(world.get('financial',{}).get('burden_trigger') or '')
+        if '매출 변동' in reason:
+            plan.handled=True;plan.text='꼭 매출이 계속 떨어졌다기보다는 월마다 편차가 커져서 고정지출이 더 부담스럽게 느껴지는 거예요.';plan.flags.add('customer_corrected_inference');return plan
+        if reason:
+            plan.handled=True;plan.text=f'아니요, 매출 얘기는 아니고 제가 말씀드린 건 {reason} 때문에 부담이 커졌다는 뜻이에요.';plan.flags.add('customer_corrected_inference');return plan
+
     if 'ask_burden_reason' in move.actions:
-        state.active_topic='premium';_track_answered(state,'burden_reason',turn,plan)
+        state.active_topic='premium';state.stage='DISCOVER';_track_answered(state,'burden_reason',turn,plan)
         reason=session.facts.get('burden_trigger') or world.get('financial',{}).get('burden_trigger') or '가계 지출 증가'
         plan.handled=True;plan.text=f'최근에는 {reason} 때문에 보험료가 더 부담스럽게 느껴져요.';plan.flags.add('trigger')
         _disclose(plan,'부담 계기',str(reason));return plan
 
     if 'ask_preference' in move.actions:
-        _track_answered(state,'preference',turn,plan);pref=session.facts.get('preference') or world.get('financial',{}).get('preference')
+        state.stage='ALIGN';_track_answered(state,'preference',turn,plan);pref=session.facts.get('preference') or world.get('financial',{}).get('preference')
         plan.handled=True;plan.text=f'{pref} 쪽으로 보고 싶어요.';plan.flags.add('preference');_disclose(plan,'유지하고 싶은 조건',str(pref));return plan
+
+    if 'ask_reduction_target' in move.actions:
+        state.active_topic='preference';state.stage='ALIGN';_track_answered(state,'reduction_target',turn,plan)
+        target=world.get('financial',{}).get('premium_target') or {}
+        statement=str(target.get('statement') or '정확한 목표 금액보다는 불필요한 부분이 있는지 확인한 뒤 부담을 줄이고 싶어요.')
+        plan.handled=True;plan.text=statement;plan.flags.add('reduction_preference')
+        label='보험료 절감 기준'
+        if target.get('type')=='range' and target.get('comfortable_max_won'):
+            value=f"월 {won_text(target.get('comfortable_min_won'))}~{won_text(target.get('comfortable_max_won'))} 수준을 선호"
+        elif target.get('type')=='reduction' and target.get('reduction_won'):
+            value=f"현재보다 약 {won_text(target.get('reduction_won'))} 이상 절감 희망"
+        else:value='정확한 금액보다 불필요한 보험료 조정 우선'
+        _disclose(plan,label,value);return plan
 
     if 'ask_total_premium' in move.actions:
         state.active_topic='premium';_track_answered(state,'total_premium',turn,plan)
@@ -335,6 +412,14 @@ def plan_c07(session:Any,text:str,turn:int)->V5Plan:
         else:
             plan.text=f'제가 기억하기로는 전체로 한 달에 {won_text(value)} 정도 나가요.';certainty='고객 기억'
         plan.handled=True;plan.flags.add('premium');_disclose(plan,'전체 월 보험료',f'{int(value):,}원 · {certainty}');return plan
+
+    if 'ask_total_composition' in move.actions:
+        plan.handled=True;state.active_topic='portfolio'
+        if world.get('document',{}).get('opened'):
+            plan.text=f"전체 보험료는 {won_text(premium_total(world,from_document=True))}이고, 지금 증권에는 " + ', '.join(p['name'] for p in policies(world)) + '이 포함돼 있어요.'
+        else:
+            plan.text='제가 말씀드린 금액은 건강보험 하나만의 보험료가 아니라 전체 보험료로 기억하는 금액이에요. 어떤 보험이 포함됐는지는 증권을 확인해야 정확히 말씀드릴 수 있어요.'
+        return plan
 
     if 'ask_burdensome_policy' in move.actions:
         state.active_topic='portfolio';_track_answered(state,'burdensome_policy',turn,plan)
@@ -442,6 +527,32 @@ def plan_c07(session:Any,text:str,turn:int)->V5Plan:
             plan.text='큰 틀만 기억하고 정확한 담보명과 가입금액은 잘 모르겠어요. 증권을 같이 보면 좋겠어요.';_disclose(plan,'담보별 보장 내용','미확인 · 상세 자료 확인 필요')
         return plan
 
+    if 'ask_indemnity_generation' in move.actions:
+        plan.handled=True;state.active_topic='policy_detail'
+        p=find_policy(world,text,active_policy_id=state.active_policy_id)
+        if not p or p.get('name')!='실손의료보험':
+            p=next((x for x in policies(world) if x.get('name')=='실손의료보험'),None)
+        if not p:
+            plan.text='현재 확인 중인 증권에서는 실손의료보험 계약이 보이지 않아요.';return plan
+        _set_active_policy(state,p['id'],world)
+        if world.get('document',{}).get('opened'):
+            plan.text=f"증권에는 {p.get('indemnity_generation','세대 확인 필요')} 실손으로 표시돼 있어요. 가입 시기는 {p.get('start_year')}년으로 되어 있어요."
+        else:
+            plan.text='실손 세대는 제가 정확히 기억하지 못해요. 증권의 가입 시기를 확인해야 알 수 있을 것 같아요.'
+        return plan
+
+    if 'ask_policy_start_year' in move.actions:
+        plan.handled=True;state.active_topic='policy_detail'
+        p=find_policy(world,text,active_policy_id=state.active_policy_id)
+        if not p and re.search(r'(실손|실비)',_norm(text)):
+            p=next((x for x in policies(world) if x.get('name')=='실손의료보험'),None)
+        if not p:
+            plan.text='어느 계약의 가입 시기를 말씀하시는지 알려주시면 증권에서 확인해볼게요.';return plan
+        _set_active_policy(state,p['id'],world)
+        if world.get('document',{}).get('opened'):plan.text=f"증권에는 {p['name']}이 {p.get('start_year')}년에 가입된 것으로 표시돼 있어요."
+        else:plan.text=f"{p['name']} 가입 연도는 정확히 기억나지 않아서 증권을 확인해야 해요."
+        return plan
+
     if 'ask_indemnity_limits' in move.actions:
         plan.handled=True;state.active_topic='coverage';state.active_section='coverage_detail';state.metrics['detail_resolutions']+=1
         p=find_policy(world,text,active_policy_id=state.active_policy_id)
@@ -531,19 +642,45 @@ def plan_c07(session:Any,text:str,turn:int)->V5Plan:
         return plan
 
     if 'propose_analysis_followup' in move.actions:
-        plan.handled=True;plan.flags.update({'review_before_decision','followup_pending'});state.add_contract('자료 분석 후 후속 상담에서 다시 검토한다');state.agreements['analysis_followup']=True
-        if world.get('document',{}).get('shared') or world.get('document',{}).get('opened'):
-            plan.text='네, 먼저 증권을 분석해 주시고 다시 설명해 주시면 좋겠어요. 언제쯤 다시 보면 될까요?';_push_question(state,'followup_schedule',turn)
+        plan.handled=True;state.stage='ANALYSIS_HANDOFF';plan.flags.update({'review_before_decision','analysis_handoff','followup_pending'});state.add_contract('자료를 상세 분석한 뒤 후속 상담에서 다시 설명한다');state.agreements['analysis_followup']=True
+        concrete_schedule=bool('schedule_followup' in move.actions and re.search(r'(다음주|이번주|월요일|화요일|수요일|목요일|금요일|토요일|일요일|주말).*(오전|오후|저녁|점심|\d+\s*시)|(?:내일|모레).*(오전|오후|저녁|점심|\d+\s*시)|(?:오전|오후|저녁|점심)\s*\d+\s*시|\d+\s*시',text))
+        if concrete_schedule and _schedule_matches_availability(text,world):
+            clean=_clean_schedule_phrase(text);state.agreements['followup_schedule']=clean or text;state.metrics['followup_agreements']+=1;state.stage='COMPLETE'
+            if world.get('document',{}).get('shared') or world.get('document',{}).get('opened'):plan.flags.add('material_consent')
+            plan.flags.update({'followup_agreed','followup_confirmed','closure_confirmed'});plan.terminal='mission_complete';plan.text=f"네, 그렇게 해주세요. {clean or '말씀하신 일정'}에 다시 상담하면서 분석 결과를 설명해 주세요."
+        elif concrete_schedule:
+            opts=list(world.get('availability',{}).get('followup_options') or []);plan.text=f"분석해서 다시 설명해 주시는 건 좋아요. 다만 그 시간은 어려워서 저는 {' 또는 '.join(opts[:2])}가 괜찮아요.";_push_question(state,'followup_schedule',turn)
+        elif world.get('document',{}).get('shared') or world.get('document',{}).get('opened'):
+            plan.flags.add('material_consent')
+            opts=list(world.get('availability',{}).get('followup_options') or [])
+            if opts:plan.text=f"네, 그렇게 해주세요. 지금 자료를 바탕으로 자세히 분석한 뒤 다시 설명해 주시면 좋겠어요. 저는 {opts[0]}나 {opts[1] if len(opts)>1 else '그 이후'}가 괜찮아요. 어느 쪽이 좋으세요?"
+            else:plan.text='네, 그렇게 해주세요. 지금 자료를 바탕으로 자세히 분석한 뒤 다시 설명해 주시면 좋겠어요. 언제 다시 상담하면 좋을까요?'
+            _push_question(state,'followup_schedule',turn)
         else:
-            plan.text='좋아요. 다만 분석하려면 어떤 자료를 드려야 하는지 먼저 정하면 좋겠어요.'
-        return plan
+            plan.text='네, 분석해서 다시 설명해 주시면 좋겠어요. 다음 상담 일정은 먼저 정할 수 있어요. 다만 상세 분석을 위해서는 증권이나 계약 자료를 추가로 전달해 주세요.'
+            opts=list(world.get('availability',{}).get('followup_options') or [])
+            if opts:plan.text+=f" 저는 {opts[0]}나 {opts[1] if len(opts)>1 else '그 이후'}가 괜찮아요."
+            _push_question(state,'followup_schedule',turn)
+        _disclose(plan,'분석 합의','증권을 상세 분석한 뒤 다음 상담에서 설명하기로 동의');return plan
 
     if 'schedule_followup' in move.actions:
-        plan.handled=True;plan.flags.add('followup_pending')
-        if re.search(r'(다음주|이번주|월요일|화요일|수요일|목요일|금요일|주말|오전|오후|\d+\s*시)',text):
-            clean=re.sub(r'(은|는)?\s*(어떠세요|어때요|괜찮으세요|가능하세요)[?？]?$', '', text.strip()).strip(' ?？.');state.agreements['followup_schedule']=clean or text;state.metrics['followup_agreements']+=1;plan.flags.update({'followup_agreed','closure_confirmed'});plan.text=f"네, {clean or '말씀하신 일정'}에 다시 확인하는 걸로 할게요. 증권 분석 후 그때 이어서 보죠."
+        plan.handled=True;state.stage='FOLLOW_UP';plan.flags.add('followup_pending')
+        concrete=bool(re.search(r'(다음주|이번주|월요일|화요일|수요일|목요일|금요일|토요일|일요일|주말).*(오전|오후|저녁|점심|\d+\s*시)|(?:내일|모레).*(오전|오후|저녁|점심|\d+\s*시)|(?:오전|오후|저녁|점심)\s*\d+\s*시|\d+\s*시',text))
+        if concrete:
+            if not _schedule_matches_availability(text,world):
+                opts=list(world.get('availability',{}).get('followup_options') or [])
+                plan.text=f"그 시간은 조금 어려워요. 저는 {' 또는 '.join(opts[:2])}가 괜찮아요. 둘 중 하나로 정할 수 있을까요?";_push_question(state,'followup_schedule',turn);return plan
+            clean=_clean_schedule_phrase(text);state.agreements['followup_schedule']=clean or text;state.metrics['followup_agreements']+=1;state.stage='COMPLETE'
+            plan.flags.update({'followup_agreed','followup_confirmed','closure_confirmed'});plan.terminal='mission_complete';plan.text=f"네, {clean or '말씀하신 일정'}에 다시 상담하는 걸로 할게요. 그때 증권 분석 결과를 설명해 주세요."
         else:
-            plan.text='좋아요. 가능한 날짜나 시간을 정해주시면 그때 다시 확인할게요.';_push_question(state,'followup_schedule',turn)
+            opts=list(world.get('availability',{}).get('followup_options') or [])
+            fallback=world.get('availability',{}).get('contact_fallback')
+            if opts:
+                choices=' 또는 '.join(opts[:2]);plan.text=f'다음 상담은 {choices}가 괜찮아요. 둘 중 편한 시간을 정해 주세요.'
+            elif fallback:
+                plan.text=f'정확한 일정은 바로 정하기 어렵지만 {fallback}에 다시 연락 주시면 일정을 확정할 수 있어요.'
+            else:plan.text='좋아요. 가능한 날짜나 시간을 정해주시면 그때 다시 확인할게요.'
+            _push_question(state,'followup_schedule',turn)
         return plan
 
     if 'prompt_continue' in move.actions:

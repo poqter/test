@@ -8,6 +8,7 @@ from .content import MAP,SCENARIOS,SCENE_LABELS,MODES,INTENTS,BUILD_ID
 from .engine import Session,start_session,stage,commit,finish,guide,coaching,MAX_TURNS,training_stage,completion_gate
 from .scenario_v2 import SESSION_LENGTHS, objective_for
 from .evaluation import report
+from .core_scenarios import public_structure, core_for_legacy
 
 @dataclass
 class AppState:
@@ -114,17 +115,20 @@ def present(app:AppState) -> dict:
     s=app.session
     scenario_rows=[]
     for sid in SCENARIOS:
+        mission_by_mode={m:objective_for(sid,m) for m in MODES}
         scenario_rows.append({'id':sid,'label':SCENE_LABELS[sid][0],'name':SCENE_LABELS[sid][1],'description':SCENE_LABELS[sid][2],
             'category':sid[0],'status':'동작 시험용 · 정식 인증 아님',
-            'objectives':{m:objective_for(sid,m)['text'] for m in MODES},
-            'guide_points':objective_for(sid,'GUIDE')['guide_points']})
+            'objectives':{m:mission_by_mode[m]['text'] for m in MODES},
+            'mission_briefings':mission_by_mode,
+            'core_scenario_id':core_for_legacy(sid.split('-')[0]),
+            'guide_points':mission_by_mode['GUIDE']['guide_points']})
     payload={'build':BUILD_ID,'revision':app.revision,'ack':app.ack,'error':app.error,'independent':app.independent,
              'selection':app.selection,'mode':app.mode,'session_length':app.session_length,'phase':'setup' if app.independent else 'home',
              'categories':[{'id':c['id'],'name':c['name']} for c in MAP['categories']],
              'catalog':catalog(),'scenarios':scenario_rows,
              'modes':[{'id':m['id'],'name':m['name'],'purpose':m['purpose']} for m in MODES.values()],
              'lengths':[{'id':k,**v} for k,v in SESSION_LENGTHS.items()],
-             'counts':{'types':97,'planned':194,'executable':6,'intents':110},'engine_version':'V5.2 CONTEXT+WORLD'}
+             'counts':{'types':97,'planned':194,'executable':6,'intents':110,'future_core':26},'core_structure':public_structure(),'engine_version':'V5.3 GOLDEN+C26 FOUNDATION'}
     if not s:return payload
     payload['phase']='result' if s.ended else 'session'
     messages=[{'role':'customer','text':s.opening_text or s.source['opening'],'turn':0}]
@@ -139,8 +143,8 @@ def present(app:AppState) -> dict:
     else: public_gate={'complete':gate['complete']}
     payload['session']={'id':s.session_id,'scenario_id':s.scenario_id,'title':s.source['name'],'mode':s.mode,
         'session_length':s.session_length,'profile_id':s.profile_id,'public_facts':list(s.disclosed.values()),'messages':messages,
-        'next_turn':len(s.turns)+1,'max_turns':s.max_turns,'has_draft':s.draft is not None,'ended':s.ended,
-        'assist_used':bool(s.hint_turns or s.mode=='GUIDE'),'mission':objective['text'],'stage':training_stage(s),
+        'next_turn':len(s.turns)+1,'max_turns':s.max_turns,'has_draft':s.draft is not None,'ended':s.ended,'end_reason':s.end_reason,
+        'assist_used':bool(s.hint_turns or s.mode=='GUIDE'),'mission':objective['text'],'mission_briefing':objective,'stage':training_stage(s),
         'completion':public_gate,'reply_delay_ms':_delay_ms(s),
         'scenario_seed':f'{s.seed:08X}','v5_context':{'active_topic':s.v5_state.active_topic,'active_document':bool(s.v5_state.active_document),
             'active_policy':next((p.get('name') for p in s.world.get('insurance',{}).get('policies',[]) if p.get('id')==s.v5_state.active_policy_id),None),

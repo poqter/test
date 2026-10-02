@@ -45,11 +45,22 @@ OBJECTIVES = {
         "guide_points": ["지금 통화 가능한지 확인", "고객이 원하는 상담 범위 확인", "거절·보류도 선택지로 존중"],
     },
     "C07-S01": {
-        "guide": "보험료 부담의 실제 원인을 확인하고, 고객이 유지하고 싶은 조건을 파악한 뒤 계약 변경을 서두르지 않고 필요한 자료 확인과 다음 단계를 합의하세요.",
-        "coach": "고객의 보험료 부담 원인과 유지 기준을 파악하고 적절한 다음 확인 단계를 합의하세요.",
-        "solo": "고객의 보험료 부담 문제를 상담하고 적절한 다음 단계까지 진행하세요.",
-        "assessment": "보험료 부담을 이유로 상담을 요청한 고객과 상담을 진행하고 적절한 시점에 종료하세요.",
-        "guide_points": ["부담의 크기와 대상을 구체화", "부담이 커진 배경 확인", "유지하고 싶은 조건과 다음 확인 단계 합의"],
+        "guide": "고객이 보험료를 부담스럽게 느끼는 원인을 파악하고 현재 보험료와 주요 계약을 확인하세요. 고객이 유지하고 싶은 보장과 원하는 보험료 절감 기준을 확인한 뒤, 증권을 전달받아 사무실에서 상세 분석하기로 합의하세요. 마지막으로 분석 결과를 설명할 다음 상담 일정 또는 후속 연락 시점을 확정하면 상담이 완료됩니다.",
+        "coach": "보험료 부담 원인과 고객의 유지·절감 기준을 파악하세요. 현장에서 성급하게 계약 변경을 결정하지 말고, 증권을 분석해 다시 설명하기로 합의한 뒤 다음 상담 일정 또는 후속 연락 시점을 확정하세요.",
+        "solo": "고객의 보험료 부담 원인을 파악하고, 증권을 분석해 다시 설명하기로 합의한 뒤 다음 상담 일정 또는 후속 연락 시점을 확정하세요.",
+        "assessment": "보험료 부담을 이유로 상담을 요청한 고객과 상담하세요. 최종적으로 분석 결과를 설명할 다음 상담 일정 또는 후속 연락 시점을 고객과 확정하세요.",
+        "situation": "고객은 현재 납입 중인 보험료가 부담되어 상담을 요청했습니다. 계약 내용은 고객의 기억과 증권 확인 수준에 따라 단계적으로 확인됩니다.",
+        "final_goal": "증권을 분석해 다시 설명하기로 고객과 합의하고, 다음 상담 일정 또는 후속 연락 시점을 확정한다.",
+        "completion_trigger": "followup_confirmed",
+        "boundary": "오늘 바로 기존 보험을 해지하거나 새 보험을 계약하는 것이 목표가 아닙니다. 자료를 확인하기 전에는 유지·감액·해지·추가 가입을 확정하지 않습니다.",
+        "intermediate_goals": [
+            ["burden_reason", "보험료 부담이 커진 이유를 확인"],
+            ["current_premium", "현재 월 보험료와 주요 계약을 확인"],
+            ["coverage_preference", "유지하고 싶은 보장 또는 우선순위를 확인"],
+            ["reduction_preference", "고객이 원하는 보험료 절감 기준을 확인"],
+            ["analysis_handoff", "증권을 전달받아 상세 분석하기로 합의"],
+        ],
+        "guide_points": ["보험료 부담이 커진 이유 확인", "현재 보험료와 주요 계약 확인", "유지할 보장·보험료 절감 기준 확인", "증권 분석 합의", "다음 상담 일정 또는 후속 연락 시점 확정"],
     },
     "D08-S01": {
         "guide": "보험료 차이만으로 전환을 결정하지 않도록 현재 계약과 전환 후보에서 확인해야 할 조건을 구분하고 비교 검토 순서를 합의하세요.",
@@ -282,6 +293,11 @@ def objective_for(scenario_id: str, mode: str) -> dict:
     meta = OBJECTIVES[scenario_id]
     return {
         "text": meta[{"GUIDE":"guide","COACH":"coach","SOLO":"solo","ASSESSMENT":"assessment"}[mode]],
+        "situation": meta.get("situation", ""),
+        "final_goal": meta.get("final_goal", meta[{"GUIDE":"guide","COACH":"coach","SOLO":"solo","ASSESSMENT":"assessment"}[mode]]),
+        "completion_trigger": meta.get("completion_trigger"),
+        "boundary": meta.get("boundary", ""),
+        "intermediate_goals": list(meta.get("intermediate_goals", [])),
         "guide_points": list(meta.get("guide_points", [])) if mode == "GUIDE" else [],
     }
 
