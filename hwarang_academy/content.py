@@ -21,7 +21,7 @@ SCENARIOS = {s['scenario_id']: s for s in load('worked_scenario_rules')['scenari
 CATEGORIES = {c['id']: c for c in MAP['categories']}
 MODES = {m['id']: m for m in load('mode_contracts')['modes']}
 CRITERIA = {c['criterion_id']: c for c in load('evaluation_policy')['criteria']}
-BUILD_ID = 'hwarang-academy-3.1-production'
+BUILD_ID = 'hwarang-academy-5.0-core'
 # Supplemental implementation lines live outside immutable V1/V1.1 sources.
 INTERACTION_RESPONSES = json.loads((ROOT / 'data' / 'interaction_responses.json').read_text(encoding='utf-8'))
 for _response in INTERACTION_RESPONSES['responses']:

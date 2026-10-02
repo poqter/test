@@ -14,6 +14,9 @@ from .content import SCENARIOS, RESPONSES, INTENTS, MODES
 from .language import analyze, Interpretation, money_mentions, norm
 from .dialogue_context import DialogueMemory, interpret_context, focus_for
 from .scenario_v2 import SESSION_LENGTHS, build_profile, eligible_events
+from .world_v5 import build_customer_world
+from .dialogue_v5 import DialogueStateV5, plan_c07, state_snapshot
+from .director_v5 import maybe_event as maybe_v5_event
 
 MAX_TURNS=40  # absolute safety ceiling; per-session ceiling comes from SESSION_LENGTHS
 
@@ -30,6 +33,8 @@ class Route:
     repair_kind: str | None = None
     repeat_previous: bool = False
     preserve_question: bool = False
+    state_delta: dict[str,int] = field(default_factory=dict)
+    v5_actions: list[str] = field(default_factory=list)
     def add(self,r: str, flag: str | None=None, **facts: str) -> None:
         if r not in self.responses: self.responses.append(r)
         if flag: self.flags.add(flag)
@@ -55,6 +60,9 @@ class Turn:
     state_before: dict[str,int]
     state_after: dict[str,int]
     pending_question: str | None
+    v5_actions: list[str]=field(default_factory=list)
+    v5_context_before: dict=field(default_factory=dict)
+    v5_context_after: dict=field(default_factory=dict)
 
 @dataclass
 class Draft:
@@ -95,6 +103,12 @@ class Session:
     event_deck: list[dict]=field(default_factory=list)
     events_fired: list[str]=field(default_factory=list)
     dialogue_memory: DialogueMemory = field(default_factory=DialogueMemory)
+    world: dict=field(default_factory=dict)
+    v5_state: DialogueStateV5=field(default_factory=DialogueStateV5)
+    scenario_version: str='5.0-core'
+    customer_seed: int|None=None
+    event_log: list[dict]=field(default_factory=list)
+    user_id: str|None=None
 
     @property
     def source(self) -> dict:
@@ -122,6 +136,8 @@ def start_session(scenario_id='C07-S01',mode='GUIDE',seed=1,event_variant='stand
         s.customer_tone=profile.get('tone',{}).get('tone_id','CALM')
     else:
         s.profile_id=scenario_id+'-SOURCE';s.profile_public=list(s.source['public']);s.opening_text=s.source['opening'];s.facts=deepcopy(s.source['facts'])
+    s.customer_seed=int(seed)
+    s.world=build_customer_world(scenario_id,s.profile_id,s.facts,int(seed))
     s.event_deck=eligible_events(scenario_id,mode,session_length) if vary_profile else []
     if s.event_deck:
         s.event_deck.sort(key=lambda e: sha256(f"{s.seed}:event-order:{e['id']}".encode()).hexdigest())
@@ -183,6 +199,20 @@ def _summary(s:Session,i:Interpretation) -> tuple[bool,bool]:
     return False,False
 
 
+
+def _route_v5(s:Session,i:Interpretation,r:Route) -> bool:
+    if s.scenario_id!='C07-S01' or not s.world:return False
+    plan=plan_c07(s,i.text,len(s.turns)+1)
+    if not plan.handled:return False
+    if plan.text:r.say(plan.text)
+    r.flags.update(plan.flags);r.flags.add('v5_handled')
+    r.disclosures.update(plan.disclosures)
+    r.state_delta.update(plan.state_delta)
+    r.v5_actions.extend(plan.actions)
+    if plan.pending_question is not None:r.question=plan.pending_question
+    if plan.terminal:r.terminal=plan.terminal
+    return True
+
 def route(s:Session,i:Interpretation) -> Route:
     ids=i.ids;t=i.text;r=Route()
     if i.control=='stop':r.terminal='learner_stopped';return r
@@ -206,6 +236,7 @@ def route(s:Session,i:Interpretation) -> Route:
         r.question='권고 또는 확약의 근거 확인'
         return r
     if not ids:
+        if _route_v5(s,i,r): return r
         if _route_conversation(s,i,r): return r
         return _repair(s,i,r)
     if ids & {'MT03','EV06'}:
@@ -234,6 +265,7 @@ def route(s:Session,i:Interpretation) -> Route:
         r.add('COMMON.01');r.flags.add('summary_unresolved');return r
     if s.pending_question and ids and ids <= {'DS04','DS05','DS06','DS07','DS08','DS13','DS14'} and s.scenario_id in ('G10-S01','D08-S01'):
         r.add('COMMON.21','pending_question_unanswered');r.question=s.pending_question;return r
+    if _route_v5(s,i,r):return r
     fn={'A01-S01':_route_a,'C07-S01':_route_c,'D08-S01':_route_d,'F07-S01':_route_f,'G10-S01':_route_g,'H10-S01':_route_h}[s.scenario_id]
     fn(s,i,r)
     if not r.responses and not r.texts and not _route_conversation(s,i,r):
@@ -710,6 +742,9 @@ def _event_roll(s:Session,event_id:str,turn_number:int) -> float:
 
 def _maybe_event(s:Session,turn_number:int,route_flags:set[str]) -> str|None:
     if s.ended or 'engine_clarification' in route_flags or 'risk_candidate' in route_flags:return None
+    v5=maybe_v5_event(s,turn_number,route_flags)
+    if v5 is not None:return v5[0]
+    if s.scenario_id=='C07-S01':return None
     spec=SESSION_LENGTHS[s.session_length];budget=spec['event_budget'][s.mode]
     if len(s.events_fired)>=budget:return None
     for event in s.event_deck:
@@ -748,12 +783,15 @@ def commit(s:Session,turn_id:str,*,text:str|None=None,expected_turn:int|None=Non
         d=Draft(text=text,interpretation=_interpret(s,text),revision=1,turn_number=len(s.turns)+1)
     # Compute on a detached snapshot. Install it only after all validation succeeds.
     candidate=deepcopy(s)
+    v5_before=state_snapshot(candidate.v5_state)
     r=route(candidate,d.interpretation)
-    unknown=d.interpretation.status in ('needs_clarification','out_of_scope') or (not d.interpretation.hits and not d.interpretation.risk_candidates)
+    unknown=(d.interpretation.status in ('needs_clarification','out_of_scope') or (not d.interpretation.hits and not d.interpretation.risk_candidates)) and 'v5_handled' not in r.flags
     before=deepcopy(s.states)
+    new_disclosure_labels=[]
     for label,value in r.disclosures.items():
         if label not in candidate.disclosed:
             candidate.disclosed[label]={'label':label,'value':value,'turn':d.turn_number,'certainty':'unknown' if '미확인' in value or '미정' in value else 'customer_statement'}
+            new_disclosure_labels.append(label)
     new_flags=r.flags-candidate.flags.keys()
     for flag in r.flags:candidate.flags.setdefault(flag,d.turn_number)
     if 'document_available' in r.flags:
@@ -765,7 +803,10 @@ def commit(s:Session,turn_id:str,*,text:str|None=None,expected_turn:int|None=Non
     if 'context_restored' in r.flags and candidate.dialogue_memory.active_object is None:
         candidate.dialogue_memory.active_object='policy_document'
     if not unknown:
-        if r.disclosures and new_flags:
+        # Only genuinely new customer information may improve the relationship.
+        # Repeating a question that merely re-emits an already disclosed fact must
+        # not farm trust/resistance points.
+        if new_disclosure_labels:
             candidate.states['trust']+=3;candidate.states['resistance']-=2
         if 'summary_confirmed' in new_flags:candidate.states['trust']+=4
         if d.interpretation.risk_candidates:
@@ -775,6 +816,8 @@ def commit(s:Session,turn_id:str,*,text:str|None=None,expected_turn:int|None=Non
         if 'correction' in new_flags:candidate.states['trust']+=2;candidate.states['resistance']-=2
         if 'choice_respected' in new_flags:
             candidate.states['trust']+=2;candidate.states['patience']+=3
+    for key,delta in r.state_delta.items():
+        if key in candidate.states:candidate.states[key]+=int(delta)
     candidate.states={k:max(0,min(100,v)) for k,v in candidate.states.items()}
     for iid in d.interpretation.ids:
         candidate.observed.setdefault(iid,[]).append(d.turn_number)
@@ -795,6 +838,14 @@ def commit(s:Session,turn_id:str,*,text:str|None=None,expected_turn:int|None=Non
         memory.pending_options = ['premium','coverage'] if r.repair_kind=='choose_topic' else ['premium_total','premium_contract'] if r.repair_kind=='premium_scope' else []
         memory.repair_streak = memory.repair_streak + 1 if 'engine_clarification' in r.flags else 0
         memory.support_needed = 'engine_support_needed' in r.flags or memory.repair_streak >= 2
+    if 'engine_clarification' in r.flags:
+        candidate.v5_state.unresolved_streak+=1;candidate.v5_state.metrics['repairs']+=1
+    elif 'v5_handled' in r.flags:
+        if candidate.v5_state.unresolved_streak:
+            candidate.v5_state.metrics['recoveries']+=1
+        candidate.v5_state.unresolved_streak=0
+    if candidate.v5_state.active_document:
+        candidate.dialogue_memory.active_object='policy_document';candidate.dialogue_memory.active_object_state='open' if candidate.world.get('document',{}).get('opened') else 'available'
     candidate.pending_intents=list(dict.fromkeys(candidate.pending_intents+r.pending_intents))
     answered=d.interpretation.ids-set(r.pending_intents)
     candidate.pending_intents=[x for x in candidate.pending_intents if x not in answered]
@@ -811,8 +862,14 @@ def commit(s:Session,turn_id:str,*,text:str|None=None,expected_turn:int|None=Non
     exit_text=_maybe_customer_exit(candidate,d.turn_number)
     if exit_text:response=(response+'\n\n'+exit_text).strip()
     candidate.dialogue_memory.last_customer_response=response or candidate.dialogue_memory.last_customer_response
+    v5_after=state_snapshot(candidate.v5_state)
     turn=Turn(turn_id,d.turn_number,d.text,d.interpretation.to_dict(),r.responses+r.audit_ids,response,
-              sorted(r.flags),deepcopy(r.disclosures),d.assist_used or d.turn_number in s.hint_turns,d.revision,before,deepcopy(candidate.states),r.question)
+              sorted(r.flags),deepcopy(r.disclosures),d.assist_used or d.turn_number in s.hint_turns,d.revision,before,deepcopy(candidate.states),r.question,
+              list(r.v5_actions),v5_before,v5_after)
+    candidate.event_log.append({'turn':d.turn_number,'advisor_utterance':d.text,'parsed_actions':list(r.v5_actions),
+        'active_topic':candidate.v5_state.active_topic,'active_policy_id':candidate.v5_state.active_policy_id,
+        'active_coverage_key':candidate.v5_state.active_coverage_key,'flags':sorted(r.flags),'customer_response':response,
+        'state_before':before,'state_after':deepcopy(candidate.states)})
     candidate.turns.append(turn);candidate.draft=None
     if len(candidate.turns)>=candidate.max_turns and not candidate.ended:
         candidate.ended=True;candidate.end_reason='turn_limit'

@@ -32,7 +32,12 @@ def handle(app:AppState,action:dict) -> dict:
         app.ack=eid;return present(app)
     kind=action.get('kind','')
     try:
-        if kind=='start':
+        if kind=='configure':
+            if app.session and not app.session.ended:raise ValueError('진행 중인 상담에서는 훈련 설정을 바꿀 수 없습니다.')
+            sid=action.get('scenario_id',app.selection);mode=action.get('mode',app.mode);length=action.get('session_length',app.session_length)
+            if sid not in SCENARIOS or mode not in MODES or length not in SESSION_LENGTHS:raise ValueError('사용할 수 없는 시나리오·모드·훈련 길이입니다.')
+            app.selection=sid;app.mode=mode;app.session_length=length
+        elif kind=='start':
             if app.session and not app.session.ended:raise ValueError('진행 중인 상담을 먼저 종료해 주세요.')
             sid=action.get('scenario_id',app.selection);mode=action.get('mode',app.mode);length=action.get('session_length',app.session_length)
             if sid not in SCENARIOS or mode not in MODES or length not in SESSION_LENGTHS:raise ValueError('사용할 수 없는 시나리오·모드·훈련 길이입니다.')
@@ -119,7 +124,7 @@ def present(app:AppState) -> dict:
              'catalog':catalog(),'scenarios':scenario_rows,
              'modes':[{'id':m['id'],'name':m['name'],'purpose':m['purpose']} for m in MODES.values()],
              'lengths':[{'id':k,**v} for k,v in SESSION_LENGTHS.items()],
-             'counts':{'types':97,'planned':194,'executable':6,'intents':110}}
+             'counts':{'types':97,'planned':194,'executable':6,'intents':110},'engine_version':'V5 CORE'}
     if not s:return payload
     payload['phase']='result' if s.ended else 'session'
     messages=[{'role':'customer','text':s.opening_text or s.source['opening'],'turn':0}]
@@ -135,7 +140,10 @@ def present(app:AppState) -> dict:
         'session_length':s.session_length,'profile_id':s.profile_id,'public_facts':list(s.disclosed.values()),'messages':messages,
         'next_turn':len(s.turns)+1,'max_turns':s.max_turns,'has_draft':s.draft is not None,'ended':s.ended,
         'assist_used':bool(s.hint_turns or s.mode=='GUIDE'),'mission':objective['text'],'stage':training_stage(s),
-        'completion':public_gate,'reply_delay_ms':_delay_ms(s)}
+        'completion':public_gate,'reply_delay_ms':_delay_ms(s),
+        'v5_context':{'active_topic':s.v5_state.active_topic,'active_document':bool(s.v5_state.active_document),
+            'active_policy':next((p.get('name') for p in s.world.get('insurance',{}).get('policies',[]) if p.get('id')==s.v5_state.active_policy_id),None),
+            'conversation_contracts':list(s.v5_state.conversation_contracts)}}
     if not s.ended and s.dialogue_memory.support_needed:
         payload['session']['dialogue_notice']=('시스템이 최근 답변을 다음 대화에 정확히 연결하지 못했습니다. 같은 질문을 반복하지 않고 연결을 보류했습니다. '
             '다른 표현으로 이어가거나 상담을 종료해 복기할 수 있으며, 이 문제는 상담사의 오답으로 자동 처리하지 않습니다.')
@@ -156,5 +164,5 @@ def present(app:AppState) -> dict:
         payload['review']=[{'turn':t.number,'text':t.text,'customer':t.response_text,
             'intents':[INTENTS[h['intent_id']]['name'] for h in t.interpretation['hits']],
             'uncertainties':t.interpretation['uncertainties'],'risks':t.interpretation['risk_candidates'],
-            'decision':t.interpretation['status'],'assist_used':t.assist_used} for t in s.turns]
+            'decision':t.interpretation['status'],'assist_used':t.assist_used,'v5_actions':list(t.v5_actions)} for t in s.turns]
     return payload

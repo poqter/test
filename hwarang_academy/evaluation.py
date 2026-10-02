@@ -52,6 +52,64 @@ GATES = {
 DOCUMENT_BLOCKS={'D08-S01':{'E1'},'G10-S01':{'E2'},'H10-S01':{'E2'}}
 
 
+
+def _critical_moments(s:Session) -> list[dict]:
+    moments=[]
+    positive={
+        'context_followed':'직전 질문과 현재 대상을 자연스럽게 연결했습니다.',
+        'document_opened':'고객 동의를 바탕으로 자료 확인 단계로 전환했습니다.',
+        'material_consent':'자료 검토 범위를 고객과 합의했습니다.',
+        'followup_agreed':'다음 상담 단계가 구체적으로 합의되었습니다.',
+        'repair_recovered':'끊겼던 대화 문맥을 다시 복구했습니다.',
+        'numeric_summary_confirmed':'고객이 공개한 금액을 정확히 요약했습니다.',
+    }
+    caution={
+        'repeated_known_question':'이미 확인한 정보를 다시 묻는 흐름이 있었습니다.',
+        'engine_clarification':'시스템이 이 발화를 현재 문맥에 확정적으로 연결하지 못했습니다.',
+        'risk_candidate':'권고·확약 경계에 해당할 수 있어 검수가 필요한 표현입니다.',
+        'hostile_advisor':'고객이 공격적으로 받아들일 수 있는 표현이 사용되었습니다.',
+    }
+    for t in s.turns:
+        flags=set(t.flags)
+        for f,reason in positive.items():
+            if f in flags:
+                moments.append({'turn':t.number,'tone':'good','title':'좋은 전환','reason':reason,'advisor':t.text,'customer':t.response_text});break
+        for f,reason in caution.items():
+            if f in flags:
+                moments.append({'turn':t.number,'tone':'caution','title':'복기할 순간','reason':reason,'advisor':t.text,'customer':t.response_text});break
+    if s.end_reason=='customer_exit' and s.turns:
+        t=s.turns[-1];moments.append({'turn':t.number,'tone':'caution','title':'상담 종료 신호','reason':'고객의 경계·인내 상태가 종료 기준에 도달했습니다. 직전 몇 턴의 흐름을 함께 복기해 보세요.','advisor':t.text,'customer':t.response_text})
+    # Keep the most informative, de-duplicated five moments in conversation order.
+    seen=set();out=[]
+    for m in moments:
+        key=(m['turn'],m['title'])
+        if key in seen:continue
+        seen.add(key);out.append(m)
+    return out[-5:]
+
+
+def _v5_flow_summary(s:Session) -> dict:
+    """Descriptive flow analysis; it never pretends to be an AI personality score."""
+    state=getattr(s,'v5_state',None)
+    if not state:return {'strengths':[],'watch':[],'metrics':{}}
+    m=dict(state.metrics)
+    strengths=[];watch=[]
+    if m.get('pending_resolutions',0)+m.get('context_resolutions',0)>=2:
+        strengths.append('짧은 답변이나 현재 계약·자료 문맥을 이어서 상담한 장면이 확인되었습니다.')
+    if m.get('recoveries',0)>0:
+        strengths.append('끊긴 대화 문맥을 다시 연결한 회복 장면이 있었습니다.')
+    if m.get('followup_agreements',0)>0:
+        strengths.append('후속 상담의 다음 행동을 구체적으로 합의했습니다.')
+    if m.get('repeated_known_questions',0)>0:
+        watch.append(f"이미 확인한 주제를 다시 묻는 흐름이 {m['repeated_known_questions']}회 감지되었습니다.")
+    if m.get('repairs',0)>0:
+        watch.append(f"대화 엔진이 의미를 확정하지 못해 복구가 필요했던 턴이 {m['repairs']}회 있었습니다. 해당 턴은 자동 오답으로 보지 않습니다.")
+    if m.get('hostile_turns',0)>0:
+        watch.append(f"고객이 공격적으로 받아들일 수 있는 표현 후보가 {m['hostile_turns']}회 있었습니다. 실제 문맥을 복기해 보세요.")
+    if not strengths and s.turns:
+        strengths.append('이번 회차의 강점은 아래 평가 근거와 결정적 순간을 중심으로 확인해 주세요.')
+    return {'strengths':strengths,'watch':watch,'metrics':m}
+
 def report(s:Session) -> dict:
     spec=SCENARIOS[s.scenario_id]
     weights=CATEGORIES[s.scenario_id[0]]['rubric_weights']
@@ -105,4 +163,8 @@ def report(s:Session) -> dict:
             'unresolved':unresolved,'uncertain_turns':uncertain_turns,'risk_candidates':[{'turn':t.number,'text':t.text,'codes':t.interpretation['risk_candidates']} for t in risk_turns],
             'achievements':achievements,'end_reason':s.end_reason,'assist_used':bool(s.hint_turns or any(t.assist_used for t in s.turns)),
             'engine_repair_turns':[t.number for t in s.turns if 'engine_clarification' in t.flags],
+            'v5_metrics':dict(getattr(s,'v5_state',None).metrics) if getattr(s,'v5_state',None) else {},
+            'v5_flow':_v5_flow_summary(s),
+            'conversation_contracts':list(getattr(s,'v5_state',None).conversation_contracts) if getattr(s,'v5_state',None) else [],
+            'critical_moments':_critical_moments(s),
             'certificate':False,'notice':'규칙 기반 잠정 평가입니다. 친절함·감정·전문 판단 전체를 측정하거나 공식 인증을 발급하지 않습니다.'}
