@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from urllib.parse import urlsplit,urlunsplit
 from functools import lru_cache
-import hmac,time
 import streamlit as st
 import streamlit.components.v1 as components
 from hwarang_academy.content import ROOT,SCENARIOS,MODES,BUILD_ID,validate_content
@@ -13,39 +12,11 @@ st.set_page_config(page_title='화랑 ACADEMY',page_icon='🎓',layout='wide',in
 
 @lru_cache(maxsize=1)
 def component():
-    return components.declare_component('hwarang_academy_v12',path=str(ROOT/'frontend'))
+    return components.declare_component('hwarang_academy_v5',path=str(ROOT/'frontend'))
 
 def access_allowed()->bool:
-    """Independent session login. Never borrow WORKSPACE session/token privileges."""
-    try:config=dict(st.secrets.get('academy',{}))
-    except (FileNotFoundError,KeyError):config={}
-    if config.get('access_mode')=='public_demo':return True
-    if st.session_state.get('_academy_authorized'):return True
-    try:
-        passwords=dict(st.secrets.get('passwords',{}))
-        single=config.get('password')
-        values=[single] if single else list(passwords.values())
-        values=[p for p in values if isinstance(p,str) and p]
-    except (FileNotFoundError,KeyError,TypeError):values=[]
-    st.markdown('## 화랑 ACADEMY')
-    if not values:
-        st.info('Academy Secrets에 전용 비밀번호 또는 기존 [passwords] 설정을 등록해 주세요.')
-        st.code('[academy]\npassword = "직접 정한 비밀번호"',language='toml')
-        st.caption('공개 시험만 필요할 때는 [academy] access_mode = "public_demo"를 명시적으로 설정합니다.')
-        return False
-    now=time.monotonic();locked=st.session_state.get('_academy_retry_after',0)>now
-    with st.form('academy_login',clear_on_submit=True):
-        pwd=st.text_input('아카데미 비밀번호',type='password')
-        submitted=st.form_submit_button('시작하기',disabled=locked)
-    if locked:st.warning('잠시 후 다시 시도해 주세요.')
-    if submitted:
-        if any(hmac.compare_digest(pwd.encode(),p.encode()) for p in values):
-            st.session_state['_academy_authorized']=True;st.session_state['_academy_attempts']=0;st.rerun()
-        else:
-            tries=st.session_state.get('_academy_attempts',0)+1;st.session_state['_academy_attempts']=tries
-            if tries>=5:st.session_state['_academy_retry_after']=now+30
-            st.error('비밀번호가 일치하지 않습니다.')
-    return False
+    """Academy V5 temporary public access. Authentication is intentionally bypassed."""
+    return True
 
 def base_url()->str:
     try:raw=str(st.secrets.get('academy',{}).get('public_url',''))
@@ -59,13 +30,14 @@ def base_url()->str:
     return ''
 
 def main():
+    # V5 운영 단계에서는 Academy와 시뮬레이터 모두 별도 비밀번호 입력 없이 진입합니다.
     if not access_allowed():return
     validate_content()
     independent=st.query_params.get('view')=='simulator'
     sid=st.query_params.get('scenario','C07-S01');mode=st.query_params.get('mode','GUIDE')
     if sid not in SCENARIOS:sid='C07-S01'
     if mode not in MODES:mode='GUIDE'
-    route_key=(independent,sid,mode)
+    route_key=(independent,sid)
     if st.session_state.get('_academy_route')!=route_key:
         st.session_state['_academy_route']=route_key
         st.session_state['_academy_model']=AppState(independent=independent,selection=sid,mode=mode)
