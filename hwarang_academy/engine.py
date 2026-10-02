@@ -53,6 +53,7 @@ class Turn:
     interpretation: dict
     response_ids: list[str]
     response_text: str
+    event_text: str|None
     flags: list[str]
     disclosures: dict[str,str]
     assist_used: bool
@@ -105,7 +106,7 @@ class Session:
     dialogue_memory: DialogueMemory = field(default_factory=DialogueMemory)
     world: dict=field(default_factory=dict)
     v5_state: DialogueStateV5=field(default_factory=DialogueStateV5)
-    scenario_version: str='5.0-core'
+    scenario_version: str='5.2-core'
     customer_seed: int|None=None
     event_log: list[dict]=field(default_factory=list)
     user_id: str|None=None
@@ -858,17 +859,16 @@ def commit(s:Session,turn_id:str,*,text:str|None=None,expected_turn:int|None=Non
         response='\n\n'.join([*r.texts,*[_choose(candidate,rid,d.turn_number) for rid in r.responses]])
     # Low-intensity events may appear in GUIDE/COACH too; SOLO/ASSESSMENT use a larger budget.
     event_text=_maybe_event(candidate,d.turn_number,r.flags)
-    if event_text:response=(response+'\n\n'+event_text).strip()
     exit_text=_maybe_customer_exit(candidate,d.turn_number)
-    if exit_text:response=(response+'\n\n'+exit_text).strip()
+    if exit_text:event_text=(event_text+'\n\n'+exit_text).strip() if event_text else exit_text
     candidate.dialogue_memory.last_customer_response=response or candidate.dialogue_memory.last_customer_response
     v5_after=state_snapshot(candidate.v5_state)
-    turn=Turn(turn_id,d.turn_number,d.text,d.interpretation.to_dict(),r.responses+r.audit_ids,response,
+    turn=Turn(turn_id,d.turn_number,d.text,d.interpretation.to_dict(),r.responses+r.audit_ids,response,event_text,
               sorted(r.flags),deepcopy(r.disclosures),d.assist_used or d.turn_number in s.hint_turns,d.revision,before,deepcopy(candidate.states),r.question,
               list(r.v5_actions),v5_before,v5_after)
     candidate.event_log.append({'turn':d.turn_number,'advisor_utterance':d.text,'parsed_actions':list(r.v5_actions),
         'active_topic':candidate.v5_state.active_topic,'active_policy_id':candidate.v5_state.active_policy_id,
-        'active_coverage_key':candidate.v5_state.active_coverage_key,'flags':sorted(r.flags),'customer_response':response,
+        'active_coverage_key':candidate.v5_state.active_coverage_key,'flags':sorted(r.flags),'customer_response':response,'customer_event':event_text,
         'state_before':before,'state_after':deepcopy(candidate.states)})
     candidate.turns.append(turn);candidate.draft=None
     if len(candidate.turns)>=candidate.max_turns and not candidate.ended:

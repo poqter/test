@@ -12,7 +12,8 @@ from .world_v5 import (
     policies, find_policy, find_policies, find_coverage_key, remembered_policy_names,
     premium_total, open_document, document_access_message, can_send_document,
     mark_document_shared, won_text, policy_summary, coverage_summary,
-    coverage_across_portfolio,
+    coverage_across_portfolio, find_coverage_keys, coverage_by_code, policy_coverage_detail_lines, coverage_detail_text,
+    answerability, set_document_cursor, customer_style,
 )
 
 @dataclass
@@ -29,6 +30,9 @@ class DialogueStateV5:
     active_document: str|None=None
     active_policy_id: str|None=None
     active_coverage_key: str|None=None
+    active_section: str|None=None
+    active_attribute: str|None=None
+    topic_stack: list[dict]=field(default_factory=list)
     pending: list[PendingQuestionV5]=field(default_factory=list)
     agreements: dict[str,Any]=field(default_factory=dict)
     answered_topics: dict[str,int]=field(default_factory=dict)
@@ -42,6 +46,7 @@ class DialogueStateV5:
     metrics: dict[str,int]=field(default_factory=lambda:{
         'context_resolutions':0,'pending_resolutions':0,'repeated_known_questions':0,
         'repairs':0,'recoveries':0,'hostile_turns':0,'followup_agreements':0,
+        'detail_resolutions':0,'contract_breaches':0,'missed_signals':0,
     })
 
     def top_pending(self)->PendingQuestionV5|None:
@@ -59,6 +64,7 @@ class ParsedMoveV5:
     actions: list[str]=field(default_factory=list)
     policy_ids: list[str]=field(default_factory=list)
     coverage_key: str|None=None
+    coverage_keys: list[str]=field(default_factory=list)
     amounts: list[int]=field(default_factory=list)
     objects: list[str]=field(default_factory=list)
     method: str|None=None
@@ -99,7 +105,7 @@ def _policy_id_for_name(world:dict,name:str)->str|None:
 def parse_move(text:str,state:DialogueStateV5,world:dict)->ParsedMoveV5:
     t=str(text or '').strip();n=_norm(t);move=ParsedMoveV5(text=t,amounts=_money_mentions(t))
     ps=find_policies(world,t);move.policy_ids=[p['id'] for p in ps]
-    move.coverage_key=find_coverage_key(t)
+    move.coverage_keys=find_coverage_keys(t);move.coverage_key=(move.coverage_keys[0] if move.coverage_keys else find_coverage_key(t))
 
     # Conversational control / tone.
     if re.fullmatch(r'(네|예|응|어|그래|좋아요|알겠습니다|맞아요)',n):_add(move,'affirm')
@@ -122,6 +128,7 @@ def parse_move(text:str,state:DialogueStateV5,world:dict)->ParsedMoveV5:
     if re.search(r'(어떤|무슨|뭐).*보험.*(제일|가장).*(부담|비싸|많이)|제일.*부담.*보험|부담.*계약',n) or (state.active_topic in ('premium','portfolio') and re.search(r'(그중|어떤게|뭐가).*(제일|가장).*(부담|비싸)',n)):_add(move,'ask_burdensome_policy')
     if re.search(r'(각각|각보험|보험별|계약별).*(금액|보험료)|세부.*금액|각각.*얼마',n):_add(move,'ask_policy_premiums')
     if move.policy_ids and generic_amount and re.search(r'보험료|납입|금액|얼마',n):_add(move,'ask_selected_policy_premium')
+    if 'ask_policy_premiums' in move.actions and 'ask_total_premium' in move.actions:move.actions.remove('ask_total_premium')
 
     # Coverage questions.
     if re.search(r'(보장내용|담보내용|어떤보장|무슨보장|보장|담보).*(알|아시|아세|기억)',n):_add(move,'ask_coverage_knowledge')
@@ -129,6 +136,23 @@ def parse_move(text:str,state:DialogueStateV5,world:dict)->ParsedMoveV5:
     if move.policy_ids and re.search(r'(사망보장|암보장|암진단|뇌보장|심장보장|수술보장).*(만|밖에).*(있|인가)|(?:만|밖에).*(있|인가)',n):_add(move,'ask_coverage_details')
     if re.search(r'(ci보험|ci종신|중대한질병)',n) and ('?' in t or re.search(r'(아닌가|맞나|인가|여부)',n)):_add(move,'ask_product_type_ci')
     if move.coverage_key and re.search(r'(얼마|가입금액|금액|몇천|몇억)',n):_add(move,'ask_coverage_amount')
+    # '30만원 중에 실손 의료비가 얼마인가요?'처럼 전체 보험료 안에서 특정
+    # 계약이 차지하는 금액을 묻는 문장은 실손의 보장가입금액이 아니라
+    # 해당 계약의 월 보험료 질문이다. 실손은 상품명과 담보명이 겹치므로
+    # premium-context를 coverage amount보다 우선한다.
+    premium_share_context = bool(
+        move.policy_ids
+        and generic_amount
+        and re.search(r'(중에|그중|중에서|비중|보험료|월납|납입)', n)
+        and not re.search(r'(보장금액|가입금액|한도|입원|통원|급여|비급여|사망보험금|진단비|수술비)', n)
+    )
+    if premium_share_context:
+        _add(move,'ask_selected_policy_premium')
+        if 'ask_coverage_amount' in move.actions:move.actions.remove('ask_coverage_amount')
+    if re.search(r'(세부|구체|자세히|정확히).*(보장|담보|내용)|(?:그|이).*(보장|담보).*(뭐|무엇|내용)|뭐냐고|무엇이냐|어떤내용이',n):_add(move,'request_detail')
+    if 'request_detail' in move.actions and 'ask_coverage_knowledge' in move.actions:move.actions.remove('ask_coverage_knowledge')
+    if re.search(r'(입원.*한도|통원.*한도|한도.*입원|한도.*통원)',n):_add(move,'ask_indemnity_limits')
+    if state.active_policy_id and re.fullmatch(r'(보장|보장이요|보장내용|담보|담보요|세부보장)',n):_add(move,'ask_coverage_details')
 
     # Document / material lifecycle.
     if re.search(r'(증권|파일|자료).*(가지|보관|있나|있나요|있으|보유|어디)',n):_add(move,'ask_document_possession')
@@ -153,9 +177,9 @@ def parse_move(text:str,state:DialogueStateV5,world:dict)->ParsedMoveV5:
             if len(move.policy_ids)==1 and len(n)<=24:_add(move,'select_policy')
         elif pending.kind=='choose_section':
             if re.fullmatch(r'(보험료|보험료요|보험료입니다|금액|금액이요)',n):_add(move,'select_premium_section')
-            if re.fullmatch(r'(보장|보장내용|보장내용이요|담보|담보내용|보장확인)',n):_add(move,'select_coverage_section')
+            if re.fullmatch(r'(보장|보장이요|보장입니다|보장내용|보장내용이요|담보|담보요|담보내용|보장확인)',n):_add(move,'select_coverage_section')
         elif pending.kind=='transfer_method':
-            if re.search(r'(카톡|문자|메일|이메일|메신저|사진으로|여기로)',n):_add(move,'answer_transfer_method')
+            if re.search(r'(카톡|카카오톡|문자|메일|이메일|메신저|사진으로|여기로|여기에|이채팅|채팅으로)',n):_add(move,'answer_transfer_method')
         elif pending.kind=='followup_schedule':
             if re.search(r'(다음주|이번주|월요일|화요일|수요일|목요일|금요일|주말|오전|오후|시)',n):_add(move,'answer_followup_schedule')
 
@@ -165,9 +189,10 @@ def parse_move(text:str,state:DialogueStateV5,world:dict)->ParsedMoveV5:
 
     # If a generic amount question is asked while a policy is active, prefer the
     # policy premium over total premium.
-    if state.active_policy_id and generic_amount and not re.search(r'(전체|총|한달전체|월전체)',n):
+    if state.active_policy_id and generic_amount and not move.coverage_key and not re.search(r'(전체|총|한달전체|월전체)',n):
         if 'ask_total_premium' in move.actions:move.actions.remove('ask_total_premium')
         _add(move,'ask_selected_policy_premium')
+    if move.coverage_key and 'ask_selected_policy_premium' in move.actions:move.actions.remove('ask_selected_policy_premium')
 
     # Domain context inference for "무슨 내용이 보이시나요" after document open.
     if state.active_document and re.search(r'(무슨내용|어떤내용|뭐가보|무슨항목|어떤항목)',n):_add(move,'ask_document_contents')
@@ -183,14 +208,32 @@ def _policy_by_id(world:dict,pid:str|None)->dict|None:
     if not pid:return None
     return next((p for p in policies(world) if p['id']==pid),None)
 
+def _last_mentioned_policy(world:dict,text:str)->dict|None:
+    n=_norm(text);best=(-1,None)
+    for p in policies(world):
+        for a in p.get('aliases',[]):
+            aa=_norm(a)
+            if aa:
+                pos=n.rfind(aa)
+                if pos>best[0]:best=(pos,p)
+    return best[1]
+
 def _comma(items:list[str])->str:
     return ', '.join(items)
 
 def _disclose(plan:V5Plan,label:str,value:str)->None:
     plan.disclosures[label]=value
 
-def _set_active_policy(state:DialogueStateV5,pid:str)->None:
-    state.active_policy_id=pid;state.active_topic='policy_detail';state.active_coverage_key=None
+def _push_topic(state:DialogueStateV5,topic:str,*,policy_id:str|None=None,coverage_key:str|None=None,section:str|None=None)->None:
+    snap={'topic':topic,'policy_id':policy_id or state.active_policy_id,'coverage_key':coverage_key or state.active_coverage_key,'section':section or state.active_section}
+    if not state.topic_stack or state.topic_stack[-1]!=snap:state.topic_stack.append(snap)
+    state.topic_stack=state.topic_stack[-8:]
+    state.active_topic=topic
+
+def _set_active_policy(state:DialogueStateV5,pid:str,world:dict|None=None)->None:
+    state.active_policy_id=pid;state.active_coverage_key=None;state.active_section='policy_summary';state.active_attribute=None
+    _push_topic(state,'policy_detail',policy_id=pid,section='policy_summary')
+    if world is not None:set_document_cursor(world,policy_id=pid,section='policy_summary')
 
 def _push_question(state:DialogueStateV5,kind:str,turn:int,target:str|None=None,options:list[str]|None=None)->None:
     state.set_pending(kind,turn,target,options)
@@ -221,7 +264,7 @@ def _resolve_pending_selection(move:ParsedMoveV5,state:DialogueStateV5,world:dic
     if 'select_policy' in move.actions and len(move.policy_ids)==1:
         pid=move.policy_ids[0];pol=_policy_by_id(world,pid)
         if pol:
-            _set_active_policy(state,pid);state.clear_pending();state.metrics['pending_resolutions']+=1
+            _set_active_policy(state,pid,world);state.clear_pending();state.metrics['pending_resolutions']+=1
             plan=V5Plan(True, f"네, {pol['name']}부터 볼게요. 증권상 월 보험료는 {won_text(pol['premium_won'])}이고 상품 유형은 {pol['product_type']}으로 표시돼 있어요. 보험료와 보장 중 어떤 부분부터 볼까요?", {'context_followed'}, actions=move.actions)
             _push_question(state,'choose_section',turn,target=pid,options=['premium','coverage'])
             return plan
@@ -230,13 +273,13 @@ def _resolve_pending_selection(move:ParsedMoveV5,state:DialogueStateV5,world:dic
         return V5Plan(True,f"{pol['name']}은 증권상 월 {won_text(pol['premium_won'])}이에요.",{'context_followed'},actions=move.actions)
     if 'select_coverage_section' in move.actions and state.active_policy_id:
         pol=_policy_by_id(world,state.active_policy_id);state.clear_pending();state.metrics['pending_resolutions']+=1
-        return V5Plan(True,coverage_summary(pol,include_amounts=True),{'context_followed'},actions=move.actions)
+        state.active_section='coverages';set_document_cursor(world,policy_id=pol['id'],section='coverages');return V5Plan(True,coverage_summary(pol,include_amounts=True,max_items=8),{'context_followed'},actions=move.actions)
     if 'answer_transfer_method' in move.actions:
         state.clear_pending();state.metrics['pending_resolutions']+=1;state.agreements['document_transfer_method']=move.text
-        return V5Plan(True,'네, 말씀하신 방식으로 전달할게요. 자료를 보신 뒤 어떤 부분을 다시 확인하면 될까요?',{'document_transfer_agreed','material_consent'},actions=move.actions)
+        channel='카카오톡' if re.search(r'카톡|카카오톡',_norm(move.text)) else '현재 채팅' if re.search(r'여기|채팅',_norm(move.text)) else '말씀하신 방법'; return V5Plan(True,f'네, {channel}으로 증권 파일을 보내드릴게요. 확인하신 뒤 다시 설명해 주세요.',{'document_transfer_agreed','material_consent','transfer_channel_confirmed'},actions=move.actions)
     if 'answer_followup_schedule' in move.actions:
         state.clear_pending();state.metrics['pending_resolutions']+=1;state.metrics['followup_agreements']+=1;state.agreements['followup_schedule']=move.text
-        return V5Plan(True,f"네, {move.text.strip()}로 생각해둘게요. 증권 분석 후 그때 다시 확인하면 되겠네요.",{'followup_agreed','closure_confirmed'},actions=move.actions)
+        clean=re.sub(r'(은|는)?\s*(어떠세요|어때요|괜찮으세요|가능하세요)[?？]?$', '', move.text.strip()).strip(' ?？.'); return V5Plan(True,f"네, {clean or '말씀하신 일정'}에 다시 확인하는 걸로 할게요. 증권 분석 후 그때 이어서 보죠.",{'followup_agreed','closure_confirmed'},actions=move.actions)
     return None
 
 
@@ -244,7 +287,7 @@ def plan_c07(session:Any,text:str,turn:int)->V5Plan:
     """Plan one C07 customer reply using the V5 customer world and state."""
     world=session.world;state=session.v5_state
     move=parse_move(text,state,world);state.last_actions=list(move.actions);state.last_objects=list(move.objects);state.last_move_text=text
-    plan=V5Plan(False,actions=list(move.actions),audit={'actions':list(move.actions),'policy_ids':list(move.policy_ids),'coverage_key':move.coverage_key})
+    plan=V5Plan(False,actions=list(move.actions),audit={'actions':list(move.actions),'policy_ids':list(move.policy_ids),'coverage_key':move.coverage_key,'coverage_keys':list(move.coverage_keys)})
 
     pending_plan=_resolve_pending_selection(move,state,world,turn)
     if pending_plan:return pending_plan
@@ -325,16 +368,17 @@ def plan_c07(session:Any,text:str,turn:int)->V5Plan:
 
     if 'request_document_open' in move.actions:
         state.active_topic='document';plan.handled=True
+        wants_premiums='ask_policy_premiums' in move.actions
         if world.get('document',{}).get('opened'):
             state.active_document='policy_document';plan.flags.update({'document_opened','material_consent','review_before_decision'})
-            plan.text='네, 지금 증권을 열어둔 상태예요. '+_document_policy_text(world)+' 어떤 계약부터 볼까요?'
-            _push_question(state,'choose_policy',turn,options=[p['id'] for p in policies(world)])
+            plan.text=('네, 지금 증권을 열어둔 상태예요. '+_all_policy_premiums(world)) if wants_premiums else ('네, 지금 증권을 열어둔 상태예요. '+_document_policy_text(world)+' 어떤 계약부터 볼까요?')
+            if not wants_premiums:_push_question(state,'choose_policy',turn,options=[p['id'] for p in policies(world)])
             return plan
         ok,msg=open_document(world)
         if ok:
             state.active_document='policy_document';state.active_policy_id=None;state.clear_pending();plan.flags.update({'document_opened','material_consent','review_before_decision'})
-            plan.text=msg+' '+_document_policy_text(world)+' 어떤 계약부터 볼까요?';_disclose(plan,'증권 상태','증권 열람 중');_disclose(plan,'증권 계약 목록',' · '.join(p['name'] for p in policies(world)))
-            _push_question(state,'choose_policy',turn,options=[p['id'] for p in policies(world)])
+            plan.text=(msg+' '+_all_policy_premiums(world)) if wants_premiums else (msg+' '+_document_policy_text(world)+' 어떤 계약부터 볼까요?');_disclose(plan,'증권 상태','증권 열람 중');_disclose(plan,'증권 계약 목록',' · '.join(p['name'] for p in policies(world)))
+            if not wants_premiums:_push_question(state,'choose_policy',turn,options=[p['id'] for p in policies(world)])
             state.add_contract('현재 계약을 먼저 확인한 뒤 변경 여부를 판단한다')
         else:
             plan.flags.add('document_status_shared');plan.text=msg
@@ -398,11 +442,44 @@ def plan_c07(session:Any,text:str,turn:int)->V5Plan:
             plan.text='큰 틀만 기억하고 정확한 담보명과 가입금액은 잘 모르겠어요. 증권을 같이 보면 좋겠어요.';_disclose(plan,'담보별 보장 내용','미확인 · 상세 자료 확인 필요')
         return plan
 
+    if 'ask_indemnity_limits' in move.actions:
+        plan.handled=True;state.active_topic='coverage';state.active_section='coverage_detail';state.metrics['detail_resolutions']+=1
+        p=find_policy(world,text,active_policy_id=state.active_policy_id)
+        if not p or '실손' not in (p.get('name','')+p.get('product_type','')):
+            plan.text='현재 보고 있는 계약에서는 실손 입원·통원 한도를 확인할 수 없어요. 실손의료보험을 먼저 선택해 주세요.';return plan
+        if answerability(world,p)=='unavailable':plan.text='입원·통원 한도는 기억만으로는 정확히 모르겠어요. 증권 세부 내용을 열어봐야 해요.';return plan
+        _set_active_policy(state,p['id'],world);state.active_section='coverage_detail';set_document_cursor(world,policy_id=p['id'],section='coverage_detail')
+        wanted=[]
+        nn=_norm(text)
+        for c in p.get('coverages',[]):
+            code=c.get('master_code','')
+            if ('입원' in nn and code in ('INDEMNITY_DISEASE_IN','INDEMNITY_ACCIDENT_IN')) or ('통원' in nn and code in ('INDEMNITY_DISEASE_OUT','INDEMNITY_ACCIDENT_OUT')):wanted.append(c)
+        if not wanted:wanted=p.get('coverages',[])
+        if {'INDEMNITY_DISEASE_IN','INDEMNITY_ACCIDENT_IN'} & {c.get('master_code') for c in wanted} and {'INDEMNITY_DISEASE_OUT','INDEMNITY_ACCIDENT_OUT'} & {c.get('master_code') for c in wanted}:
+            plan.text='이 훈련용 가상 증권에서는 질병·상해 입원은 각각 연간 5천만원 한도, 질병·상해 통원은 각각 회당 25만원 한도로 표시돼 있어요. 자기부담과 세부 조건은 담보 상세에서 추가 확인하도록 되어 있어요.'
+        else:plan.text='증권 세부 화면에는 '+', '.join(c.get('limit_text') or coverage_detail_text(c) for c in wanted[:4])+'으로 표시돼 있어요. 실제 상품 안내가 아니라 훈련용 가상 증권 값이에요.'
+        plan.flags.add('detail_resolved');return plan
+
+    if 'request_detail' in move.actions and (state.active_policy_id or move.policy_ids):
+        p=_last_mentioned_policy(world,text) or find_policy(world,text,active_policy_id=state.active_policy_id);plan.handled=True;state.active_topic='coverage';state.active_section='coverage_detail';state.metrics['detail_resolutions']+=1
+        if p and p.get('id')!=state.active_policy_id:_set_active_policy(state,p['id'],world)
+        if not world.get('document',{}).get('opened'):
+            plan.text='세부 담보는 기억만으로는 정확히 모르겠어요. 증권의 보장 상세 화면을 열어봐야 해요.';return plan
+        set_document_cursor(world,policy_id=p['id'],section='coverage_detail')
+        lines=policy_coverage_detail_lines(p)
+        if lines:plan.text=f"{p['name']}의 세부 보장에는 " + ', '.join(lines[:8]) + '이 보여요.'
+        else:plan.text=f"{p['name']}의 요약 화면에는 세부 담보가 더 나오지 않아요. 이 가상 증권에 설정된 정보는 여기까지예요."
+        plan.flags.add('detail_resolved');return plan
+
     if 'ask_coverage_details' in move.actions:
         plan.handled=True;state.active_topic='coverage'
+        if state.active_policy_id and state.active_section in ('coverages','coverage_detail') and re.fullmatch(r'(보장|보장이요|보장내용|담보|담보요)',_norm(text)):
+            p=_policy_by_id(world,state.active_policy_id);plan.text=f"네, 지금 {p['name']}의 보장을 보고 있어요. 궁금한 담보나 가입금액을 말씀해 주시면 세부 화면에서 확인할게요.";return plan
         if not world.get('document',{}).get('opened'):
             plan.text='정확한 담보 내용은 기억만으로 말씀드리기 어려워요. 증권을 확인해야 해요.';_disclose(plan,'담보별 보장 내용','미확인 · 상세 자료 확인 필요');return plan
         ps=find_policies(world,text)
+        last_pol=_last_mentioned_policy(world,text)
+        if last_pol and len(ps)>1:ps=[last_pol]
         # In sentences such as '실손은 괜찮아 보이네요. 종신과 건강의 세부 보장은?'
         # the requested objects are in the clause nearest the coverage question.
         if len(ps)>1:
@@ -413,8 +490,10 @@ def plan_c07(session:Any,text:str,turn:int)->V5Plan:
         if not ps:
             p=_policy_by_id(world,state.active_policy_id);ps=[p] if p else []
         if ps:
-            if len(ps)==1:_set_active_policy(state,ps[0]['id'])
-            plan.text=_multiple_coverage_text(ps);_disclose(plan,'보장 내용 확인','증권 세부 담보 확인');return plan
+            if len(ps)==1:_set_active_policy(state,ps[0]['id'],world)
+            state.active_section='coverages'
+            if len(ps)==1:set_document_cursor(world,policy_id=ps[0]['id'],section='coverages')
+            plan.text=' '.join(coverage_summary(p,include_amounts=True,max_items=8) for p in ps);_disclose(plan,'보장 내용 확인','증권 세부 담보 확인');return plan
         plan.text=_document_policy_text(world)+' 어떤 계약의 보장을 볼까요?';_push_question(state,'choose_policy',turn,options=[p['id'] for p in policies(world)]);return plan
 
     if 'ask_product_type_ci' in move.actions:
@@ -422,7 +501,7 @@ def plan_c07(session:Any,text:str,turn:int)->V5Plan:
         p=find_policy(world,text,active_policy_id=state.active_policy_id)
         if not p:
             plan.text='어느 계약을 말씀하시는지 지정해 주시면 증권의 상품 유형을 확인해볼게요.';_push_question(state,'choose_policy',turn,options=[x['id'] for x in policies(world)]);return plan
-        _set_active_policy(state,p['id']);ptype=p.get('product_type','상품 유형 확인 필요')
+        _set_active_policy(state,p['id'],world);ptype=p.get('product_type','상품 유형 확인 필요')
         if 'CI' in ptype.upper():plan.text=f'네. 증권에는 {p["name"]}의 상품 유형이 {ptype}으로 표시돼 있어요. 세부 급부 조건은 이 훈련용 증권에 적힌 범위까지만 확인할게요.'
         else:plan.text=f'아니요. 이 가상 증권에는 {p["name"]}이 {ptype}으로 표시돼 있고 CI형으로 표시되지는 않아요.'
         plan.flags.add('product_type_checked');return plan
@@ -432,10 +511,12 @@ def plan_c07(session:Any,text:str,turn:int)->V5Plan:
         if not world.get('document',{}).get('opened'):
             plan.text='그 가입금액은 기억만으로는 정확히 말씀드리기 어려워요. 증권을 열어서 확인해야 해요.';return plan
         p=find_policy(world,text,active_policy_id=state.active_policy_id)
+        keys=move.coverage_keys or ([move.coverage_key] if move.coverage_key else [])
         matches=[]
         if p:
-            matches=[(p,c) for c in p.get('coverages',[]) if c.get('id')==move.coverage_key]
-        else:matches=coverage_across_portfolio(world,move.coverage_key)
+            matches=[(p,c) for c in p.get('coverages',[]) if c.get('id') in keys or c.get('master_code') in keys]
+        else:
+            for key in keys:matches.extend(coverage_across_portfolio(world,key))
         if not matches:
             plan.text='지금 열린 증권 범위에서는 그 담보가 확인되지 않아요.';return plan
         plan.text='증권상 ' + ', '.join(f"{pp['name']}의 {c['name']} {won_text(c.get('amount_won'))}" for pp,c in matches) + '으로 보여요.';return plan
@@ -460,7 +541,7 @@ def plan_c07(session:Any,text:str,turn:int)->V5Plan:
     if 'schedule_followup' in move.actions:
         plan.handled=True;plan.flags.add('followup_pending')
         if re.search(r'(다음주|이번주|월요일|화요일|수요일|목요일|금요일|주말|오전|오후|\d+\s*시)',text):
-            state.agreements['followup_schedule']=text;state.metrics['followup_agreements']+=1;plan.flags.update({'followup_agreed','closure_confirmed'});plan.text=f'네, 말씀하신 일정으로 다시 확인하는 걸로 할게요.'
+            clean=re.sub(r'(은|는)?\s*(어떠세요|어때요|괜찮으세요|가능하세요)[?？]?$', '', text.strip()).strip(' ?？.');state.agreements['followup_schedule']=clean or text;state.metrics['followup_agreements']+=1;plan.flags.update({'followup_agreed','closure_confirmed'});plan.text=f"네, {clean or '말씀하신 일정'}에 다시 확인하는 걸로 할게요. 증권 분석 후 그때 이어서 보죠."
         else:
             plan.text='좋아요. 가능한 날짜나 시간을 정해주시면 그때 다시 확인할게요.';_push_question(state,'followup_schedule',turn)
         return plan
@@ -476,8 +557,18 @@ def plan_c07(session:Any,text:str,turn:int)->V5Plan:
 
     # Short policy selection even when no pending question survived a rerender.
     if 'select_policy' in move.actions and move.policy_ids:
-        p=_policy_by_id(world,move.policy_ids[0]);_set_active_policy(state,p['id']);state.metrics['context_resolutions']+=1
+        p=_policy_by_id(world,move.policy_ids[0]);_set_active_policy(state,p['id'],world);state.metrics['context_resolutions']+=1
         plan.handled=True;plan.flags.add('context_followed');plan.text=f'{p["name"]}을 보고 있어요. 증권상 월 보험료는 {won_text(p["premium_won"])}이고, {coverage_summary(p,include_amounts=True)}';return plan
+
+    # A detail request keeps the current policy/section instead of falling back to
+    # the whole portfolio.
+    if state.active_policy_id and re.search(r'(세부|구체|자세히|그게뭐|그보장|그담보)',_norm(text)):
+        p=_policy_by_id(world,state.active_policy_id);plan.handled=True;state.metrics['context_resolutions']+=1;state.metrics['detail_resolutions']+=1
+        if world.get('document',{}).get('opened'):
+            state.active_section='coverage_detail';set_document_cursor(world,policy_id=p['id'],section='coverage_detail')
+            plan.text=f"{p['name']}의 세부 보장에는 " + ', '.join(policy_coverage_detail_lines(p)[:8]) + '이 보여요.'
+        else:plan.text='그 세부 내용은 기억으로는 정확히 모르겠어요. 증권 상세 화면을 확인해야 해요.'
+        plan.flags.update({'context_followed','detail_resolved'});return plan
 
     # Current document/policy supplies missing referent for a short question.
     if state.active_policy_id and re.search(r'(그건|그거|그보험|이건|그부분).*(얼마|보장|담보)',_norm(text)):
@@ -494,7 +585,7 @@ def plan_c07(session:Any,text:str,turn:int)->V5Plan:
 def state_snapshot(state:DialogueStateV5)->dict:
     return {
         'stage':state.stage,'active_topic':state.active_topic,'active_document':state.active_document,
-        'active_policy_id':state.active_policy_id,'active_coverage_key':state.active_coverage_key,
+        'active_policy_id':state.active_policy_id,'active_coverage_key':state.active_coverage_key,'active_section':state.active_section,'active_attribute':state.active_attribute,'topic_stack':list(state.topic_stack),
         'pending':[asdict(x) for x in state.pending],
         'agreements':dict(state.agreements),'conversation_contracts':list(state.conversation_contracts),
         'metrics':dict(state.metrics),

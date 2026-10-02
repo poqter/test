@@ -124,13 +124,14 @@ def present(app:AppState) -> dict:
              'catalog':catalog(),'scenarios':scenario_rows,
              'modes':[{'id':m['id'],'name':m['name'],'purpose':m['purpose']} for m in MODES.values()],
              'lengths':[{'id':k,**v} for k,v in SESSION_LENGTHS.items()],
-             'counts':{'types':97,'planned':194,'executable':6,'intents':110},'engine_version':'V5 CORE'}
+             'counts':{'types':97,'planned':194,'executable':6,'intents':110},'engine_version':'V5.2 CONTEXT+WORLD'}
     if not s:return payload
     payload['phase']='result' if s.ended else 'session'
     messages=[{'role':'customer','text':s.opening_text or s.source['opening'],'turn':0}]
     for t in s.turns:
         messages.append({'role':'advisor','text':t.text,'turn':t.number})
         if t.response_text:messages.append({'role':'customer','text':t.response_text,'turn':t.number})
+        if getattr(t,'event_text',None):messages.append({'role':'customer','text':t.event_text,'turn':t.number,'variant':'event'})
     objective=objective_for(s.scenario_id,s.mode)
     gate=completion_gate(s)
     if s.mode=='GUIDE': public_gate=gate
@@ -141,8 +142,9 @@ def present(app:AppState) -> dict:
         'next_turn':len(s.turns)+1,'max_turns':s.max_turns,'has_draft':s.draft is not None,'ended':s.ended,
         'assist_used':bool(s.hint_turns or s.mode=='GUIDE'),'mission':objective['text'],'stage':training_stage(s),
         'completion':public_gate,'reply_delay_ms':_delay_ms(s),
-        'v5_context':{'active_topic':s.v5_state.active_topic,'active_document':bool(s.v5_state.active_document),
+        'scenario_seed':f'{s.seed:08X}','v5_context':{'active_topic':s.v5_state.active_topic,'active_document':bool(s.v5_state.active_document),
             'active_policy':next((p.get('name') for p in s.world.get('insurance',{}).get('policies',[]) if p.get('id')==s.v5_state.active_policy_id),None),
+            'active_section':s.v5_state.active_section,'active_coverage':s.v5_state.active_coverage_key,
             'conversation_contracts':list(s.v5_state.conversation_contracts)}}
     if not s.ended and s.dialogue_memory.support_needed:
         payload['session']['dialogue_notice']=('시스템이 최근 답변을 다음 대화에 정확히 연결하지 못했습니다. 같은 질문을 반복하지 않고 연결을 보류했습니다. '
@@ -161,7 +163,7 @@ def present(app:AppState) -> dict:
             if g and app.show_examples:payload['examples']=g
     if s.ended:
         payload['report']=report(s)
-        payload['review']=[{'turn':t.number,'text':t.text,'customer':t.response_text,
+        payload['review']=[{'turn':t.number,'text':t.text,'customer':t.response_text,'customer_event':getattr(t,'event_text',None),
             'intents':[INTENTS[h['intent_id']]['name'] for h in t.interpretation['hits']],
             'uncertainties':t.interpretation['uncertainties'],'risks':t.interpretation['risk_candidates'],
             'decision':t.interpretation['status'],'assist_used':t.assist_used,'v5_actions':list(t.v5_actions)} for t in s.turns]

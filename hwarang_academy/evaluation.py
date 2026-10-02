@@ -110,6 +110,35 @@ def _v5_flow_summary(s:Session) -> dict:
         strengths.append('이번 회차의 강점은 아래 평가 근거와 결정적 순간을 중심으로 확인해 주세요.')
     return {'strengths':strengths,'watch':watch,'metrics':m}
 
+
+
+def _learning_signals(s:Session) -> dict:
+    state=getattr(s,'v5_state',None)
+    missed=[];repeated=[];unresolved=[]
+    if not state:return {'missed_signals':missed,'unnecessary_repetition':repeated,'unresolved_items':unresolved}
+    # Event signals should be acknowledged later in the conversation. These are
+    # descriptive coaching hints, not automatic point deductions.
+    for ev in getattr(state,'event_log',[]):
+        turn=int(ev.get('turn',0));eid=str(ev.get('event_id',''))
+        later=[t for t in s.turns if t.number>turn]
+        later_actions={a for t in later for a in getattr(t,'v5_actions',[])}
+        if 'SPOUSE' in eid and not ({'ask_preference','ask_customer_concern'} & later_actions):
+            missed.append({'turn':turn,'signal':'배우자 의견과 고객 자신의 유지 기준이 함께 등장했습니다.','note':'이후 대화에서 의사결정 관계나 고객 본인의 우선순위를 다시 확인하는 접근도 가능했습니다.'})
+        if 'TIME' in eid and not any(('followup' in a or 'document_transfer' in a) for a in later_actions):
+            missed.append({'turn':turn,'signal':'고객이 상담 가능 시간이 많지 않다고 밝혔습니다.','note':'핵심을 정리하거나 다음 확인 단계로 전환하는 선택지를 검토할 수 있었습니다.'})
+    for t in s.turns:
+        if 'repeated_known_question' in t.flags:
+            repeated.append({'turn':t.number,'text':t.text,'note':'이미 확인한 정보와 겹치는 질문이 감지되었습니다.'})
+    gate=completion_gate(s)
+    labels={
+        'premium':'전체 보험료 확인','contract':'부담 계약 확인','trigger':'보험료 부담 계기 확인','preference':'유지하고 싶은 조건 확인',
+        'numeric_summary_confirmed':'확인 내용 요약','limitation_explained':'확인 범위·한계 설명','material_consent':'자료 확인 또는 전달 합의',
+        'closure_confirmed':'다음 단계 또는 종료 합의','review_before_decision':'변경 전 자료 검토',
+    }
+    for key in gate.get('missing',[]):unresolved.append(labels.get(key,key))
+    if state.top_pending():unresolved.append('고객의 마지막 질문 또는 선택 요청에 대한 응답')
+    return {'missed_signals':missed,'unnecessary_repetition':repeated,'unresolved_items':list(dict.fromkeys(unresolved))}
+
 def report(s:Session) -> dict:
     spec=SCENARIOS[s.scenario_id]
     weights=CATEGORIES[s.scenario_id[0]]['rubric_weights']
@@ -159,6 +188,7 @@ def report(s:Session) -> dict:
     if 'trigger' in s.flags and 'preference' in s.flags:achievements.append({'title':'원인과 목표 구분','note':'부담 계기와 유지할 조건을 나눠 확인했습니다.'})
     if 'material_consent' in s.flags:achievements.append({'title':'동의를 구하는 상담','note':'자료 검토 또는 전달에 고객 동의를 받았습니다.'})
     if 'respectful_closure' in s.flags:achievements.append({'title':'선택권 존중','note':'고객이 요청한 연락 중단을 존중했습니다.'})
+    learning=_learning_signals(s)
     return {'scenario_id':s.scenario_id,'mode':s.mode,'lower':lower,'upper':upper,'status':state,'rows':rows,'axes':axes,
             'unresolved':unresolved,'uncertain_turns':uncertain_turns,'risk_candidates':[{'turn':t.number,'text':t.text,'codes':t.interpretation['risk_candidates']} for t in risk_turns],
             'achievements':achievements,'end_reason':s.end_reason,'assist_used':bool(s.hint_turns or any(t.assist_used for t in s.turns)),
@@ -167,4 +197,6 @@ def report(s:Session) -> dict:
             'v5_flow':_v5_flow_summary(s),
             'conversation_contracts':list(getattr(s,'v5_state',None).conversation_contracts) if getattr(s,'v5_state',None) else [],
             'critical_moments':_critical_moments(s),
+            'missed_signals':learning['missed_signals'],'unnecessary_repetition':learning['unnecessary_repetition'],'unresolved_items':learning['unresolved_items'],
+            'scenario_seed':f'{s.seed:08X}',
             'certificate':False,'notice':'규칙 기반 잠정 평가입니다. 친절함·감정·전문 판단 전체를 측정하거나 공식 인증을 발급하지 않습니다.'}

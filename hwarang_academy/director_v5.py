@@ -14,6 +14,7 @@ C07_EVENTS = [
         'modes':{'GUIDE','COACH','SOLO','ASSESSMENT'},'lengths':{'STANDARD','DEEP'},
         'requires_any_flags':{'contract','document_opened','document_items_shared','product_type_checked'},
         'requires_actions':set(),
+        'active_topics':{'policy_detail','coverage','document'},
         'text':'그런데 이 계약은 예전에 아는 분에게 가입한 거라 괜히 건드리는 게 조금 조심스럽긴 해요.',
         'flag':'event_existing_relationship',
     },
@@ -22,6 +23,7 @@ C07_EVENTS = [
         'modes':{'GUIDE','COACH','SOLO','ASSESSMENT'},'lengths':{'DEEP','STANDARD'},
         'requires_any_flags':{'preference','document_opened','review_before_decision'},
         'requires_actions':set(),
+        'active_topics':{'premium','policy_detail','coverage'},
         'guide_deep_only':True,
         'text':'배우자는 보험료가 너무 많다면서 그냥 줄였으면 좋겠다고 하긴 해요. 저는 필요한 보장까지 없어질까 봐 그게 걱정돼요.',
         'flag':'event_spouse_view',
@@ -31,6 +33,7 @@ C07_EVENTS = [
         'modes':{'COACH','SOLO','ASSESSMENT'},'lengths':{'STANDARD','DEEP'},
         'requires_any_flags':{'document_opened','document_transfer_agreed'},
         'requires_actions':set(),
+        'active_topics':{'document','coverage','policy_detail'},
         'text':'제가 오늘 시간이 아주 많지는 않아서, 지금은 핵심만 정리하고 자세한 건 다음에 봐도 괜찮아요.',
         'flag':'event_time_pressure',
     },
@@ -66,6 +69,8 @@ def maybe_event(session:Any,turn:int,route_flags:set[str])->tuple[str,str]|None:
         if req and not (req & all_flags):continue
         reqa=e.get('requires_actions') or set()
         if reqa and not (reqa & actions):continue
+        topics=e.get('active_topics') or set()
+        if topics and state.active_topic not in topics:continue
         rate=MODE_RATE.get(session.mode,0.5)
         # Within-session adaptation: reduce extra pressure while GUIDE/COACH is
         # already repairing conversation, and modestly increase variation when

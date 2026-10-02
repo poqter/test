@@ -10,8 +10,9 @@ from copy import deepcopy
 from hashlib import sha256
 import re
 from typing import Any
+from .coverage_master import COVERAGE_MASTER, find_code as master_find_code, find_codes as master_find_codes
 
-WORLD_VERSION = "5.0-core"
+WORLD_VERSION = "5.2-world"
 
 # Coverage names are intentionally generic training constructs. They are not an
 # attempt to copy any live insurer product or policy wording.
@@ -120,6 +121,65 @@ _COVERAGE_ALIASES = {
     "ci": ["ci","중대한질병","중대한 질병"],
 }
 
+
+# V5.2 deep document schema. Values are fictional training data and intentionally
+# detached from live insurer products/terms.
+_DETAILED_COVERAGE_TEMPLATES = {
+    "실손의료보험": [
+        {"id":"medical_d_in","master_code":"INDEMNITY_DISEASE_IN","name":"질병입원(실손)","kind":"실손","amount_won":50000000,"limit_text":"훈련용 가상 증권상 연간 5천만원 한도","detail":{"입원한도":"연간 5천만원(훈련용 가상값)","자기부담":"세부 조건 페이지 확인"}},
+        {"id":"medical_d_out","master_code":"INDEMNITY_DISEASE_OUT","name":"질병통원(실손)","kind":"실손","amount_won":250000,"limit_text":"훈련용 가상 증권상 회당 25만원 한도","detail":{"통원한도":"회당 25만원(훈련용 가상값)","자기부담":"세부 조건 페이지 확인"}},
+        {"id":"medical_a_in","master_code":"INDEMNITY_ACCIDENT_IN","name":"상해입원(실손)","kind":"실손","amount_won":50000000,"limit_text":"훈련용 가상 증권상 연간 5천만원 한도","detail":{"입원한도":"연간 5천만원(훈련용 가상값)","자기부담":"세부 조건 페이지 확인"}},
+        {"id":"medical_a_out","master_code":"INDEMNITY_ACCIDENT_OUT","name":"상해통원(실손)","kind":"실손","amount_won":250000,"limit_text":"훈련용 가상 증권상 회당 25만원 한도","detail":{"통원한도":"회당 25만원(훈련용 가상값)","자기부담":"세부 조건 페이지 확인"}},
+    ],
+    "운전자보험": [
+        {"id":"driver_settle","master_code":"DRIVER_SETTLEMENT","name":"교통사고처리지원금","kind":"운전자","amount_won":200000000},
+        {"id":"driver_under6","master_code":"DRIVER_SETTLEMENT_UNDER6","name":"교통사고처리지원금(6주미만)","kind":"운전자","amount_won":10000000},
+        {"id":"driver_lawyer","master_code":"DRIVER_LAWYER","name":"변호사선임비용","kind":"운전자","amount_won":50000000},
+        {"id":"driver_fine_person","master_code":"DRIVER_FINE_PERSON","name":"운전자벌금(대인)","kind":"운전자","amount_won":30000000},
+        {"id":"driver_fine_property","master_code":"DRIVER_FINE_PROPERTY","name":"운전자벌금(대물)","kind":"운전자","amount_won":5000000},
+        {"id":"driver_injury","master_code":"DRIVER_INJURY","name":"자동차사고부상위로금","kind":"운전자","amount_won":None,"limit_text":"상해등급별 지급(훈련용 상세표 미전개)"},
+    ],
+    "자녀보험": [
+        {"id":"child_cancer","master_code":"CANCER_GENERAL","name":"일반암","kind":"진단","amount_won":20000000},
+        {"id":"child_minor","master_code":"CANCER_MINOR","name":"유사암","kind":"진단","amount_won":10000000},
+        {"id":"child_surgery","master_code":"SURGERY_DISEASE","name":"질병수술","kind":"수술","amount_won":500000},
+        {"id":"child_injury_surgery","master_code":"SURGERY_ACCIDENT","name":"상해수술","kind":"수술","amount_won":500000},
+        {"id":"child_fracture","master_code":"DIAG_FRACTURE","name":"골절진단비","kind":"진단","amount_won":500000},
+    ],
+    "기타 보장성보험": [
+        {"id":"etc_acc_death","master_code":"DEATH_ACCIDENT","name":"재해(상해)사망","kind":"사망","amount_won":50000000},
+        {"id":"etc_fracture","master_code":"DIAG_FRACTURE","name":"골절진단비","kind":"진단","amount_won":300000},
+        {"id":"etc_burn","master_code":"DIAG_BURN","name":"화상진단비","kind":"진단","amount_won":300000},
+        {"id":"etc_surgery","master_code":"SURGERY_ACCIDENT","name":"상해수술","kind":"수술","amount_won":500000},
+    ],
+}
+
+_LEGACY_MASTER_MAP = {
+    "death":"DEATH_DISEASE","cancer":"CANCER_GENERAL","brain":"BRAIN_VASCULAR",
+    "heart":"HEART_ISCHEMIC","surgery":"SURGERY_DISEASE","medical":"INDEMNITY_DISEASE_IN",
+    "ci":"CANCER_GENERAL",
+}
+
+def _enrich_policies(ps:list[dict], profile_key:str)->None:
+    for policy in ps:
+        template=_DETAILED_COVERAGE_TEMPLATES.get(policy.get("name"))
+        if template:
+            policy["coverages"]=deepcopy(template)
+        elif "실손" in str(policy.get("product_type","")):
+            policy["coverages"]=deepcopy(_DETAILED_COVERAGE_TEMPLATES["실손의료보험"])
+        elif "운전자" in str(policy.get("product_type","")):
+            policy["coverages"]=deepcopy(_DETAILED_COVERAGE_TEMPLATES["운전자보험"])
+        for c in policy.get("coverages",[]):
+            if not c.get("master_code"):
+                code=master_find_code(c.get("name","")) or _LEGACY_MASTER_MAP.get(str(c.get("id")))
+                if code:c["master_code"]=code
+            code=c.get("master_code")
+            if code in COVERAGE_MASTER:
+                c.setdefault("group",COVERAGE_MASTER[code]["group"])
+                c.setdefault("value_type",COVERAGE_MASTER[code]["value_type"])
+            c.setdefault("document_depth","coverage_detail")
+            c.setdefault("detail",{})
+
 def _hash_index(seed:int,key:str,size:int)->int:
     if size <= 0:return 0
     return int(sha256(f"{seed}:{key}".encode()).hexdigest()[:12],16)%size
@@ -142,13 +202,14 @@ def build_customer_world(scenario_id:str, profile_id:str, facts:dict, seed:int) 
         "personal":{"job":facts.get("job"),"customer":facts.get("customer")},
         "family":None,"financial":{},"health":[],"claims":[],"attitude":{},
         "insurance":{"total_monthly_premium_won":facts.get("total_monthly_premium_won"),"policies":[]},
-        "document":{"access":"unknown","location":"미확인","can_open_now":False,"can_send":False,"opened":False,"shared":False},
+        "document":{"access":"unknown","location":"미확인","can_open_now":False,"can_send":False,"opened":False,"shared":False,"depth":"portfolio","cursor":{}},
         "knowledge":{"total_premium":{"truth":facts.get("total_monthly_premium_won"),"memory":facts.get("total_monthly_premium_won"),"memory_state":"customer_statement","document_state":"unseen"}},
     }
     if scenario_id!="C07-S01":
         return base
     key=profile_id if profile_id in _POLICY_BLUEPRINTS else "C07-BASE"
     policies=deepcopy(_POLICY_BLUEPRINTS[key])
+    _enrich_policies(policies,key)
     # Adapt the blueprint totals to the reviewed scenario facts if they differ.
     target_total=int(facts.get("total_monthly_premium_won") or sum(p["premium_won"] for p in policies))
     current_total=sum(int(p["premium_won"]) for p in policies)
@@ -181,6 +242,11 @@ def build_customer_world(scenario_id:str, profile_id:str, facts:dict, seed:int) 
     base["family"]=ctx["family"];base["health"]=ctx["health"];base["claims"]=ctx["claims"];base["attitude"]=ctx["attitude"]
     base["document"].update(ctx["document"])
     base["financial"]={"burden_trigger":facts.get("burden_trigger"),"preference":facts.get("preference")}
+    base["goals"]=[
+        {"priority":1,"goal":"보험료 부담 완화","source":"상담 신청"},
+        {"priority":2,"goal":str(facts.get("preference") or "필요한 보장 유지"),"source":"숨은/조건부 니즈"},
+        {"priority":3,"goal":"기존 계약을 확인한 뒤 변경 여부 판단","source":"훈련 목표"},
+    ]
     base["insurance"]={
         "total_monthly_premium_won":target_total,
         "policies":policies,
@@ -193,7 +259,8 @@ def build_customer_world(scenario_id:str, profile_id:str, facts:dict, seed:int) 
     base["document"]["graph"]={
         "type":"policy_portfolio",
         "policy_ids":[p["id"] for p in policies],
-        "sections":{p["id"]:["contract","premium","coverages","terms","status"] for p in policies},
+        "sections":{p["id"]:["contract","premium","coverages","coverage_detail","terms","status"] for p in policies},
+        "depths":["portfolio","policy_summary","coverages","coverage_detail"],
     }
     # Customer memory is deliberately different from document truth for some profiles.
     total_memory=target_total
@@ -212,6 +279,7 @@ def build_customer_world(scenario_id:str, profile_id:str, facts:dict, seed:int) 
             "document_state":"unseen",
             "disclosed_fields":[],
         }
+    validate_world(base)
     return base
 
 def policies(world:dict)->list[dict]:
@@ -243,10 +311,16 @@ def find_policies(world:dict,text:str)->list[dict]:
     return out
 
 def find_coverage_key(text:str)->str|None:
+    code=master_find_code(text)
+    if code:return code
     n=_normalize(text)
     for key,aliases in _COVERAGE_ALIASES.items():
-        if any(_normalize(a) in n for a in aliases):return key
+        if any(_normalize(a) in n for a in aliases):return _LEGACY_MASTER_MAP.get(key,key)
     return None
+
+def find_coverage_keys(text:str)->list[str]:
+    codes=master_find_codes(text)
+    return list(dict.fromkeys(codes))
 
 def remembered_policy_names(world:dict)->list[str]:
     out=[]
@@ -318,9 +392,70 @@ def coverage_across_portfolio(world:dict,key:str)->list[tuple[dict,dict]]:
     out=[]
     for p in policies(world):
         for c in p.get("coverages",[]):
-            if c.get("id")==key or key in [c.get("kind")]:out.append((p,c))
+            if c.get("id")==key or c.get("master_code")==key or key in [c.get("kind")]:out.append((p,c))
     return out
 
 def public_world_snapshot(world:dict)->dict:
     """Return only information safe for debugging/reference, not hidden UI facts."""
     return {"version":world.get("version"),"profile_id":world.get("profile_id"),"document_access":world.get("document",{}).get("access"),"policy_count":len(policies(world))}
+
+
+def coverage_by_code(policy:dict, code:str|None)->dict|None:
+    if not code:return None
+    for c in policy.get("coverages",[]):
+        if c.get("master_code")==code or c.get("id")==code:return c
+    return None
+
+def coverage_detail_text(c:dict)->str:
+    amount=c.get("amount_won")
+    parts=[c.get("name","담보")]
+    if amount is not None:parts.append(won_text(amount))
+    if c.get("limit_text"):parts.append(str(c["limit_text"]))
+    for k,v in (c.get("detail") or {}).items():parts.append(f"{k} {v}")
+    return " · ".join(parts)
+
+def policy_coverage_detail_lines(policy:dict)->list[str]:
+    return [coverage_detail_text(c) for c in policy.get("coverages",[])]
+
+def answerability(world:dict, policy:dict|None=None, coverage:dict|None=None)->str:
+    """document | memory | unavailable. Keeps answerability separate from truth."""
+    if world.get("document",{}).get("opened"):
+        return "document"
+    if policy:
+        k=world.get("knowledge",{}).get("policies",{}).get(policy.get("id"),{})
+        if coverage and k.get("coverage_memory") not in ("broad","exact"):return "unavailable"
+        if k.get("exists")=="known":return "memory"
+    return "unavailable"
+
+def set_document_cursor(world:dict, *, policy_id:str|None=None, section:str|None=None, coverage_code:str|None=None)->None:
+    d=world.setdefault("document",{});cursor=d.setdefault("cursor",{})
+    if policy_id is not None:cursor["policy_id"]=policy_id
+    if section is not None:cursor["section"]=section
+    if coverage_code is not None:cursor["coverage_code"]=coverage_code
+    if coverage_code:d["depth"]="coverage_detail"
+    elif section=="coverages":d["depth"]="coverages"
+    elif policy_id:d["depth"]="policy_summary"
+    else:d["depth"]="portfolio"
+
+def validate_world(world:dict)->None:
+    ps=policies(world)
+    ids=[p.get("id") for p in ps]
+    if len(ids)!=len(set(ids)):raise ValueError("가상 보험 원장의 계약 ID가 중복되었습니다.")
+    if ps:
+        expected=int(world.get("insurance",{}).get("total_monthly_premium_won") or 0)
+        actual=sum(int(p.get("premium_won") or 0) for p in ps)
+        if expected!=actual:raise ValueError(f"가상 보험료 합계 불일치: {expected} != {actual}")
+    cov_ids=set()
+    for p in ps:
+        for c in p.get("coverages",[]):
+            key=(p.get("id"),c.get("id"))
+            if key in cov_ids:raise ValueError("가상 증권 담보 ID가 중복되었습니다.")
+            cov_ids.add(key)
+            code=c.get("master_code")
+            if code and code not in COVERAGE_MASTER:raise ValueError(f"알 수 없는 표준보장 코드: {code}")
+
+def customer_style(world:dict)->str:
+    a=world.get("attitude",{})
+    if a.get("insurance_knowledge")=="낮음":return "plain"
+    if a.get("change_resistance")=="높음":return "cautious"
+    return "neutral"

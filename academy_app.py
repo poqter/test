@@ -12,7 +12,7 @@ st.set_page_config(page_title='화랑 ACADEMY',page_icon='🎓',layout='wide',in
 
 @lru_cache(maxsize=1)
 def component():
-    return components.declare_component('hwarang_academy_v5',path=str(ROOT/'frontend'))
+    return components.declare_component('hwarang_academy_v52',path=str(ROOT/'frontend'))
 
 def access_allowed()->bool:
     """Academy V5 temporary public access. Authentication is intentionally bypassed."""
@@ -50,7 +50,7 @@ def main():
     iframe[title*="hwarang_academy"]{{border:0!important;display:block;width:100%}}
     </style>''',unsafe_allow_html=True)
     payload=present(app);payload['base_url']=base_url()
-    event=component()(model=payload,key='academy_engine_component',default=None)
+    event=component()(model=payload,key='academy_engine_component_v52',default=None)
     if isinstance(event,dict) and event.get('event_id')!=app.ack:
         # The controller verifies mode, scenario, payload sizes and once-only commits.
         try:handle(app,event)

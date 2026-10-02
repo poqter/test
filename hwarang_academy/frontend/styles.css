@@ -60,3 +60,18 @@ body.mission-open{overflow:hidden}
 .setup-footer>div>small{display:block;margin-top:6px;color:#88aec3;font-size:10px}
 @keyframes missionFade{from{opacity:0}to{opacity:1}}@keyframes missionRise{from{opacity:0;transform:translateY(10px) scale(.99)}to{opacity:1;transform:none}}
 @media(max-width:640px){.mission-modal-backdrop{padding:14px;align-items:flex-end}.mission-modal{width:100%;max-height:88vh;padding:22px 18px 20px;border-radius:22px 22px 12px 12px}.mission-modal h2{font-size:22px}.mission-objective{font-size:14px}.mission-modal-actions{display:grid;grid-template-columns:1fr}.mission-modal-actions button{width:100%}}
+
+/* V5.2 — stable messenger scroll + independent panes */
+.conversation{position:relative;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.chat-title,.dialogue-notice,.composer,.coaching{flex:0 0 auto}
+.messages{height:500px!important;min-height:500px!important;max-height:500px!important;overflow-y:auto!important;scroll-behavior:auto!important;overscroll-behavior:contain;scrollbar-gutter:stable;overflow-anchor:none;position:relative}
+.compose-box textarea{resize:none!important;height:64px!important;min-height:64px!important;max-height:64px!important;overflow-y:auto!important}
+.new-message-btn{position:absolute;right:24px;bottom:118px;z-index:8;border:1px solid #90bad7;background:#174f79;color:#fff;border-radius:999px;padding:7px 12px;font-size:11px;font-weight:700;box-shadow:0 7px 20px #183e5a35}
+.new-message-btn:hover{background:#21658f}
+.msg.event .bubble{background:#f2f7ff;border-color:#a9cce9;color:#244765}
+.msg.event .meta{color:#47799d;font-weight:700}
+.guide-panel{overscroll-behavior:contain;scrollbar-gutter:stable}
+.learning-insights{margin:20px 0;padding:20px;border:1px solid #d8e5f0;border-radius:14px;background:#f9fbfe;color:#24445f}
+.learning-insights h2{margin:6px 0 14px}.insight-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.insight-grid>div{padding:14px;border:1px solid #e0e9f2;border-radius:11px;background:#fff}.insight-grid p{margin-top:8px;font-size:12px;line-height:1.55}.insight-grid small{color:#6a8095}
+@media(max-width:980px){.messages{height:460px!important;min-height:460px!important;max-height:460px!important}.insight-grid{grid-template-columns:1fr}}
+@media(max-width:760px){.messages{height:410px!important;min-height:410px!important;max-height:410px!important}.new-message-btn{right:16px;bottom:110px}.compose-box textarea{height:58px!important;min-height:58px!important;max-height:58px!important}}
