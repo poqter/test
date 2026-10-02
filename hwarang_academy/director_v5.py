@@ -50,6 +50,13 @@ def maybe_event(session:Any,turn:int,route_flags:set[str])->tuple[str,str]|None:
     if session.scenario_id!='C07-S01' or session.ended:return None
     if 'engine_clarification' in route_flags or 'risk_candidate' in route_flags:return None
     state=session.v5_state
+    # Do not inject a side event while the customer is waiting for a concrete
+    # follow-up/transfer answer or the conversation has entered its closing arc.
+    pending=state.top_pending() if hasattr(state,'top_pending') else None
+    if state.stage in ('ANALYSIS_HANDOFF','FOLLOW_UP','COMPLETE') or (pending and pending.kind in ('followup_schedule','transfer_method')):
+        return None
+    if {'analysis_handoff','followup_pending','followup_confirmed','document_delivery_planned'} & (set(session.flags)|set(route_flags)):
+        return None
     if turn < state.event_cooldown_until:return None
     if len(session.events_fired)>=LENGTH_BUDGET.get(session.session_length,2):return None
     all_flags=set(session.flags)|set(route_flags)

@@ -17,6 +17,7 @@ from .scenario_v2 import SESSION_LENGTHS, build_profile, eligible_events
 from .world_v5 import build_customer_world
 from .dialogue_v5 import DialogueStateV5, plan_c07, state_snapshot
 from .director_v5 import maybe_event as maybe_v5_event
+from .mission_graph_v5 import guide_plan as c07_guide_plan, goal_status as c07_goal_status, validate_session_route
 
 MAX_TURNS=40  # absolute safety ceiling; per-session ceiling comes from SESSION_LENGTHS
 
@@ -106,7 +107,7 @@ class Session:
     dialogue_memory: DialogueMemory = field(default_factory=DialogueMemory)
     world: dict=field(default_factory=dict)
     v5_state: DialogueStateV5=field(default_factory=DialogueStateV5)
-    scenario_version: str='5.3-golden-core26'
+    scenario_version: str='5.4-goal-route-guide'
     customer_seed: int|None=None
     event_log: list[dict]=field(default_factory=list)
     user_id: str|None=None
@@ -739,17 +740,21 @@ def completion_gate(s:Session) -> dict:
         quality={
           'QUICK':['premium','trigger','analysis_handoff'],
           'STANDARD':['premium','contract','trigger','preference','reduction_preference','analysis_handoff'],
-          'DEEP':['premium','contract','trigger','preference','reduction_preference','material_consent','analysis_handoff'],
+          'DEEP':['premium','contract','trigger','preference','reduction_preference','material_route','analysis_handoff'],
         }
         required=quality[s.session_length]
-        done=[x for x in required if x in s.flags]
-        final_flags=['followup_confirmed']
-        final_complete=any(x in s.flags for x in final_flags)
+        status=c07_goal_status(s)
+        material_done=next((x['done'] for x in status['intermediate'] if x['id']=='material_route'),False)
+        done=[]
+        for x in required:
+            if x=='material_route':
+                if material_done:done.append(x)
+            elif x in s.flags:done.append(x)
         return {
-            'done':len(done),'total':len(required),'complete':final_complete,'final_complete':final_complete,
-            'final_goal':'다음 상담 일정 또는 후속 연락 시점 확정',
-            'missing':[x for x in required if x not in s.flags],
+            'done':len(done),'total':len(required),'complete':status['final_complete'],'final_complete':status['final_complete'],
+            'final_goal':status['final_goal'],'missing':[x for x in required if x not in done],
             'intermediate_done':done,'intermediate_required':required,
+            'followup_schedule':status.get('followup_schedule'),'completion_path':status.get('completion_path'),
         }
     required=gates[s.scenario_id][s.session_length]
     done=[x for x in required if x in s.flags]
@@ -929,18 +934,15 @@ def guide(s:Session) -> dict|None:
     source=s.source
     suggestion=source['good'];direction=source['reason']
     if s.scenario_id=='C07-S01':
-        total=_won(int(s.facts['total_monthly_premium_won']));contract=_won(int(s.facts['burdensome_contract_premium_won']));cname=str(s.facts['burdensome_contract'])
-        steps=[('premium','전체로 한 달에 내시는 보험료는 어느 정도 되실까요?','현재 부담의 규모를 먼저 확인해 보세요.'),
-        ('contract','그중 어떤 계약이 가장 부담되세요?','부담을 느끼는 계약을 고객이 직접 특정하게 합니다.'),
-        ('trigger','잘 납입하시다가 최근 더 부담스럽게 느껴진 이유가 있을까요?','보험료 숫자와 부담이 커진 배경을 구분합니다.'),
-        ('preference','보험료를 조정하더라도 꼭 유지하고 싶은 보장이나 조건이 있을까요?','줄이는 것만 목표로 두지 말고 고객의 유지 기준을 확인합니다.'),
-        ('reduction_preference','어느 정도 줄어들면 부담이 덜하실까요? 정확한 금액이 아니어도 괜찮습니다.','목표 보험료 숫자를 강요하지 말고 고객의 절감 기준을 확인합니다.'),
-        ('material_consent','증권이나 계약 자료를 같이 확인해도 괜찮을까요?','분석에 필요한 자료를 고객 동의 아래 확인합니다.'),
-        ('analysis_handoff','오늘 바로 결론내리기보다 증권을 가져가 자세히 분석한 뒤 다시 설명드려도 될까요?','현장에서 성급하게 계약 변경을 확정하지 않고 분석 후 재상담 흐름으로 전환합니다.'),
-        ('followup_confirmed','그럼 분석 결과를 설명드릴 다음 상담 날짜나 연락 시점을 정해볼까요?','C07의 최종 목표입니다. 일정 또는 후속 연락 시점이 확정되면 상담이 종료됩니다.')]
-        for flag,suggestion,direction in steps:
-            if flag not in s.flags:break
-        else:suggestion='다음 상담 일정이 확정되었습니다.';direction='최종 목표를 달성했으므로 상담이 종료되고, 빠진 중간 목표는 복기에서 평가합니다.'
+        gp=c07_guide_plan(s)
+        suggestion=gp['recommended'];direction=gp['hint']
+        adequate=gp.get('adequate') or source['adequate'];avoid=source['risky']
+        return {
+            'hint':direction,'recommended':suggestion,'adequate':adequate,'avoid':avoid,
+            'reason':gp.get('reason') or source['reason'],'route_action':gp.get('action_id'),
+            'alternatives':gp.get('alternatives',[]),'rescue':bool(gp.get('rescue')),
+            'route_status':gp.get('status',{}),'remaining_goal':gp.get('remaining_goal'),
+        }
     elif s.scenario_id in ('A01-S01','D08-S01','F07-S01','G10-S01','H10-S01'):
         sequences = {
           'A01-S01':[('introduced','CT01','자신의 역할과 연락 경로를 먼저 밝힙니다.'),('time','CT03','지금 대화해도 되는지 확인합니다.'),('interest','DS01','고객이 원하는 상담 범위를 묻습니다.'),('customer_initiates','CT10','고객에게 허락받은 후속 연락 범위를 확인합니다.'),('closure_confirmed','NX08','고객이 먼저 연락한다는 의사를 존중하고 마무리합니다.')],
@@ -955,7 +957,4 @@ def guide(s:Session) -> dict|None:
         if _seen(s,'stop_active'):
             suggestion=INTENTS['RL10']['positive_examples'][0];direction='고객이 추가 연락을 원하지 않는다고 밝혔습니다. 그 의사를 존중해 종료합니다.'
     adequate=source['adequate'];avoid=source['risky']
-    if s.scenario_id=='C07-S01':
-        adequate='보험료가 부담되시는군요. 어떤 부분이 가장 신경 쓰이세요?'
-        avoid='그럼 부담되는 보험부터 해지하고 새로 정리하시면 됩니다.'
     return {'hint':direction,'recommended':suggestion,'adequate':adequate,'avoid':avoid,'reason':source['reason']}

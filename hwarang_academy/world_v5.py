@@ -93,10 +93,10 @@ _POLICY_BLUEPRINTS: dict[str, list[dict[str, Any]]] = {
 }
 
 _PROFILE_CONTEXT = {
-    "C07-BASE": {"family":"배우자와 자녀 1명","health":["최근 특이 병력은 이번 과제에서 다루지 않음"],"claims":[],"attitude":{"insurance_knowledge":"낮음","premium_sensitivity":"높음","change_resistance":"보통","existing_agent_relation":"보통"},"document":{"access":"mobile","location":"휴대폰에 저장된 증권","can_open_now":True,"can_send":True}},
-    "C07-CASHFLOW": {"family":"배우자 있음","health":["건강 정보는 이번 과제에서 공개 전 미확인"],"claims":[],"attitude":{"insurance_knowledge":"낮음","premium_sensitivity":"매우 높음","change_resistance":"보통","existing_agent_relation":"강함"},"document":{"access":"partial_mobile","location":"휴대폰에 일부 계약 자료","can_open_now":True,"can_send":True}},
-    "C07-FAMILY": {"family":"배우자와 자녀 2명","health":["건강 정보는 이번 과제에서 공개 전 미확인"],"claims":[{"year":2024,"summary":"간단한 실손 청구 경험","detail_state":"memory_only"}],"attitude":{"insurance_knowledge":"보통 이하","premium_sensitivity":"높음","change_resistance":"높음","existing_agent_relation":"보통"},"document":{"access":"file_available","location":"휴대폰에 저장된 증권 파일","can_open_now":True,"can_send":True}},
-    "C07-RENEWAL": {"family":"배우자 있음","health":["최근 혈압약 복용 시작 · 상세는 C07 과제에서 자동 공개하지 않음"],"claims":[],"attitude":{"insurance_knowledge":"보통","premium_sensitivity":"높음","change_resistance":"높음","existing_agent_relation":"보통"},"document":{"access":"spouse_managed","location":"배우자가 전체 증권 관리","can_open_now":False,"can_send":False}},
+    "C07-BASE": {"family":"배우자와 자녀 1명","health":["최근 특이 병력은 이번 과제에서 다루지 않음"],"claims":[],"attitude":{"insurance_knowledge":"낮음","premium_sensitivity":"높음","change_resistance":"보통","existing_agent_relation":"보통"},"document":{"access":"mobile","location":"휴대폰에 저장된 증권","can_open_now":True,"can_send":True,"can_send_later":True,"available_later":"즉시"}},
+    "C07-CASHFLOW": {"family":"배우자 있음","health":["건강 정보는 이번 과제에서 공개 전 미확인"],"claims":[],"attitude":{"insurance_knowledge":"낮음","premium_sensitivity":"매우 높음","change_resistance":"보통","existing_agent_relation":"강함"},"document":{"access":"partial_mobile","location":"휴대폰에 일부 계약 자료","can_open_now":True,"can_send":True,"can_send_later":True,"available_later":"추가 자료 확보 후"}},
+    "C07-FAMILY": {"family":"배우자와 자녀 2명","health":["건강 정보는 이번 과제에서 공개 전 미확인"],"claims":[{"year":2024,"summary":"간단한 실손 청구 경험","detail_state":"memory_only"}],"attitude":{"insurance_knowledge":"보통 이하","premium_sensitivity":"높음","change_resistance":"높음","existing_agent_relation":"보통"},"document":{"access":"file_available","location":"휴대폰에 저장된 증권 파일","can_open_now":True,"can_send":True,"can_send_later":True,"available_later":"즉시"}},
+    "C07-RENEWAL": {"family":"배우자 있음","health":["최근 혈압약 복용 시작 · 상세는 C07 과제에서 자동 공개하지 않음"],"claims":[],"attitude":{"insurance_knowledge":"보통","premium_sensitivity":"높음","change_resistance":"높음","existing_agent_relation":"보통"},"document":{"access":"spouse_managed","location":"배우자가 전체 증권 관리","can_open_now":False,"can_send":False,"can_send_later":True,"available_later":"오늘 저녁"}},
 }
 
 _PROFILE_TRAINING_PREFERENCES = {
@@ -225,7 +225,7 @@ def build_customer_world(scenario_id:str, profile_id:str, facts:dict, seed:int) 
         "personal":{"job":facts.get("job"),"customer":facts.get("customer")},
         "family":None,"financial":{},"health":[],"claims":[],"attitude":{},
         "insurance":{"total_monthly_premium_won":facts.get("total_monthly_premium_won"),"policies":[]},
-        "document":{"access":"unknown","location":"미확인","can_open_now":False,"can_send":False,"opened":False,"shared":False,"depth":"portfolio","cursor":{}},
+        "document":{"access":"unknown","location":"미확인","can_open_now":False,"can_send":False,"can_send_later":False,"available_later":None,"opened":False,"shared":False,"delivery_planned":False,"depth":"portfolio","cursor":{}},
         "knowledge":{"total_premium":{"truth":facts.get("total_monthly_premium_won"),"memory":facts.get("total_monthly_premium_won"),"memory_state":"customer_statement","document_state":"unseen"}},
     }
     if scenario_id!="C07-S01":
@@ -393,13 +393,22 @@ def open_document(world:dict)->tuple[bool,str]:
 def document_access_message(world:dict)->str:
     d=world.get("document",{})
     access=d.get("access")
-    if access=="spouse_managed":return "지금 제 손에는 전체 증권이 없어요. 배우자에게 자료를 받아야 정확히 확인할 수 있을 것 같아요."
+    if access=="spouse_managed":
+        later=d.get("available_later") or "나중"
+        return f"지금 제 손에는 전체 증권이 없어요. 배우자에게 받아야 정확히 확인할 수 있을 것 같아요. {later}에는 받아볼 수 있어요."
     if access=="partial_mobile":return "휴대폰에 일부 계약 자료는 있어요. 없는 계약은 나중에 추가로 받아야 할 것 같아요."
     if d.get("can_open_now"):return f"{d.get('location','증권')}이 있어서 지금 확인할 수 있어요."
     return "지금 바로 확인 가능한 증권이 있는지는 확인이 필요해요."
 
 def can_send_document(world:dict)->bool:
     return bool(world.get("document",{}).get("can_send"))
+
+def can_send_document_later(world:dict)->bool:
+    d=world.get("document",{})
+    return bool(d.get("can_send_later") or d.get("can_send"))
+
+def plan_document_delivery(world:dict)->None:
+    world.setdefault("document",{})["delivery_planned"]=True
 
 def mark_document_shared(world:dict)->None:
     world.setdefault("document",{})["shared"]=True

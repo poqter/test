@@ -10,8 +10,8 @@ import re
 from typing import Any
 from .world_v5 import (
     policies, find_policy, find_policies, find_coverage_key, remembered_policy_names,
-    premium_total, open_document, document_access_message, can_send_document,
-    mark_document_shared, won_text, policy_summary, coverage_summary,
+    premium_total, open_document, document_access_message, can_send_document, can_send_document_later,
+    plan_document_delivery, mark_document_shared, won_text, policy_summary, coverage_summary,
     coverage_across_portfolio, find_coverage_keys, coverage_by_code, policy_coverage_detail_lines, coverage_detail_text,
     answerability, set_document_cursor, customer_style,
 )
@@ -210,11 +210,20 @@ def parse_move(text:str,state:DialogueStateV5,world:dict)->ParsedMoveV5:
     if re.search(r'(무슨내용|어떤내용|뭐가보|어떤항목|무슨항목)',n) and (state.active_document or '증권' in n or '파일' in n):_add(move,'ask_document_contents')
     if re.search(r'(어떻게|어디서).*(확인|찾|열|보면|봐)',n):_add(move,'ask_document_method')
     if re.search(r'(증권|파일|자료).*(전달|보내|보내주|공유)|그파일.*(보내|전달)',n):_add(move,'request_document_transfer')
+    if re.search(r'(배우자|가족).*(증권|파일|자료).*(받|가져|전달|보내)|(?:증권|파일|자료).*(?:나중|추후|준비|받은뒤|받으신뒤|받아서).*(?:전달|보내|공유)|(?:나중|추후).*(?:증권|파일|자료).*(?:전달|보내|공유)',n):_add(move,'request_future_document_transfer')
+    if re.search(r'(배우자|가족).*(연락|전화|받을|자료).*(가능|되|할수)|(?:지금|오늘).*(배우자|가족).*(연락|전화).*(가능|되)',n):_add(move,'ask_document_retrieval_availability')
+    if re.search(r'(기억나|아는내용|아는대로|기억대로).*(진행|말씀|해보|보죠|보자)|우선.*기억',n):_add(move,'continue_from_memory')
     if 'request_document_transfer' in move.actions and 'ask_document_possession' in move.actions:move.actions.remove('ask_document_possession')
+    if 'request_future_document_transfer' in move.actions and 'request_document_transfer' in move.actions:move.actions.remove('request_document_transfer')
     if re.search(r'(사무실|돌아가|가져가|제가|제가요)?.*(분석|검토|자세히확인|확인해보고|살펴보고|재조정).*(다시|다음|추후|설명|제안|찾아|만나|미팅|상담)|분석해서.*(?:다시|다음)|다음미팅|다시찾아|부족.*보장.*제안',n):_add(move,'propose_analysis_followup')
     if re.search(r'(언제|몇시|날짜|일정|시간).*(괜찮|가능|만나|미팅|상담|볼까요|뵐까요|정하|잡)|다음상담.*(?:날짜|일정|시간)|다음미팅.*(?:날짜|일정|시간)|다시.*(?:언제|시간)|다음주|이번주|(?:내일|모레).*(?:연락|전화|상담|다시|설명)|(월요일|화요일|수요일|목요일|금요일|토요일|일요일|주말).*(다시|상담|미팅|만나|괜찮|가능|설명)',n):_add(move,'schedule_followup')
     if 'propose_analysis_followup' in move.actions and 'request_document_open' in move.actions and not re.search(r'(증권|파일|자료).*(열어|열|같이확인|함께확인|보죠|볼까요)',n):
         move.actions.remove('request_document_open')
+    # A stale document focus must not hijack a new conversational action merely
+    # because Korean endings such as '해보죠/정해봐요' contain '보죠/봐요'.
+    if 'request_document_open' in move.actions and ({'continue_from_memory','schedule_followup','request_future_document_transfer'} & set(move.actions)):
+        explicit_doc_open=bool(re.search(r'(증권|파일|자료).*(열어|열자|열까요|같이확인|함께확인|확인해보)',n))
+        if not explicit_doc_open:move.actions.remove('request_document_open')
 
     # Context restoration and generic continuation.
     if re.search(r'(보고있는중|보고있었|보던중|확인중|확인하고있).*증권|증권.*(보고있는|보고있었|보던)',n):_add(move,'restore_document_context')
@@ -314,7 +323,7 @@ def _track_answered(state:DialogueStateV5,key:str,turn:int,plan:V5Plan)->None:
 def _resolve_pending_selection(move:ParsedMoveV5,state:DialogueStateV5,world:dict,turn:int)->V5Plan|None:
     p=state.top_pending()
     if not p:return None
-    substantive=[a for a in move.actions if a.startswith('ask_') or a in ('request_detail','request_document_transfer','propose_analysis_followup','schedule_followup')]
+    substantive=[a for a in move.actions if a.startswith('ask_') or a in ('request_detail','request_document_transfer','request_future_document_transfer','propose_analysis_followup','schedule_followup')]
     if 'select_policy' in move.actions and len(move.policy_ids)==1 and not substantive:
         pid=move.policy_ids[0];pol=_policy_by_id(world,pid)
         if pol:
@@ -336,6 +345,7 @@ def _resolve_pending_selection(move:ParsedMoveV5,state:DialogueStateV5,world:dic
             opts=list(world.get('availability',{}).get('followup_options') or [])
             return V5Plan(True,f"그 시간은 조금 어려워요. 저는 {' 또는 '.join(opts[:2])}가 괜찮아요. 둘 중 하나로 정할 수 있을까요?",{'followup_pending'},actions=move.actions)
         state.clear_pending();state.metrics['pending_resolutions']+=1;state.metrics['followup_agreements']+=1;state.stage='COMPLETE';clean=_clean_schedule_phrase(move.text);state.agreements['followup_schedule']=clean or move.text
+        state.agreements['completion_path']='후속 상담 일정 확정' if re.search(r'상담|미팅|만나|뵙',_norm(move.text)) else '후속 연락 시점 확정'
         return V5Plan(True,f"네, {clean or '말씀하신 일정'}에 다시 상담하는 걸로 할게요. 증권 분석 결과를 그때 설명해 주세요.",{'followup_agreed','followup_confirmed','closure_confirmed'},terminal='mission_complete',actions=move.actions)
     return None
 
@@ -632,34 +642,78 @@ def plan_c07(session:Any,text:str,turn:int)->V5Plan:
             plan.text='지금 열린 증권 범위에서는 그 담보가 확인되지 않아요.';return plan
         plan.text='증권상 ' + ', '.join(f"{pp['name']}의 {c['name']} {won_text(c.get('amount_won'))}" for pp,c in matches) + '으로 보여요.';return plan
 
+    if 'ask_document_retrieval_availability' in move.actions:
+        plan.handled=True;state.active_topic='document'
+        d=world.get('document',{})
+        if d.get('access')=='spouse_managed':
+            later=d.get('available_later') or '나중'
+            plan.text=f'지금 바로 연락하기는 어렵지만 {later}에는 배우자에게 증권을 받아볼 수 있어요. 그때 전달드리는 건 괜찮아요.'
+            plan.flags.add('document_retrieval_possible')
+        elif d.get('can_open_now'):
+            plan.text='지금 확인 가능한 자료가 있어서 배우자에게 따로 연락하지 않아도 우선 이 자료부터 볼 수 있어요.'
+        elif can_send_document_later(world):
+            plan.text='지금은 바로 확인하기 어렵지만 자료를 준비한 뒤 전달드릴 수 있어요.';plan.flags.add('document_retrieval_possible')
+        else:
+            plan.text='지금은 바로 자료를 확보하기 어렵고, 언제 받을 수 있을지는 확인이 필요해요.'
+        return plan
+
+    if 'request_future_document_transfer' in move.actions:
+        plan.handled=True;state.active_topic='document'
+        if can_send_document_later(world):
+            d=world.get('document',{});later=d.get('available_later') or '자료를 받는 대로'
+            plan_document_delivery(world);state.agreements['document_delivery_later']=True;state.add_contract('준비되는 증권 자료를 추후 전달한다')
+            plan.flags.update({'material_consent','document_delivery_planned','review_before_decision'})
+            plan.text=f'네, {later} 증권을 준비해서 전달드릴게요. 자료를 확인하신 뒤 다시 설명해 주세요.'
+            _disclose(plan,'자료 확보 경로',f'{later} 증권 전달 예정')
+        else:
+            plan.text='지금은 자료를 언제 준비할 수 있을지 확답하기 어려워요. 자료 없이 오늘 확인할 수 있는 내용부터 정리하거나, 다음 상담 일정부터 정할 수는 있어요.'
+            plan.flags.add('document_delivery_uncertain')
+        return plan
+
+    if 'continue_from_memory' in move.actions:
+        plan.handled=True;state.active_topic='portfolio'
+        known=remembered_policy_names(world)
+        burden=session.facts.get('burdensome_contract')
+        premium=session.facts.get('burdensome_contract_premium_won')
+        bits=[]
+        if burden:bits.append(f'기억나는 범위에서는 {burden}이 가장 부담되고 월 {won_text(premium)} 정도로 알고 있어요')
+        if known:bits.append('기억나는 계약은 '+', '.join(known)+' 정도예요')
+        plan.text='. '.join(bits)+'. 정확한 내용은 자료를 받으면 다시 확인해야 해요.' if bits else '기억나는 내용이 많지 않아서 정확한 분석은 자료 확인이 필요해요.'
+        return plan
+
     if 'request_document_transfer' in move.actions:
         plan.handled=True;state.active_topic='document'
         if can_send_document(world):
             mark_document_shared(world);plan.flags.update({'material_consent','document_transfer_agreed','review_before_decision'});state.agreements['document_transfer']=True;state.add_contract('증권 자료를 상담사가 검토한다')
             plan.text='네, 증권 파일을 전달할 수 있어요. 어떤 방식으로 보내드리면 될까요?';_push_question(state,'transfer_method',turn,options=['message','email']);_disclose(plan,'자료 전달','증권 전달 동의 · 전달 방법 미정')
         else:
-            plan.text='지금은 제가 전체 증권을 가지고 있지 않아서 바로 보내드리기는 어려워요. 자료를 받은 뒤 전달할 수 있을지 확인해볼게요.';plan.flags.add('document_transfer_unavailable')
+            if can_send_document_later(world):
+                d=world.get('document',{});later=d.get('available_later') or '자료를 받는 대로'
+                plan.text=f'지금 바로 보내드리기는 어렵지만 {later}에는 자료를 받아서 전달할 수 있어요. 그때 보내드려도 될까요?';plan.flags.add('document_transfer_later_possible')
+            else:
+                plan.text='지금은 제가 전체 증권을 가지고 있지 않아서 바로 보내드리기는 어려워요. 자료를 받은 뒤 전달할 수 있을지 확인해볼게요.';plan.flags.add('document_transfer_unavailable')
         return plan
 
     if 'propose_analysis_followup' in move.actions:
         plan.handled=True;state.stage='ANALYSIS_HANDOFF';plan.flags.update({'review_before_decision','analysis_handoff','followup_pending'});state.add_contract('자료를 상세 분석한 뒤 후속 상담에서 다시 설명한다');state.agreements['analysis_followup']=True
         concrete_schedule=bool('schedule_followup' in move.actions and re.search(r'(다음주|이번주|월요일|화요일|수요일|목요일|금요일|토요일|일요일|주말).*(오전|오후|저녁|점심|\d+\s*시)|(?:내일|모레).*(오전|오후|저녁|점심|\d+\s*시)|(?:오전|오후|저녁|점심)\s*\d+\s*시|\d+\s*시',text))
         if concrete_schedule and _schedule_matches_availability(text,world):
-            clean=_clean_schedule_phrase(text);state.agreements['followup_schedule']=clean or text;state.metrics['followup_agreements']+=1;state.stage='COMPLETE'
-            if world.get('document',{}).get('shared') or world.get('document',{}).get('opened'):plan.flags.add('material_consent')
+            clean=_clean_schedule_phrase(text);state.agreements['followup_schedule']=clean or text;state.agreements['completion_path']='후속 상담 일정 확정' if re.search(r'상담|미팅|만나|뵙',_norm(text)) else '후속 연락 시점 확정';state.metrics['followup_agreements']+=1;state.stage='COMPLETE'
+            if world.get('document',{}).get('shared') or world.get('document',{}).get('opened') or world.get('document',{}).get('delivery_planned'):plan.flags.add('material_consent')
             plan.flags.update({'followup_agreed','followup_confirmed','closure_confirmed'});plan.terminal='mission_complete';plan.text=f"네, 그렇게 해주세요. {clean or '말씀하신 일정'}에 다시 상담하면서 분석 결과를 설명해 주세요."
         elif concrete_schedule:
             opts=list(world.get('availability',{}).get('followup_options') or []);plan.text=f"분석해서 다시 설명해 주시는 건 좋아요. 다만 그 시간은 어려워서 저는 {' 또는 '.join(opts[:2])}가 괜찮아요.";_push_question(state,'followup_schedule',turn)
-        elif world.get('document',{}).get('shared') or world.get('document',{}).get('opened'):
+        elif world.get('document',{}).get('shared') or world.get('document',{}).get('opened') or world.get('document',{}).get('delivery_planned'):
             plan.flags.add('material_consent')
             opts=list(world.get('availability',{}).get('followup_options') or [])
-            if opts:plan.text=f"네, 그렇게 해주세요. 지금 자료를 바탕으로 자세히 분석한 뒤 다시 설명해 주시면 좋겠어요. 저는 {opts[0]}나 {opts[1] if len(opts)>1 else '그 이후'}가 괜찮아요. 어느 쪽이 좋으세요?"
-            else:plan.text='네, 그렇게 해주세요. 지금 자료를 바탕으로 자세히 분석한 뒤 다시 설명해 주시면 좋겠어요. 언제 다시 상담하면 좋을까요?'
+            material_note='준비되는 증권을 전달드리기로 했으니' if world.get('document',{}).get('delivery_planned') and not world.get('document',{}).get('opened') else '지금 자료를 바탕으로'
+            if opts:plan.text=f"네, 그렇게 해주세요. {material_note} 자세히 분석한 뒤 다시 설명해 주시면 좋겠어요. 저는 {opts[0]} 또는 {opts[1] if len(opts)>1 else '그 이후'}가 괜찮아요. 어느 쪽이 좋으세요?"
+            else:plan.text=f'네, 그렇게 해주세요. {material_note} 자세히 분석한 뒤 다시 설명해 주시면 좋겠어요. 언제 다시 상담하면 좋을까요?'
             _push_question(state,'followup_schedule',turn)
         else:
             plan.text='네, 분석해서 다시 설명해 주시면 좋겠어요. 다음 상담 일정은 먼저 정할 수 있어요. 다만 상세 분석을 위해서는 증권이나 계약 자료를 추가로 전달해 주세요.'
             opts=list(world.get('availability',{}).get('followup_options') or [])
-            if opts:plan.text+=f" 저는 {opts[0]}나 {opts[1] if len(opts)>1 else '그 이후'}가 괜찮아요."
+            if opts:plan.text+=f" 저는 {opts[0]} 또는 {opts[1] if len(opts)>1 else '그 이후'}가 괜찮아요."
             _push_question(state,'followup_schedule',turn)
         _disclose(plan,'분석 합의','증권을 상세 분석한 뒤 다음 상담에서 설명하기로 동의');return plan
 
@@ -670,7 +724,7 @@ def plan_c07(session:Any,text:str,turn:int)->V5Plan:
             if not _schedule_matches_availability(text,world):
                 opts=list(world.get('availability',{}).get('followup_options') or [])
                 plan.text=f"그 시간은 조금 어려워요. 저는 {' 또는 '.join(opts[:2])}가 괜찮아요. 둘 중 하나로 정할 수 있을까요?";_push_question(state,'followup_schedule',turn);return plan
-            clean=_clean_schedule_phrase(text);state.agreements['followup_schedule']=clean or text;state.metrics['followup_agreements']+=1;state.stage='COMPLETE'
+            clean=_clean_schedule_phrase(text);state.agreements['followup_schedule']=clean or text;state.agreements['completion_path']='후속 상담 일정 확정' if re.search(r'상담|미팅|만나|뵙',_norm(text)) else '후속 연락 시점 확정';state.metrics['followup_agreements']+=1;state.stage='COMPLETE'
             plan.flags.update({'followup_agreed','followup_confirmed','closure_confirmed'});plan.terminal='mission_complete';plan.text=f"네, {clean or '말씀하신 일정'}에 다시 상담하는 걸로 할게요. 그때 증권 분석 결과를 설명해 주세요."
         else:
             opts=list(world.get('availability',{}).get('followup_options') or [])

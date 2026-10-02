@@ -3,6 +3,7 @@ from __future__ import annotations
 from decimal import Decimal, ROUND_HALF_UP
 from .content import SCENARIOS, CRITERIA, CATEGORIES, AXES
 from .engine import Session, completion_gate
+from .mission_graph_v5 import goal_status as c07_goal_status
 
 # Each group requires ALL flags. Several groups = independently observable
 # portions of the full-evidence gate. Gate source: pilot_evidence_contract V1.1.
@@ -100,6 +101,11 @@ def _v5_flow_summary(s:Session) -> dict:
         strengths.append('끊긴 대화 문맥을 다시 연결한 회복 장면이 있었습니다.')
     if m.get('followup_agreements',0)>0:
         strengths.append('후속 상담의 다음 행동을 구체적으로 합의했습니다.')
+    agreements=getattr(state,'agreements',{})
+    if agreements.get('document_delivery_later'):
+        strengths.append('증권을 즉시 확인할 수 없는 상황에서 추후 자료 확보 경로로 전환했습니다.')
+    if agreements.get('completion_path'):
+        strengths.append(f"최종 미션을 '{agreements.get('completion_path')}' 경로로 완료했습니다.")
     if m.get('repeated_known_questions',0)>0:
         watch.append(f"이미 확인한 주제를 다시 묻는 흐름이 {m['repeated_known_questions']}회 감지되었습니다.")
     if m.get('repairs',0)>0:
@@ -148,22 +154,17 @@ def _mission_outcome(s:Session) -> dict:
             'final_goal':gate.get('final_goal','상담 목표 완료'),
             'intermediate':[],
         }
-    labels={
-        'premium':'현재 월 보험료 확인',
-        'contract':'주요·부담 계약 확인',
-        'trigger':'보험료 부담이 커진 이유 확인',
-        'preference':'유지하고 싶은 보장·조건 확인',
-        'reduction_preference':'원하는 보험료 절감 기준 확인',
-        'material_consent':'증권 확인·전달 동의',
-        'analysis_handoff':'사무실 상세 분석 합의',
-    }
-    req=list(gate.get('intermediate_required') or [])
+    status=c07_goal_status(s)
+    # The report shows every meaningful intermediate goal, not only the depth-
+    # specific scoring subset. This makes it obvious why a mission can be
+    # complete while the consultation quality still has omissions.
     return {
-        'final_complete':bool(gate.get('final_complete')),
-        'final_goal':gate.get('final_goal','다음 상담 일정 또는 후속 연락 시점 확정'),
-        'intermediate':[{'id':x,'label':labels.get(x,x),'done':x in s.flags} for x in req],
-        'followup_schedule':getattr(s,'v5_state',None).agreements.get('followup_schedule') if getattr(s,'v5_state',None) else None,
-        'note':'최종 목표 달성 여부와 상담 완성도 평가는 별개입니다. 중간 목표 일부가 누락되어도 다음 상담 일정이 확정되면 미션은 종료됩니다.',
+        'final_complete':bool(status.get('final_complete')),
+        'final_goal':status.get('final_goal','다음 상담 일정 또는 후속 연락 시점 확정'),
+        'intermediate':list(status.get('intermediate') or []),
+        'followup_schedule':status.get('followup_schedule'),
+        'completion_path':status.get('completion_path'),
+        'note':'최종 목표 달성 여부와 상담 완성도 평가는 별개입니다. 중간 목표 일부가 누락되어도 구체적인 다음 상담 일정 또는 후속 연락 시점이 확정되면 미션은 종료됩니다.',
     }
 
 

@@ -128,7 +128,7 @@ def present(app:AppState) -> dict:
              'catalog':catalog(),'scenarios':scenario_rows,
              'modes':[{'id':m['id'],'name':m['name'],'purpose':m['purpose']} for m in MODES.values()],
              'lengths':[{'id':k,**v} for k,v in SESSION_LENGTHS.items()],
-             'counts':{'types':97,'planned':194,'executable':6,'intents':110,'future_core':26},'core_structure':public_structure(),'engine_version':'V5.3 GOLDEN+C26 FOUNDATION'}
+             'counts':{'types':97,'planned':194,'executable':6,'intents':110,'future_core':26},'core_structure':public_structure(),'engine_version':'V5.4 GOAL GRAPH + ROUTE GUIDE'}
     if not s:return payload
     payload['phase']='result' if s.ended else 'session'
     messages=[{'role':'customer','text':s.opening_text or s.source['opening'],'turn':0}]

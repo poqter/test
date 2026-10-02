@@ -52,6 +52,11 @@ OBJECTIVES = {
         "situation": "고객은 현재 납입 중인 보험료가 부담되어 상담을 요청했습니다. 계약 내용은 고객의 기억과 증권 확인 수준에 따라 단계적으로 확인됩니다.",
         "final_goal": "증권을 분석해 다시 설명하기로 고객과 합의하고, 다음 상담 일정 또는 후속 연락 시점을 확정한다.",
         "completion_trigger": "followup_confirmed",
+        "valid_endings": [
+            "구체적인 다음 상담 날짜·시간 확정",
+            "구체적인 후속 연락 시점 확정",
+        ],
+        "guide_completion_rule": "GUIDE의 권장 답변만 따라가도 검증된 모든 고객 변형에서 최종 목표까지 도달해야 합니다.",
         "boundary": "오늘 바로 기존 보험을 해지하거나 새 보험을 계약하는 것이 목표가 아닙니다. 자료를 확인하기 전에는 유지·감액·해지·추가 가입을 확정하지 않습니다.",
         "intermediate_goals": [
             ["burden_reason", "보험료 부담이 커진 이유를 확인"],
@@ -296,6 +301,8 @@ def objective_for(scenario_id: str, mode: str) -> dict:
         "situation": meta.get("situation", ""),
         "final_goal": meta.get("final_goal", meta[{"GUIDE":"guide","COACH":"coach","SOLO":"solo","ASSESSMENT":"assessment"}[mode]]),
         "completion_trigger": meta.get("completion_trigger"),
+        "valid_endings": list(meta.get("valid_endings", [])),
+        "guide_completion_rule": meta.get("guide_completion_rule", ""),
         "boundary": meta.get("boundary", ""),
         "intermediate_goals": list(meta.get("intermediate_goals", [])),
         "guide_points": list(meta.get("guide_points", [])) if mode == "GUIDE" else [],
