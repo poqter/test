@@ -9,3 +9,4 @@ pdfplumber==0.11.8
 reportlab==4.4.9
 pypdf==6.10.0
 altair==6.3.0
+requests==2.32.5

@@ -9,6 +9,7 @@ import streamlit as st
 from modules.shell.app_registry import APP_BY_ID, SEARCH_ALIASES, AppSpec
 from modules.resources.insurer_portal import render_home_quick_search
 from modules.shared.external_apps import external_app_url
+from modules.shared.hwarang_auth import HwarangAuthError, HwarangAuthService, SupabaseConfig
 
 _ICONS = {
     "family": '<svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><circle cx="17" cy="8" r="2.5"/><path d="M3 21v-2a6 6 0 0 1 12 0v2M16 14a5 5 0 0 1 5 5v2"/></svg>',
@@ -32,10 +33,24 @@ _ICONS = {
 
 
 
+def _academy_launch_url() -> str:
+    target = external_app_url("academy_url")
+    state = st.session_state.get("hwarang_auth") or {}
+    profile = state.get("profile") or {}
+    uid = str(profile.get("id") or "")
+    if not (target and uid):
+        return ""
+    try:
+        auth = HwarangAuthService(SupabaseConfig.from_mapping(st.secrets))
+        return auth.create_launch_ticket(user_id=uid, target_app="academy", target_url=target)
+    except HwarangAuthError:
+        return ""
+
+
 def _launch_widget(app: AppSpec, label: str, *, key: str, primary: bool = False, help_text: str | None = None) -> bool:
     """Render an internal navigation button or a separate-app new-tab link."""
     if app.external_app_key:
-        url = external_app_url(app.external_app_key)
+        url = _academy_launch_url() if app.id == "academy" else external_app_url(app.external_app_key)
         st.link_button(
             label + " ↗",
             url or "https://example.invalid",
@@ -118,7 +133,12 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
             usage_dialog()
         if st.button("최근 업데이트", icon=":material/history:", key="sig_update", use_container_width=True):
             notice_dialog(notice)
-        st.caption("접속 계정 · " + str(st.session_state.get("login_user", "")))
+        profile = st.session_state.get("login_profile") or {}
+        account_name = str(profile.get("display_name") or profile.get("login_id") or "")
+        account_meta = " · ".join(
+            item for item in (str(profile.get("organization_name") or ""), str(profile.get("position_name") or "")) if item
+        )
+        st.caption("접속 계정 · " + account_name + ((" · " + account_meta) if account_meta else ""))
         if st.button("로그아웃", icon=":material/logout:", key="v2_logout", use_container_width=True):
             logout()
         st.caption("Planned & Built by 박병선 팀장")

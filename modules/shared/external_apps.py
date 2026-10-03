@@ -39,3 +39,7 @@ def calculator_url() -> str:
 
 def academy_url() -> str:
     return external_app_url("academy_url")
+
+
+def workspace_url() -> str:
+    return external_app_url("workspace_url")

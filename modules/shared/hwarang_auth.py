@@ -1,0 +1,411 @@
+"""Shared Supabase authentication for the HWARANG platform.
+
+WORKSPACE is the primary sign-in surface. Other HWARANG apps receive a short-
+lived, one-time launch ticket and never receive a password or Supabase secret.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from hashlib import sha256
+import re
+import secrets as pysecrets
+import time
+from typing import Any
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+import requests
+
+
+_ID_RE = re.compile(r"^[A-Za-z0-9._-]{3,32}$")
+_EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+_WORKSPACE_ROLES = {"Admin", "Manager1", "Basic", "Crew", "Dream"}
+
+
+class HwarangAuthError(RuntimeError):
+    """User-safe authentication error."""
+
+
+@dataclass(frozen=True)
+class SupabaseConfig:
+    url: str
+    publishable_key: str
+    secret_key: str
+
+    @classmethod
+    def from_mapping(cls, secrets: Any) -> "SupabaseConfig":
+        try:
+            nested = secrets.get("supabase", {}) if hasattr(secrets, "get") else {}
+            url = str(secrets.get("SUPABASE_URL", nested.get("url", ""))).strip()
+            publishable = str(
+                secrets.get("SUPABASE_PUBLISHABLE_KEY", nested.get("publishable_key", ""))
+            ).strip()
+            secret = str(secrets.get("SUPABASE_SECRET_KEY", nested.get("secret_key", ""))).strip()
+        except (FileNotFoundError, KeyError):
+            url = publishable = secret = ""
+        if not (url and publishable and secret):
+            raise HwarangAuthError("HWARANG 계정 연결 정보가 설정되지 않았습니다.")
+        if not url.startswith(("https://", "http://")):
+            raise HwarangAuthError("Supabase URL 형식을 확인해 주세요.")
+        return cls(url=url.rstrip("/"), publishable_key=publishable, secret_key=secret)
+
+
+class HwarangAuthService:
+    """Server-side client for Supabase Auth, profile data and app handoff."""
+
+    def __init__(self, config: SupabaseConfig, timeout: float = 12.0):
+        self.config = config
+        self.timeout = timeout
+        self.http = requests.Session()
+
+    def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        admin: bool = False,
+        access_token: str | None = None,
+        params: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+        prefer: str | None = None,
+    ) -> Any:
+        key = self.config.secret_key if admin else self.config.publishable_key
+        headers = {"apikey": key, "Accept": "application/json"}
+        if json is not None:
+            headers["Content-Type"] = "application/json"
+        if access_token:
+            headers["Authorization"] = f"Bearer {access_token}"
+        if prefer:
+            headers["Prefer"] = prefer
+        try:
+            response = self.http.request(
+                method,
+                self.config.url + path,
+                headers=headers,
+                params=params,
+                json=json,
+                timeout=self.timeout,
+            )
+        except requests.RequestException as exc:
+            raise HwarangAuthError("계정 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.") from exc
+        if 200 <= response.status_code < 300:
+            if not response.content:
+                return None
+            try:
+                return response.json()
+            except ValueError:
+                return response.text
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = {"message": response.text}
+        message = ""
+        if isinstance(payload, dict):
+            message = str(
+                payload.get("msg")
+                or payload.get("message")
+                or payload.get("error_description")
+                or payload.get("error")
+                or ""
+            )
+        raise HwarangAuthError(self._friendly_error(response.status_code, message))
+
+    @staticmethod
+    def _friendly_error(status: int, message: str) -> str:
+        low = message.lower()
+        if "invalid login credentials" in low or "invalid_credentials" in low:
+            return "아이디 또는 비밀번호를 확인해 주세요."
+        if "email" in low and ("already" in low or "registered" in low or "exists" in low):
+            return "이미 가입된 이메일입니다. 로그인하거나 다른 이메일을 사용해 주세요."
+        if "login_id_already_exists" in low or "duplicate" in low:
+            return "이미 사용 중인 아이디입니다."
+        if "invalid_join_code" in low or "organization_not_allowed" in low:
+            return "가입코드 또는 선택한 소속을 확인해 주세요."
+        if "password" in low and ("weak" in low or "short" in low or "length" in low):
+            return "비밀번호가 보안 기준을 충족하지 않습니다. 더 길고 복잡하게 입력해 주세요."
+        if status == 429:
+            return "요청이 잠시 많습니다. 잠시 후 다시 시도해 주세요."
+        if status >= 500:
+            return "계정 서버 처리 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요."
+        return message or "요청을 처리하지 못했습니다. 입력 내용을 확인해 주세요."
+
+    # ---------- profile / organization ----------
+    def _profile_by_login_id(self, login_id: str) -> dict[str, Any] | None:
+        target = login_id.strip().casefold()
+        rows = self._request(
+            "GET",
+            "/rest/v1/profiles",
+            admin=True,
+            params={
+                "select": (
+                    "id,login_id,display_name,role,is_active,position_code,"
+                    "organization_unit_id,workspace_role"
+                ),
+                "login_id": f"ilike.{login_id.strip()}",
+            },
+        )
+        if not isinstance(rows, list):
+            return None
+        return next(
+            (row for row in rows if str(row.get("login_id") or "").casefold() == target),
+            None,
+        )
+
+    def _profile_by_id(self, uid: str) -> dict[str, Any] | None:
+        rows = self._request(
+            "GET",
+            "/rest/v1/profiles",
+            admin=True,
+            params={
+                "select": (
+                    "id,login_id,display_name,role,is_active,position_code,"
+                    "organization_unit_id,workspace_role"
+                ),
+                "id": f"eq.{uid}",
+                "limit": "1",
+            },
+        )
+        return rows[0] if isinstance(rows, list) and rows else None
+
+    def _enrich_profile(self, profile: dict[str, Any]) -> dict[str, Any]:
+        result = dict(profile)
+        position_code = profile.get("position_code")
+        org_id = profile.get("organization_unit_id")
+        if position_code:
+            rows = self._request(
+                "GET",
+                "/rest/v1/positions",
+                admin=True,
+                params={"select": "display_name", "code": f"eq.{position_code}", "limit": "1"},
+            )
+            result["position_name"] = rows[0]["display_name"] if rows else None
+        if org_id:
+            rows = self._request(
+                "GET",
+                "/rest/v1/organization_units",
+                admin=True,
+                params={"select": "name,code,parent_id", "id": f"eq.{org_id}", "limit": "1"},
+            )
+            if rows:
+                result["organization_name"] = rows[0]["name"]
+                result["organization_code"] = rows[0]["code"]
+        return result
+
+    @staticmethod
+    def workspace_permission_role(profile: dict[str, Any]) -> str:
+        """Bridge the unified account to the current WORKSPACE permission registry."""
+        if str(profile.get("role") or "") == "super_admin":
+            return "Admin"
+        value = str(profile.get("workspace_role") or "Basic")
+        return value if value in _WORKSPACE_ROLES else "Basic"
+
+    def login_id_available(self, login_id: str) -> bool:
+        login_id = login_id.strip()
+        if not _ID_RE.fullmatch(login_id):
+            return False
+        return self._profile_by_login_id(login_id) is None
+
+    def joinable_branches(self, join_code: str) -> list[dict[str, str]]:
+        code = join_code.strip()
+        if not code:
+            return []
+        rows = self._request(
+            "POST",
+            "/rest/v1/rpc/get_joinable_branches",
+            admin=False,
+            json={"p_code": code},
+        )
+        if not isinstance(rows, list):
+            return []
+        return [
+            {
+                "code": str(row.get("organization_code", "")),
+                "name": str(row.get("organization_name", "")),
+                "parent": str(row.get("parent_name", "")),
+            }
+            for row in rows
+            if row.get("organization_code") and row.get("organization_name")
+        ]
+
+    # ---------- authentication ----------
+    def _auth_user_by_id(self, uid: str) -> dict[str, Any]:
+        data = self._request("GET", f"/auth/v1/admin/users/{uid}", admin=True)
+        if isinstance(data, dict) and isinstance(data.get("user"), dict):
+            return data["user"]
+        return data if isinstance(data, dict) else {}
+
+    def sign_in(self, login_id: str, password: str) -> dict[str, Any]:
+        login_id = login_id.strip()
+        if not login_id or not password:
+            raise HwarangAuthError("아이디와 비밀번호를 입력해 주세요.")
+        profile = self._profile_by_login_id(login_id)
+        if not profile or not profile.get("is_active"):
+            raise HwarangAuthError("아이디 또는 비밀번호를 확인해 주세요.")
+        auth_user = self._auth_user_by_id(str(profile["id"]))
+        email = str(auth_user.get("email") or "").strip()
+        if not email:
+            raise HwarangAuthError("계정 인증정보를 확인할 수 없습니다. 관리자에게 문의해 주세요.")
+        token = self._request(
+            "POST",
+            "/auth/v1/token",
+            admin=False,
+            params={"grant_type": "password"},
+            json={"email": email, "password": password},
+        )
+        if not isinstance(token, dict) or not token.get("access_token"):
+            raise HwarangAuthError("로그인 정보를 확인하지 못했습니다.")
+        expires_in = int(token.get("expires_in") or 3600)
+        return {
+            "access_token": token["access_token"],
+            "refresh_token": token.get("refresh_token", ""),
+            "expires_at": int(token.get("expires_at") or (time.time() + expires_in)),
+            "profile": self._enrich_profile(profile),
+        }
+
+    def refresh(self, auth_state: dict[str, Any]) -> dict[str, Any]:
+        refresh_token = str(auth_state.get("refresh_token") or "")
+        if not refresh_token:
+            return auth_state
+        if int(auth_state.get("expires_at") or 0) > int(time.time()) + 120:
+            return auth_state
+        token = self._request(
+            "POST",
+            "/auth/v1/token",
+            admin=False,
+            params={"grant_type": "refresh_token"},
+            json={"refresh_token": refresh_token},
+        )
+        if not isinstance(token, dict) or not token.get("access_token"):
+            raise HwarangAuthError("로그인 시간이 만료되었습니다. 다시 로그인해 주세요.")
+        updated = dict(auth_state)
+        updated.update(
+            access_token=token["access_token"],
+            refresh_token=token.get("refresh_token") or refresh_token,
+            expires_at=int(token.get("expires_at") or (time.time() + int(token.get("expires_in") or 3600))),
+        )
+        return updated
+
+    def sign_up(
+        self,
+        *,
+        login_id: str,
+        password: str,
+        display_name: str,
+        email: str,
+        join_code: str,
+        organization_code: str,
+    ) -> dict[str, Any]:
+        login_id = login_id.strip()
+        display_name = display_name.strip()
+        email = email.strip().lower()
+        join_code = join_code.strip()
+        organization_code = organization_code.strip()
+        if not _ID_RE.fullmatch(login_id):
+            raise HwarangAuthError("아이디는 영문·숫자·점·밑줄·하이픈으로 3~32자까지 사용할 수 있습니다.")
+        if not (1 <= len(display_name) <= 60):
+            raise HwarangAuthError("이름을 입력해 주세요.")
+        if not _EMAIL_RE.fullmatch(email):
+            raise HwarangAuthError("이메일 주소를 확인해 주세요.")
+        if len(password) < 8 or not re.search(r"[A-Za-z]", password) or not re.search(r"\d", password):
+            raise HwarangAuthError("비밀번호는 8자 이상이며 영문과 숫자를 포함해 주세요.")
+        if not self.login_id_available(login_id):
+            raise HwarangAuthError("이미 사용 중인 아이디입니다.")
+        branches = self.joinable_branches(join_code)
+        if not branches:
+            raise HwarangAuthError("가입코드를 확인해 주세요.")
+        if organization_code not in {b["code"] for b in branches}:
+            raise HwarangAuthError("가입코드로 선택할 수 없는 소속입니다.")
+        self._request(
+            "POST",
+            "/auth/v1/admin/users",
+            admin=True,
+            json={
+                "email": email,
+                "password": password,
+                "email_confirm": True,
+                "user_metadata": {
+                    "login_id": login_id,
+                    "display_name": display_name,
+                    "organization_code": organization_code,
+                    "join_code": join_code,
+                },
+            },
+        )
+        return self.sign_in(login_id, password)
+
+    def sign_out(self, auth_state: dict[str, Any] | None) -> None:
+        if not auth_state:
+            return
+        token = str(auth_state.get("access_token") or "")
+        if not token:
+            return
+        try:
+            self._request("POST", "/auth/v1/logout", access_token=token)
+        except HwarangAuthError:
+            pass
+
+    # ---------- one-time cross-app launch ----------
+    @staticmethod
+    def _token_hash(raw_token: str) -> str:
+        return sha256(raw_token.encode("utf-8")).hexdigest()
+
+    def create_launch_ticket(
+        self,
+        *,
+        user_id: str,
+        target_app: str,
+        target_url: str,
+        ttl_seconds: int = 1800,
+    ) -> str:
+        if not target_url.startswith(("https://", "http://")):
+            raise HwarangAuthError("연결할 앱 주소가 설정되지 않았습니다.")
+        target_app = target_app.strip().lower()
+        if target_app not in {"academy", "calculator"}:
+            raise HwarangAuthError("지원하지 않는 연결 대상입니다.")
+        # Keep the table small without relying on a background scheduler.
+        cutoff = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - 7200))
+        try:
+            self._request(
+                "DELETE",
+                "/rest/v1/hwarang_app_launch_tickets",
+                admin=True,
+                params={"created_at": f"lt.{cutoff}"},
+            )
+        except HwarangAuthError:
+            pass
+        raw_token = pysecrets.token_urlsafe(32)
+        expires_at = time.strftime(
+            "%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + max(60, ttl_seconds))
+        )
+        self._request(
+            "POST",
+            "/rest/v1/hwarang_app_launch_tickets",
+            admin=True,
+            json={
+                "token_hash": self._token_hash(raw_token),
+                "user_id": user_id,
+                "target_app": target_app,
+                "expires_at": expires_at,
+            },
+            prefer="return=minimal",
+        )
+        parts = urlsplit(target_url)
+        query = dict(parse_qsl(parts.query, keep_blank_values=True))
+        query["launch"] = raw_token
+        return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
+
+    def consume_launch_ticket(self, raw_token: str, target_app: str) -> dict[str, Any]:
+        raw_token = raw_token.strip()
+        if not raw_token:
+            raise HwarangAuthError("연결 정보가 없습니다.")
+        data = self._request(
+            "POST",
+            "/rest/v1/rpc/consume_hwarang_app_launch_ticket",
+            admin=True,
+            json={"p_token_hash": self._token_hash(raw_token), "p_target_app": target_app.strip().lower()},
+        )
+        if not isinstance(data, list) or not data or not data[0].get("user_id"):
+            raise HwarangAuthError("연결 시간이 만료되었거나 이미 사용된 접근입니다. WORKSPACE에서 다시 열어 주세요.")
+        profile = self._profile_by_id(str(data[0]["user_id"]))
+        if not profile or not profile.get("is_active"):
+            raise HwarangAuthError("사용할 수 없는 계정입니다.")
+        return {"profile": self._enrich_profile(profile), "launch_authenticated": True}
