@@ -4,6 +4,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from .content import SCENARIOS, CRITERIA, CATEGORIES, AXES
 from .engine import Session, completion_gate
 from .mission_graph_v5 import goal_status as c07_goal_status
+from .training_policy_v55 import pacing as c07_pacing, loop_diagnostics as c07_loop_diagnostics, open_loops as c07_open_loops
 
 # Each group requires ALL flags. Several groups = independently observable
 # portions of the full-evidence gate. Gate source: pilot_evidence_contract V1.1.
@@ -112,6 +113,17 @@ def _v5_flow_summary(s:Session) -> dict:
         watch.append(f"대화 엔진이 의미를 확정하지 못해 복구가 필요했던 턴이 {m['repairs']}회 있었습니다. 해당 턴은 자동 오답으로 보지 않습니다.")
     if m.get('hostile_turns',0)>0:
         watch.append(f"고객이 공격적으로 받아들일 수 있는 표현 후보가 {m['hostile_turns']}회 있었습니다. 실제 문맥을 복기해 보세요.")
+    if s.scenario_id=='C07-S01':
+        pace=c07_pacing(s)
+        if pace['status']=='too_fast':
+            watch.append('최종 목표는 빠르게 달성했지만, 분석 방향을 잡기 위한 핵심 확인이 충분했는지 복기해 보세요.')
+        elif pace['status']=='long':
+            watch.append('상담이 길어졌습니다. 이미 확보한 정보를 반복하지 않았는지 확인해 보세요.')
+        loops=c07_loop_diagnostics(s)
+        if loops.get('repeated_customer_reply',0)>=3:
+            watch.append('동일한 고객 답변이 반복된 구간이 감지되었습니다. 질문을 바꾸거나 다음 단계로 전환할 수 있었습니다.')
+        if loops.get('stagnant_context_turns',0)>=4:
+            watch.append('여러 턴 동안 상담 상태가 바뀌지 않은 구간이 있었습니다. 복구 경로 선택을 확인해 보세요.')
     if not strengths and s.turns:
         strengths.append('이번 회차의 강점은 아래 평가 근거와 결정적 순간을 중심으로 확인해 주세요.')
     return {'strengths':strengths,'watch':watch,'metrics':m}
@@ -231,4 +243,7 @@ def report(s:Session) -> dict:
             'critical_moments':_critical_moments(s),
             'missed_signals':learning['missed_signals'],'unnecessary_repetition':learning['unnecessary_repetition'],'unresolved_items':learning['unresolved_items'],
             'scenario_seed':f'{s.seed:08X}','mission_outcome':mission,
+            'session_pacing':c07_pacing(s) if s.scenario_id=='C07-S01' else None,
+            'open_loops':c07_open_loops(s) if s.scenario_id=='C07-S01' else [],
+            'loop_diagnostics':c07_loop_diagnostics(s) if s.scenario_id=='C07-S01' else {},
             'certificate':False,'notice':'규칙 기반 잠정 평가입니다. 친절함·감정·전문 판단 전체를 측정하거나 공식 인증을 발급하지 않습니다.'}

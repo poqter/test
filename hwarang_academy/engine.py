@@ -18,6 +18,7 @@ from .world_v5 import build_customer_world
 from .dialogue_v5 import DialogueStateV5, plan_c07, state_snapshot
 from .director_v5 import maybe_event as maybe_v5_event
 from .mission_graph_v5 import guide_plan as c07_guide_plan, goal_status as c07_goal_status, validate_session_route
+from .training_policy_v55 import pacing as c07_pacing, loop_diagnostics as c07_loop_diagnostics, open_loops as c07_open_loops
 
 MAX_TURNS=40  # absolute safety ceiling; per-session ceiling comes from SESSION_LENGTHS
 
@@ -107,7 +108,7 @@ class Session:
     dialogue_memory: DialogueMemory = field(default_factory=DialogueMemory)
     world: dict=field(default_factory=dict)
     v5_state: DialogueStateV5=field(default_factory=DialogueStateV5)
-    scenario_version: str='5.4-goal-route-guide'
+    scenario_version: str='5.5-training-route-ownership'
     customer_seed: int|None=None
     event_log: list[dict]=field(default_factory=list)
     user_id: str|None=None
@@ -939,9 +940,13 @@ def guide(s:Session) -> dict|None:
         adequate=gp.get('adequate') or source['adequate'];avoid=source['risky']
         return {
             'hint':direction,'recommended':suggestion,'adequate':adequate,'avoid':avoid,
-            'reason':gp.get('reason') or source['reason'],'route_action':gp.get('action_id'),
+            'reason':gp.get('reason') or source['reason'],'purpose':gp.get('purpose') or gp.get('reason') or source['reason'],
+            'route_action':gp.get('action_id'),'expected_next_state':gp.get('expected_next_state'),
             'alternatives':gp.get('alternatives',[]),'rescue':bool(gp.get('rescue')),
             'route_status':gp.get('status',{}),'remaining_goal':gp.get('remaining_goal'),
+            'training_route_id':gp.get('training_route_id'),'training_route_name':gp.get('training_route_name'),
+            'meaningful_steps':gp.get('meaningful_steps'),'target_minutes':gp.get('target_minutes'),
+            'open_loops':gp.get('open_loops',[]),'loop_diagnostics':gp.get('loop_diagnostics',{}),
         }
     elif s.scenario_id in ('A01-S01','D08-S01','F07-S01','G10-S01','H10-S01'):
         sequences = {

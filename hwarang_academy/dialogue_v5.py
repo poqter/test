@@ -1,4 +1,4 @@
-"""V5 context-first dialogue state machine for the rule-based simulator.
+"""V5.5 context-first dialogue state machine for the rule-based simulator.
 
 The module does not try to understand arbitrary Korean. It resolves a bounded
 insurance-consultation world by prioritising: pending question -> active document
@@ -47,6 +47,7 @@ class DialogueStateV5:
         'context_resolutions':0,'pending_resolutions':0,'repeated_known_questions':0,
         'repairs':0,'recoveries':0,'hostile_turns':0,'followup_agreements':0,
         'detail_resolutions':0,'contract_breaches':0,'missed_signals':0,
+        'schedule_steps':0,'guide_rescues':0,
     })
 
     def top_pending(self)->PendingQuestionV5|None:
@@ -109,6 +110,44 @@ def _schedule_matches_availability(text:str,world:dict)->bool:
     proposed=next((d for d in weekdays if d in text),None)
     if not proposed:return True
     return any(proposed in opt for opt in options)
+
+def _weekday_from_text(text:str)->str|None:
+    m=re.search(r'(월요일|화요일|수요일|목요일|금요일|토요일|일요일|주말)',str(text or ''))
+    return m.group(1) if m else None
+
+def _availability_days(world:dict)->list[str]:
+    out=[]
+    for opt in list(world.get('availability',{}).get('followup_options') or []):
+        day=_weekday_from_text(opt)
+        if day and day not in out:out.append(day)
+    return out
+
+def _availability_option_for_day(world:dict,day:str|None)->str|None:
+    if not day:return None
+    return next((opt for opt in list(world.get('availability',{}).get('followup_options') or []) if day in opt),None)
+
+def _time_window_from_option(option:str|None,day:str|None=None)->str|None:
+    if not option:return None
+    txt=str(option)
+    if day and day in txt:txt=txt.split(day,1)[1].strip()
+    return txt or None
+
+def _is_exact_schedule(text:str)->bool:
+    raw=str(text or '')
+    return bool(re.search(r'(?:월요일|화요일|수요일|목요일|금요일|토요일|일요일|주말|내일|모레).*(?:오전|오후|저녁|점심|\d{1,2}\s*시)|(?:오전|오후|저녁|점심)\s*\d{1,2}\s*시',raw))
+
+def _asks_day_availability(text:str)->bool:
+    n=_norm(text)
+    return bool(re.search(r'(언제|어느날|무슨날|몇요일|어느요일|요일|날짜).*(괜찮|가능|편하|상담|미팅)|다음주.*(언제|어느|요일|날)',n))
+
+def _asks_time_availability(text:str)->bool:
+    n=_norm(text)
+    return bool(re.search(r'(몇시|몇시에|무슨시간|어느시간|시간대).*(괜찮|가능|편하)|몇시',n))
+
+def _schedule_day_proposal(text:str)->str|None:
+    day=_weekday_from_text(text)
+    if day and not _is_exact_schedule(text):return day
+    return None
 
 def _clean_schedule_phrase(text:str)->str:
     """Return the concrete time phrase rather than the learner's whole sentence.
@@ -695,46 +734,108 @@ def plan_c07(session:Any,text:str,turn:int)->V5Plan:
         return plan
 
     if 'propose_analysis_followup' in move.actions:
-        plan.handled=True;state.stage='ANALYSIS_HANDOFF';plan.flags.update({'review_before_decision','analysis_handoff','followup_pending'});state.add_contract('자료를 상세 분석한 뒤 후속 상담에서 다시 설명한다');state.agreements['analysis_followup']=True
-        concrete_schedule=bool('schedule_followup' in move.actions and re.search(r'(다음주|이번주|월요일|화요일|수요일|목요일|금요일|토요일|일요일|주말).*(오전|오후|저녁|점심|\d+\s*시)|(?:내일|모레).*(오전|오후|저녁|점심|\d+\s*시)|(?:오전|오후|저녁|점심)\s*\d+\s*시|\d+\s*시',text))
-        if concrete_schedule and _schedule_matches_availability(text,world):
-            clean=_clean_schedule_phrase(text);state.agreements['followup_schedule']=clean or text;state.agreements['completion_path']='후속 상담 일정 확정' if re.search(r'상담|미팅|만나|뵙',_norm(text)) else '후속 연락 시점 확정';state.metrics['followup_agreements']+=1;state.stage='COMPLETE'
-            if world.get('document',{}).get('shared') or world.get('document',{}).get('opened') or world.get('document',{}).get('delivery_planned'):plan.flags.add('material_consent')
-            plan.flags.update({'followup_agreed','followup_confirmed','closure_confirmed'});plan.terminal='mission_complete';plan.text=f"네, 그렇게 해주세요. {clean or '말씀하신 일정'}에 다시 상담하면서 분석 결과를 설명해 주세요."
-        elif concrete_schedule:
-            opts=list(world.get('availability',{}).get('followup_options') or []);plan.text=f"분석해서 다시 설명해 주시는 건 좋아요. 다만 그 시간은 어려워서 저는 {' 또는 '.join(opts[:2])}가 괜찮아요.";_push_question(state,'followup_schedule',turn)
-        elif world.get('document',{}).get('shared') or world.get('document',{}).get('opened') or world.get('document',{}).get('delivery_planned'):
+        plan.handled=True;state.stage='ANALYSIS_HANDOFF'
+        plan.flags.update({'review_before_decision','analysis_handoff','followup_pending'})
+        state.add_contract('자료를 상세 분석한 뒤 후속 상담에서 다시 설명한다')
+        state.agreements['analysis_followup']='accepted'
+        if world.get('document',{}).get('shared') or world.get('document',{}).get('opened') or world.get('document',{}).get('delivery_planned'):
             plan.flags.add('material_consent')
-            opts=list(world.get('availability',{}).get('followup_options') or [])
-            material_note='준비되는 증권을 전달드리기로 했으니' if world.get('document',{}).get('delivery_planned') and not world.get('document',{}).get('opened') else '지금 자료를 바탕으로'
-            if opts:plan.text=f"네, 그렇게 해주세요. {material_note} 자세히 분석한 뒤 다시 설명해 주시면 좋겠어요. 저는 {opts[0]} 또는 {opts[1] if len(opts)>1 else '그 이후'}가 괜찮아요. 어느 쪽이 좋으세요?"
-            else:plan.text=f'네, 그렇게 해주세요. {material_note} 자세히 분석한 뒤 다시 설명해 주시면 좋겠어요. 언제 다시 상담하면 좋을까요?'
-            _push_question(state,'followup_schedule',turn)
+        # If the advisor already proposed a concrete time, it may complete the
+        # mission.  Otherwise the customer only accepts the analysis/follow-up
+        # concept; they do NOT volunteer dates or times on the advisor's behalf.
+        if 'schedule_followup' in move.actions and _is_exact_schedule(text):
+            if not _schedule_matches_availability(text,world):
+                day=_weekday_from_text(text)
+                plan.text='분석해서 다시 설명해 주시는 건 좋아요. 다만 말씀하신 시간은 어렵습니다. 다른 시간을 같이 정해볼까요?'
+                state.agreements['followup_permission']=True
+                if day:state.agreements['followup_day']=day
+            else:
+                clean=_clean_schedule_phrase(text)
+                state.agreements['followup_permission']=True
+                state.agreements['followup_schedule']=clean or text
+                state.agreements['completion_path']='후속 상담 일정 확정' if re.search(r'상담|미팅|만나|뵙',_norm(text)) else '후속 연락 시점 확정'
+                state.metrics['followup_agreements']+=1;state.metrics['schedule_steps']+=1;state.stage='COMPLETE'
+                plan.flags.update({'followup_planning_started','followup_agreed','followup_confirmed','closure_confirmed'})
+                plan.terminal='mission_complete'
+                plan.text=f"네, 그렇게 해주세요. {clean or '말씀하신 일정'}에 다시 상담하면서 분석 결과를 설명해 주세요."
         else:
-            plan.text='네, 분석해서 다시 설명해 주시면 좋겠어요. 다음 상담 일정은 먼저 정할 수 있어요. 다만 상세 분석을 위해서는 증권이나 계약 자료를 추가로 전달해 주세요.'
-            opts=list(world.get('availability',{}).get('followup_options') or [])
-            if opts:plan.text+=f" 저는 {opts[0]} 또는 {opts[1] if len(opts)>1 else '그 이후'}가 괜찮아요."
-            _push_question(state,'followup_schedule',turn)
-        _disclose(plan,'분석 합의','증권을 상세 분석한 뒤 다음 상담에서 설명하기로 동의');return plan
+            state.agreements['followup_permission']=True
+            state.metrics['schedule_steps']+=1
+            plan.flags.add('followup_planning_started')
+            plan.text='네, 자세히 분석한 뒤 다시 설명해 주세요. 다음 상담 일정도 같이 정해두면 좋겠어요.'
+        _disclose(plan,'분석 합의','증권을 상세 분석한 뒤 다음 상담에서 설명하기로 동의')
+        return plan
 
     if 'schedule_followup' in move.actions:
         plan.handled=True;state.stage='FOLLOW_UP';plan.flags.add('followup_pending')
-        concrete=bool(re.search(r'(다음주|이번주|월요일|화요일|수요일|목요일|금요일|토요일|일요일|주말).*(오전|오후|저녁|점심|\d+\s*시)|(?:내일|모레).*(오전|오후|저녁|점심|\d+\s*시)|(?:오전|오후|저녁|점심)\s*\d+\s*시|\d+\s*시',text))
-        if concrete:
+        # Exact advisor proposal: customer only accepts/rejects the proposed slot.
+        if _is_exact_schedule(text):
             if not _schedule_matches_availability(text,world):
-                opts=list(world.get('availability',{}).get('followup_options') or [])
-                plan.text=f"그 시간은 조금 어려워요. 저는 {' 또는 '.join(opts[:2])}가 괜찮아요. 둘 중 하나로 정할 수 있을까요?";_push_question(state,'followup_schedule',turn);return plan
-            clean=_clean_schedule_phrase(text);state.agreements['followup_schedule']=clean or text;state.agreements['completion_path']='후속 상담 일정 확정' if re.search(r'상담|미팅|만나|뵙',_norm(text)) else '후속 연락 시점 확정';state.metrics['followup_agreements']+=1;state.stage='COMPLETE'
-            plan.flags.update({'followup_agreed','followup_confirmed','closure_confirmed'});plan.terminal='mission_complete';plan.text=f"네, {clean or '말씀하신 일정'}에 다시 상담하는 걸로 할게요. 그때 증권 분석 결과를 설명해 주세요."
-        else:
-            opts=list(world.get('availability',{}).get('followup_options') or [])
-            fallback=world.get('availability',{}).get('contact_fallback')
-            if opts:
-                choices=' 또는 '.join(opts[:2]);plan.text=f'다음 상담은 {choices}가 괜찮아요. 둘 중 편한 시간을 정해 주세요.'
-            elif fallback:
-                plan.text=f'정확한 일정은 바로 정하기 어렵지만 {fallback}에 다시 연락 주시면 일정을 확정할 수 있어요.'
-            else:plan.text='좋아요. 가능한 날짜나 시간을 정해주시면 그때 다시 확인할게요.'
-            _push_question(state,'followup_schedule',turn)
+                plan.text='그 시간은 조금 어려워요. 다른 날짜나 시간을 제안해 주실 수 있을까요?'
+                state.agreements['followup_permission']=True
+                plan.flags.add('followup_planning_started')
+                return plan
+            clean=_clean_schedule_phrase(text)
+            state.agreements['followup_permission']=True
+            state.agreements['followup_schedule']=clean or text
+            state.agreements['completion_path']='후속 상담 일정 확정' if re.search(r'상담|미팅|만나|뵙',_norm(text)) else '후속 연락 시점 확정'
+            state.metrics['followup_agreements']+=1;state.metrics['schedule_steps']+=1;state.stage='COMPLETE'
+            plan.flags.update({'followup_planning_started','followup_agreed','followup_confirmed','closure_confirmed'})
+            plan.terminal='mission_complete'
+            plan.text=f"네, {clean or '말씀하신 일정'}에 다시 상담하는 걸로 할게요. 그때 분석 결과를 설명해 주세요."
+            return plan
+
+        # "수요일 몇 시가 편하세요?" or, after day selection, "몇 시요?"
+        # Time questions must win over the broader weekday-proposal rule.
+        if _asks_time_availability(text):
+            day=_weekday_from_text(text) or state.agreements.get('followup_day')
+            if day:
+                option=_availability_option_for_day(world,day)
+                if option:
+                    tw=_time_window_from_option(option,day)
+                    state.agreements['followup_day']=day
+                    state.agreements['followup_time_window']=tw
+                    state.metrics['schedule_steps']+=1
+                    plan.flags.add('followup_time_window_shared')
+                    plan.text=f'{day}은 {tw}가 괜찮아요.'
+                    return plan
+            plan.text='먼저 가능한 요일을 정한 뒤 시간을 맞춰보면 좋겠어요.'
+            return plan
+
+        # Advisor proposes a weekday only.  Customer confirms that day but does
+        # not volunteer a time until asked.
+        proposed_day=_schedule_day_proposal(text)
+        if proposed_day and re.search(r'괜찮|어떠|가능|잡|정하',_norm(text)):
+            valid_days=_availability_days(world)
+            state.agreements['followup_permission']=True
+            if valid_days and proposed_day not in valid_days:
+                plan.text=f'{proposed_day}은 조금 어려워요. 다른 요일을 같이 정해볼까요?'
+                return plan
+            state.agreements['followup_day']=proposed_day
+            state.metrics['schedule_steps']+=1
+            plan.flags.add('followup_day_selected')
+            plan.text=f'네, {proposed_day}은 괜찮아요.'
+            return plan
+
+        # "어느 요일이 편하세요?" -> disclose days only, not full appointment.
+        if _asks_day_availability(text):
+            days=_availability_days(world)
+            state.agreements['followup_permission']=True
+            state.agreements['followup_day_options']=days
+            state.metrics['schedule_steps']+=1
+            plan.flags.update({'followup_planning_started','followup_day_options_shared'})
+            if days:
+                plan.text=f"다음 주는 {'이나 '.join(days[:2])}이 괜찮아요."
+            else:
+                plan.text='다음 주 가능한 요일은 일정을 조금 더 확인해봐야 해요.'
+            return plan
+
+        # First invitation to schedule.  Customer consents only; the advisor must
+        # ask the next question.  This prevents customer-led auto-completion.
+        state.agreements['followup_permission']=True
+        state.metrics['schedule_steps']+=1
+        plan.flags.add('followup_planning_started')
+        plan.text='네, 다음 상담 일정도 같이 정해두면 좋겠어요.'
         return plan
 
     if 'prompt_continue' in move.actions:
