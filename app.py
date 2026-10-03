@@ -180,9 +180,15 @@ def main() -> None:
         try:
             state = auth.refresh(state)
             st.session_state["hwarang_auth"] = state
+            # Periodic profile revalidation can change role/organization while
+            # the user is signed in. Keep the UI and permission bridge in sync.
+            refreshed_profile = dict(state.get("profile") or {})
+            if refreshed_profile:
+                st.session_state["login_profile"] = refreshed_profile
+                st.session_state["login_user"] = auth.workspace_permission_role(refreshed_profile)
         except HwarangAuthError:
             clear_workspace_session()
-            st.warning("로그인 시간이 만료되었습니다. 다시 로그인해 주세요.")
+            st.warning("로그인 시간이 만료되었거나 계정 권한이 변경되었습니다. 다시 로그인해 주세요.")
 
     if not render_login(auth):
         st.stop()

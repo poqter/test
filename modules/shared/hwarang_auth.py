@@ -6,6 +6,8 @@ lived, one-time launch ticket and never receive a password or Supabase secret.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
+import logging
 import re
 import time
 from typing import Any
@@ -16,7 +18,8 @@ import requests
 
 _ID_RE = re.compile(r"^[A-Za-z0-9._-]{3,32}$")
 _EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
-_WORKSPACE_ROLES = {"Admin", "Manager1", "Basic", "Crew", "Dream"}
+_LOGGER = logging.getLogger("hwarang.auth")
+_PROFILE_REFRESH_SECONDS = 300
 
 
 class HwarangAuthError(RuntimeError):
@@ -105,6 +108,15 @@ class HwarangAuthService:
                 or payload.get("error")
                 or ""
             )
+        # Keep infrastructure details in server logs, not in the user-facing UI.
+        # Never log request headers/body because they can contain credentials.
+        _LOGGER.warning(
+            "Supabase request failed: method=%s path=%s status=%s message=%s",
+            method,
+            path,
+            response.status_code,
+            message[:500],
+        )
         raise HwarangAuthError(self._friendly_error(response.status_code, message))
 
     @staticmethod
@@ -120,10 +132,18 @@ class HwarangAuthService:
             return "가입코드 또는 선택한 소속을 확인해 주세요."
         if "password" in low and ("weak" in low or "short" in low or "length" in low):
             return "비밀번호가 보안 기준을 충족하지 않습니다. 더 길고 복잡하게 입력해 주세요."
+        if status == 401:
+            return "계정 인증 연결을 확인해 주세요."
+        if status == 403:
+            return "계정 서버 접근 권한을 확인해 주세요."
+        if status == 404:
+            return "계정 서버 설정을 확인해 주세요."
         if status == 429:
             return "요청이 잠시 많습니다. 잠시 후 다시 시도해 주세요."
         if status >= 500:
             return "계정 서버 처리 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요."
+        if any(token in low for token in ("column ", "relation ", "schema ", "permission denied", "pgrst")):
+            return "계정 서버 설정을 확인해 주세요."
         return message or "요청을 처리하지 못했습니다. 입력 내용을 확인해 주세요."
 
     # ---------- profile / organization ----------
@@ -135,7 +155,7 @@ class HwarangAuthService:
             admin=True,
             params={
                 "select": (
-                    "id,login_id,display_name,role,is_active,position_code,"
+                    "id,login_id,auth_email,display_name,role,is_active,position_code,"
                     "organization_unit_id"
                 ),
                 "login_id": f"ilike.{login_id.strip()}",
@@ -155,7 +175,7 @@ class HwarangAuthService:
             admin=True,
             params={
                 "select": (
-                    "id,login_id,display_name,role,is_active,position_code,"
+                    "id,login_id,auth_email,display_name,role,is_active,position_code,"
                     "organization_unit_id"
                 ),
                 "id": f"eq.{uid}",
@@ -164,8 +184,15 @@ class HwarangAuthService:
         )
         return rows[0] if isinstance(rows, list) and rows else None
 
-    def _enrich_profile(self, profile: dict[str, Any]) -> dict[str, Any]:
+    @staticmethod
+    def _public_profile(profile: dict[str, Any]) -> dict[str, Any]:
+        """Strip server-only fields before the profile enters Streamlit session state."""
         result = dict(profile)
+        result.pop("auth_email", None)
+        return result
+
+    def _enrich_profile(self, profile: dict[str, Any]) -> dict[str, Any]:
+        result = self._public_profile(profile)
         position_code = profile.get("position_code")
         org_id = profile.get("organization_unit_id")
         if position_code:
@@ -236,6 +263,22 @@ class HwarangAuthService:
             return data["user"]
         return data if isinstance(data, dict) else {}
 
+    def _mark_login(self, uid: str) -> None:
+        """Best-effort operational metadata update; never block a valid login."""
+        try:
+            self._request(
+                "PATCH",
+                "/rest/v1/profiles",
+                admin=True,
+                params={"id": f"eq.{uid}"},
+                json={"last_login_at": datetime.now(timezone.utc).isoformat()},
+                prefer="return=minimal",
+            )
+        except HwarangAuthError:
+            # The optimization migration may not be installed yet. Authentication
+            # itself is more important than this optional management timestamp.
+            _LOGGER.info("Could not update last_login_at for user %s", uid)
+
     def sign_in(self, login_id: str, password: str) -> dict[str, Any]:
         login_id = login_id.strip()
         if not login_id or not password:
@@ -243,8 +286,13 @@ class HwarangAuthService:
         profile = self._profile_by_login_id(login_id)
         if not profile or not profile.get("is_active"):
             raise HwarangAuthError("아이디 또는 비밀번호를 확인해 주세요.")
-        auth_user = self._auth_user_by_id(str(profile["id"]))
-        email = str(auth_user.get("email") or "").strip()
+        # Fresh HWARANG schema keeps the Auth email in a server-only profile
+        # column, avoiding an extra Auth Admin request on every login.  The
+        # admin lookup remains as a compatibility fallback for older rows.
+        email = str(profile.get("auth_email") or "").strip()
+        if not email:
+            auth_user = self._auth_user_by_id(str(profile["id"]))
+            email = str(auth_user.get("email") or "").strip()
         if not email:
             raise HwarangAuthError("계정 인증정보를 확인할 수 없습니다. 관리자에게 문의해 주세요.")
         token = self._request(
@@ -257,34 +305,55 @@ class HwarangAuthService:
         if not isinstance(token, dict) or not token.get("access_token"):
             raise HwarangAuthError("로그인 정보를 확인하지 못했습니다.")
         expires_in = int(token.get("expires_in") or 3600)
+        self._mark_login(str(profile["id"]))
         return {
             "access_token": token["access_token"],
             "refresh_token": token.get("refresh_token", ""),
             "expires_at": int(token.get("expires_at") or (time.time() + expires_in)),
+            "profile_checked_at": int(time.time()),
             "profile": self._enrich_profile(profile),
         }
 
     def refresh(self, auth_state: dict[str, Any]) -> dict[str, Any]:
-        refresh_token = str(auth_state.get("refresh_token") or "")
-        if not refresh_token:
-            return auth_state
-        if int(auth_state.get("expires_at") or 0) > int(time.time()) + 120:
-            return auth_state
-        token = self._request(
-            "POST",
-            "/auth/v1/token",
-            admin=False,
-            params={"grant_type": "refresh_token"},
-            json={"refresh_token": refresh_token},
-        )
-        if not isinstance(token, dict) or not token.get("access_token"):
-            raise HwarangAuthError("로그인 시간이 만료되었습니다. 다시 로그인해 주세요.")
+        """Refresh the Auth token and periodically revalidate account access.
+
+        Profile revalidation lets role, organization and active-state changes
+        take effect without requiring a server restart while avoiding a DB call
+        on every Streamlit rerun.
+        """
         updated = dict(auth_state)
-        updated.update(
-            access_token=token["access_token"],
-            refresh_token=token.get("refresh_token") or refresh_token,
-            expires_at=int(token.get("expires_at") or (time.time() + int(token.get("expires_in") or 3600))),
-        )
+        now = int(time.time())
+        refresh_token = str(updated.get("refresh_token") or "")
+
+        if refresh_token and int(updated.get("expires_at") or 0) <= now + 120:
+            token = self._request(
+                "POST",
+                "/auth/v1/token",
+                admin=False,
+                params={"grant_type": "refresh_token"},
+                json={"refresh_token": refresh_token},
+            )
+            if not isinstance(token, dict) or not token.get("access_token"):
+                raise HwarangAuthError("로그인 시간이 만료되었습니다. 다시 로그인해 주세요.")
+            updated.update(
+                access_token=token["access_token"],
+                refresh_token=token.get("refresh_token") or refresh_token,
+                expires_at=int(
+                    token.get("expires_at")
+                    or (time.time() + int(token.get("expires_in") or 3600))
+                ),
+            )
+
+        last_check = int(updated.get("profile_checked_at") or 0)
+        profile = updated.get("profile") if isinstance(updated.get("profile"), dict) else {}
+        uid = str(profile.get("id") or "")
+        if uid and now - last_check >= _PROFILE_REFRESH_SECONDS:
+            latest = self._profile_by_id(uid)
+            if not latest or not latest.get("is_active"):
+                raise HwarangAuthError("사용할 수 없는 계정입니다. 관리자에게 문의해 주세요.")
+            updated["profile"] = self._enrich_profile(latest)
+            updated["profile_checked_at"] = now
+
         return updated
 
     def sign_up(

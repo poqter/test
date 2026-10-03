@@ -24,7 +24,14 @@ st.set_page_config(
 
 @lru_cache(maxsize=1)
 def component():
-    return components.declare_component("hwarang_academy_v59", path=str(ROOT / "frontend"))
+    return components.declare_component("hwarang_academy_v60", path=str(ROOT / "frontend"))
+
+
+@lru_cache(maxsize=1)
+def validate_academy_content() -> bool:
+    """Validate static ACADEMY content once per process instead of every rerun."""
+    validate_content()
+    return True
 
 
 @st.cache_resource(show_spinner=False)
@@ -111,6 +118,15 @@ def base_url() -> str:
     return ""
 
 
+def _remove_query_param(key: str) -> None:
+    """Remove one query parameter while preserving future ACADEMY deep links."""
+    try:
+        if key in st.query_params:
+            del st.query_params[key]
+    except (AttributeError, KeyError, TypeError):
+        pass
+
+
 def _consume_workspace_launch(auth: AcademyAuthService) -> dict | None:
     state = st.session_state.get("_hwarang_launch_identity")
     if state:
@@ -121,12 +137,13 @@ def _consume_workspace_launch(auth: AcademyAuthService) -> dict | None:
     try:
         state = auth.consume_launch_ticket(raw, "academy")
     except AcademyAuthError as exc:
-        st.query_params.clear()
+        _remove_query_param("launch")
         render_workspace_gate(str(exc))
         st.stop()
     st.session_state["_hwarang_launch_identity"] = state
-    # A consumed one-time token must not remain in browser history/query state.
-    st.query_params.clear()
+    # Remove only the one-time credential.  Scenario/view parameters are kept
+    # so future WORKSPACE deep links can open the intended ACADEMY destination.
+    _remove_query_param("launch")
     return state
 
 
@@ -142,7 +159,7 @@ def main() -> None:
         render_workspace_gate()
         return
 
-    validate_content()
+    validate_academy_content()
     independent = st.query_params.get("view") == "simulator"
     sid = st.query_params.get("scenario", "C07-S01")
     mode = st.query_params.get("mode", "GUIDE")

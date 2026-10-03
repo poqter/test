@@ -55,7 +55,16 @@ def _transient_draft_key(key: str) -> bool:
     )
 
 
-_AUTH_KEYS = frozenset({"password_correct", "login_user", "active_app"})
+_AUTH_KEYS = frozenset({
+    # Unified HWARANG authentication state must survive "reset all work".
+    # Keeping only the old compatibility flags could leave the UI in a
+    # half-authenticated state after a reset.
+    "password_correct",
+    "login_user",
+    "login_profile",
+    "hwarang_auth",
+    "active_app",
+})
 
 
 def _state(state: MutableMapping[str, Any] | None) -> MutableMapping[str, Any]:

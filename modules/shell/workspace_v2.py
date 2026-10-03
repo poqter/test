@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import html
+import time
 from typing import Callable
 
 import streamlit as st
@@ -33,18 +34,49 @@ _ICONS = {
 
 
 
+_ACADEMY_LAUNCH_CACHE_SECONDS = 2.0
+
+
 def _academy_launch_url() -> str:
+    """Return a short-lived ACADEMY launch URL without duplicate issuance.
+
+    The ACADEMY link is rendered in more than one WORKSPACE location.  Reusing
+    the same URL for a couple of seconds prevents one Streamlit render from
+    creating multiple one-time tickets while keeping the consumed-ticket window
+    short enough that a later visit receives a fresh credential.
+    """
     target = external_app_url("academy_url")
     state = st.session_state.get("hwarang_auth") or {}
     profile = state.get("profile") or {}
     uid = str(profile.get("id") or "")
     if not (target and uid):
         return ""
+
+    cache_key = "hw.external_launch.academy"
+    now = time.time()
+    cached = st.session_state.get(cache_key)
+    if isinstance(cached, dict):
+        if (
+            cached.get("user_id") == uid
+            and cached.get("target") == target
+            and now - float(cached.get("issued_at") or 0) < _ACADEMY_LAUNCH_CACHE_SECONDS
+        ):
+            return str(cached.get("url") or "")
+
     try:
         auth = HwarangAuthService(SupabaseConfig.from_mapping(st.secrets))
-        return auth.create_launch_ticket(user_id=uid, target_app="academy", target_url=target)
+        url = auth.create_launch_ticket(user_id=uid, target_app="academy", target_url=target)
     except HwarangAuthError:
+        st.session_state.pop(cache_key, None)
         return ""
+
+    st.session_state[cache_key] = {
+        "user_id": uid,
+        "target": target,
+        "url": url,
+        "issued_at": now,
+    }
+    return url
 
 
 def _launch_widget(app: AppSpec, label: str, *, key: str, primary: bool = False, help_text: str | None = None) -> bool:
