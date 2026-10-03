@@ -23,7 +23,7 @@ st.set_page_config(
 @lru_cache(maxsize=1)
 def component():
     # Version the component name so Community Cloud does not retain an older front-end bundle.
-    return components.declare_component("hwarang_academy_v56", path=str(ROOT / "frontend"))
+    return components.declare_component("hwarang_academy_v57", path=str(ROOT / "frontend"))
 
 
 def _secret_bool(name: str, default: bool = False) -> bool:
@@ -122,8 +122,8 @@ def render_auth_page(auth: AcademyAuthService) -> None:
         with left:
             st.markdown('<div class="academy-auth-panel-title">ACADEMY 로그인</div><p class="academy-auth-panel-copy">화랑 아이디와 비밀번호를 입력해 주세요.</p>', unsafe_allow_html=True)
             with st.form("academy_login_form", clear_on_submit=False):
-                login_id = st.text_input("아이디", placeholder="예: rockexe", key="academy_login_id")
-                password = st.text_input("비밀번호", type="password", placeholder="비밀번호 입력", key="academy_login_password")
+                login_id = st.text_input("아이디", placeholder="아이디", key="academy_login_id")
+                password = st.text_input("비밀번호", type="password", placeholder="비밀번호", key="academy_login_password")
                 submitted = st.form_submit_button("로그인", type="primary", use_container_width=True)
             if submitted:
                 try:
@@ -139,7 +139,7 @@ def render_auth_page(auth: AcademyAuthService) -> None:
                 <b>처음 방문하셨나요?</b><br><br>
                 회원가입 탭에서 본인의 아이디와 비밀번호를 직접 만들 수 있습니다.<br>
                 화랑 가입코드를 확인한 뒤 현재 소속 지점을 선택하면 기본 직책은 FP로 등록됩니다.<br><br>
-                향후 비밀번호 재설정과 관리자 승인 기능도 이 계정 체계에 연결됩니다.
+                가입 후 같은 아이디와 비밀번호로 ACADEMY의 모든 교육 기능을 이용할 수 있습니다.
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -149,7 +149,7 @@ def render_auth_page(auth: AcademyAuthService) -> None:
         st.markdown('<div class="academy-auth-panel-title">화랑 ACADEMY 회원가입</div><p class="academy-auth-panel-copy">가입코드를 먼저 확인하면 선택 가능한 소속이 표시됩니다.</p>', unsafe_allow_html=True)
         code_col, verify_col = st.columns([4, 1.15], vertical_alignment="bottom")
         with code_col:
-            join_code = st.text_input("화랑 가입코드", type="password", placeholder="가입코드 입력", key="academy_signup_join_code")
+            join_code = st.text_input("화랑 가입코드", placeholder="가입코드", key="academy_signup_join_code")
         with verify_col:
             verify = st.button("코드 확인", type="secondary", use_container_width=True, key="academy_verify_join_code")
         if verify:
@@ -309,7 +309,7 @@ def main() -> None:
         )
     }
 
-    event = component()(model=payload, key="academy_engine_component_v56", default=None)
+    event = component()(model=payload, key="academy_engine_component_v57", default=None)
     if isinstance(event, dict) and event.get("event_id") != app.ack:
         if event.get("kind") == "auth_logout":
             _logout(auth)

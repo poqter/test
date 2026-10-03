@@ -33,7 +33,16 @@ def handle(app:AppState,action:dict) -> dict:
         app.ack=eid;return present(app)
     kind=action.get('kind','')
     try:
-        if kind=='configure':
+        if kind=='open_simulator':
+            sid=action.get('scenario_id',app.selection)
+            if sid not in SCENARIOS:raise ValueError('사용할 수 없는 시나리오입니다.')
+            if not app.session or app.session.ended:
+                app.selection=sid
+            app.independent=True
+        elif kind=='academy_home':
+            # ACADEMY 홈으로 돌아가도 진행 중 상담 상태는 메모리에 유지합니다.
+            app.independent=False
+        elif kind=='configure':
             if app.session and not app.session.ended:raise ValueError('진행 중인 상담에서는 훈련 설정을 바꿀 수 없습니다.')
             sid=action.get('scenario_id',app.selection);mode=action.get('mode',app.mode);length=action.get('session_length',app.session_length)
             if sid not in SCENARIOS or mode not in MODES or length not in SESSION_LENGTHS:raise ValueError('사용할 수 없는 시나리오·모드·훈련 길이입니다.')
@@ -129,6 +138,22 @@ def present(app:AppState) -> dict:
              'modes':[{'id':m['id'],'name':m['name'],'purpose':m['purpose']} for m in MODES.values()],
              'lengths':[{'id':k,**v} for k,v in SESSION_LENGTHS.items()],
              'counts':{'types':97,'planned':194,'executable':6,'intents':110,'future_core':26},'core_structure':public_structure(),'engine_version':'V5.5 TRAINING ROUTE + TURN OWNERSHIP'}
+    if s:
+        payload['simulator_status']={
+            'has_session':True,
+            'ended':s.ended,
+            'title':s.source['name'],
+            'scenario_id':s.scenario_id,
+            'mode':s.mode,
+            'session_length':s.session_length,
+            'end_reason':s.end_reason,
+        }
+    else:
+        payload['simulator_status']={'has_session':False}
+
+    # ACADEMY 홈과 상담 시뮬레이터는 같은 로그인 세션 안에서 내부 전환합니다.
+    # 홈으로 돌아갈 때 진행 중 상담 객체는 보존하고, 화면만 ACADEMY 홈으로 표시합니다.
+    if not app.independent:return payload
     if not s:return payload
     payload['phase']='result' if s.ended else 'session'
     messages=[{'role':'customer','text':s.opening_text or s.source['opening'],'turn':0}]
