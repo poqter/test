@@ -6,9 +6,7 @@ lived, one-time launch ticket and never receive a password or Supabase secret.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from hashlib import sha256
 import re
-import secrets as pysecrets
 import time
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
@@ -138,7 +136,7 @@ class HwarangAuthService:
             params={
                 "select": (
                     "id,login_id,display_name,role,is_active,position_code,"
-                    "organization_unit_id,workspace_role"
+                    "organization_unit_id"
                 ),
                 "login_id": f"ilike.{login_id.strip()}",
             },
@@ -158,7 +156,7 @@ class HwarangAuthService:
             params={
                 "select": (
                     "id,login_id,display_name,role,is_active,position_code,"
-                    "organization_unit_id,workspace_role"
+                    "organization_unit_id"
                 ),
                 "id": f"eq.{uid}",
                 "limit": "1",
@@ -192,11 +190,16 @@ class HwarangAuthService:
 
     @staticmethod
     def workspace_permission_role(profile: dict[str, Any]) -> str:
-        """Bridge the unified account to the current WORKSPACE permission registry."""
-        if str(profile.get("role") or "") == "super_admin":
+        """Bridge HWARANG Fresh v1 accounts to the current WORKSPACE registry.
+
+        Fresh v1 deliberately removed the legacy ``profiles.workspace_role`` column.
+        System administrators receive the WORKSPACE Admin bundle; other users use
+        the conservative Basic bundle until feature-level permissions are migrated.
+        """
+        system_role = str(profile.get("role") or "").strip().lower()
+        if system_role in {"super_admin", "admin"}:
             return "Admin"
-        value = str(profile.get("workspace_role") or "Basic")
-        return value if value in _WORKSPACE_ROLES else "Basic"
+        return "Basic"
 
     def login_id_available(self, login_id: str) -> bool:
         login_id = login_id.strip()
@@ -323,6 +326,7 @@ class HwarangAuthService:
                 "password": password,
                 "email_confirm": True,
                 "user_metadata": {
+                    "signup_mode": "hwarang_self_signup",
                     "login_id": login_id,
                     "display_name": display_name,
                     "organization_code": organization_code,
@@ -344,68 +348,116 @@ class HwarangAuthService:
             pass
 
     # ---------- one-time cross-app launch ----------
-    @staticmethod
-    def _token_hash(raw_token: str) -> str:
-        return sha256(raw_token.encode("utf-8")).hexdigest()
-
     def create_launch_ticket(
         self,
         *,
         user_id: str,
         target_app: str,
         target_url: str,
-        ttl_seconds: int = 1800,
+        ttl_seconds: int = 60,
     ) -> str:
+        """Issue a one-time launch ticket through the Fresh-v1 database RPC.
+
+        The database owns the TTL (60 seconds). ``ttl_seconds`` is retained only
+        for compatibility with existing callers and is intentionally ignored.
+        """
         if not target_url.startswith(("https://", "http://")):
             raise HwarangAuthError("연결할 앱 주소가 설정되지 않았습니다.")
+
         target_app = target_app.strip().lower()
-        if target_app not in {"academy", "calculator"}:
+        if target_app not in {"academy", "calculator", "workspace"}:
             raise HwarangAuthError("지원하지 않는 연결 대상입니다.")
-        # Keep the table small without relying on a background scheduler.
-        cutoff = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - 7200))
-        try:
-            self._request(
-                "DELETE",
-                "/rest/v1/hwarang_app_launch_tickets",
-                admin=True,
-                params={"created_at": f"lt.{cutoff}"},
-            )
-        except HwarangAuthError:
-            pass
-        raw_token = pysecrets.token_urlsafe(32)
-        expires_at = time.strftime(
-            "%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + max(60, ttl_seconds))
-        )
-        self._request(
+
+        data = self._request(
             "POST",
-            "/rest/v1/hwarang_app_launch_tickets",
+            "/rest/v1/rpc/issue_hwarang_app_launch_ticket",
             admin=True,
             json={
-                "token_hash": self._token_hash(raw_token),
-                "user_id": user_id,
-                "target_app": target_app,
-                "expires_at": expires_at,
+                "p_user_id": user_id,
+                "p_target_app": target_app,
             },
-            prefer="return=minimal",
         )
+
+        raw_token = ""
+        if isinstance(data, str):
+            raw_token = data.strip()
+        elif isinstance(data, dict):
+            raw_token = str(
+                data.get("issue_hwarang_app_launch_ticket")
+                or data.get("ticket")
+                or data.get("token")
+                or ""
+            ).strip()
+        elif isinstance(data, list) and data:
+            first = data[0]
+            if isinstance(first, str):
+                raw_token = first.strip()
+            elif isinstance(first, dict):
+                raw_token = str(
+                    first.get("issue_hwarang_app_launch_ticket")
+                    or first.get("ticket")
+                    or first.get("token")
+                    or ""
+                ).strip()
+
+        if not raw_token:
+            raise HwarangAuthError("앱 연결용 인증정보를 발급하지 못했습니다.")
+
         parts = urlsplit(target_url)
         query = dict(parse_qsl(parts.query, keep_blank_values=True))
         query["launch"] = raw_token
-        return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
+        return urlunsplit(
+            (parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment)
+        )
 
     def consume_launch_ticket(self, raw_token: str, target_app: str) -> dict[str, Any]:
         raw_token = raw_token.strip()
+        target_app = target_app.strip().lower()
+
         if not raw_token:
             raise HwarangAuthError("연결 정보가 없습니다.")
+
         data = self._request(
             "POST",
             "/rest/v1/rpc/consume_hwarang_app_launch_ticket",
             admin=True,
-            json={"p_token_hash": self._token_hash(raw_token), "p_target_app": target_app.strip().lower()},
+            json={
+                "p_ticket": raw_token,
+                "p_target_app": target_app,
+            },
         )
-        if not isinstance(data, list) or not data or not data[0].get("user_id"):
-            raise HwarangAuthError("연결 시간이 만료되었거나 이미 사용된 접근입니다. WORKSPACE에서 다시 열어 주세요.")
-        profile = self._profile_by_id(str(data[0]["user_id"]))
+
+        user_id = ""
+        if isinstance(data, str):
+            user_id = data.strip()
+        elif isinstance(data, dict):
+            user_id = str(
+                data.get("consume_hwarang_app_launch_ticket")
+                or data.get("user_id")
+                or ""
+            ).strip()
+        elif isinstance(data, list) and data:
+            first = data[0]
+            if isinstance(first, str):
+                user_id = first.strip()
+            elif isinstance(first, dict):
+                user_id = str(
+                    first.get("consume_hwarang_app_launch_ticket")
+                    or first.get("user_id")
+                    or ""
+                ).strip()
+
+        if not user_id:
+            raise HwarangAuthError(
+                "연결 시간이 만료되었거나 이미 사용된 접근입니다. WORKSPACE에서 다시 열어 주세요."
+            )
+
+        profile = self._profile_by_id(user_id)
         if not profile or not profile.get("is_active"):
             raise HwarangAuthError("사용할 수 없는 계정입니다.")
-        return {"profile": self._enrich_profile(profile), "launch_authenticated": True}
+
+        return {
+            "profile": self._enrich_profile(profile),
+            "launch_authenticated": True,
+        }
+
