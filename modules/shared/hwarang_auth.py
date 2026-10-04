@@ -19,7 +19,7 @@ import requests
 _ID_RE = re.compile(r"^[A-Za-z0-9._-]{3,32}$")
 _EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 _LOGGER = logging.getLogger("hwarang.auth")
-_PROFILE_REFRESH_SECONDS = 300
+_PROFILE_REFRESH_SECONDS = 60
 
 
 class HwarangAuthError(RuntimeError):
@@ -130,6 +130,14 @@ class HwarangAuthService:
             return "이미 사용 중인 아이디입니다."
         if "invalid_join_code" in low or "organization_not_allowed" in low:
             return "가입코드 또는 선택한 소속을 확인해 주세요."
+        if "super_admin_required" in low:
+            return "계정·권한 관리는 최고관리자만 이용할 수 있습니다."
+        if "cannot_demote_or_disable_self" in low or "cannot_disable_own_workspace" in low:
+            return "현재 최고관리자 계정의 로그인 권한은 해제할 수 없습니다."
+        if "last_super_admin_required" in low:
+            return "최소 한 명의 활성 최고관리자 계정이 필요합니다."
+        if "invalid_permission_code" in low or "invalid_app_code" in low:
+            return "권한 설정 정보를 확인해 주세요."
         if "password" in low and ("weak" in low or "short" in low or "length" in low):
             return "비밀번호가 보안 기준을 충족하지 않습니다. 더 길고 복잡하게 입력해 주세요."
         if status == 401:
@@ -228,6 +236,142 @@ class HwarangAuthService:
             return "Admin"
         return "Basic"
 
+    def app_access_for_user(self, user_id: str) -> dict[str, bool]:
+        rows = self._request(
+            "GET",
+            "/rest/v1/hwarang_app_access",
+            admin=True,
+            params={"select": "app_code,is_enabled", "user_id": f"eq.{user_id}"},
+        )
+        result = {"workspace": False, "calculator": False, "academy": False}
+        if isinstance(rows, list):
+            for row in rows:
+                code = str(row.get("app_code") or "")
+                if code in result:
+                    result[code] = bool(row.get("is_enabled"))
+        return result
+
+    def effective_permissions(self, user_id: str) -> set[str]:
+        rows = self._request(
+            "POST",
+            "/rest/v1/rpc/get_hwarang_effective_permissions",
+            admin=True,
+            json={"p_user_id": user_id},
+        )
+        if not isinstance(rows, list):
+            return set()
+        return {
+            str(row.get("permission_code") or "")
+            for row in rows
+            if isinstance(row, dict) and row.get("permission_code")
+        }
+
+    def authorization_for_user(self, user_id: str) -> dict[str, Any]:
+        return {
+            "app_access": self.app_access_for_user(user_id),
+            "feature_permissions": sorted(self.effective_permissions(user_id)),
+        }
+
+    def refresh_launch_identity(
+        self, identity: dict[str, Any], target_app: str, *, max_age_seconds: int = 60
+    ) -> dict[str, Any]:
+        updated = dict(identity or {})
+        profile = updated.get("profile") if isinstance(updated.get("profile"), dict) else {}
+        user_id = str(profile.get("id") or "")
+        if not user_id:
+            raise HwarangAuthError("로그인 정보를 확인할 수 없습니다. WORKSPACE에서 다시 열어 주세요.")
+        now = int(time.time())
+        if now - int(updated.get("identity_checked_at") or 0) < max_age_seconds:
+            return updated
+        latest = self._profile_by_id(user_id)
+        if not latest or not latest.get("is_active"):
+            raise HwarangAuthError("사용할 수 없는 계정입니다. WORKSPACE에서 다시 로그인해 주세요.")
+        authorization = self.authorization_for_user(user_id)
+        if not authorization["app_access"].get(target_app, False):
+            raise HwarangAuthError("이 계정은 해당 HWARANG 앱 이용 권한이 없습니다.")
+        updated["profile"] = self._enrich_profile(latest)
+        updated.update(authorization)
+        updated["identity_checked_at"] = now
+        return updated
+
+    def _require_super_admin(self, actor_user_id: str) -> dict[str, Any]:
+        actor = self._profile_by_id(actor_user_id)
+        if not actor or not actor.get("is_active") or actor.get("role") != "super_admin":
+            raise HwarangAuthError("계정·권한 관리는 최고관리자만 이용할 수 있습니다.")
+        return actor
+
+    def admin_list_users(self, actor_user_id: str) -> list[dict[str, Any]]:
+        self._require_super_admin(actor_user_id)
+        rows = self._request(
+            "GET", "/rest/v1/profiles_admin_view", admin=True,
+            params={"select": "*", "order": "display_name.asc.nullslast,login_id.asc"},
+        )
+        return rows if isinstance(rows, list) else []
+
+    def admin_reference_data(self, actor_user_id: str) -> dict[str, list[dict[str, Any]]]:
+        self._require_super_admin(actor_user_id)
+        positions = self._request(
+            "GET", "/rest/v1/positions", admin=True,
+            params={"select": "code,display_name,rank_order,is_active", "order": "rank_order.desc"},
+        )
+        organizations = self._request(
+            "GET", "/rest/v1/organization_units", admin=True,
+            params={"select": "id,code,name,unit_type,parent_id,is_active,sort_order", "order": "sort_order.asc,name.asc"},
+        )
+        permissions = self._request(
+            "GET", "/rest/v1/hwarang_permissions", admin=True,
+            params={"select": "permission_code,app_code,group_label,display_name,description,sort_order,default_granted,is_active", "is_active": "eq.true", "order": "sort_order.asc"},
+        )
+        return {
+            "positions": positions if isinstance(positions, list) else [],
+            "organizations": organizations if isinstance(organizations, list) else [],
+            "permissions": permissions if isinstance(permissions, list) else [],
+        }
+
+    def admin_user_snapshot(self, actor_user_id: str, target_user_id: str) -> dict[str, Any]:
+        self._require_super_admin(actor_user_id)
+        profile = self._profile_by_id(target_user_id)
+        if not profile:
+            raise HwarangAuthError("사용자 정보를 찾을 수 없습니다.")
+        authz = self.authorization_for_user(target_user_id)
+        return {"profile": self._enrich_profile(profile), **authz}
+
+    def admin_apply_user_changes(
+        self, *, actor_user_id: str, target_user_id: str, display_name: str, role: str,
+        is_active: bool, organization_unit_id: str | None, position_code: str,
+        app_access: dict[str, bool], permissions: dict[str, bool],
+    ) -> dict[str, Any]:
+        self._require_super_admin(actor_user_id)
+        self._request(
+            "POST",
+            "/rest/v1/rpc/admin_apply_hwarang_user",
+            admin=True,
+            json={
+                "p_actor_user_id": actor_user_id,
+                "p_target_user_id": target_user_id,
+                "p_display_name": display_name.strip(),
+                "p_role": role,
+                "p_is_active": bool(is_active),
+                "p_organization_unit_id": organization_unit_id,
+                "p_position_code": position_code,
+                "p_app_access": app_access,
+                "p_permissions": permissions,
+            },
+        )
+        return self.admin_user_snapshot(actor_user_id, target_user_id)
+
+    def admin_audit_log(self, actor_user_id: str, *, limit: int = 50) -> list[dict[str, Any]]:
+        self._require_super_admin(actor_user_id)
+        rows = self._request(
+            "GET", "/rest/v1/hwarang_admin_audit_log", admin=True,
+            params={
+                "select": "id,actor_user_id,target_user_id,action,details,created_at",
+                "order": "created_at.desc",
+                "limit": str(max(1, min(int(limit), 200))),
+            },
+        )
+        return rows if isinstance(rows, list) else []
+
     def login_id_available(self, login_id: str) -> bool:
         login_id = login_id.strip()
         if not _ID_RE.fullmatch(login_id):
@@ -305,13 +449,18 @@ class HwarangAuthService:
         if not isinstance(token, dict) or not token.get("access_token"):
             raise HwarangAuthError("로그인 정보를 확인하지 못했습니다.")
         expires_in = int(token.get("expires_in") or 3600)
-        self._mark_login(str(profile["id"]))
+        user_id = str(profile["id"])
+        authorization = self.authorization_for_user(user_id)
+        if not authorization["app_access"].get("workspace", False):
+            raise HwarangAuthError("이 계정은 HWARANG WORKSPACE 이용 권한이 없습니다.")
+        self._mark_login(user_id)
         return {
             "access_token": token["access_token"],
             "refresh_token": token.get("refresh_token", ""),
             "expires_at": int(token.get("expires_at") or (time.time() + expires_in)),
             "profile_checked_at": int(time.time()),
             "profile": self._enrich_profile(profile),
+            **authorization,
         }
 
     def refresh(self, auth_state: dict[str, Any]) -> dict[str, Any]:
@@ -351,7 +500,11 @@ class HwarangAuthService:
             latest = self._profile_by_id(uid)
             if not latest or not latest.get("is_active"):
                 raise HwarangAuthError("사용할 수 없는 계정입니다. 관리자에게 문의해 주세요.")
+            authorization = self.authorization_for_user(uid)
+            if not authorization["app_access"].get("workspace", False):
+                raise HwarangAuthError("이 계정은 HWARANG WORKSPACE 이용 권한이 없습니다.")
             updated["profile"] = self._enrich_profile(latest)
+            updated.update(authorization)
             updated["profile_checked_at"] = now
 
         return updated
@@ -524,9 +677,14 @@ class HwarangAuthService:
         profile = self._profile_by_id(user_id)
         if not profile or not profile.get("is_active"):
             raise HwarangAuthError("사용할 수 없는 계정입니다.")
+        authorization = self.authorization_for_user(user_id)
+        if not authorization["app_access"].get(target_app, False):
+            raise HwarangAuthError("이 계정은 해당 HWARANG 앱 이용 권한이 없습니다.")
 
         return {
             "profile": self._enrich_profile(profile),
             "launch_authenticated": True,
+            "identity_checked_at": int(time.time()),
+            **authorization,
         }
 

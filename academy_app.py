@@ -129,21 +129,26 @@ def _remove_query_param(key: str) -> None:
 
 def _consume_workspace_launch(auth: AcademyAuthService) -> dict | None:
     state = st.session_state.get("_hwarang_launch_identity")
-    if state:
-        return state
     raw = str(st.query_params.get("launch", "") or "").strip()
-    if not raw:
+    if not state and raw:
+        try:
+            state = auth.consume_launch_ticket(raw, "academy")
+        except AcademyAuthError as exc:
+            _remove_query_param("launch")
+            render_workspace_gate(str(exc))
+            st.stop()
+        st.session_state["_hwarang_launch_identity"] = state
+        # Remove only the one-time credential. Scenario/view parameters remain.
+        _remove_query_param("launch")
+    if not state:
         return None
     try:
-        state = auth.consume_launch_ticket(raw, "academy")
+        state = auth.refresh_launch_identity(state, "academy")
     except AcademyAuthError as exc:
-        _remove_query_param("launch")
+        st.session_state.pop("_hwarang_launch_identity", None)
         render_workspace_gate(str(exc))
         st.stop()
     st.session_state["_hwarang_launch_identity"] = state
-    # Remove only the one-time credential.  Scenario/view parameters are kept
-    # so future WORKSPACE deep links can open the intended ACADEMY destination.
-    _remove_query_param("launch")
     return state
 
 
@@ -160,7 +165,11 @@ def main() -> None:
         return
 
     validate_academy_content()
+    feature_permissions = set(identity.get("feature_permissions") or ())
     independent = st.query_params.get("view") == "simulator"
+    if independent and "academy.simulator" not in feature_permissions:
+        render_workspace_gate("이 계정에는 AI 상담 시뮬레이터 이용 권한이 없습니다.")
+        return
     sid = st.query_params.get("scenario", "C07-S01")
     mode = st.query_params.get("mode", "GUIDE")
     if sid not in SCENARIOS:
@@ -178,6 +187,7 @@ def main() -> None:
     payload = present(app)
     payload["base_url"] = base_url()
     payload["workspace_url"] = workspace_url()
+    payload["feature_permissions"] = sorted(feature_permissions)
     payload["viewer"] = {
         key: identity.get("profile", {}).get(key)
         for key in (
@@ -192,6 +202,8 @@ def main() -> None:
     event = component()(model=payload, key="academy_engine_component_v59", default=None)
     if isinstance(event, dict) and event.get("event_id") != app.ack:
         try:
+            if event.get("kind") == "open_simulator" and "academy.simulator" not in feature_permissions:
+                raise ValueError("AI 상담 시뮬레이터 이용 권한이 없습니다.")
             handle(app, event)
         except (ValueError, TypeError):
             app.error = "요청을 확인해 주세요."

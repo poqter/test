@@ -39,6 +39,8 @@ def initialize_state() -> None:
     st.session_state.setdefault("login_profile", None)
     st.session_state.setdefault("hwarang_auth", None)
     st.session_state.setdefault("active_app", "home")
+    st.session_state.setdefault("hw_app_access", {})
+    st.session_state.setdefault("hw_feature_permissions", set())
 
 
 def _set_authenticated(auth: HwarangAuthService, state: dict) -> None:
@@ -47,6 +49,8 @@ def _set_authenticated(auth: HwarangAuthService, state: dict) -> None:
     st.session_state["login_profile"] = profile
     st.session_state["password_correct"] = True
     st.session_state["login_user"] = auth.workspace_permission_role(profile)
+    st.session_state["hw_app_access"] = dict(state.get("app_access") or {})
+    st.session_state["hw_feature_permissions"] = set(state.get("feature_permissions") or ())
     st.session_state["active_app"] = "home"
     for key in ("hw_signup_branches", "hw_signup_verified_code"):
         st.session_state.pop(key, None)
@@ -186,6 +190,8 @@ def main() -> None:
             if refreshed_profile:
                 st.session_state["login_profile"] = refreshed_profile
                 st.session_state["login_user"] = auth.workspace_permission_role(refreshed_profile)
+                st.session_state["hw_app_access"] = dict(state.get("app_access") or {})
+                st.session_state["hw_feature_permissions"] = set(state.get("feature_permissions") or ())
         except HwarangAuthError:
             clear_workspace_session()
             st.warning("로그인 시간이 만료되었거나 계정 권한이 변경되었습니다. 다시 로그인해 주세요.")
@@ -203,10 +209,19 @@ def main() -> None:
     with st.sidebar:
         st.caption("버전 " + BUILD_ID)
         profile = st.session_state.get("login_profile") or {}
-        if profile.get("role") == "super_admin" or permission_role == "Admin":
+        if profile.get("role") == "super_admin":
+            account_admin_open = st.toggle("계정·권한 관리", key="hw_account_admin_open")
+            settings_open = st.toggle("운영 설정", key="hw_admin_settings_open")
+        elif permission_role == "Admin":
+            account_admin_open = False
             settings_open = st.toggle("운영 설정", key="hw_admin_settings_open")
         else:
+            account_admin_open = False
             settings_open = False
+    if account_admin_open:
+        from modules.shared.account_admin_ui import render as render_account_admin
+        render_account_admin(auth)
+        return
     if settings_open:
         from modules.shared.organization_ui import render as render_settings
         render_settings()

@@ -11,11 +11,41 @@ from typing import Any, Callable, MutableMapping
 import streamlit as st
 
 from modules.shell.app_registry import APP_BY_ID, APP_IDS, ROLE_PERMISSIONS
+from modules.shared.permissions import WORKSPACE_APP_PERMISSION
 from modules.shared.session_store import clear_session, save_legacy_draft
 
 
 def allowed_ids(role: str | None) -> list[str]:
-    """Return enabled pages for *role* in registry order."""
+    """Return enabled pages after platform, app and feature authorization.
+
+    When a HWARANG feature-permission set is present in session state it is the
+    authoritative user-level gate. The legacy role map remains only as a safe
+    fallback for non-authenticated tests and older local workflows.
+    """
+    feature_permissions = st.session_state.get("hw_feature_permissions")
+    app_access = st.session_state.get("hw_app_access") or {}
+
+    if feature_permissions is not None and st.session_state.get("password_correct"):
+        allowed_codes = set(feature_permissions)
+        result: list[str] = []
+        for app_id in APP_IDS:
+            spec = APP_BY_ID[app_id]
+            if not spec.enabled:
+                continue
+            if app_id == "quick_calculators":
+                if app_access.get("calculator", False):
+                    result.append(app_id)
+                continue
+            if app_id == "academy":
+                if app_access.get("academy", False):
+                    result.append(app_id)
+                continue
+            required = WORKSPACE_APP_PERMISSION.get(app_id)
+            if required is None or required in allowed_codes:
+                result.append(app_id)
+        from modules.shared.organization import permitted_tools
+        return permitted_tools(result)
+
     permitted = ROLE_PERMISSIONS.get(role or "", frozenset())
     from modules.shared.organization import permitted_tools
     return permitted_tools([app_id for app_id in APP_IDS if app_id in permitted and APP_BY_ID[app_id].enabled])

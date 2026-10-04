@@ -77,6 +77,12 @@ class AuthFlowTests(unittest.TestCase):
         def _mark_login(self, uid):
             self.marked = True
 
+        def authorization_for_user(self, uid):
+            return {
+                "app_access": {"workspace": True, "calculator": True, "academy": True},
+                "feature_permissions": ["workspace.coverage_analysis"],
+            }
+
     def test_sign_in_uses_server_profile_email_without_admin_lookup(self) -> None:
         service = self.FakeService()
         state = service.sign_in("rockexe", "password123")

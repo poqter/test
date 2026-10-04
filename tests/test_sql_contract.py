@@ -20,12 +20,18 @@ class SqlContractTests(unittest.TestCase):
             "public.academy_assessments",
             "public.academy_learning_profiles",
             "public.can_hwarang_user_view",
+            "public.hwarang_permissions",
+            "public.hwarang_user_permissions",
+            "public.hwarang_admin_audit_log",
+            "public.get_hwarang_effective_permissions",
+            "public.admin_apply_hwarang_user",
         ):
             with self.subTest(token=token):
                 self.assertIn(token, text)
 
     def test_latest_optimization_migration_exists(self) -> None:
         self.assertTrue((MIGRATIONS / "06_Platform_Update.sql").is_file())
+        self.assertTrue((MIGRATIONS / "07_Permissions_Admin.sql").is_file())
 
 
 if __name__ == "__main__":

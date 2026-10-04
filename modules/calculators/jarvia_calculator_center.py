@@ -11,6 +11,7 @@ import json
 import streamlit as st
 
 from modules.shared.ui_components import page_header
+from modules.shared.permissions import CALCULATOR_GROUP_PERMISSION
 
 CATALOG = json.loads((PROJECT_ROOT / 'FINANCIAL_CALCULATORS_CATALOG.json').read_text(encoding='utf-8'))
 GROUPS = tuple(group['group'] for group in CATALOG['groups'])
@@ -60,7 +61,18 @@ def _render(*, isolated=False, fixed_name=None):
     if notice:
         st.session_state['jc_open'] = st.session_state.get('jc_selected')
     from modules.calculators.catalog_browser import render_catalog, back_to_catalog
+    permissions = set(st.session_state.get('hw_feature_permissions') or ())
+    allowed_groups = tuple(group for group in GROUPS if CALCULATOR_GROUP_PERMISSION.get(group) in permissions)
+    allowed_items = {name: value for name, value in ITEMS.items() if value[0] in allowed_groups}
     active = fixed_name if isolated else st.session_state.get('jc_open')
+    if active and active not in allowed_items:
+        st.warning('이 계정에는 해당 계산기 분류 이용 권한이 없습니다.')
+        if not isolated:
+            st.session_state.pop('jc_open', None)
+            st.session_state.pop('jc_selected', None)
+            active = None
+        else:
+            return
     if active:
         st.iframe("""<script>(()=>{const w=window.parent,d=w.document;
         if(!w.__hwOpenCalculator)return;w.__hwOpenCalculator=false;
@@ -74,7 +86,7 @@ def _render(*, isolated=False, fixed_name=None):
     implemented = set(ITEMS)
     ready = tuple(ITEMS)
     if not active:
-        render_catalog(ITEMS, GROUPS, implemented, tags=ITEM_TAGS, ids=NAME_TO_ID)
+        render_catalog(allowed_items, allowed_groups, set(allowed_items), tags=ITEM_TAGS, ids=NAME_TO_ID)
         return
     if active in ready:
         selected = active

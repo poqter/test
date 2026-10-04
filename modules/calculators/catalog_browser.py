@@ -3,7 +3,7 @@ import hashlib
 import json
 import re
 from html import escape
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit, urlunsplit
 import streamlit as st
 from modules.calculators.ux_profiles import profile
 from modules.calculators.visuals import category_emoji, category_label, purpose_label
@@ -55,6 +55,40 @@ def calculator_deep_link(name, ids=None):
     value = (ids or {}).get(name, name)
     return '?calc=' + quote(value, safe='') + '&view=single'
 
+
+
+
+def request_new_tab(name):
+    st.session_state['jc_new_tab_request'] = name
+
+
+def prepared_new_tab_url(name, ids=None):
+    if st.session_state.get('jc_new_tab_request') != name:
+        cached = st.session_state.get('jc_new_tab_url')
+        return cached.get('url', '') if isinstance(cached, dict) and cached.get('name') == name else ''
+    st.session_state.pop('jc_new_tab_request', None)
+    identity = st.session_state.get('_hwarang_calculator_identity') or {}
+    profile = identity.get('profile') or {}
+    user_id = str(profile.get('id') or '')
+    if not user_id:
+        return ''
+    try:
+        raw = str(st.context.url)
+    except AttributeError:
+        raw = ''
+    if not raw:
+        return ''
+    parts = urlsplit(raw)
+    base = urlunsplit((parts.scheme, parts.netloc, parts.path, '', ''))
+    target = base + calculator_deep_link(name, ids)
+    try:
+        from modules.shared.hwarang_auth import HwarangAuthService, SupabaseConfig
+        auth = HwarangAuthService(SupabaseConfig.from_mapping(st.secrets))
+        url = auth.create_launch_ticket(user_id=user_id, target_app='calculator', target_url=target)
+    except Exception:
+        return ''
+    st.session_state['jc_new_tab_url'] = {'name': name, 'url': url}
+    return url
 
 def clear_calculator_query():
     try:
@@ -293,11 +327,13 @@ def render_catalog(items, groups, implemented, *, tags=None, ids=None):
                     )
                     with actions.container(key="jc_actions_"+card_key(name)):
                         st.button('현재 화면에서 열기',key=card_key(name)+'_open_here',on_click=open_calculator,args=(name,),use_container_width=True)
-                        st.markdown(
-                            f'<a class="hw-calc-new-tab" href="{calculator_deep_link(name, ids)}" '
-                            f'aria-label="{escape(name)} 새 탭으로 열기" target="_blank" rel="noopener noreferrer">새 탭으로 열기 ↗</a>',
-                            unsafe_allow_html=True,
-                        )
+                        st.button('새 탭 준비', key=card_key(name)+'_prepare_tab', on_click=request_new_tab, args=(name,), use_container_width=True)
+                        prepared_url = prepared_new_tab_url(name, ids)
+                        if prepared_url:
+                            st.markdown(
+                                f'<a class="hw-calc-new-tab" href="{escape(prepared_url)}" target="_blank" rel="noopener noreferrer">새 탭으로 열기 ↗</a>',
+                                unsafe_allow_html=True,
+                            )
     if not found:
         st.info('일치하는 계산기가 없습니다. 다른 키워드를 입력해보세요.')
     last = st.session_state.get('jc_catalog_last')

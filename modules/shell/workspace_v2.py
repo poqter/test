@@ -34,38 +34,36 @@ _ICONS = {
 
 
 
-_ACADEMY_LAUNCH_CACHE_SECONDS = 2.0
+_EXTERNAL_LAUNCH_CACHE_SECONDS = 2.0
 
 
-def _academy_launch_url() -> str:
-    """Return a short-lived ACADEMY launch URL without duplicate issuance.
-
-    The ACADEMY link is rendered in more than one WORKSPACE location.  Reusing
-    the same URL for a couple of seconds prevents one Streamlit render from
-    creating multiple one-time tickets while keeping the consumed-ticket window
-    short enough that a later visit receives a fresh credential.
-    """
-    target = external_app_url("academy_url")
+def _external_launch_url(app: AppSpec) -> str:
+    """Return a short-lived launch URL for protected HWARANG apps."""
+    if not app.external_app_key:
+        return ""
+    target = external_app_url(app.external_app_key)
+    target_app = "academy" if app.id == "academy" else "calculator" if app.id == "quick_calculators" else ""
     state = st.session_state.get("hwarang_auth") or {}
     profile = state.get("profile") or {}
     uid = str(profile.get("id") or "")
-    if not (target and uid):
+    app_access = st.session_state.get("hw_app_access") or {}
+    if not (target and uid and target_app and app_access.get(target_app, False)):
         return ""
 
-    cache_key = "hw.external_launch.academy"
+    cache_key = f"hw.external_launch.{target_app}"
     now = time.time()
     cached = st.session_state.get(cache_key)
     if isinstance(cached, dict):
         if (
             cached.get("user_id") == uid
             and cached.get("target") == target
-            and now - float(cached.get("issued_at") or 0) < _ACADEMY_LAUNCH_CACHE_SECONDS
+            and now - float(cached.get("issued_at") or 0) < _EXTERNAL_LAUNCH_CACHE_SECONDS
         ):
             return str(cached.get("url") or "")
 
     try:
         auth = HwarangAuthService(SupabaseConfig.from_mapping(st.secrets))
-        url = auth.create_launch_ticket(user_id=uid, target_app="academy", target_url=target)
+        url = auth.create_launch_ticket(user_id=uid, target_app=target_app, target_url=target)
     except HwarangAuthError:
         st.session_state.pop(cache_key, None)
         return ""
@@ -80,9 +78,9 @@ def _academy_launch_url() -> str:
 
 
 def _launch_widget(app: AppSpec, label: str, *, key: str, primary: bool = False, help_text: str | None = None) -> bool:
-    """Render an internal navigation button or a separate-app new-tab link."""
+    """Render an internal navigation button or a protected-app new-tab link."""
     if app.external_app_key:
-        url = _academy_launch_url() if app.id == "academy" else external_app_url(app.external_app_key)
+        url = _external_launch_url(app)
         st.link_button(
             label + " ↗",
             url or "https://example.invalid",

@@ -63,6 +63,8 @@ _AUTH_KEYS = frozenset({
     "login_user",
     "login_profile",
     "hwarang_auth",
+    "hw_app_access",
+    "hw_feature_permissions",
     "active_app",
 })
 
