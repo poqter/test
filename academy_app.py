@@ -210,12 +210,20 @@ def main() -> None:
             "allocation": credit_status.allocation_credits,
             "available": credit_status.available_credits,
             "remaining_percent": credit_status.remaining_percent,
+            "monthly_period": credit_status.monthly_credit_period,
+            "monthly_grant": credit_status.monthly_grant_credits,
+            "monthly_available": credit_status.monthly_available_credits,
+            "purchased_available": credit_status.purchased_available_credits,
+            "warning_percent": credit_status.remaining_warning_percent,
+            "low": credit_status.training_low,
             "service_enabled": credit_status.service_enabled,
         }
         payload["voice_usage"] = {
             "allocation_seconds": credit_status.voice_allocation_seconds,
             "available_seconds": credit_status.voice_available_seconds,
             "remaining_percent": credit_status.voice_remaining_percent,
+            "warning_percent": credit_status.remaining_warning_percent,
+            "low": credit_status.voice_low,
             "voice_enabled": credit_status.voice_enabled,
             "provider_model": "gpt-live-1",
         }

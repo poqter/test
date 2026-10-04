@@ -46,6 +46,8 @@ def initialize_state() -> None:
     st.session_state.setdefault("hw_platform_session_id", None)
     st.session_state.setdefault("hw_last_heartbeat_at", 0.0)
     st.session_state.setdefault("hw_last_activity_app", None)
+    st.session_state.setdefault("hw_admin_center_open", False)
+    st.session_state.setdefault("hw_admin_center_page", "dashboard")
 
 
 def _set_authenticated(auth: HwarangAuthService, state: dict) -> None:
@@ -221,6 +223,8 @@ def workspace_logout() -> None:
     st.session_state["hw_platform_session_id"] = None
     st.session_state["hw_last_heartbeat_at"] = 0.0
     st.session_state["hw_last_activity_app"] = None
+    st.session_state["hw_admin_center_open"] = False
+    st.session_state["hw_admin_center_page"] = "dashboard"
 
 
 def main() -> None:
@@ -275,12 +279,45 @@ def main() -> None:
     active = normalize_route(st.session_state.get("active_app"), permission_role)
     st.session_state["active_app"] = active
 
-    # Record meaningful page changes only, not every Streamlit rerun.
+    profile = st.session_state.get("login_profile") or {}
+    is_super_admin = profile.get("role") == "super_admin"
+    admin_center_open = bool(st.session_state.get("hw_admin_center_open")) and is_super_admin
+
+    # Administrator Center is a dedicated console. While it is open, replace the
+    # normal WORKSPACE sidebar instead of stacking a second navigation system on
+    # top of it.
+    if admin_center_open:
+        try:
+            from modules.shared.platform_activity import log_activity
+
+            uid = str(profile.get("id") or "")
+            if uid and st.session_state.get("hw_last_activity_app") != "__admin_center__":
+                log_activity(
+                    auth,
+                    user_id=uid,
+                    platform_session_id=st.session_state.get("hw_platform_session_id"),
+                    app_code="platform",
+                    event_code="ADMIN_CENTER_OPENED",
+                    feature_code="admin_center",
+                )
+                st.session_state["hw_last_activity_app"] = "__admin_center__"
+        except Exception:
+            pass
+
+        from modules.shared.admin_center_ui import (
+            render as render_admin_center,
+            render_sidebar as render_admin_sidebar,
+        )
+
+        render_admin_sidebar()
+        render_admin_center(auth)
+        return
+
+    # Record meaningful WORKSPACE page changes only, not every Streamlit rerun.
     if st.session_state.get("hw_last_activity_app") != active:
         try:
             from modules.shared.platform_activity import log_activity
 
-            profile = st.session_state.get("login_profile") or {}
             uid = str(profile.get("id") or "")
             if uid:
                 log_activity(
@@ -300,34 +337,11 @@ def main() -> None:
 
     with st.sidebar:
         st.caption("버전 " + BUILD_ID)
-        profile = st.session_state.get("login_profile") or {}
-        if profile.get("role") == "super_admin":
-            admin_center_open = st.toggle("관리자 센터", key="hw_admin_center_open")
-        else:
-            admin_center_open = False
-
-    if admin_center_open:
-        try:
-            from modules.shared.platform_activity import log_activity
-
-            uid = str((st.session_state.get("login_profile") or {}).get("id") or "")
-            if uid and st.session_state.get("hw_last_activity_app") != "__admin_center__":
-                log_activity(
-                    auth,
-                    user_id=uid,
-                    platform_session_id=st.session_state.get("hw_platform_session_id"),
-                    app_code="platform",
-                    event_code="ADMIN_CENTER_OPENED",
-                    feature_code="admin_center",
-                )
-                st.session_state["hw_last_activity_app"] = "__admin_center__"
-        except Exception:
-            pass
-
-        from modules.shared.admin_center_ui import render as render_admin_center
-
-        render_admin_center(auth)
-        return
+        if is_super_admin:
+            if st.button("관리자 센터 →", key="hw_open_admin_center", use_container_width=True):
+                st.session_state["hw_admin_center_open"] = True
+                st.session_state["hw_admin_center_page"] = "dashboard"
+                st.rerun()
 
     if active == "home":
         render_home(permitted, navigate, NOTICE)

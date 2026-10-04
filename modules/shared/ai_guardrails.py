@@ -1,13 +1,8 @@
 """PRE-API guardrail adapter for HWARANG ACADEMY.
 
-No OpenAI dependency is used here. This module exposes database-backed
-primitives for:
-- Training Credit (TEXT / COACH / EVALUATOR)
-- separate VOICE time allowance
-- idempotency
-- one-active-session locks
-- fail-closed runtime switches
-- usage/cost recording for the future API adapter
+No OpenAI dependency is used here. The module also exposes the V2 Training
+Credit status: monthly-free credit and purchased/permanent credit are separate
+buckets, while Voice remains a separate allowance.
 """
 from __future__ import annotations
 
@@ -20,30 +15,49 @@ from modules.shared.hwarang_auth import HwarangAuthError, HwarangAuthService
 
 @dataclass(frozen=True)
 class TrainingCreditStatus:
+    # Compatibility aggregate fields.
     allocation_credits: int = 0
     balance_credits: int = 0
     reserved_credits: int = 0
     available_credits: int = 0
     remaining_percent: float = 0.0
 
+    # V2 Training Credit buckets.
+    monthly_credit_period: str = ""
+    monthly_grant_credits: int = 0
+    monthly_balance_credits: int = 0
+    monthly_reserved_credits: int = 0
+    monthly_available_credits: int = 0
+    purchased_balance_credits: int = 0
+    purchased_reserved_credits: int = 0
+    purchased_available_credits: int = 0
+    warning_threshold_credits: int = 0
+    training_low: bool = False
+
+    # Voice remains independent from Training Credit.
     voice_allocation_seconds: int = 0
     voice_balance_seconds: int = 0
     voice_reserved_seconds: int = 0
     voice_available_seconds: int = 0
     voice_remaining_percent: float = 0.0
+    voice_low: bool = False
 
     service_enabled: bool = False
     text_enabled: bool = False
     voice_enabled: bool = False
     assessment_enabled: bool = False
+
+    # soft_limit_percent is retained only for migration-09 compatibility.
     soft_limit_percent: int = 80
+    remaining_warning_percent: int = 20
     contact_label: str = "박병선 팀장에게 이용량 추가 문의"
     contact_url: str = ""
 
     @property
     def is_configured(self) -> bool:
         return (
-            self.allocation_credits > 0
+            self.monthly_grant_credits > 0
+            or self.purchased_balance_credits > 0
             or self.voice_allocation_seconds > 0
             or self.service_enabled
         )
@@ -52,13 +66,18 @@ class TrainingCreditStatus:
     def voice_is_configured(self) -> bool:
         return self.voice_allocation_seconds > 0 or self.voice_enabled
 
+    @property
+    def total_training_available(self) -> int:
+        return max(0, int(self.available_credits))
+
 
 def credit_display_state(
     percent: float,
     *,
     allocation_credits: int = 0,
+    warning_percent: int = 20,
 ) -> tuple[str, str]:
-    """Stable user-facing status shared by Training Credit and Voice allowance."""
+    """Legacy stable percent labels retained for compatibility."""
     if allocation_credits <= 0:
         return ("이용량 미지급", "empty")
 
@@ -76,26 +95,61 @@ def credit_display_state(
     return ("이용 한도 도달", "blocked")
 
 
+def training_credit_display_state(status: TrainingCreditStatus) -> tuple[str, str]:
+    """State is based on total usable credit, not only the monthly bucket.
+
+    This prevents a false low-credit warning when monthly credit is exhausted
+    but purchased/permanent credit is still available.
+    """
+    available = max(0, int(status.available_credits))
+    base = max(0, int(status.monthly_grant_credits))
+    if available <= 0:
+        return ("이용 한도 도달", "blocked")
+
+    critical_threshold = max(1, int(base * 0.10)) if base > 0 else 0
+    if critical_threshold and available <= critical_threshold:
+        return ("이용량 추가 필요", "critical")
+    if bool(status.training_low):
+        return ("얼마 남지 않음", "warning")
+    if base > 0 and available < base:
+        return ("보통", "normal")
+    return ("여유", "good")
+
+
 def voice_display_state(
     percent: float,
     *,
     allocation_seconds: int = 0,
+    warning_percent: int = 20,
 ) -> tuple[str, str]:
-    return credit_display_state(
-        percent,
-        allocation_credits=allocation_seconds,
-    )
+    if allocation_seconds <= 0:
+        return ("이용량 미지급", "empty")
+    p = max(0.0, min(float(percent or 0), 100.0))
+    warning = max(1, min(int(warning_percent or 20), 99))
+    if p <= 0:
+        return ("이용 한도 도달", "blocked")
+    if p <= 10:
+        return ("이용량 추가 필요", "critical")
+    if p <= warning:
+        return ("얼마 남지 않음", "warning")
+    if p < 50:
+        return ("보통", "normal")
+    return ("여유", "good")
+
+
+def _row_from_rpc(rows: Any) -> dict[str, Any] | None:
+    if isinstance(rows, list) and rows and isinstance(rows[0], dict):
+        return dict(rows[0])
+    if isinstance(rows, dict):
+        return dict(rows)
+    return None
 
 
 def get_training_credit_status(
     auth: HwarangAuthService,
     user_id: str,
 ) -> TrainingCreditStatus | None:
-    """Read unified entitlement status.
-
-    Migration 10 is preferred. Migration 09 is supported as a compatibility
-    fallback so deployment order does not break login or the Academy shell.
-    """
+    """Read current entitlement and lazily refresh the KST monthly bucket."""
     try:
         rows = auth._request(
             "POST",
@@ -103,12 +157,7 @@ def get_training_credit_status(
             admin=True,
             json={"p_user_id": user_id},
         )
-        row: dict[str, Any] | None = None
-        if isinstance(rows, list) and rows and isinstance(rows[0], dict):
-            row = rows[0]
-        elif isinstance(rows, dict):
-            row = rows
-
+        row = _row_from_rpc(rows)
         if row:
             return TrainingCreditStatus(
                 allocation_credits=int(row.get("training_allocation_credits") or 0),
@@ -116,16 +165,28 @@ def get_training_credit_status(
                 reserved_credits=int(row.get("training_reserved_credits") or 0),
                 available_credits=int(row.get("training_available_credits") or 0),
                 remaining_percent=float(row.get("training_remaining_percent") or 0),
+                monthly_credit_period=str(row.get("monthly_credit_period") or ""),
+                monthly_grant_credits=int(row.get("monthly_grant_credits") or 0),
+                monthly_balance_credits=int(row.get("monthly_balance_credits") or 0),
+                monthly_reserved_credits=int(row.get("monthly_reserved_credits") or 0),
+                monthly_available_credits=int(row.get("monthly_available_credits") or 0),
+                purchased_balance_credits=int(row.get("purchased_balance_credits") or 0),
+                purchased_reserved_credits=int(row.get("purchased_reserved_credits") or 0),
+                purchased_available_credits=int(row.get("purchased_available_credits") or 0),
+                warning_threshold_credits=int(row.get("training_warning_threshold_credits") or 0),
+                training_low=bool(row.get("training_low")),
                 voice_allocation_seconds=int(row.get("voice_allocation_seconds") or 0),
                 voice_balance_seconds=int(row.get("voice_balance_seconds") or 0),
                 voice_reserved_seconds=int(row.get("voice_reserved_seconds") or 0),
                 voice_available_seconds=int(row.get("voice_available_seconds") or 0),
                 voice_remaining_percent=float(row.get("voice_remaining_percent") or 0),
+                voice_low=bool(row.get("voice_low")),
                 service_enabled=bool(row.get("service_enabled")),
                 text_enabled=bool(row.get("text_enabled")),
                 voice_enabled=bool(row.get("voice_enabled")),
                 assessment_enabled=bool(row.get("assessment_enabled")),
                 soft_limit_percent=int(row.get("soft_limit_percent") or 80),
+                remaining_warning_percent=int(row.get("remaining_warning_percent") or 20),
                 contact_label=str(
                     row.get("contact_label")
                     or "박병선 팀장에게 이용량 추가 문의"
@@ -135,7 +196,7 @@ def get_training_credit_status(
     except HwarangAuthError:
         pass
 
-    # Migration 09 fallback.
+    # Migration 09 compatibility fallback.
     try:
         rows = auth._request(
             "POST",
@@ -146,25 +207,35 @@ def get_training_credit_status(
     except HwarangAuthError:
         return None
 
-    row = None
-    if isinstance(rows, list) and rows and isinstance(rows[0], dict):
-        row = rows[0]
-    elif isinstance(rows, dict):
-        row = rows
+    row = _row_from_rpc(rows)
     if not row:
         return None
 
+    allocation = int(row.get("allocation_credits") or 0)
+    balance = int(row.get("balance_credits") or 0)
+    reserved = int(row.get("reserved_credits") or 0)
+    available = int(row.get("available_credits") or 0)
+    remaining = float(row.get("remaining_percent") or 0)
+    warning = max(1, min(99, 100 - int(row.get("soft_limit_percent") or 80)))
+
     return TrainingCreditStatus(
-        allocation_credits=int(row.get("allocation_credits") or 0),
-        balance_credits=int(row.get("balance_credits") or 0),
-        reserved_credits=int(row.get("reserved_credits") or 0),
-        available_credits=int(row.get("available_credits") or 0),
-        remaining_percent=float(row.get("remaining_percent") or 0),
+        allocation_credits=allocation,
+        balance_credits=balance,
+        reserved_credits=reserved,
+        available_credits=available,
+        remaining_percent=remaining,
+        monthly_grant_credits=allocation,
+        monthly_balance_credits=balance,
+        monthly_reserved_credits=reserved,
+        monthly_available_credits=available,
+        warning_threshold_credits=int(allocation * warning / 100),
+        training_low=remaining <= warning if allocation > 0 else False,
         service_enabled=bool(row.get("service_enabled")),
         text_enabled=bool(row.get("text_enabled")),
         voice_enabled=bool(row.get("voice_enabled")),
         assessment_enabled=bool(row.get("assessment_enabled")),
         soft_limit_percent=int(row.get("soft_limit_percent") or 80),
+        remaining_warning_percent=warning,
         contact_label=str(
             row.get("contact_label")
             or "박병선 팀장에게 이용량 추가 문의"

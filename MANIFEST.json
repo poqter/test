@@ -1,19 +1,28 @@
 {
-  "package": "HWARANG_LOGIN_FAST_PATH_V1",
-  "base_git_head": "192359d75fef2600d57e575bde7f32435773d8b6",
+  "package": "HWARANG_ADMIN_CENTER_V2_CREDITS_V1",
+  "base_git_head": "8a75d8bb2521b64947b879ce7674a60131704080",
   "changed_files": [
     "app.py",
-    "modules/shared/hwarang_auth.py"
+    "academy_app.py",
+    "modules/shared/admin_center_ui.py",
+    "modules/shared/ai_guardrails.py",
+    "modules/shared/academy_credit_ui.py",
+    "supabase/migrations/13_Admin_Center_V2_Credit_Buckets.sql",
+    "tests/test_admin_center_v2_credit_buckets.py"
   ],
-  "new_files": [
-    "supabase/migrations/12_Login_Fast_Path.sql",
-    "tests/test_login_fast_path.py"
-  ],
+  "policy_defaults": {
+    "monthly_free_credits": 1000,
+    "remaining_warning_percent": 20,
+    "default_voice_minutes": 0,
+    "monthly_ai_budget_usd": 50,
+    "budget_warning_percent": 80,
+    "timezone": "Asia/Seoul"
+  },
   "validation": {
     "python_compile": "PASS",
-    "pytest": "44 passed",
+    "pytest": "50 passed",
     "subtests": "58 passed",
-    "fast_path_unit_tests": "4 passed",
-    "normal_login_network_requests": 3
+    "random_cases_1000": "PASS / failures 0",
+    "migration_13_static_checks": "PASS"
   }
 }
