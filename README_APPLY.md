@@ -1,42 +1,44 @@
-# HWARANG PRE-API FINAL V1 — 적용 파일
+# HWARANG API PREFLIGHT FIX V1
 
-이번 패키지는 **변경/추가 파일만** 들어 있습니다. 자동 패치 스크립트는 없습니다.
+기준 소스: Git HEAD `3ffbb7bc91caf1aabbb55f197df21d028079dbcc`
 
-## 덮어쓰기
-- `academy_app.py`
-- `modules/shared/ai_guardrails.py`
-- `modules/shared/admin_center_ui.py`
-- `modules/shared/academy_credit_ui.py`
-- `hwarang_academy/pre_api/constants.py`
-- `hwarang_academy/pre_api/__init__.py`
+## 적용 방법
+이 ZIP은 **변경/추가 파일만** 들어 있습니다. 자동 패치 스크립트는 없습니다.
 
-## 새로 추가
-- `supabase/migrations/10_Pre_API_Finalization.sql`
-- `hwarang_academy/pre_api/api_contracts.py`
-- `hwarang_academy/pre_api/prompt_builder.py`
-- `hwarang_academy/pre_api/state_validator.py`
-- `hwarang_academy/pre_api/mock_ai.py`
-- `hwarang_academy/pre_api/runtime.py`
-- `hwarang_academy/pre_api/readiness.py`
-- `tests/test_pre_api_finalization.py`
+1. ZIP 안 파일을 저장소의 동일 경로에 복사/덮어쓰기합니다.
+2. Supabase SQL Editor에서 새 Query `11_API_Preflight_Fixes`를 만듭니다.
+3. `supabase/migrations/11_API_Preflight_Fixes.sql` 전체를 **1회 실행**합니다.
+4. 기존 01~10은 다시 실행하지 않습니다.
+5. GitHub push → Streamlit 배포합니다.
+6. 최고관리자 WORKSPACE → 관리자 센터 → 시스템 설정 → `PRE-API 자가진단 실행`을 눌러 확인합니다.
+7. 실제 OpenAI API 연결 전까지 AI 서비스/Text/Voice/AI 정식평가는 계속 OFF로 둡니다.
 
-## 적용 순서
-1. 위 파일을 저장소의 동일한 경로에 복사/덮어쓰기
-2. Supabase SQL Editor에서 `10_Pre_API_Finalization` 새 Query 생성
-3. `10_Pre_API_Finalization.sql` 전체를 **1회 실행**
-4. 기존 01~09는 다시 실행하지 않음
-5. Git commit/push 후 WORKSPACE/ACADEMY 화면 확인
+## 이번 수정 핵심
+- Voice 예약 만료: 10분 고정 → 허용 Voice 시간 + 10분 buffer
+- 1인 1 AI Session: PostgreSQL advisory lock으로 원자적 강제
+- reservation RPC에서 Session 소유권/진행상태/lock 재검증
+- 차단 로그: RAISE rollback 문제 제거, `blocked` registry + activity log 영구 기록
+- idempotency 동시 race에서도 이중 이용량 예약 방지
+- Retry: 같은 request_id/reservation을 재사용하는 `start_hwarang_ai_request` 추가
+- Formal AI 평가: 동일 source snapshot의 DB unique + repository/runtime 재사용
+- Customer AI에서 hidden coverage_analysis / proposal_state / raw insurance_state 제거
+- 보험정보는 Python이 승인한 `insurance_memory`만 Customer AI에 공개
+- 입력창/기존 deterministic backend/API guardrail을 모두 2,400자로 정렬
+- 관리자 시간 표시 Asia/Seoul 고정
+- `jsonschema` direct runtime dependency 명시
+- 관리자센터에 외부 API를 쓰지 않는 PRE-API 배포환경 자가진단 추가
 
-## 정상 상태
-- AI 서비스는 여전히 OFF가 기본값
-- OpenAI API 호출 없음
-- 훈련 크레딧: Text Customer / Coach / Formal Evaluator 공용
-- 음성 이용량: 별도
-- Voice V1: GPT-Live-1
-- 정상 사용에 분당 호출 제한 없음
-- Voice 30분 hard cap
-- 1계정 1개 활성 AI Session
-- 동일 요청 중복 호출 방지
-- 관리자센터에서 훈련 크레딧과 음성 이용량을 각각 관리
+## 검증 결과
+- Python compile: PASS
+- pytest: **40 passed**
+- unittest subtests: **58 passed**
+- Random generated cases: **1,000 / failures 0**
+- Customer hidden analysis/proposal leak: PASS
+- Insurance disclosure projection: PASS
+- Evaluator snapshot reuse: PASS
+- Voice/Training separation regression: PASS
+- Frontend / deterministic backend / API input limit 2,400 정렬: PASS
 
-`PRE_API_FINAL_AUDIT.md`에 API 연결 직전 최종 상태를 정리했습니다.
+## 주의
+`11_API_Preflight_Fixes.sql`은 정적 검사를 완료했지만 실제 Supabase 실행은 사용자의 프로젝트에서 처음 수행됩니다.
+SQL Editor에서 오류가 발생하면 그 오류를 그대로 전달해 주세요.

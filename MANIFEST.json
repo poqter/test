@@ -1,29 +1,30 @@
 {
-  "package": "HWARANG_PRE_API_FINAL_V1",
-  "files": [
-    "PRE_API_FINAL_AUDIT.md",
-    "README_APPLY.md",
+  "package": "HWARANG_API_PREFLIGHT_FIX_V1",
+  "base_git_head": "3ffbb7bc91caf1aabbb55f197df21d028079dbcc",
+  "changed_files": [
     "academy_app.py",
+    "hwarang_academy/frontend/app.js",
+    "hwarang_academy/language.py",
     "hwarang_academy/pre_api/__init__.py",
     "hwarang_academy/pre_api/api_contracts.py",
-    "hwarang_academy/pre_api/constants.py",
-    "hwarang_academy/pre_api/mock_ai.py",
     "hwarang_academy/pre_api/prompt_builder.py",
     "hwarang_academy/pre_api/readiness.py",
+    "hwarang_academy/pre_api/repository.py",
     "hwarang_academy/pre_api/runtime.py",
     "hwarang_academy/pre_api/state_validator.py",
-    "modules/shared/academy_credit_ui.py",
+    "hwarang_academy/pre_api/disclosure.py",
+    "hwarang_academy/pre_api/retry_policy.py",
     "modules/shared/admin_center_ui.py",
     "modules/shared/ai_guardrails.py",
-    "supabase/migrations/10_Pre_API_Finalization.sql",
-    "tests/test_pre_api_finalization.py"
+    "requirements.txt",
+    "tests/test_pre_api_finalization.py",
+    "supabase/migrations/11_API_Preflight_Fixes.sql"
   ],
   "validation": {
     "python_compile": "PASS",
-    "mock_customer_pipeline": "PASS",
-    "voice_backend_directive": "PASS",
-    "evaluator_18_competencies": "PASS",
-    "gpt_live_1_session_spec": "PASS",
-    "training_vs_voice_billing_separation": "PASS"
+    "pytest": "40 passed",
+    "subtests": "58 passed",
+    "random_cases_1000": "PASS / failures 0",
+    "sql_static_checks": "PASS"
   }
 }

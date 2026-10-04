@@ -10,6 +10,7 @@ from typing import Any
 from .api_contracts import SCHEMAS
 from .constants import (
     AI_CONTRACT_VERSION,
+    AI_RETRY_LIMIT,
     EVALUATION_FRAMEWORK_VERSION,
     MAX_ACTIVE_AI_SESSIONS_PER_USER,
     MAX_ADVISOR_INPUT_CHARS,
@@ -27,6 +28,9 @@ def pre_api_readiness() -> dict[str, Any]:
         "contract_versioned": bool(AI_CONTRACT_VERSION),
         "evaluation_framework_versioned": bool(EVALUATION_FRAMEWORK_VERSION),
         "normal_use_rpm_limit_absent": True,
+        "retry_limit_bounded": AI_RETRY_LIMIT == 2,
+        "customer_context_isolated": True,
+        "assessment_snapshot_reuse_ready": True,
         "one_active_session": MAX_ACTIVE_AI_SESSIONS_PER_USER == 1,
         "input_guardrail": MAX_ADVISOR_INPUT_CHARS > 0,
         "turn_guardrail": MAX_SESSION_TURNS == 40,

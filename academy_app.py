@@ -26,7 +26,7 @@ st.set_page_config(
 
 @lru_cache(maxsize=1)
 def component():
-    return components.declare_component("hwarang_academy_v60", path=str(ROOT / "frontend"))
+    return components.declare_component("hwarang_academy_v61", path=str(ROOT / "frontend"))
 
 
 @lru_cache(maxsize=1)
@@ -223,7 +223,7 @@ def main() -> None:
     if "academy.simulator" in feature_permissions:
         render_training_credit_strip(credit_status)
 
-    event = component()(model=payload, key="academy_engine_component_v59", default=None)
+    event = component()(model=payload, key="academy_engine_component_v61", default=None)
     if isinstance(event, dict) and event.get("event_id") != app.ack:
         try:
             if event.get("kind") == "open_simulator" and "academy.simulator" not in feature_permissions:

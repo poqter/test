@@ -85,7 +85,7 @@ CUSTOMER_RESPONSE_SCHEMA: dict[str, Any] = {
                         "type": "string",
                         "minLength": 3,
                         "maxLength": 180,
-                        "pattern": "^(ground_truth|customer_beliefs)\\.",
+                        "pattern": "^(ground_truth|customer_beliefs|insurance_memory)\\.",
                     },
                     "value": {},
                     "precision": {"enum": ["exact", "approximate", "uncertain"]},

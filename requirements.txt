@@ -12,3 +12,4 @@ reportlab
 pypdf
 altair
 requests
+jsonschema

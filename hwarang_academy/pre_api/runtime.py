@@ -18,6 +18,7 @@ from .constants import (
     MAX_ADVISOR_INPUT_CHARS,
     MAX_SESSION_TURNS,
 )
+from .disclosure import build_customer_disclosure_source
 from .evidence import make_turn_evidence
 from .prompt_builder import (
     build_coach_request,
@@ -54,6 +55,8 @@ class EvaluationResult:
     payload: dict[str, Any]
     source_snapshot_hash: str
     request: dict[str, Any]
+    reused: bool = False
+    assessment_id: str | None = None
 
 
 def _case_dict(case: Any) -> dict[str, Any]:
@@ -69,16 +72,30 @@ def assessment_snapshot_hash(
     case: Any,
     transcript: list[dict[str, Any]],
     evidence_log: list[dict[str, Any]] | None,
+    session_summary: dict[str, Any] | None = None,
     framework_version: str = EVALUATION_FRAMEWORK_VERSION,
 ) -> str:
+    """Hash every source that can materially change an evaluator report.
+
+    This is intentionally broader than a transcript hash: if the Case's
+    insurance/analysis state changes, the previous assessment must not be reused.
+    """
     case_data = _case_dict(case)
     compact = {
         "case_seed": case_data.get("seed"),
         "case_stage": case_data.get("stage"),
         "training_mode": case_data.get("training_mode"),
         "training_focus": case_data.get("training_focus"),
+        "consultation_difficulty": case_data.get("consultation_difficulty"),
+        "customer_state": case_data.get("customer_state") or {},
+        "public_state": case_data.get("public_state") or {},
+        "insurance_state": case_data.get("insurance_state") or {},
+        "coverage_analysis": case_data.get("coverage_analysis") or {},
+        "proposal_state": case_data.get("proposal_state") or {},
+        "journey_state": case_data.get("journey_state") or {},
         "transcript": transcript,
         "evidence_log": evidence_log or [],
+        "session_summary": session_summary or {},
         "framework_version": framework_version,
     }
     raw = json.dumps(compact, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
@@ -161,7 +178,9 @@ class PreAPIRuntime:
         raw = self.adapter.customer(request)
         validate_contract("CUSTOMER", raw)
         validated = validate_customer_turn(
-            customer_state=case_data.get("customer_state") or {},
+            disclosure_source=build_customer_disclosure_source(
+                case_data, session_state
+            ),
             payload=raw,
             allowed_goal_codes=allowed_goal_codes,
         )
@@ -232,11 +251,79 @@ class PreAPIRuntime:
             case=case_data,
             transcript=transcript,
             evidence_log=evidence_log,
+            session_summary=session_summary,
         )
         return EvaluationResult(
             payload=payload,
             source_snapshot_hash=source_hash,
             request=request,
+        )
+
+    def evaluate_cached(
+        self,
+        *,
+        repository: Any,
+        user_id: str,
+        case_id: str,
+        session_id: str,
+        case: Any,
+        transcript: list[dict[str, Any]],
+        evidence_log: list[dict[str, Any]] | None,
+        session_summary: dict[str, Any] | None = None,
+    ) -> EvaluationResult:
+        """Reuse an immutable assessment snapshot before invoking Evaluator AI.
+
+        The DB unique index in migration 11 is the final persistence backstop.
+        The future paid adapter should additionally reserve the EVALUATOR request
+        with an idempotency fingerprint based on this same source hash before the
+        external API call, preventing concurrent duplicate cost.
+        """
+        case_data = _case_dict(case)
+        source_hash = assessment_snapshot_hash(
+            case=case_data,
+            transcript=transcript,
+            evidence_log=evidence_log,
+            session_summary=session_summary,
+        )
+        cached = repository.find_reusable_assessment(
+            session_id=session_id,
+            source_snapshot_hash=source_hash,
+            framework_version=EVALUATION_FRAMEWORK_VERSION,
+        )
+        if cached:
+            payload = dict(cached.get("report_snapshot") or {})
+            validate_contract("EVALUATOR", payload)
+            return EvaluationResult(
+                payload=payload,
+                source_snapshot_hash=source_hash,
+                request={},
+                reused=True,
+                assessment_id=str(cached.get("id") or "") or None,
+            )
+
+        result = self.evaluate(
+            case=case_data,
+            transcript=transcript,
+            evidence_log=evidence_log,
+            session_summary=session_summary,
+        )
+        stored = repository.create_assessment_snapshot(
+            user_id=user_id,
+            case_id=case_id,
+            session_id=session_id,
+            source_snapshot_hash=result.source_snapshot_hash,
+            framework_version=EVALUATION_FRAMEWORK_VERSION,
+            payload=result.payload,
+            prompt_version=result.request.get("prompt_version"),
+        )
+        stored_payload = dict(stored.get("report_snapshot") or result.payload)
+        validate_contract("EVALUATOR", stored_payload)
+        return EvaluationResult(
+            payload=stored_payload,
+            source_snapshot_hash=result.source_snapshot_hash,
+            request=result.request,
+            reused=bool(stored.get("reused")),
+            assessment_id=str(stored.get("id") or "") or None,
         )
 
     def voice_directive(self, customer_turn: CustomerTurnResult) -> dict[str, Any]:

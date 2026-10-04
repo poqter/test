@@ -100,3 +100,118 @@ class AcademyRepository:
             },
             prefer="return=minimal",
         )
+
+    def find_reusable_assessment(
+        self,
+        *,
+        session_id: str,
+        source_snapshot_hash: str,
+        framework_version: str,
+        evaluator_type: str = "ai",
+    ) -> dict[str, Any] | None:
+        """Return an immutable assessment only when the complete source hash matches."""
+        rows = self.auth._request(
+            "GET",
+            "/rest/v1/academy_assessments",
+            admin=True,
+            params={
+                "select": "*",
+                "session_id": f"eq.{session_id}",
+                "source_snapshot_hash": f"eq.{source_snapshot_hash}",
+                "framework_version": f"eq.{framework_version}",
+                "evaluator_type": f"eq.{evaluator_type}",
+                "order": "generated_at.desc",
+                "limit": "1",
+            },
+        )
+        return rows[0] if isinstance(rows, list) and rows else None
+
+    def create_assessment_snapshot(
+        self,
+        *,
+        user_id: str,
+        case_id: str,
+        session_id: str,
+        source_snapshot_hash: str,
+        framework_version: str,
+        payload: dict[str, Any],
+        prompt_version: str | None = None,
+        evaluator_type: str = "ai",
+    ) -> dict[str, Any]:
+        """Persist one immutable formal-evaluation snapshot.
+
+        Migration 11 makes the source tuple unique.  If another worker wins a
+        race, we read and return the already-created snapshot instead of
+        manufacturing a second assessment record.
+        """
+        competency_scores = {
+            str(row.get("code")): {
+                "score": row.get("score"),
+                "rationale": row.get("rationale"),
+                "evidence_turns": list(row.get("evidence_turns") or []),
+            }
+            for row in payload.get("competencies") or []
+            if isinstance(row, dict) and row.get("code")
+        }
+        evidence = [
+            {
+                "kind": "competency",
+                "code": row.get("code"),
+                "turns": list(row.get("evidence_turns") or []),
+            }
+            for row in payload.get("competencies") or []
+            if isinstance(row, dict) and row.get("evidence_turns")
+        ]
+
+        body = {
+            "user_id": user_id,
+            "case_id": case_id,
+            "session_id": session_id,
+            "assessment_type": "original",
+            "evaluator_type": evaluator_type,
+            "framework_version": framework_version,
+            "overall_score": payload.get("overall_score"),
+            "grade": payload.get("grade"),
+            "status": (payload.get("sales_outcome") or {}).get("status"),
+            "competency_scores": competency_scores,
+            "strengths": list(payload.get("strengths") or []),
+            "development_areas": list(payload.get("development_areas") or []),
+            "evidence": evidence,
+            "missed_opportunities": list(payload.get("missed_opportunities") or []),
+            "coaching_plan": dict(payload.get("coaching_plan") or {}),
+            "next_training": {"items": list(payload.get("recommended_training") or [])},
+            "report_snapshot": payload,
+            "source_snapshot_hash": source_snapshot_hash,
+            "metadata": {
+                "prompt_version": prompt_version,
+                "immutable_snapshot": True,
+            },
+        }
+
+        try:
+            rows = self.auth._request(
+                "POST",
+                "/rest/v1/academy_assessments",
+                admin=True,
+                json=body,
+                prefer="return=representation",
+            )
+            if isinstance(rows, list) and rows:
+                result = dict(rows[0])
+                result["reused"] = False
+                return result
+        except Exception:
+            # A concurrent worker may have won the unique snapshot insert.
+            cached = self.find_reusable_assessment(
+                session_id=session_id,
+                source_snapshot_hash=source_snapshot_hash,
+                framework_version=framework_version,
+                evaluator_type=evaluator_type,
+            )
+            if cached:
+                result = dict(cached)
+                result["reused"] = True
+                return result
+            raise
+
+        raise RuntimeError("academy assessment was not created")

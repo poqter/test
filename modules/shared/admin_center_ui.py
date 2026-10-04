@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from typing import Any
 
 import pandas as pd
@@ -33,6 +34,9 @@ _UNIT_LABELS = {
     "branch": "지점/직할",
     "team": "팀",
 }
+_KST = ZoneInfo("Asia/Seoul")
+
+
 _PAGE_LABELS = {
     "dashboard": "대시보드",
     "accounts": "계정 · 권한",
@@ -63,7 +67,7 @@ def _fmt_dt(value: Any) -> str:
     raw = str(value)
     try:
         dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
-        return dt.astimezone().strftime("%Y-%m-%d %H:%M")
+        return dt.astimezone(_KST).strftime("%Y-%m-%d %H:%M")
     except Exception:
         return raw[:16].replace("T", " ")
 
@@ -79,6 +83,12 @@ def _active_recent(value: Any, minutes: int = 10) -> bool:
         return (now - dt.astimezone(timezone.utc)).total_seconds() <= minutes * 60
     except Exception:
         return False
+
+
+def _kst_day_start_utc_iso() -> str:
+    local_now = datetime.now(_KST)
+    local_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+    return local_start.astimezone(timezone.utc).isoformat()
 
 
 def _fetch_users(auth: HwarangAuthService, actor_id: str) -> list[dict[str, Any]]:
@@ -159,7 +169,7 @@ def _render_dashboard(auth: HwarangAuthService, actor_id: str, users: list[dict[
     ai_today = _safe_rows(
         auth,
         "/rest/v1/hwarang_ai_usage_log",
-        params={"select": "user_id,ai_role,model,calculated_cost_usd,credits_charged,created_at", "created_at": "gte." + datetime.now(timezone.utc).date().isoformat(), "order": "created_at.desc", "limit": "500"},
+        params={"select": "user_id,ai_role,model,calculated_cost_usd,credits_charged,created_at", "created_at": "gte." + _kst_day_start_utc_iso(), "order": "created_at.desc", "limit": "500"},
     )
     _metric_row(users, activity, sessions, ai_today)
 
@@ -555,7 +565,7 @@ def _user_academy(auth: HwarangAuthService, uid: str) -> None:
 def _user_ai(auth: HwarangAuthService, actor_id: str, uid: str) -> None:
     credit = get_training_credit_status(auth, uid)
     if not credit:
-        st.info("09~10 마이그레이션 적용 후 AI 이용량 관리가 활성화됩니다.")
+        st.info("09~11 마이그레이션 적용 후 AI 이용량 관리가 활성화됩니다.")
         return
 
     training_state, _ = credit_display_state(
@@ -818,7 +828,7 @@ def _render_ai(auth: HwarangAuthService, users: list[dict[str, Any]]) -> None:
     st.subheader("AI 사용량 · 비용")
     runtime = _fetch_runtime(auth)
     if not runtime:
-        st.info("09~10 마이그레이션 적용 후 AI 운영 대시보드가 활성화됩니다.")
+        st.info("09~11 마이그레이션 적용 후 AI 운영 대시보드가 활성화됩니다.")
         return
 
     user_map = {str(u.get("user_id")): u for u in users}
@@ -917,7 +927,7 @@ def _render_settings(auth: HwarangAuthService, actor_id: str) -> None:
     st.subheader("시스템 설정")
     runtime = _fetch_runtime(auth)
     if not runtime:
-        st.warning("먼저 Supabase에서 09~10 마이그레이션을 적용해 주세요.")
+        st.warning("먼저 Supabase에서 09~11 마이그레이션을 적용해 주세요.")
         return
 
     st.markdown("#### AI 서비스")
@@ -1018,7 +1028,7 @@ def _render_settings(auth: HwarangAuthService, actor_id: str) -> None:
             "Customer / Coach / Evaluator의 실제 API 모델 ID는 API 연결 시점에 확정합니다."
         )
     else:
-        st.caption("10 마이그레이션 적용 후 모델 정책이 표시됩니다.")
+        st.caption("10~11 마이그레이션 적용 후 모델 정책이 표시됩니다.")
 
     st.markdown("#### Guardrail 기본값")
     limits = _safe_rows(
@@ -1036,6 +1046,71 @@ def _render_settings(auth: HwarangAuthService, actor_id: str) -> None:
         "정상 시뮬레이터 사용에는 분당 요청 제한을 두지 않습니다. "
         "중복요청·동시 Session·입출력 크기·Voice 장시간 방치만 방어합니다."
     )
+
+    st.markdown("#### PRE-API 자가진단")
+    st.caption(
+        "외부 API를 호출하지 않고 현재 배포 환경에서 Customer · Coach · Evaluator · Voice 구조를 한 번에 확인합니다."
+    )
+    if st.button(
+        "PRE-API 자가진단 실행",
+        type="secondary",
+        use_container_width=True,
+        key="hw_pre_api_self_test",
+    ):
+        try:
+            from hwarang_academy.pre_api.case_engine import create_case
+            from hwarang_academy.pre_api.mock_ai import MockAIAdapter
+            from hwarang_academy.pre_api.readiness import pre_api_readiness
+            from hwarang_academy.pre_api.runtime import PreAPIRuntime
+
+            case = create_case(20261004, training_mode="SOLO", training_focus="comprehensive")
+            engine = PreAPIRuntime(MockAIAdapter())
+            turn = engine.customer_turn(
+                case=case,
+                advisor_text="현재 보험을 점검받고 싶으신 가장 큰 이유가 무엇인가요?",
+                transcript=[],
+                session_state={},
+                turn_no=1,
+            )
+            coach = engine.coach(
+                case=case,
+                advisor_text="현재 보험을 점검받고 싶으신 가장 큰 이유가 무엇인가요?",
+                transcript=[],
+                session_state=turn.session_state,
+            )
+            evaluator = engine.evaluate(
+                case=case,
+                transcript=[
+                    {"role": "advisor", "turn": 1, "text": "현재 보험을 점검받고 싶으신 가장 큰 이유가 무엇인가요?"},
+                    {"role": "customer", "turn": 1, "text": turn.customer_text},
+                ],
+                evidence_log=[turn.evidence],
+            )
+            voice = engine.voice_session_spec(case=case, stage="M1")
+            directive = engine.voice_directive(turn)
+            structural = pre_api_readiness()
+
+            checks = {
+                "Customer 구조화 응답": bool(turn.customer_text),
+                "Python 상태 검증": bool(turn.validated_payload),
+                "Coach 구조화 응답": bool(coach.payload.get("improve_next")),
+                "Evaluator 18개 역량": len(evaluator.payload.get("competencies") or []) == 18,
+                "평가 Snapshot Hash": len(evaluator.source_snapshot_hash) == 64,
+                "Voice GPT-Live-1": voice.get("provider_model") == "gpt-live-1",
+                "Voice Directive": directive.get("contract_version") is not None,
+                "PRE-API 구조 준비": bool(structural.get("pre_api_ready")),
+            }
+            if all(checks.values()):
+                st.success("PRE-API 자가진단을 통과했습니다. 외부 AI 호출은 발생하지 않았습니다.")
+            else:
+                st.warning("일부 PRE-API 자가진단 항목을 확인해야 합니다.")
+            st.dataframe(
+                [{"점검 항목": k, "결과": "PASS" if v else "CHECK"} for k, v in checks.items()],
+                hide_index=True,
+                use_container_width=True,
+            )
+        except Exception as exc:
+            st.error(f"PRE-API 자가진단 실패: {exc}")
 
     st.markdown("#### 긴급 정지")
     st.caption(

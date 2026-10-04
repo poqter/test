@@ -2,6 +2,7 @@
 
 The AI may propose conversational state deltas, but it can never mutate
 ground-truth customer/insurance facts directly.
+Insurance facts are validated only through the bounded `insurance_memory` projection.
 """
 from __future__ import annotations
 
@@ -44,12 +45,12 @@ class ValidatedCustomerTurn:
         }
 
 
-def _resolve_path(customer_state: dict[str, Any], path: str) -> Any:
+def _resolve_path(disclosure_source: dict[str, Any], path: str) -> Any:
     root_name, _, tail = path.partition(".")
-    if root_name not in {"ground_truth", "customer_beliefs"} or not tail:
+    if root_name not in {"ground_truth", "customer_beliefs", "insurance_memory"} or not tail:
         raise ValueError(f"unsupported disclosure path: {path}")
 
-    value: Any = customer_state.get(root_name)
+    value: Any = disclosure_source.get(root_name)
     for part in tail.split("."):
         if not isinstance(value, dict) or part not in value:
             raise ValueError(f"unknown disclosure path: {path}")
@@ -63,10 +64,10 @@ def _numeric_close(actual: float, proposed: float) -> bool:
 
 
 def _validate_disclosure(
-    customer_state: dict[str, Any],
+    disclosure_source: dict[str, Any],
     row: dict[str, Any],
 ) -> dict[str, Any]:
-    source_value = _resolve_path(customer_state, str(row["path"]))
+    source_value = _resolve_path(disclosure_source, str(row["path"]))
     precision = str(row["precision"])
     proposed = row.get("value")
 
@@ -101,7 +102,7 @@ def _validate_disclosure(
 
 def validate_customer_turn(
     *,
-    customer_state: dict[str, Any],
+    disclosure_source: dict[str, Any],
     payload: dict[str, Any],
     allowed_goal_codes: set[str] | None = None,
 ) -> ValidatedCustomerTurn:
@@ -114,7 +115,7 @@ def validate_customer_turn(
     }
 
     disclosures = [
-        _validate_disclosure(customer_state, row)
+        _validate_disclosure(disclosure_source, row)
         for row in payload["disclosures"]
     ]
 

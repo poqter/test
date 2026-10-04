@@ -10,7 +10,7 @@ import re
 import unicodedata
 from .content import INTENTS
 
-MAX_CHARS = 1200
+MAX_CHARS = 2400
 
 def norm(t: str) -> str:
     return re.sub(r'[\s.,!?·…“”"\'‘’]', '', unicodedata.normalize('NFC', t)).lower()

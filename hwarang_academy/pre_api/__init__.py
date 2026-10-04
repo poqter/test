@@ -12,6 +12,12 @@ from .proposal import ProposalState, generate_proposals
 from .excel import build_coverage_analysis_xlsx, workbook_payload, suggested_filename
 from .training import FOCUSES, MODE_POLICIES, focus_policy, mode_policy, public_focus_catalog
 from .evidence import make_turn_evidence
+from .disclosure import (
+    build_customer_disclosure_source,
+    build_customer_insurance_memory,
+    build_customer_model_context,
+)
+from .retry_policy import RetryDecision, retry_decision
 
 from .api_contracts import (
     CUSTOMER_RESPONSE_SCHEMA,
@@ -52,6 +58,8 @@ __all__ = [
     "build_coverage_analysis_xlsx", "workbook_payload", "suggested_filename",
     "FOCUSES", "MODE_POLICIES", "focus_policy", "mode_policy", "public_focus_catalog",
     "make_turn_evidence",
+    "build_customer_disclosure_source", "build_customer_insurance_memory",
+    "build_customer_model_context", "RetryDecision", "retry_decision",
     "CUSTOMER_RESPONSE_SCHEMA", "COACH_RESPONSE_SCHEMA",
     "EVALUATOR_RESPONSE_SCHEMA", "VOICE_BACKEND_DIRECTIVE_SCHEMA",
     "validate_contract",

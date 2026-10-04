@@ -282,6 +282,37 @@ def reserve_ai_request(
     raise HwarangAuthError("AI 이용량 예약 결과를 확인하지 못했습니다.")
 
 
+def start_ai_request(
+    auth: HwarangAuthService,
+    *,
+    request_id: str,
+    extend_seconds: int = 600,
+) -> dict[str, Any]:
+    """Mark a reservation processing, or refresh the same reservation for retry.
+
+    The future provider adapter must call this with the existing request_id; a
+    retry must not reserve credits/voice time a second time.
+    """
+    rows = auth._request(
+        "POST",
+        "/rest/v1/rpc/start_hwarang_ai_request",
+        admin=True,
+        json={
+            "p_request_id": request_id,
+            "p_extend_seconds": int(extend_seconds),
+        },
+    )
+    if isinstance(rows, list) and rows:
+        return dict(rows[0])
+    if isinstance(rows, dict):
+        return dict(rows)
+    raise HwarangAuthError("AI 요청 처리 상태를 확인하지 못했습니다.")
+
+
+def request_is_blocked(result: dict[str, Any] | None) -> bool:
+    return str((result or {}).get("request_status") or "").lower() == "blocked"
+
+
 def finalize_ai_request(
     auth: HwarangAuthService,
     *,
