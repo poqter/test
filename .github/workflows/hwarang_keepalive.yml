@@ -1,0 +1,45 @@
+name: HWARANG Keep Alive
+
+on:
+  # KST 00:17 / 06:17 / 12:17 / 18:17 (UTC 15:17 / 21:17 / 03:17 / 09:17)
+  schedule:
+    - cron: "17 3,9,15,21 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hwarang-keep-alive
+  cancel-in-progress: true
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    env:
+      WORKSPACE_URL: https://hwarang-workspace.streamlit.app
+      CALCULATOR_URL: https://hwarang-calculator.streamlit.app
+      ACADEMY_URL: https://hwarang-academy.streamlit.app
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install keep-alive dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "requests==2.34.2" "playwright==1.55.0"
+          python -m playwright install --with-deps chromium
+
+      - name: Wake HWARANG services
+        run: python .github/scripts/hwarang_keepalive.py
