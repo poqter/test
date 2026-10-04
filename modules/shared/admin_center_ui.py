@@ -283,6 +283,10 @@ def _render_accounts(auth: HwarangAuthService, actor_id: str, users: list[dict[s
             "최근 로그인": _fmt_dt(u.get("last_login_at")),
             "최근 활동": u.get("recent_activity_code") or "-",
             "훈련 크레딧": f"{pct}% · {state}" if alloc > 0 else "미지급",
+            "음성 이용량": (
+                f"{round(max(0, int(u.get('voice_balance_seconds') or 0) - int(u.get('voice_reserved_seconds') or 0)) / int(u.get('voice_allocation_seconds') or 1) * 100)}%"
+                if int(u.get("voice_allocation_seconds") or 0) > 0 else "미지급"
+            ),
         })
     if not table:
         st.info("조건에 맞는 계정이 없습니다.")
@@ -551,61 +555,155 @@ def _user_academy(auth: HwarangAuthService, uid: str) -> None:
 def _user_ai(auth: HwarangAuthService, actor_id: str, uid: str) -> None:
     credit = get_training_credit_status(auth, uid)
     if not credit:
-        st.info("09 마이그레이션 적용 후 훈련 크레딧 관리가 활성화됩니다.")
+        st.info("09~10 마이그레이션 적용 후 AI 이용량 관리가 활성화됩니다.")
         return
 
-    state, _ = credit_display_state(
+    training_state, _ = credit_display_state(
         credit.remaining_percent,
         allocation_credits=credit.allocation_credits,
     )
-    c1, c2, c3 = st.columns(3)
-    c1.metric("남은 이용량", f"{credit.remaining_percent:.0f}%")
-    c2.metric("상태", state)
-    c3.metric("예약 중", f"{credit.reserved_credits:,} credit")
+    voice_state, _ = credit_display_state(
+        credit.voice_remaining_percent,
+        allocation_credits=credit.voice_allocation_seconds,
+    )
 
-    st.progress(max(0.0, min(1.0, credit.remaining_percent / 100.0)))
+    st.markdown("##### 사용자 이용량")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric(
+        "훈련 크레딧",
+        f"{credit.remaining_percent:.0f}%" if credit.allocation_credits > 0 else "미지급",
+    )
+    c2.metric("훈련 상태", training_state)
+    c3.metric(
+        "음성 이용량",
+        f"{credit.voice_remaining_percent:.0f}%" if credit.voice_allocation_seconds > 0 else "미지급",
+    )
+    c4.metric("음성 상태", voice_state)
 
-    with st.expander("훈련 크레딧 관리", expanded=True):
-        operation = st.radio(
-            "작업",
-            ["grant", "revoke", "reset"],
-            horizontal=True,
-            format_func=lambda x: {"grant": "추가 지급", "revoke": "회수", "reset": "잔액 재설정"}[x],
-            key=f"hw_credit_op_{uid}",
+    if credit.allocation_credits > 0:
+        st.caption("텍스트 고객 AI · 코칭 · AI 정식평가")
+        st.progress(max(0.0, min(1.0, credit.remaining_percent / 100.0)))
+
+    if credit.voice_allocation_seconds > 0:
+        st.caption(
+            f"음성 전용 이용량 · 관리자 잔여 {credit.voice_available_seconds / 60:.1f}분"
         )
-        amount = st.number_input("크레딧", min_value=0, step=100, key=f"hw_credit_amount_{uid}")
-        note = st.text_input("사유", placeholder="예: 이용권 구매 / 관리자 추가 지급", key=f"hw_credit_note_{uid}")
-        if st.button("크레딧 적용", type="primary", key=f"hw_credit_apply_{uid}"):
-            auth._request(
-                "POST",
-                "/rest/v1/rpc/admin_adjust_hwarang_ai_credits",
-                admin=True,
-                json={
-                    "p_actor_user_id": actor_id,
-                    "p_target_user_id": uid,
-                    "p_operation": operation,
-                    "p_amount": int(amount),
-                    "p_note": note,
-                },
+        st.progress(max(0.0, min(1.0, credit.voice_remaining_percent / 100.0)))
+
+    training_col, voice_col = st.columns(2, gap="large")
+
+    with training_col:
+        with st.expander("훈련 크레딧 관리", expanded=True):
+            operation = st.radio(
+                "작업",
+                ["grant", "revoke", "reset"],
+                horizontal=True,
+                format_func=lambda x: {
+                    "grant": "추가 지급",
+                    "revoke": "회수",
+                    "reset": "잔액 재설정",
+                }[x],
+                key=f"hw_credit_op_{uid}",
             )
-            st.success("훈련 크레딧을 반영했습니다.")
-            st.rerun()
+            amount = st.number_input(
+                "크레딧",
+                min_value=0,
+                step=100,
+                key=f"hw_credit_amount_{uid}",
+            )
+            note = st.text_input(
+                "사유",
+                placeholder="예: 이용권 구매 / 관리자 추가 지급",
+                key=f"hw_credit_note_{uid}",
+            )
+            if st.button("훈련 크레딧 적용", type="primary", key=f"hw_credit_apply_{uid}"):
+                auth._request(
+                    "POST",
+                    "/rest/v1/rpc/admin_adjust_hwarang_ai_credits",
+                    admin=True,
+                    json={
+                        "p_actor_user_id": actor_id,
+                        "p_target_user_id": uid,
+                        "p_operation": operation,
+                        "p_amount": int(amount),
+                        "p_note": note,
+                    },
+                )
+                st.success("훈련 크레딧을 반영했습니다.")
+                st.rerun()
+
+    with voice_col:
+        with st.expander("음성 이용량 관리", expanded=True):
+            operation = st.radio(
+                "작업",
+                ["grant", "revoke", "reset"],
+                horizontal=True,
+                format_func=lambda x: {
+                    "grant": "추가 지급",
+                    "revoke": "회수",
+                    "reset": "잔액 재설정",
+                }[x],
+                key=f"hw_voice_op_{uid}",
+            )
+            minutes = st.number_input(
+                "음성 이용량(분)",
+                min_value=0,
+                step=10,
+                key=f"hw_voice_minutes_{uid}",
+            )
+            note = st.text_input(
+                "사유",
+                placeholder="예: Voice 이용권 구매 / 관리자 추가 지급",
+                key=f"hw_voice_note_{uid}",
+            )
+            if st.button("음성 이용량 적용", type="primary", key=f"hw_voice_apply_{uid}"):
+                auth._request(
+                    "POST",
+                    "/rest/v1/rpc/admin_adjust_hwarang_voice_minutes",
+                    admin=True,
+                    json={
+                        "p_actor_user_id": actor_id,
+                        "p_target_user_id": uid,
+                        "p_operation": operation,
+                        "p_minutes": int(minutes),
+                        "p_note": note,
+                    },
+                )
+                st.success("음성 이용량을 반영했습니다.")
+                st.rerun()
 
     usage = _safe_rows(
         auth,
         "/rest/v1/hwarang_ai_usage_log",
         params={
-            "select": "ai_role,model,input_tokens,cached_tokens,output_tokens,credits_charged,calculated_cost_usd,status,latency_ms,created_at",
+            "select": (
+                "ai_role,model,input_tokens,cached_tokens,output_tokens,"
+                "credits_charged,voice_seconds_charged,calculated_cost_usd,"
+                "status,latency_ms,created_at"
+            ),
             "user_id": f"eq.{uid}",
             "order": "created_at.desc",
             "limit": "500",
         },
     )
-    ledger = _safe_rows(
+    credit_ledger = _safe_rows(
         auth,
         "/rest/v1/hwarang_ai_credit_ledger",
         params={
             "select": "entry_type,delta_credits,balance_after,allocation_after,note,created_at",
+            "user_id": f"eq.{uid}",
+            "order": "created_at.desc",
+            "limit": "300",
+        },
+    )
+    voice_ledger = _safe_rows(
+        auth,
+        "/rest/v1/hwarang_voice_ledger",
+        params={
+            "select": (
+                "entry_type,delta_seconds,balance_after_seconds,"
+                "allocation_after_seconds,note,created_at"
+            ),
             "user_id": f"eq.{uid}",
             "order": "created_at.desc",
             "limit": "300",
@@ -618,12 +716,26 @@ def _user_ai(auth: HwarangAuthService, actor_id: str, uid: str) -> None:
     else:
         st.caption("아직 실제 AI 사용 기록이 없습니다.")
 
-    st.markdown("##### 크레딧 원장")
-    if ledger:
-        st.dataframe(ledger, hide_index=True, use_container_width=True)
-    else:
-        st.caption("크레딧 변동 기록이 없습니다.")
-
+    ledger_left, ledger_right = st.columns(2, gap="large")
+    with ledger_left:
+        st.markdown("##### 훈련 크레딧 원장")
+        if credit_ledger:
+            st.dataframe(credit_ledger, hide_index=True, use_container_width=True)
+        else:
+            st.caption("훈련 크레딧 변동 기록이 없습니다.")
+    with ledger_right:
+        st.markdown("##### 음성 이용량 원장")
+        if voice_ledger:
+            display = []
+            for row in voice_ledger:
+                item = dict(row)
+                item["변동(분)"] = round(float(item.pop("delta_seconds", 0)) / 60, 2)
+                item["잔액(분)"] = round(float(item.pop("balance_after_seconds", 0)) / 60, 2)
+                item["배정(분)"] = round(float(item.pop("allocation_after_seconds", 0)) / 60, 2)
+                display.append(item)
+            st.dataframe(display, hide_index=True, use_container_width=True)
+        else:
+            st.caption("음성 이용량 변동 기록이 없습니다.")
 
 def _render_activity(auth: HwarangAuthService, actor_id: str, users: list[dict[str, Any]]) -> None:
     st.subheader("활동 기록")
@@ -706,39 +818,77 @@ def _render_ai(auth: HwarangAuthService, users: list[dict[str, Any]]) -> None:
     st.subheader("AI 사용량 · 비용")
     runtime = _fetch_runtime(auth)
     if not runtime:
-        st.info("09 마이그레이션 적용 후 AI 운영 대시보드가 활성화됩니다.")
+        st.info("09~10 마이그레이션 적용 후 AI 운영 대시보드가 활성화됩니다.")
         return
+
     user_map = {str(u.get("user_id")): u for u in users}
     usage = _safe_rows(
         auth,
         "/rest/v1/hwarang_ai_usage_log",
-        params={"select": "user_id,ai_role,model,input_tokens,cached_tokens,output_tokens,credits_charged,calculated_cost_usd,status,created_at", "order": "created_at.desc", "limit": "1000"},
+        params={
+            "select": (
+                "user_id,ai_role,model,input_tokens,cached_tokens,output_tokens,"
+                "credits_charged,voice_seconds_charged,calculated_cost_usd,"
+                "status,created_at"
+            ),
+            "order": "created_at.desc",
+            "limit": "1000",
+        },
     )
     requests = _safe_rows(
         auth,
         "/rest/v1/hwarang_ai_request_registry",
-        params={"select": "user_id,purpose,status,actual_credits,block_reason,created_at", "order": "created_at.desc", "limit": "500"},
+        params={
+            "select": (
+                "user_id,purpose,billing_bucket,status,actual_credits,"
+                "actual_voice_seconds,block_reason,created_at"
+            ),
+            "order": "created_at.desc",
+            "limit": "500",
+        },
     )
 
-    cols = st.columns(4)
+    total_voice_seconds = sum(int(r.get("voice_seconds_charged") or 0) for r in usage)
+    cols = st.columns(5)
     cols[0].metric("AI 요청", len(usage))
-    cols[1].metric("차감 크레딧", f"{sum(int(r.get('credits_charged') or 0) for r in usage):,}")
-    cols[2].metric("예상 API 비용", f"${sum(float(r.get('calculated_cost_usd') or 0) for r in usage):,.4f}")
-    cols[3].metric("차단/실패", sum(1 for r in requests if r.get("status") in ("blocked","failed")))
+    cols[1].metric(
+        "훈련 크레딧",
+        f"{sum(int(r.get('credits_charged') or 0) for r in usage):,}",
+    )
+    cols[2].metric("Voice 사용", f"{total_voice_seconds / 60:.1f}분")
+    cols[3].metric(
+        "예상 API 비용",
+        f"${sum(float(r.get('calculated_cost_usd') or 0) for r in usage):,.4f}",
+    )
+    cols[4].metric(
+        "차단/실패",
+        sum(1 for r in requests if r.get("status") in ("blocked", "failed")),
+    )
 
     by_user: dict[str, dict[str, Any]] = {}
-    for r in usage:
-        uid = str(r.get("user_id") or "")
-        slot = by_user.setdefault(uid, {"requests":0,"credits":0,"cost":0.0})
+    for row in usage:
+        uid = str(row.get("user_id") or "")
+        slot = by_user.setdefault(
+            uid,
+            {"requests": 0, "credits": 0, "voice_seconds": 0, "cost": 0.0},
+        )
         slot["requests"] += 1
-        slot["credits"] += int(r.get("credits_charged") or 0)
-        slot["cost"] += float(r.get("calculated_cost_usd") or 0)
+        slot["credits"] += int(row.get("credits_charged") or 0)
+        slot["voice_seconds"] += int(row.get("voice_seconds_charged") or 0)
+        slot["cost"] += float(row.get("calculated_cost_usd") or 0)
+
     summary = [{
         "사용자": (user_map.get(uid) or {}).get("display_name") or uid,
-        "호출": v["requests"],
-        "훈련 크레딧": v["credits"],
-        "예상비용(USD)": round(v["cost"], 6),
-    } for uid, v in sorted(by_user.items(), key=lambda x: x[1]["cost"], reverse=True)]
+        "호출": value["requests"],
+        "훈련 크레딧": value["credits"],
+        "Voice(분)": round(value["voice_seconds"] / 60, 2),
+        "예상비용(USD)": round(value["cost"], 6),
+    } for uid, value in sorted(
+        by_user.items(),
+        key=lambda item: item[1]["cost"],
+        reverse=True,
+    )]
+
     st.markdown("##### 사용자별")
     if summary:
         st.dataframe(summary, hide_index=True, use_container_width=True)
@@ -746,47 +896,80 @@ def _render_ai(auth: HwarangAuthService, users: list[dict[str, Any]]) -> None:
         st.caption("아직 실제 AI 호출 기록이 없습니다.")
 
     st.markdown("##### 차단 기록")
-    blocked = [r for r in requests if r.get("status") in ("blocked","failed") or r.get("block_reason")]
+    blocked = [
+        row for row in requests
+        if row.get("status") in ("blocked", "failed") or row.get("block_reason")
+    ]
     if blocked:
-        for r in blocked[:100]:
-            r["사용자"] = (user_map.get(str(r.get("user_id"))) or {}).get("display_name") or r.get("user_id")
-        st.dataframe(blocked, hide_index=True, use_container_width=True)
+        display = []
+        for row in blocked[:100]:
+            item = dict(row)
+            item["사용자"] = (
+                (user_map.get(str(row.get("user_id"))) or {}).get("display_name")
+                or row.get("user_id")
+            )
+            display.append(item)
+        st.dataframe(display, hide_index=True, use_container_width=True)
     else:
         st.caption("차단 기록이 없습니다.")
-
 
 def _render_settings(auth: HwarangAuthService, actor_id: str) -> None:
     st.subheader("시스템 설정")
     runtime = _fetch_runtime(auth)
     if not runtime:
-        st.warning("먼저 Supabase에서 09_Admin_Operations_AI_Guardrails.sql을 적용해 주세요.")
+        st.warning("먼저 Supabase에서 09~10 마이그레이션을 적용해 주세요.")
         return
 
     st.markdown("#### AI 서비스")
-    st.caption("API Key가 생겨도 이 스위치를 켜기 전에는 AI 호출이 허용되지 않습니다.")
+    st.caption(
+        "API Key가 생겨도 이 스위치를 켜기 전에는 외부 AI 호출이 허용되지 않습니다."
+    )
     with st.form("hw_ai_runtime_settings"):
-        service_enabled = st.toggle("AI 서비스", value=bool(runtime.get("service_enabled")))
+        service_enabled = st.toggle(
+            "AI 서비스",
+            value=bool(runtime.get("service_enabled")),
+        )
         c1, c2, c3 = st.columns(3)
-        text_enabled = c1.toggle("텍스트 AI", value=bool(runtime.get("text_enabled")))
-        voice_enabled = c2.toggle("음성 AI", value=bool(runtime.get("voice_enabled")))
-        assessment_enabled = c3.toggle("AI 정식평가", value=bool(runtime.get("assessment_enabled")))
+        text_enabled = c1.toggle(
+            "텍스트 AI",
+            value=bool(runtime.get("text_enabled")),
+        )
+        voice_enabled = c2.toggle(
+            "음성 AI",
+            value=bool(runtime.get("voice_enabled")),
+        )
+        assessment_enabled = c3.toggle(
+            "AI 정식평가",
+            value=bool(runtime.get("assessment_enabled")),
+        )
         soft_limit_percent = st.slider(
             "이용량 주의 표시 기준",
             min_value=50,
             max_value=95,
             value=int(runtime.get("soft_limit_percent") or 80),
             step=5,
-            help="사용자 이용을 막는 분당 제한이 아닙니다. 관리자/사용자에게 잔여 이용량 경고를 표시하는 기준입니다.",
+            help=(
+                "정상 이용을 막는 분당 제한이 아닙니다. "
+                "잔여 이용량 경고를 표시하는 기준입니다."
+            ),
         )
         contact_label = st.text_input(
             "이용량 추가 문의 문구",
-            value=str(runtime.get("contact_label") or "박병선 팀장에게 이용량 추가 문의"),
+            value=str(
+                runtime.get("contact_label")
+                or "박병선 팀장에게 이용량 추가 문의"
+            ),
         )
         contact_url = st.text_input(
             "문의 링크",
             value=str(runtime.get("contact_url") or ""),
         )
-        saved = st.form_submit_button("AI 운영 설정 저장", type="primary", use_container_width=True)
+        saved = st.form_submit_button(
+            "AI 운영 설정 저장",
+            type="primary",
+            use_container_width=True,
+        )
+
     if saved:
         auth._request(
             "POST",
@@ -806,10 +989,64 @@ def _render_settings(auth: HwarangAuthService, actor_id: str) -> None:
         st.success("AI 운영 설정을 저장했습니다.")
         st.rerun()
 
+    st.markdown("#### 모델 정책")
+    policies = _safe_rows(
+        auth,
+        "/rest/v1/hwarang_ai_model_policy",
+        params={
+            "select": (
+                "role_code,display_name,provider_model,billing_bucket,"
+                "max_output_tokens,is_active,policy_version,updated_at"
+            ),
+            "order": "role_code.asc",
+        },
+    )
+    if policies:
+        display = []
+        for row in policies:
+            display.append({
+                "역할": row.get("display_name"),
+                "코드": row.get("role_code"),
+                "모델": row.get("provider_model") or "API 연결 시 확정",
+                "이용량": "음성 이용량" if row.get("billing_bucket") == "VOICE" else "훈련 크레딧",
+                "최대 출력": row.get("max_output_tokens") or "-",
+                "정책 버전": row.get("policy_version"),
+            })
+        st.dataframe(display, hide_index=True, use_container_width=True)
+        st.caption(
+            "Voice V1은 GPT-Live-1로 고정했습니다. "
+            "Customer / Coach / Evaluator의 실제 API 모델 ID는 API 연결 시점에 확정합니다."
+        )
+    else:
+        st.caption("10 마이그레이션 적용 후 모델 정책이 표시됩니다.")
+
+    st.markdown("#### Guardrail 기본값")
+    limits = _safe_rows(
+        auth,
+        "/rest/v1/hwarang_ai_limit_policies",
+        params={
+            "select": "scope_key,metric,soft_limit,hard_limit,is_enabled,metadata",
+            "scope_type": "eq.app",
+            "order": "scope_key.asc,metric.asc",
+        },
+    )
+    if limits:
+        st.dataframe(limits, hide_index=True, use_container_width=True)
+    st.caption(
+        "정상 시뮬레이터 사용에는 분당 요청 제한을 두지 않습니다. "
+        "중복요청·동시 Session·입출력 크기·Voice 장시간 방치만 방어합니다."
+    )
+
     st.markdown("#### 긴급 정지")
-    st.caption("WORKSPACE/CALCULATOR/비-AI ACADEMY는 유지하고 외부 AI 호출만 차단합니다.")
+    st.caption(
+        "WORKSPACE/CALCULATOR/비-AI ACADEMY는 유지하고 외부 AI 호출만 차단합니다."
+    )
     if runtime.get("service_enabled"):
-        if st.button("AI 서비스 긴급 정지", type="secondary", use_container_width=True):
+        if st.button(
+            "AI 서비스 긴급 정지",
+            type="secondary",
+            use_container_width=True,
+        ):
             auth._request(
                 "POST",
                 "/rest/v1/rpc/admin_update_hwarang_ai_runtime",
@@ -820,7 +1057,9 @@ def _render_settings(auth: HwarangAuthService, actor_id: str) -> None:
                     "p_text_enabled": bool(runtime.get("text_enabled")),
                     "p_voice_enabled": bool(runtime.get("voice_enabled")),
                     "p_assessment_enabled": bool(runtime.get("assessment_enabled")),
-                    "p_soft_limit_percent": int(runtime.get("soft_limit_percent") or 80),
+                    "p_soft_limit_percent": int(
+                        runtime.get("soft_limit_percent") or 80
+                    ),
                     "p_contact_label": str(runtime.get("contact_label") or ""),
                     "p_contact_url": str(runtime.get("contact_url") or ""),
                 },
@@ -829,7 +1068,6 @@ def _render_settings(auth: HwarangAuthService, actor_id: str) -> None:
             st.rerun()
     else:
         st.info("현재 AI 서비스는 정지 상태입니다.")
-
 
 def render(auth: HwarangAuthService) -> None:
     try:

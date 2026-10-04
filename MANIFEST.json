@@ -1,0 +1,29 @@
+{
+  "package": "HWARANG_PRE_API_FINAL_V1",
+  "files": [
+    "PRE_API_FINAL_AUDIT.md",
+    "README_APPLY.md",
+    "academy_app.py",
+    "hwarang_academy/pre_api/__init__.py",
+    "hwarang_academy/pre_api/api_contracts.py",
+    "hwarang_academy/pre_api/constants.py",
+    "hwarang_academy/pre_api/mock_ai.py",
+    "hwarang_academy/pre_api/prompt_builder.py",
+    "hwarang_academy/pre_api/readiness.py",
+    "hwarang_academy/pre_api/runtime.py",
+    "hwarang_academy/pre_api/state_validator.py",
+    "modules/shared/academy_credit_ui.py",
+    "modules/shared/admin_center_ui.py",
+    "modules/shared/ai_guardrails.py",
+    "supabase/migrations/10_Pre_API_Finalization.sql",
+    "tests/test_pre_api_finalization.py"
+  ],
+  "validation": {
+    "python_compile": "PASS",
+    "mock_customer_pipeline": "PASS",
+    "voice_backend_directive": "PASS",
+    "evaluator_18_competencies": "PASS",
+    "gpt_live_1_session_spec": "PASS",
+    "training_vs_voice_billing_separation": "PASS"
+  }
+}

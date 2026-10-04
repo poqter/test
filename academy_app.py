@@ -212,6 +212,13 @@ def main() -> None:
             "remaining_percent": credit_status.remaining_percent,
             "service_enabled": credit_status.service_enabled,
         }
+        payload["voice_usage"] = {
+            "allocation_seconds": credit_status.voice_allocation_seconds,
+            "available_seconds": credit_status.voice_available_seconds,
+            "remaining_percent": credit_status.voice_remaining_percent,
+            "voice_enabled": credit_status.voice_enabled,
+            "provider_model": "gpt-live-1",
+        }
 
     if "academy.simulator" in feature_permissions:
         render_training_credit_strip(credit_status)
