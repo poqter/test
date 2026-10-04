@@ -163,7 +163,7 @@ values
 ('app','academy.customer',  'output_tokens',   null,  800, '{"role":"CUSTOMER"}'::jsonb),
 ('app','academy.coach',     'output_tokens',   null, 1200, '{"role":"COACH"}'::jsonb),
 ('app','academy.evaluator', 'output_tokens',   null, 6000, '{"role":"EVALUATOR"}'::jsonb),
-('app','academy',           'session_turns',   null,   40, '{"matches DEEP mode maximum"}'::jsonb),
+('app','academy',           'session_turns',   null,   40, '{"reason":"matches DEEP mode maximum"}'::jsonb),
 ('app','academy.voice',     'voice_minutes',     25,   30, '{"voice_model":"gpt-live-1","reason":"safety cap above normal 12-20 minute DEEP session"}'::jsonb),
 ('app','academy',           'active_sessions', null,    1, '{"reason":"one active AI simulator session per user"}'::jsonb)
 on conflict (scope_type, scope_key, metric) do update set
