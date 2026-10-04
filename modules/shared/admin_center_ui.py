@@ -37,6 +37,23 @@ _APP_LABELS = {
     "calculator": "CALCULATOR",
     "academy": "ACADEMY",
 }
+_ASSET_SOURCE_LABELS = {
+    "purchase": "구매",
+    "promotion_reward": "프로모션·보상",
+    "bonus": "프로모션·보상",  # legacy row compatibility
+    "admin_adjustment": "관리자 조정",
+    "migration": "이관",
+    "system": "시스템",
+}
+_ASSET_OPERATION_LABELS = {
+    "grant": "추가",
+    "revoke": "차감",
+    "reset": "직접 설정",
+}
+_ASSET_TYPE_LABELS = {
+    "training_credit": "훈련 크레딧",
+    "voice": "Voice",
+}
 _UNIT_LABELS = {
     "root": "전체",
     "head_unit": "본부/직할",
@@ -86,6 +103,8 @@ _ADMIN_ACTION_LABELS = {
     "purchased_credit_revoke": "구매/추가 크레딧 회수",
     "purchased_credit_reset": "구매/추가 크레딧 재설정",
     "bulk_purchased_credit_grant": "구매/추가 크레딧 일괄 지급",
+    "bulk_purchased_credit_adjustment": "훈련 크레딧 일괄 조정",
+    "bulk_voice_adjustment": "Voice 일괄 조정",
     "voice_minutes_grant": "Voice 이용량 지급",
     "voice_minutes_revoke": "Voice 이용량 회수",
     "voice_minutes_reset": "Voice 이용량 재설정",
@@ -570,7 +589,9 @@ def _render_accounts(auth: HwarangAuthService, actor_id: str) -> None:
         st.session_state.pop("hw_admin_selected_user_id", None)
 
     filtered = _account_filters(users)
-    st.caption(f"총 {len(filtered):,}명 · 여러 행을 선택하면 크레딧 일괄 지급이 가능합니다.")
+    st.caption(
+        f"총 {len(filtered):,}명 · 표에서 여러 계정을 선택하거나 현재 검색 결과 전체를 대상으로 훈련 크레딧·Voice를 일괄 처리할 수 있습니다."
+    )
     table: list[dict[str, Any]] = []
     for u in filtered:
         total_credit = int(u.get("training_credit_available") or 0)
@@ -612,35 +633,184 @@ def _render_accounts(auth: HwarangAuthService, actor_id: str) -> None:
             st.rerun()
     with c2:
         if selected_users:
-            st.caption(f"{len(selected_users)}명 선택됨")
+            st.caption(f"표에서 {len(selected_users)}명 선택됨")
+        else:
+            st.caption("개별 계정은 표의 행을 선택한 뒤 상세 화면에서 수정할 수 있습니다.")
 
-    if selected_users:
-        with st.expander(f"선택 사용자 {len(selected_users)}명에게 구매/추가 크레딧 지급"):
-            with st.form("hw_admin_bulk_credit_v2"):
-                b1, b2 = st.columns([1, 1])
-                amount = b1.number_input("1인당 지급 크레딧", min_value=1, value=500, step=100)
+    use_filtered = st.checkbox(
+        f"현재 검색 결과 전체 {len(filtered):,}명을 일괄 처리 대상으로 사용",
+        value=False,
+        key="hw_admin_bulk_use_filtered_v4",
+        help="소속·직책·상태·검색어 필터가 적용된 현재 결과 전체가 대상이 됩니다.",
+    )
+    bulk_users = filtered if use_filtered else selected_users
+
+    if bulk_users:
+        with st.expander(f"선택 사용자 자산 일괄 처리 · 대상 {len(bulk_users):,}명", expanded=False):
+            asset_type = st.radio(
+                "처리 자산",
+                ["training_credit", "voice"],
+                horizontal=True,
+                format_func=lambda x: _ASSET_TYPE_LABELS[x],
+                key="hw_admin_bulk_asset_type_v4",
+            )
+            is_voice = asset_type == "voice"
+            unit = "분" if is_voice else "Credit"
+            default_amount = 30 if is_voice else 500
+            step_amount = 10 if is_voice else 100
+
+            with st.form("hw_admin_bulk_asset_v4"):
+                b1, b2, b3 = st.columns([1, 1, 1])
+                operation = b1.selectbox(
+                    "처리 방식",
+                    ["grant", "revoke", "reset"],
+                    format_func=lambda x: _ASSET_OPERATION_LABELS[x],
+                )
                 source_type = b2.selectbox(
-                    "지급 구분",
-                    ["purchase", "bonus", "admin_adjustment"],
-                    format_func=lambda x: {"purchase": "구매", "bonus": "프로모션·보상", "admin_adjustment": "관리자 조정"}[x],
+                    "처리 구분",
+                    ["purchase", "promotion_reward", "admin_adjustment"],
+                    format_func=lambda x: _ASSET_SOURCE_LABELS[x],
                 )
-                note = st.text_input("사유", placeholder="예: 11월 추가 구매 / 교육 프로모션")
-                submitted = st.form_submit_button("선택 사용자에게 지급", type="primary", use_container_width=True)
-            if submitted:
-                count = _safe_rpc(
-                    auth,
-                    "admin_bulk_grant_hwarang_purchased_credits",
-                    {
-                        "p_actor_user_id": actor_id,
-                        "p_target_user_ids": [str(u["user_id"]) for u in selected_users],
-                        "p_amount": int(amount),
-                        "p_source_type": source_type,
-                        "p_note": note,
-                    },
+                amount = b3.number_input(
+                    f"1인당 {unit}",
+                    min_value=0,
+                    value=default_amount,
+                    step=step_amount,
+                    help="추가·차감은 1 이상, 직접 설정은 0도 가능합니다.",
                 )
-                st.success(f"{int(count or 0):,}명에게 각각 {int(amount):,} 크레딧을 지급했습니다.")
-                st.rerun()
+                note = st.text_input(
+                    "사유",
+                    placeholder=(
+                        "예: Voice 추가 구매 / 교육 보상 / 관리자 보정"
+                        if is_voice else
+                        "예: 추가 크레딧 구매 / 교육 프로모션 / 관리자 보정"
+                    ),
+                )
+                preview = st.form_submit_button("적용 내용 미리보기", type="primary", use_container_width=True)
 
+            if preview:
+                if operation in ("grant", "revoke") and int(amount) <= 0:
+                    st.error("추가·차감 처리 수량은 1 이상이어야 합니다.")
+                else:
+                    st.session_state["hw_admin_bulk_asset_pending_v4"] = {
+                        "user_ids": [str(u["user_id"]) for u in bulk_users],
+                        "user_names": [str(u.get("display_name") or u.get("login_id") or u.get("user_id")) for u in bulk_users],
+                        "asset_type": asset_type,
+                        "operation": operation,
+                        "source_type": source_type,
+                        "amount": int(amount),
+                        "note": note.strip(),
+                    }
+
+    pending = st.session_state.get("hw_admin_bulk_asset_pending_v4")
+    if pending:
+        target_count = len(pending.get("user_ids") or [])
+        amount_each = int(pending.get("amount") or 0)
+        asset_type = str(pending.get("asset_type") or "training_credit")
+        operation = str(pending.get("operation") or "grant")
+        source_type = str(pending.get("source_type") or "admin_adjustment")
+        asset_label = _ASSET_TYPE_LABELS.get(asset_type, asset_type)
+        unit = "분" if asset_type == "voice" else "Credit"
+        names = list(pending.get("user_names") or [])
+        sample_names = ", ".join(names[:5]) + (f" 외 {len(names) - 5}명" if len(names) > 5 else "")
+
+        st.markdown('<div class="hw-section-head">일괄 처리 최종 확인</div>', unsafe_allow_html=True)
+        p1, p2, p3, p4, p5 = st.columns(5)
+        p1.metric("대상", f"{target_count:,}명")
+        p2.metric("자산", asset_label)
+        p3.metric("처리", _ASSET_OPERATION_LABELS.get(operation, operation))
+        p4.metric("구분", _ASSET_SOURCE_LABELS.get(source_type, source_type))
+        p5.metric("1인당", f"{amount_each:,}{unit}")
+        if operation in ("grant", "revoke"):
+            st.caption(f"총 처리량 {amount_each * target_count:,}{unit} · {sample_names}")
+        else:
+            st.caption(f"각 계정의 {asset_label} 잔액을 {amount_each:,}{unit}로 직접 설정 · {sample_names}")
+        if pending.get("note"):
+            st.caption(f"사유 · {pending['note']}")
+        if operation in ("revoke", "reset"):
+            reservation_label = "Voice" if asset_type == "voice" else "구매/추가 크레딧"
+            st.warning(f"차감·직접 설정은 예약 중인 {reservation_label}가 있는 계정에서 실패할 수 있습니다. 실패 계정은 결과에 따로 표시됩니다.")
+
+        c1, c2 = st.columns(2)
+        if c1.button("일괄 처리 취소", key="hw_admin_bulk_asset_cancel_v4", use_container_width=True):
+            st.session_state.pop("hw_admin_bulk_asset_pending_v4", None)
+            st.rerun()
+        if c2.button(
+            f"{target_count:,}명에게 적용",
+            key="hw_admin_bulk_asset_apply_v4",
+            type="primary",
+            use_container_width=True,
+        ):
+            if asset_type == "voice":
+                rpc_name = "admin_bulk_adjust_hwarang_voice_minutes"
+                payload = {
+                    "p_actor_user_id": actor_id,
+                    "p_target_user_ids": pending["user_ids"],
+                    "p_operation": operation,
+                    "p_minutes": amount_each,
+                    "p_source_type": source_type,
+                    "p_note": pending.get("note") or None,
+                }
+            else:
+                rpc_name = "admin_bulk_adjust_hwarang_purchased_credits"
+                payload = {
+                    "p_actor_user_id": actor_id,
+                    "p_target_user_ids": pending["user_ids"],
+                    "p_operation": operation,
+                    "p_amount": amount_each,
+                    "p_source_type": source_type,
+                    "p_note": pending.get("note") or None,
+                }
+
+            result = _safe_rpc(auth, rpc_name, payload)
+            if isinstance(result, list) and len(result) == 1 and isinstance(result[0], dict):
+                result = result[0]
+            result = result if isinstance(result, dict) else {}
+            success_count = int(result.get("success_count") or 0)
+            failed_count = int(result.get("failed_count") or 0)
+            st.session_state.pop("hw_admin_bulk_asset_pending_v4", None)
+
+            if failed_count:
+                st.warning(f"일괄 처리 결과 · 성공 {success_count:,}명 / 실패 {failed_count:,}명")
+                failures = []
+                failed_ids = []
+                failed_names = []
+                name_map = dict(zip(pending["user_ids"], pending["user_names"]))
+                for row in result.get("results") or []:
+                    if row.get("status") == "failed":
+                        uid = str(row.get("user_id") or "")
+                        display_name = name_map.get(uid, uid)
+                        failed_ids.append(uid)
+                        failed_names.append(display_name)
+                        failures.append({
+                            "사용자": display_name,
+                            "실패 사유": row.get("error") or "처리 실패",
+                        })
+                if failures:
+                    st.dataframe(failures, hide_index=True, use_container_width=True)
+                    st.session_state["hw_admin_bulk_asset_retry_v4"] = {
+                        "user_ids": failed_ids,
+                        "user_names": failed_names,
+                        "asset_type": asset_type,
+                        "operation": operation,
+                        "source_type": source_type,
+                        "amount": amount_each,
+                        "note": pending.get("note") or "",
+                    }
+            else:
+                st.session_state.pop("hw_admin_bulk_asset_retry_v4", None)
+                st.success(f"{success_count:,}명의 {asset_label} 일괄 처리가 완료되었습니다.")
+
+    retry = st.session_state.get("hw_admin_bulk_asset_retry_v4")
+    if retry and retry.get("user_ids"):
+        if st.button(
+            f"실패 {len(retry['user_ids']):,}명만 다시 처리",
+            key="hw_admin_bulk_asset_retry_button_v4",
+            use_container_width=True,
+        ):
+            st.session_state["hw_admin_bulk_asset_pending_v4"] = retry
+            st.session_state.pop("hw_admin_bulk_asset_retry_v4", None)
+            st.rerun()
 
 def _render_user_header(user: dict[str, Any]) -> None:
     if st.button("← 계정 목록", key="hw_admin_back_users"):
@@ -931,40 +1101,43 @@ def _user_ai(auth: HwarangAuthService, actor_id: str, uid: str) -> None:
 
     left, right = st.columns(2, gap="large")
     with left:
-        st.markdown("##### 구매/추가 크레딧")
+        st.markdown("##### 훈련 크레딧 조정")
         with st.form(f"hw_purchased_credit_{uid}"):
             operation = st.radio(
                 "작업",
                 ["grant", "revoke", "reset"],
                 horizontal=True,
-                format_func=lambda x: {"grant": "지급", "revoke": "회수", "reset": "잔액 재설정"}[x],
+                format_func=lambda x: _ASSET_OPERATION_LABELS[x],
             )
             amount = st.number_input("크레딧", min_value=0, step=100, value=500)
             source_type = st.selectbox(
-                "구분",
-                ["purchase", "bonus", "admin_adjustment"],
-                format_func=lambda x: {"purchase": "구매", "bonus": "프로모션·보상", "admin_adjustment": "관리자 조정"}[x],
+                "처리 구분",
+                ["purchase", "promotion_reward", "admin_adjustment"],
+                format_func=lambda x: _ASSET_SOURCE_LABELS[x],
             )
-            note = st.text_input("사유", placeholder="예: 11월 추가 구매")
-            submit = st.form_submit_button("구매/추가 크레딧 적용", type="primary", use_container_width=True)
+            note = st.text_input("사유", placeholder="예: 11월 추가 구매 / 교육 보상")
+            submit = st.form_submit_button("훈련 크레딧 적용", type="primary", use_container_width=True)
         if submit:
-            _safe_rpc(
-                auth,
-                "admin_adjust_hwarang_purchased_credits",
-                {
-                    "p_actor_user_id": actor_id,
-                    "p_target_user_id": uid,
-                    "p_operation": operation,
-                    "p_amount": int(amount),
-                    "p_source_type": source_type,
-                    "p_note": note,
-                },
-            )
-            st.success("구매/추가 크레딧을 반영했습니다.")
-            st.rerun()
+            if operation in ("grant", "revoke") and int(amount) <= 0:
+                st.error("추가·차감 처리 금액은 1 이상이어야 합니다.")
+            else:
+                _safe_rpc(
+                    auth,
+                    "admin_adjust_hwarang_purchased_credits",
+                    {
+                        "p_actor_user_id": actor_id,
+                        "p_target_user_id": uid,
+                        "p_operation": operation,
+                        "p_amount": int(amount),
+                        "p_source_type": source_type,
+                        "p_note": note,
+                    },
+                )
+                st.success("훈련 크레딧을 반영했습니다.")
+                st.rerun()
 
     with right:
-        st.markdown("##### Voice 이용량")
+        st.markdown("##### Voice 조정")
         voice_label, _ = voice_display_state(
             credit.voice_remaining_percent,
             allocation_seconds=credit.voice_allocation_seconds,
@@ -976,26 +1149,36 @@ def _user_ai(auth: HwarangAuthService, actor_id: str, uid: str) -> None:
                 "작업",
                 ["grant", "revoke", "reset"],
                 horizontal=True,
-                format_func=lambda x: {"grant": "지급", "revoke": "회수", "reset": "잔액 재설정"}[x],
+                format_func=lambda x: _ASSET_OPERATION_LABELS[x],
                 key=f"hw_voice_op_{uid}",
             )
             minutes = st.number_input("음성 이용량(분)", min_value=0, step=10, value=30, key=f"hw_voice_min_{uid}")
-            note = st.text_input("사유", placeholder="예: Voice 추가 이용", key=f"hw_voice_note_{uid}")
-            submit_voice = st.form_submit_button("Voice 이용량 적용", type="primary", use_container_width=True)
-        if submit_voice:
-            _safe_rpc(
-                auth,
-                "admin_adjust_hwarang_voice_minutes",
-                {
-                    "p_actor_user_id": actor_id,
-                    "p_target_user_id": uid,
-                    "p_operation": operation,
-                    "p_minutes": int(minutes),
-                    "p_note": note,
-                },
+            voice_source_type = st.selectbox(
+                "처리 구분",
+                ["purchase", "promotion_reward", "admin_adjustment"],
+                format_func=lambda x: _ASSET_SOURCE_LABELS[x],
+                key=f"hw_voice_source_{uid}",
             )
-            st.success("Voice 이용량을 반영했습니다.")
-            st.rerun()
+            note = st.text_input("사유", placeholder="예: Voice 추가 구매 / 교육 보상", key=f"hw_voice_note_{uid}")
+            submit_voice = st.form_submit_button("Voice 적용", type="primary", use_container_width=True)
+        if submit_voice:
+            if operation in ("grant", "revoke") and int(minutes) <= 0:
+                st.error("추가·차감 Voice 시간은 1분 이상이어야 합니다.")
+            else:
+                _safe_rpc(
+                    auth,
+                    "admin_adjust_hwarang_voice_minutes",
+                    {
+                        "p_actor_user_id": actor_id,
+                        "p_target_user_id": uid,
+                        "p_operation": operation,
+                        "p_minutes": int(minutes),
+                        "p_source_type": voice_source_type,
+                        "p_note": note,
+                    },
+                )
+                st.success("Voice 이용량을 반영했습니다.")
+                st.rerun()
 
     usage = _safe_rows(
         auth,
@@ -1007,7 +1190,7 @@ def _user_ai(auth: HwarangAuthService, actor_id: str, uid: str) -> None:
             "limit": "200",
         },
     )
-    ledger = _safe_rows(
+    credit_ledger = _safe_rows(
         auth,
         "/rest/v1/hwarang_ai_credit_ledger",
         params={
@@ -1017,16 +1200,51 @@ def _user_ai(auth: HwarangAuthService, actor_id: str, uid: str) -> None:
             "limit": "300",
         },
     )
+    voice_ledger = _safe_rows(
+        auth,
+        "/rest/v1/hwarang_voice_ledger",
+        params={
+            "select": "entry_type,delta_seconds,balance_after_seconds,allocation_after_seconds,source_type,note,created_at",
+            "user_id": f"eq.{uid}",
+            "order": "created_at.desc",
+            "limit": "300",
+        },
+    )
+
     st.markdown('<div class="hw-section-head">AI 사용 원장</div>', unsafe_allow_html=True)
     if usage:
         st.dataframe(usage, hide_index=True, use_container_width=True)
     else:
         st.caption("아직 실제 AI 사용 기록이 없습니다.")
+
     st.markdown('<div class="hw-section-head">훈련 크레딧 원장</div>', unsafe_allow_html=True)
-    if ledger:
-        st.dataframe(ledger, hide_index=True, use_container_width=True)
+    if credit_ledger:
+        credit_rows = [{
+            "시간": _fmt_dt(r.get("created_at")),
+            "처리": _ASSET_OPERATION_LABELS.get(str(r.get("entry_type") or ""), str(r.get("entry_type") or "-")),
+            "구분": _ASSET_SOURCE_LABELS.get(str(r.get("source_type") or ""), str(r.get("source_type") or "-")),
+            "변동": int(r.get("delta_credits") or 0),
+            "구매/추가 잔액": int(r.get("purchased_balance_after") or 0),
+            "전체 잔액": int(r.get("balance_after") or 0),
+            "사유": r.get("note") or "-",
+        } for r in credit_ledger]
+        st.dataframe(credit_rows, hide_index=True, use_container_width=True)
     else:
         st.caption("크레딧 변동 기록이 없습니다.")
+
+    st.markdown('<div class="hw-section-head">Voice 원장</div>', unsafe_allow_html=True)
+    if voice_ledger:
+        voice_rows = [{
+            "시간": _fmt_dt(r.get("created_at")),
+            "처리": _ASSET_OPERATION_LABELS.get(str(r.get("entry_type") or ""), str(r.get("entry_type") or "-")),
+            "구분": _ASSET_SOURCE_LABELS.get(str(r.get("source_type") or ""), str(r.get("source_type") or "-")),
+            "변동(분)": round(int(r.get("delta_seconds") or 0) / 60, 1),
+            "잔액(분)": round(int(r.get("balance_after_seconds") or 0) / 60, 1),
+            "사유": r.get("note") or "-",
+        } for r in voice_ledger]
+        st.dataframe(voice_rows, hide_index=True, use_container_width=True)
+    else:
+        st.caption("Voice 변동 기록이 없습니다.")
 
 
 # ---------------------------------------------------------------------------
