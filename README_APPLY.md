@@ -1,44 +1,32 @@
-# HWARANG API PREFLIGHT FIX V1
+# HWARANG LOGIN FAST PATH V1
 
-기준 소스: Git HEAD `3ffbb7bc91caf1aabbb55f197df21d028079dbcc`
+로그인 버튼 클릭 후 홈 화면까지의 네트워크 왕복을 줄이는 패치입니다.
 
-## 적용 방법
-이 ZIP은 **변경/추가 파일만** 들어 있습니다. 자동 패치 스크립트는 없습니다.
+## 변경 파일
+- `app.py`
+- `modules/shared/hwarang_auth.py`
 
-1. ZIP 안 파일을 저장소의 동일 경로에 복사/덮어쓰기합니다.
-2. Supabase SQL Editor에서 새 Query `11_API_Preflight_Fixes`를 만듭니다.
-3. `supabase/migrations/11_API_Preflight_Fixes.sql` 전체를 **1회 실행**합니다.
-4. 기존 01~10은 다시 실행하지 않습니다.
+## 신규 파일
+- `supabase/migrations/12_Login_Fast_Path.sql`
+- `tests/test_login_fast_path.py`
+
+## 적용 순서
+1. `12_Login_Fast_Path.sql`을 Supabase SQL Editor에서 **1회 실행**합니다.
+2. 기존 01~11은 다시 실행하지 않습니다.
+3. `app.py`, `modules/shared/hwarang_auth.py`를 같은 경로에 덮어씁니다.
+4. `tests/test_login_fast_path.py`는 테스트 폴더에 추가합니다.
 5. GitHub push → Streamlit 배포합니다.
-6. 최고관리자 WORKSPACE → 관리자 센터 → 시스템 설정 → `PRE-API 자가진단 실행`을 눌러 확인합니다.
-7. 실제 OpenAI API 연결 전까지 AI 서비스/Text/Voice/AI 정식평가는 계속 OFF로 둡니다.
 
-## 이번 수정 핵심
-- Voice 예약 만료: 10분 고정 → 허용 Voice 시간 + 10분 buffer
-- 1인 1 AI Session: PostgreSQL advisory lock으로 원자적 강제
-- reservation RPC에서 Session 소유권/진행상태/lock 재검증
-- 차단 로그: RAISE rollback 문제 제거, `blocked` registry + activity log 영구 기록
-- idempotency 동시 race에서도 이중 이용량 예약 방지
-- Retry: 같은 request_id/reservation을 재사용하는 `start_hwarang_ai_request` 추가
-- Formal AI 평가: 동일 source snapshot의 DB unique + repository/runtime 재사용
-- Customer AI에서 hidden coverage_analysis / proposal_state / raw insurance_state 제거
-- 보험정보는 Python이 승인한 `insurance_memory`만 Customer AI에 공개
-- 입력창/기존 deterministic backend/API guardrail을 모두 2,400자로 정렬
-- 관리자 시간 표시 Asia/Seoul 고정
-- `jsonschema` direct runtime dependency 명시
-- 관리자센터에 외부 API를 쓰지 않는 PRE-API 배포환경 자가진단 추가
+## 변경 후 정상 로그인 경로
+1. `get_hwarang_login_bootstrap` — 로그인 ID → Auth 이메일/UID 확인
+2. Supabase Auth — 비밀번호 검증
+3. `complete_hwarang_workspace_login` — 프로필·조직·직책·앱 권한·세부 권한·로그인 세션·로그 기록을 한 번에 처리
 
-## 검증 결과
-- Python compile: PASS
-- pytest: **40 passed**
-- unittest subtests: **58 passed**
-- Random generated cases: **1,000 / failures 0**
-- Customer hidden analysis/proposal leak: PASS
-- Insurance disclosure projection: PASS
-- Evaluator snapshot reuse: PASS
-- Voice/Training separation regression: PASS
-- Frontend / deterministic backend / API input limit 2,400 정렬: PASS
+즉 정상 로그인은 **3번의 순차 네트워크 요청**으로 줄어듭니다.
 
-## 주의
-`11_API_Preflight_Fixes.sql`은 정적 검사를 완료했지만 실제 Supabase 실행은 사용자의 프로젝트에서 처음 수행됩니다.
-SQL Editor에서 오류가 발생하면 그 오류를 그대로 전달해 주세요.
+추가로 로그인 직후 불필요했던 즉시 heartbeat와 `APP_OPENED/home` 중복 로그를 생략합니다.
+로그인 기록 자체는 `LOGIN_SUCCESS`로 정상 보존됩니다.
+
+## 배포 안전성
+Migration 12가 아직 적용되지 않은 환경에서는 기존 로그인 경로로 자동 fallback합니다.
+따라서 권장 적용 순서는 SQL 12 → Python 파일 배포지만, 배포 순서가 잠시 어긋나도 로그인 자체가 바로 중단되지 않도록 구성했습니다.

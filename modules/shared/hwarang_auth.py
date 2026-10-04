@@ -136,6 +136,10 @@ class HwarangAuthService:
             return "현재 최고관리자 계정의 로그인 권한은 해제할 수 없습니다."
         if "last_super_admin_required" in low:
             return "최소 한 명의 활성 최고관리자 계정이 필요합니다."
+        if "workspace_access_required" in low:
+            return "이 계정은 HWARANG WORKSPACE 이용 권한이 없습니다."
+        if "login_context_not_found" in low:
+            return "아이디 또는 비밀번호를 확인해 주세요."
         if "invalid_permission_code" in low or "invalid_app_code" in low:
             return "권한 설정 정보를 확인해 주세요."
         if "password" in low and ("weak" in low or "short" in low or "length" in low):
@@ -407,6 +411,116 @@ class HwarangAuthService:
             return data["user"]
         return data if isinstance(data, dict) else {}
 
+    def _login_bootstrap(self, login_id: str) -> dict[str, Any] | None:
+        """Fetch only what is needed before Supabase password verification."""
+        data = self._request(
+            "POST",
+            "/rest/v1/rpc/get_hwarang_login_bootstrap",
+            admin=True,
+            json={"p_login_id": login_id.strip()},
+        )
+        if isinstance(data, list) and data and isinstance(data[0], dict):
+            return dict(data[0])
+        if isinstance(data, dict):
+            return dict(data)
+        return None
+
+    def _complete_workspace_login(self, user_id: str) -> dict[str, Any]:
+        """Create LOGIN_SUCCESS telemetry and return all login context in one RPC."""
+        data = self._request(
+            "POST",
+            "/rest/v1/rpc/complete_hwarang_workspace_login",
+            admin=True,
+            json={"p_user_id": user_id},
+        )
+        row: dict[str, Any] | None = None
+        if isinstance(data, list) and data and isinstance(data[0], dict):
+            row = dict(data[0])
+        elif isinstance(data, dict):
+            row = dict(data)
+        if not row:
+            raise HwarangAuthError("로그인 정보를 확인하지 못했습니다.")
+
+        raw_access = row.get("app_access")
+        app_access = dict(raw_access) if isinstance(raw_access, dict) else {}
+        normalized_access = {
+            "workspace": bool(app_access.get("workspace")),
+            "calculator": bool(app_access.get("calculator")),
+            "academy": bool(app_access.get("academy")),
+        }
+        if not normalized_access["workspace"]:
+            raise HwarangAuthError("이 계정은 HWARANG WORKSPACE 이용 권한이 없습니다.")
+
+        raw_permissions = row.get("feature_permissions")
+        feature_permissions = [
+            str(code)
+            for code in (raw_permissions if isinstance(raw_permissions, list) else [])
+            if str(code or "").strip()
+        ]
+
+        profile = {
+            "id": str(row.get("user_id") or user_id),
+            "login_id": str(row.get("login_id") or ""),
+            "display_name": str(row.get("display_name") or ""),
+            "role": str(row.get("role") or "user"),
+            "is_active": bool(row.get("is_active")),
+            "position_code": row.get("position_code"),
+            "position_name": row.get("position_name"),
+            "organization_unit_id": row.get("organization_unit_id"),
+            "organization_name": row.get("organization_name"),
+            "organization_code": row.get("organization_code"),
+        }
+
+        return {
+            "platform_session_id": str(row.get("platform_session_id") or ""),
+            "profile": profile,
+            "app_access": normalized_access,
+            "feature_permissions": sorted(set(feature_permissions)),
+        }
+
+    def _legacy_sign_in(self, login_id: str, password: str) -> dict[str, Any]:
+        """Compatibility path used only when migration 12 is not yet available."""
+        profile = self._profile_by_login_id(login_id)
+        if not profile or not profile.get("is_active"):
+            raise HwarangAuthError("아이디 또는 비밀번호를 확인해 주세요.")
+
+        email = str(profile.get("auth_email") or "").strip()
+        if not email:
+            auth_user = self._auth_user_by_id(str(profile["id"]))
+            email = str(auth_user.get("email") or "").strip()
+        if not email:
+            raise HwarangAuthError("계정 인증정보를 확인할 수 없습니다. 관리자에게 문의해 주세요.")
+
+        token = self._request(
+            "POST",
+            "/auth/v1/token",
+            admin=False,
+            params={"grant_type": "password"},
+            json={"email": email, "password": password},
+        )
+        if not isinstance(token, dict) or not token.get("access_token"):
+            raise HwarangAuthError("로그인 정보를 확인하지 못했습니다.")
+
+        user_id = str(profile["id"])
+        authorization = self.authorization_for_user(user_id)
+        if not authorization["app_access"].get("workspace", False):
+            raise HwarangAuthError("이 계정은 HWARANG WORKSPACE 이용 권한이 없습니다.")
+
+        # Preserve the legacy operational timestamp semantics when the
+        # compatibility path is used. The normal fast path does not call this.
+        self._mark_login(user_id)
+
+        expires_in = int(token.get("expires_in") or 3600)
+        return {
+            "access_token": token["access_token"],
+            "refresh_token": token.get("refresh_token", ""),
+            "expires_at": int(token.get("expires_at") or (time.time() + expires_in)),
+            "profile_checked_at": int(time.time()),
+            "profile": self._enrich_profile(profile),
+            "login_fast_path": False,
+            **authorization,
+        }
+
     def _mark_login(self, uid: str) -> None:
         """Best-effort operational metadata update; never block a valid login."""
         try:
@@ -424,21 +538,42 @@ class HwarangAuthService:
             _LOGGER.info("Could not update last_login_at for user %s", uid)
 
     def sign_in(self, login_id: str, password: str) -> dict[str, Any]:
+        """Fast-path WORKSPACE sign-in with three sequential network requests."""
         login_id = login_id.strip()
         if not login_id or not password:
             raise HwarangAuthError("아이디와 비밀번호를 입력해 주세요.")
-        profile = self._profile_by_login_id(login_id)
-        if not profile or not profile.get("is_active"):
+
+        started = time.perf_counter()
+
+        try:
+            bootstrap = self._login_bootstrap(login_id)
+        except HwarangAuthError as exc:
+            # Safe deployment order: if migration 12 has not reached the DB yet,
+            # keep login working through the older path.
+            if str(exc) != "계정 서버 설정을 확인해 주세요.":
+                raise
+            _LOGGER.info("HWARANG login fast path unavailable; using compatibility path")
+            return self._legacy_sign_in(login_id, password)
+
+        bootstrap_ms = (time.perf_counter() - started) * 1000.0
+
+        if not bootstrap:
+            # Compatibility with a database that has not received migration 12
+            # or an older test double that does not implement the new RPC.
+            return self._legacy_sign_in(login_id, password)
+        if not bootstrap.get("is_active"):
             raise HwarangAuthError("아이디 또는 비밀번호를 확인해 주세요.")
-        # Fresh HWARANG schema keeps the Auth email in a server-only profile
-        # column, avoiding an extra Auth Admin request on every login.  The
-        # admin lookup remains as a compatibility fallback for older rows.
-        email = str(profile.get("auth_email") or "").strip()
-        if not email:
-            auth_user = self._auth_user_by_id(str(profile["id"]))
-            email = str(auth_user.get("email") or "").strip()
-        if not email:
+
+        user_id = str(bootstrap.get("user_id") or "").strip()
+        email = str(bootstrap.get("auth_email") or "").strip()
+        if not user_id:
             raise HwarangAuthError("계정 인증정보를 확인할 수 없습니다. 관리자에게 문의해 주세요.")
+        if not email:
+            # Legacy rows created before auth_email mirroring can still sign in
+            # through the compatibility path. Current accounts stay on fast path.
+            return self._legacy_sign_in(login_id, password)
+
+        auth_started = time.perf_counter()
         token = self._request(
             "POST",
             "/auth/v1/token",
@@ -446,22 +581,43 @@ class HwarangAuthService:
             params={"grant_type": "password"},
             json={"email": email, "password": password},
         )
+        auth_ms = (time.perf_counter() - auth_started) * 1000.0
+
         if not isinstance(token, dict) or not token.get("access_token"):
             raise HwarangAuthError("로그인 정보를 확인하지 못했습니다.")
+
+        token_user = token.get("user") if isinstance(token.get("user"), dict) else {}
+        authenticated_user_id = str(token_user.get("id") or user_id).strip()
+        if authenticated_user_id and authenticated_user_id != user_id:
+            _LOGGER.warning("HWARANG login identity mismatch after password verification")
+            raise HwarangAuthError("로그인 정보를 확인하지 못했습니다.")
+
+        complete_started = time.perf_counter()
+        context = self._complete_workspace_login(user_id)
+        complete_ms = (time.perf_counter() - complete_started) * 1000.0
+
         expires_in = int(token.get("expires_in") or 3600)
-        user_id = str(profile["id"])
-        authorization = self.authorization_for_user(user_id)
-        if not authorization["app_access"].get("workspace", False):
-            raise HwarangAuthError("이 계정은 HWARANG WORKSPACE 이용 권한이 없습니다.")
-        self._mark_login(user_id)
+        now = int(time.time())
+        total_ms = (time.perf_counter() - started) * 1000.0
+
+        # Latency only; no login id/email/password is written to logs.
+        _LOGGER.info(
+            "HWARANG login fast-path latency_ms bootstrap=%.1f auth=%.1f complete=%.1f total=%.1f",
+            bootstrap_ms,
+            auth_ms,
+            complete_ms,
+            total_ms,
+        )
+
         return {
             "access_token": token["access_token"],
             "refresh_token": token.get("refresh_token", ""),
             "expires_at": int(token.get("expires_at") or (time.time() + expires_in)),
-            "profile_checked_at": int(time.time()),
-            "profile": self._enrich_profile(profile),
-            **authorization,
+            "profile_checked_at": now,
+            "login_fast_path": True,
+            **context,
         }
+
 
     def refresh(self, auth_state: dict[str, Any]) -> dict[str, Any]:
         """Refresh the Auth token and periodically revalidate account access.

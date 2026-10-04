@@ -1,30 +1,19 @@
 {
-  "package": "HWARANG_API_PREFLIGHT_FIX_V1",
-  "base_git_head": "3ffbb7bc91caf1aabbb55f197df21d028079dbcc",
+  "package": "HWARANG_LOGIN_FAST_PATH_V1",
+  "base_git_head": "192359d75fef2600d57e575bde7f32435773d8b6",
   "changed_files": [
-    "academy_app.py",
-    "hwarang_academy/frontend/app.js",
-    "hwarang_academy/language.py",
-    "hwarang_academy/pre_api/__init__.py",
-    "hwarang_academy/pre_api/api_contracts.py",
-    "hwarang_academy/pre_api/prompt_builder.py",
-    "hwarang_academy/pre_api/readiness.py",
-    "hwarang_academy/pre_api/repository.py",
-    "hwarang_academy/pre_api/runtime.py",
-    "hwarang_academy/pre_api/state_validator.py",
-    "hwarang_academy/pre_api/disclosure.py",
-    "hwarang_academy/pre_api/retry_policy.py",
-    "modules/shared/admin_center_ui.py",
-    "modules/shared/ai_guardrails.py",
-    "requirements.txt",
-    "tests/test_pre_api_finalization.py",
-    "supabase/migrations/11_API_Preflight_Fixes.sql"
+    "app.py",
+    "modules/shared/hwarang_auth.py"
+  ],
+  "new_files": [
+    "supabase/migrations/12_Login_Fast_Path.sql",
+    "tests/test_login_fast_path.py"
   ],
   "validation": {
     "python_compile": "PASS",
-    "pytest": "40 passed",
+    "pytest": "44 passed",
     "subtests": "58 passed",
-    "random_cases_1000": "PASS / failures 0",
-    "sql_static_checks": "PASS"
+    "fast_path_unit_tests": "4 passed",
+    "normal_login_network_requests": 3
   }
 }

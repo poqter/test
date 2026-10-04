@@ -1,6 +1,8 @@
 """HWARANG WORKSPACE entrypoint: unified account, registry, navigation, and dispatch."""
 from __future__ import annotations
 
+import time
+
 import streamlit as st
 
 from modules.shell.app_registry import APP_DEFINITIONS, USER_PERMISSIONS
@@ -56,17 +58,32 @@ def _set_authenticated(auth: HwarangAuthService, state: dict) -> None:
     st.session_state["hw_feature_permissions"] = set(state.get("feature_permissions") or ())
     st.session_state["active_app"] = "home"
 
-    # Operational telemetry is best-effort and must never block a valid login.
-    try:
-        from modules.shared.platform_activity import open_session
+    # Migration 12 fast path creates the platform session inside the same
+    # post-auth RPC that returns profile/permission context. No extra login-time
+    # network call is needed here.
+    platform_session_id = str(state.get("platform_session_id") or "").strip() or None
 
-        uid = str(profile.get("id") or "")
-        if uid:
-            st.session_state["hw_platform_session_id"] = open_session(auth, uid, "workspace")
-            st.session_state["hw_last_heartbeat_at"] = 0.0
-            st.session_state["hw_last_activity_app"] = None
-    except Exception:
-        st.session_state["hw_platform_session_id"] = None
+    # Compatibility fallback only: if code is deployed before migration 12,
+    # preserve the older behavior rather than breaking login.
+    if not platform_session_id:
+        try:
+            from modules.shared.platform_activity import open_session
+
+            uid = str(profile.get("id") or "")
+            if uid:
+                platform_session_id = open_session(auth, uid, "workspace")
+        except Exception:
+            platform_session_id = None
+
+    st.session_state["hw_platform_session_id"] = platform_session_id
+
+    # The platform session was just created, so an immediate heartbeat is
+    # redundant. Start the five-minute heartbeat window from now.
+    st.session_state["hw_last_heartbeat_at"] = time.time() if platform_session_id else 0.0
+
+    # LOGIN_SUCCESS already records the initial HOME entry. Skip the redundant
+    # APP_OPENED/home request; subsequent page changes are still logged.
+    st.session_state["hw_last_activity_app"] = "home"
 
     for key in ("hw_signup_branches", "hw_signup_verified_code"):
         st.session_state.pop(key, None)
