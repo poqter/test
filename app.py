@@ -41,6 +41,9 @@ def initialize_state() -> None:
     st.session_state.setdefault("active_app", "home")
     st.session_state.setdefault("hw_app_access", {})
     st.session_state.setdefault("hw_feature_permissions", set())
+    st.session_state.setdefault("hw_platform_session_id", None)
+    st.session_state.setdefault("hw_last_heartbeat_at", 0.0)
+    st.session_state.setdefault("hw_last_activity_app", None)
 
 
 def _set_authenticated(auth: HwarangAuthService, state: dict) -> None:
@@ -52,6 +55,19 @@ def _set_authenticated(auth: HwarangAuthService, state: dict) -> None:
     st.session_state["hw_app_access"] = dict(state.get("app_access") or {})
     st.session_state["hw_feature_permissions"] = set(state.get("feature_permissions") or ())
     st.session_state["active_app"] = "home"
+
+    # Operational telemetry is best-effort and must never block a valid login.
+    try:
+        from modules.shared.platform_activity import open_session
+
+        uid = str(profile.get("id") or "")
+        if uid:
+            st.session_state["hw_platform_session_id"] = open_session(auth, uid, "workspace")
+            st.session_state["hw_last_heartbeat_at"] = 0.0
+            st.session_state["hw_last_activity_app"] = None
+    except Exception:
+        st.session_state["hw_platform_session_id"] = None
+
     for key in ("hw_signup_branches", "hw_signup_verified_code"):
         st.session_state.pop(key, None)
 
@@ -128,9 +144,9 @@ def render_login(auth: HwarangAuthService) -> bool:
         st.markdown('<div class="hw-auth-brand"><span>H</span> 화랑 <strong>WORKSPACE</strong></div>', unsafe_allow_html=True)
         copy_col, login_col = st.columns([1.18, 1], gap="large", vertical_alignment="center")
         with copy_col:
-            st.markdown('''<div class="hw-auth-copy"><span>HWARANG WORKSPACE</span>
+            st.markdown("""<div class="hw-auth-copy"><span>HWARANG WORKSPACE</span>
             <h1>보험 업무의 복잡함,<br>더 간단하게.</h1>
-            <p>상담과 관리에 필요한 도구를 한 공간에.</p><i></i></div>''', unsafe_allow_html=True)
+            <p>상담과 관리에 필요한 도구를 한 공간에.</p><i></i></div>""", unsafe_allow_html=True)
         with login_col:
             with st.container(key="hw_auth_card"):
                 st.markdown('<div class="hw-auth-card-heading"><small>WELCOME BACK</small><h2>로그인</h2><p>아이디와 비밀번호를 입력해 시작하세요.</p></div>', unsafe_allow_html=True)
@@ -163,11 +179,31 @@ def allowed_app_ids() -> list[str]:
 
 def workspace_logout() -> None:
     state = st.session_state.get("hwarang_auth")
+    auth = auth_service()
+
     try:
-        auth_service().sign_out(state)
+        profile = (state or {}).get("profile") or {}
+        uid = str(profile.get("id") or "")
+        if uid:
+            from modules.shared.platform_activity import close_session
+
+            close_session(
+                auth,
+                platform_session_id=st.session_state.get("hw_platform_session_id"),
+                user_id=uid,
+            )
+    except Exception:
+        pass
+
+    try:
+        auth.sign_out(state)
     except HwarangAuthError:
         pass
+
     clear_workspace_session()
+    st.session_state["hw_platform_session_id"] = None
+    st.session_state["hw_last_heartbeat_at"] = 0.0
+    st.session_state["hw_last_activity_app"] = None
 
 
 def main() -> None:
@@ -199,36 +235,87 @@ def main() -> None:
     if not render_login(auth):
         st.stop()
 
+    # Sparse presence heartbeat. This is not click-level tracking.
+    try:
+        from modules.shared.platform_activity import heartbeat
+
+        profile = st.session_state.get("login_profile") or {}
+        uid = str(profile.get("id") or "")
+        if uid:
+            st.session_state["hw_last_heartbeat_at"] = heartbeat(
+                auth,
+                platform_session_id=st.session_state.get("hw_platform_session_id"),
+                user_id=uid,
+                last_heartbeat_at=st.session_state.get("hw_last_heartbeat_at", 0.0),
+                interval_seconds=300,
+            )
+    except Exception:
+        pass
+
     permission_role = st.session_state.get("login_user")
     permitted = allowed_ids(permission_role)
     st.session_state["ws_allowed_ids"] = permitted
     active = normalize_route(st.session_state.get("active_app"), permission_role)
     st.session_state["active_app"] = active
+
+    # Record meaningful page changes only, not every Streamlit rerun.
+    if st.session_state.get("hw_last_activity_app") != active:
+        try:
+            from modules.shared.platform_activity import log_activity
+
+            profile = st.session_state.get("login_profile") or {}
+            uid = str(profile.get("id") or "")
+            if uid:
+                log_activity(
+                    auth,
+                    user_id=uid,
+                    platform_session_id=st.session_state.get("hw_platform_session_id"),
+                    app_code="workspace",
+                    event_code="APP_OPENED",
+                    feature_code=active,
+                )
+        except Exception:
+            pass
+        st.session_state["hw_last_activity_app"] = active
+
     render_sidebar(permitted, navigate, workspace_logout, NOTICE)
     from modules.shared.build_info import BUILD_ID
+
     with st.sidebar:
         st.caption("버전 " + BUILD_ID)
         profile = st.session_state.get("login_profile") or {}
         if profile.get("role") == "super_admin":
-            account_admin_open = st.toggle("계정·권한 관리", key="hw_account_admin_open")
-            settings_open = st.toggle("운영 설정", key="hw_admin_settings_open")
-        elif permission_role == "Admin":
-            account_admin_open = False
-            settings_open = st.toggle("운영 설정", key="hw_admin_settings_open")
+            admin_center_open = st.toggle("관리자 센터", key="hw_admin_center_open")
         else:
-            account_admin_open = False
-            settings_open = False
-    if account_admin_open:
-        from modules.shared.account_admin_ui import render as render_account_admin
-        render_account_admin(auth)
+            admin_center_open = False
+
+    if admin_center_open:
+        try:
+            from modules.shared.platform_activity import log_activity
+
+            uid = str((st.session_state.get("login_profile") or {}).get("id") or "")
+            if uid and st.session_state.get("hw_last_activity_app") != "__admin_center__":
+                log_activity(
+                    auth,
+                    user_id=uid,
+                    platform_session_id=st.session_state.get("hw_platform_session_id"),
+                    app_code="platform",
+                    event_code="ADMIN_CENTER_OPENED",
+                    feature_code="admin_center",
+                )
+                st.session_state["hw_last_activity_app"] = "__admin_center__"
+        except Exception:
+            pass
+
+        from modules.shared.admin_center_ui import render as render_admin_center
+
+        render_admin_center(auth)
         return
-    if settings_open:
-        from modules.shared.organization_ui import render as render_settings
-        render_settings()
-        return
+
     if active == "home":
         render_home(permitted, navigate, NOTICE)
         return
+
     restore_page_draft(active)
     with st.container(key="hw_task_page"):
         st.markdown('<div class="hw-task-marker" aria-hidden="true"></div>', unsafe_allow_html=True)

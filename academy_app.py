@@ -12,6 +12,8 @@ from hwarang_academy.auth_service import AcademyAuthError, AcademyAuthService, S
 from hwarang_academy.content import ROOT, SCENARIOS, MODES, validate_content
 from hwarang_academy.service import AppState, handle, present
 from modules.shared.external_apps import workspace_url
+from modules.shared.ai_guardrails import get_training_credit_status
+from modules.shared.academy_credit_ui import render_training_credit_strip
 
 
 st.set_page_config(
@@ -166,6 +168,10 @@ def main() -> None:
 
     validate_academy_content()
     feature_permissions = set(identity.get("feature_permissions") or ())
+    viewer_profile = identity.get("profile", {}) if isinstance(identity.get("profile"), dict) else {}
+    viewer_user_id = str(viewer_profile.get("id") or "")
+    credit_status = get_training_credit_status(auth, viewer_user_id) if viewer_user_id else None
+
     independent = st.query_params.get("view") == "simulator"
     if independent and "academy.simulator" not in feature_permissions:
         render_workspace_gate("이 계정에는 AI 상담 시뮬레이터 이용 권한이 없습니다.")
@@ -198,6 +204,17 @@ def main() -> None:
             "organization_name",
         )
     }
+
+    if credit_status:
+        payload["training_credit"] = {
+            "allocation": credit_status.allocation_credits,
+            "available": credit_status.available_credits,
+            "remaining_percent": credit_status.remaining_percent,
+            "service_enabled": credit_status.service_enabled,
+        }
+
+    if "academy.simulator" in feature_permissions:
+        render_training_credit_strip(credit_status)
 
     event = component()(model=payload, key="academy_engine_component_v59", default=None)
     if isinstance(event, dict) and event.get("event_id") != app.ack:
