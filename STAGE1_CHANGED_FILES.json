@@ -1,11 +1,40 @@
 {
-  "engine_version": "1.7.0-stage1",
+  "engine_version": "1.7.1-stage1",
   "baseline_zip_sha256": "4a1302456d9993a34dcd352ebecb189df980b45339288769850344346f72ca32",
+  "briefing_code_sha256": {
+    "__init__.py": "66c4884dd2d46a2e672f3dc686c8c53e1cbfc0ff7af3a3ee7917ef0b6e90ad47",
+    "briefing_center.py": "c3bfec4929e0c2fe7c89c6ff4ff2f216628d701c6330d2cb43149fd0ae7083df",
+    "clustering.py": "fdf10bad85f75fc35c91248c3ee0990f554759e61799ecd5136420bb11287b8f",
+    "config.py": "7fef0ba59710652e3228999aeb7249890f3a2a97f739f221971f44e8244fdce5",
+    "diagnostics.py": "40a7f5f2c5836a07e2834c8cf49cfba948d9984e91bfcd7ec5b23692a6102881",
+    "direct_sources.py": "5205edcbe24d692da20c4cce672ba9e5f4747d94170686fcdd6edc5c211c8dc4",
+    "discovery_budget.py": "a4d88d0f70dd7cfa64db080818ae29abaeaf9fd777ca23deb6e0420f2f92e23f",
+    "evidence.py": "434c16d525e20014e6f661e6b2c2bb38ef3d1bd7413b3ae2e1461e4b746dd7ab",
+    "gates.py": "072a9339247bc5a9757abc5c872a4c38f2938b6c1d627b3c951051e958d71af2",
+    "models.py": "1d5d328d1f2a77df7c09ad261cac9a17a9c0944b5284b27dab4f3b2fd5a57937",
+    "normalize.py": "0c50de14c9c85ce9ef36cac2d7cd5a0f4efd016b28160ce90f30ec986903bf72",
+    "openai_analysis.py": "da5bb9ad3f8796d04923e474c50c6a3bba6920fa03451058af6074af2c503ff9",
+    "openai_discovery.py": "ca10940aabe39bd18cc115963df960d4b580bd6fec4d702f343499bdba7e73b9",
+    "phase_b.py": "40691435a0287c9e1e84ea593a5fc638c8bae0d03db3cc1080a5cc81ed7abbaf",
+    "phase_c.py": "d602087f693f09c0aa65f80ceaf7116141a7419d4fc52ae5d394b4a8276e1950",
+    "preflight.py": "2d0df18b2d5daaceaee1bc975da1a13970a1b3af4dfc539ecf0bf45d829e9ca2",
+    "profile_rules.py": "e4770777ea122c058885023eacc73ed54aa5562c6b0aab9b7269f7cd745a2745",
+    "publication.py": "82b2aefb8e8c8653bbd551fc05a7cafcdc8551ec65474bd3c31e7a4328fdaf2c",
+    "repository.py": "79a633fce11728ab660763694fd18ff89d12a6ed9c23c8ea5f7b0206339aa3b3",
+    "runtime.py": "574a4a0629524ff54f4c4f0ab332094348a45bc9cfa9c1bcbe52f54dfbcca5f3",
+    "source_policy.py": "c828fc2fd4e62a80e7f032e169a1c43865342db0d333767ca6fbec172265a66e",
+    "tool_policy.py": "0762fb107425b9aacf9cec571f1f9e67044b17abad40d075f7cc5185e4460383"
+  },
   "changed_files": [
     {
       "path": "BRIEFING_IMPLEMENTATION_CHECKPOINT_V1_7_STAGE1.md",
       "status": "added",
-      "sha256": "0b335b0983382bb5df1e37d2c0ff749f3ba8901ccc5c74bb06fd85e35335405e"
+      "sha256": "496662d5752a1db878a200aa52e15046aa92adb462b2c91d2741bfad40efe071"
+    },
+    {
+      "path": "STAGE1_DIAGNOSTIC_REPLAY_RESULT.json",
+      "status": "added",
+      "sha256": "c221e36e64d3ccb165fc74ee16c12281dead9a134207f8639c96970d40a65b7a"
     },
     {
       "path": "STAGE1_SAVED_REPLAY_RESULT.json",
@@ -15,17 +44,27 @@
     {
       "path": "STAGE1_TEST_RESULTS.txt",
       "status": "added",
-      "sha256": "bae37be03cb5b777fcf6e13a0b1ebe4aae035e0cfaa0764851974b33be6b739b"
+      "sha256": "421695ed5afd2edc758b474882886302b212f0e46d98de9ae4aa337d486ab9f0"
     },
     {
       "path": "modules/briefing/briefing_center.py",
       "status": "modified",
-      "sha256": "9a89ecadd0d6ecf3bb88b5a3fd2ac346487bf050ac65106c0f077065b2a541f4"
+      "sha256": "c3bfec4929e0c2fe7c89c6ff4ff2f216628d701c6330d2cb43149fd0ae7083df"
+    },
+    {
+      "path": "modules/briefing/diagnostics.py",
+      "status": "added",
+      "sha256": "40a7f5f2c5836a07e2834c8cf49cfba948d9984e91bfcd7ec5b23692a6102881"
     },
     {
       "path": "modules/briefing/direct_sources.py",
       "status": "modified",
       "sha256": "5205edcbe24d692da20c4cce672ba9e5f4747d94170686fcdd6edc5c211c8dc4"
+    },
+    {
+      "path": "modules/briefing/discovery_budget.py",
+      "status": "added",
+      "sha256": "a4d88d0f70dd7cfa64db080818ae29abaeaf9fd777ca23deb6e0420f2f92e23f"
     },
     {
       "path": "modules/briefing/gates.py",
@@ -35,7 +74,7 @@
     {
       "path": "modules/briefing/models.py",
       "status": "modified",
-      "sha256": "1658d57df5b3e37eb61f6d56472c9bc3654ce4f4e02695ab4a040a01f09aef55"
+      "sha256": "1d5d328d1f2a77df7c09ad261cac9a17a9c0944b5284b27dab4f3b2fd5a57937"
     },
     {
       "path": "modules/briefing/normalize.py",
@@ -45,27 +84,27 @@
     {
       "path": "modules/briefing/openai_analysis.py",
       "status": "modified",
-      "sha256": "f68f81c65bb1b837db06cc1bc0601ecf1e53fe4f9fea6e0b5eea99965b129983"
+      "sha256": "da5bb9ad3f8796d04923e474c50c6a3bba6920fa03451058af6074af2c503ff9"
     },
     {
       "path": "modules/briefing/openai_discovery.py",
       "status": "modified",
-      "sha256": "c7d968af4d65bcc8e72a0325a74b74143c3f56aaa51f93e69b5573c43f51181c"
+      "sha256": "ca10940aabe39bd18cc115963df960d4b580bd6fec4d702f343499bdba7e73b9"
     },
     {
       "path": "modules/briefing/phase_b.py",
       "status": "modified",
-      "sha256": "d4e8131c7feb86d285b9f5e2be1d913539c3ce3244a5aa03d2f88c6cd149004b"
+      "sha256": "40691435a0287c9e1e84ea593a5fc638c8bae0d03db3cc1080a5cc81ed7abbaf"
     },
     {
       "path": "modules/briefing/phase_c.py",
       "status": "modified",
-      "sha256": "5d6079cad9e207bb3fa4d195adc08d899d3487d3807e84215e94b951dc266bb6"
+      "sha256": "d602087f693f09c0aa65f80ceaf7116141a7419d4fc52ae5d394b4a8276e1950"
     },
     {
       "path": "modules/briefing/preflight.py",
       "status": "modified",
-      "sha256": "64c41115ed917453c01f9945dacd4c09c33e2d55f0265ad3a11485fb3bc994e0"
+      "sha256": "2d0df18b2d5daaceaee1bc975da1a13970a1b3af4dfc539ecf0bf45d829e9ca2"
     },
     {
       "path": "modules/briefing/profile_rules.py",
@@ -80,7 +119,7 @@
     {
       "path": "modules/briefing/runtime.py",
       "status": "modified",
-      "sha256": "e8b68ab66704afc9c88725917aca79874e60a1922e0b29a9c7f00c1eb0a0b197"
+      "sha256": "574a4a0629524ff54f4c4f0ab332094348a45bc9cfa9c1bcbe52f54dfbcca5f3"
     },
     {
       "path": "modules/briefing/source_policy.py",
@@ -95,12 +134,22 @@
     {
       "path": "scripts/briefing_stage1_offline_replay.py",
       "status": "added",
-      "sha256": "5c7ffa6d1758b8551dac8f41aedb54a7b131e5feb61978d8c47aba20a70fac1b"
+      "sha256": "96e4eec28584094f3e11b5e2243fcdc1d2224157740ba4be9228f20b68527d9c"
     },
     {
       "path": "tests/conftest.py",
       "status": "added",
       "sha256": "ba68c30de5bde9f3b7bdee17a7de50ffac5d642d9528d9bf837060db203e82c7"
+    },
+    {
+      "path": "tests/test_briefing_discovery_budget.py",
+      "status": "added",
+      "sha256": "f9acbbf4713c9a1b742543522ea4bf2018a52b47aa9a34ca264a863dd0e08719"
+    },
+    {
+      "path": "tests/test_briefing_failure_diagnostics.py",
+      "status": "added",
+      "sha256": "82a26624f4a61fd5220e0bf32c61cd3e6f5cb69f6d793051e8a3a798bd3571ca"
     },
     {
       "path": "tests/test_briefing_phase_c.py",
@@ -110,7 +159,7 @@
     {
       "path": "tests/test_briefing_publication.py",
       "status": "added",
-      "sha256": "5bd818fd38a175dcb6eaebcf83f727766920c13a0780c1d3d900cd3901968697"
+      "sha256": "e34ead4e0f6dac85c2de1d5e3c0c8961de2ac5c57fb8996a14b57b3d1d423acc"
     },
     {
       "path": "tests/test_briefing_stage1_quality.py",
@@ -123,9 +172,32 @@
       "sha256": "1821acf9df860f7fe87be032e65e6c6b7c18ecf535ab5b8d50b33775fe75f1a0"
     }
   ],
-  "schema_changed": false,
-  "sql_migrations_changed": false,
-  "paid_project_api_calls": 0,
-  "tests_passed": 122,
-  "subtests_passed": 61
+  "changed_since_1_7_0_stage1": [
+    "BRIEFING_IMPLEMENTATION_CHECKPOINT_V1_7_STAGE1.md",
+    "STAGE1_DIAGNOSTIC_REPLAY_RESULT.json",
+    "STAGE1_TEST_RESULTS.txt",
+    "modules/briefing/briefing_center.py",
+    "modules/briefing/diagnostics.py",
+    "modules/briefing/discovery_budget.py",
+    "modules/briefing/models.py",
+    "modules/briefing/openai_analysis.py",
+    "modules/briefing/openai_discovery.py",
+    "modules/briefing/phase_b.py",
+    "modules/briefing/phase_c.py",
+    "modules/briefing/preflight.py",
+    "modules/briefing/runtime.py",
+    "scripts/briefing_stage1_offline_replay.py",
+    "tests/test_briefing_discovery_budget.py",
+    "tests/test_briefing_failure_diagnostics.py",
+    "tests/test_briefing_publication.py"
+  ],
+  "db_schema_changes": false,
+  "sql_changes": false,
+  "tests": {
+    "passed": 144,
+    "subtests_passed": 61,
+    "project_api_calls": 0,
+    "project_db_requests": 0
+  },
+  "deployment_note": "Apply this cumulative patch at repository root, including new files and this manifest, then restart app. No SQL required."
 }

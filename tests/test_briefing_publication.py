@@ -125,7 +125,7 @@ def test_phase_b_enriches_before_freshness_gate_and_reports_lanes():
     _CACHE.clear(); http = Session()
     row = SourceCandidate("보험 제도 변경", URL, "기관", "openai_web_search", "official", metadata={"profile_hint": "INSURANCE", "lane_code": "official_industry"})
     class Discovery:
-        def run_lane(self, lane):
+        def run_lane(self, lane, **kwargs):
             return DiscoveryLaneResult(lane.lane_code, lane.profile_code, [row] if lane == DISCOVERY_LANES[0] else [], DiscoveryUsage(search_actions=1), True)
     with patch("modules.briefing.phase_b.collect_direct_sources", return_value=([], {})):
         result = run_phase_b(as_of=NOW, discovery_client=Discovery(), date_enricher=PublicationDateEnricher(session=http, destination_check=lambda _: True))

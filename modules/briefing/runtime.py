@@ -8,6 +8,7 @@ from typing import Any, Iterable
 from zoneinfo import ZoneInfo
 
 from .direct_sources import load_direct_source_specs_from_env
+from .diagnostics import ENGINE_VERSION, DIAGNOSTIC_SCHEMA, build_info
 from .models import PhaseBResult, PhaseCResult, ProfileEventAnalysis, SharedEventCandidate, SourceCandidate
 from .phase_b import run_phase_b
 from .phase_c import run_phase_c
@@ -43,10 +44,15 @@ class BriefingGenerationResult:
     candidate_count: int
     event_count: int
     diagnostics: dict[str, Any] | None = None
+    engine_version: str = ENGINE_VERSION
+    schema_version: str = DIAGNOSTIC_SCHEMA
+    status: str = "completed"
 
 
 class BriefingRunError(RuntimeError):
-    pass
+    def __init__(self, message: str, diagnostics: dict[str, Any] | None = None):
+        super().__init__(message)
+        self.diagnostics = diagnostics or {}
 
 
 def _iso(dt: datetime | None) -> str | None:
@@ -224,10 +230,10 @@ def _persist_profile(
         "created_by": actor_user_id,
         "change_summary": "V1.7 Stage 1 게시일·수집 진단·관련 뉴스 보완",
         "version_trace": {
-            "engine_version": "1.7.0-stage1",
-            "profile_config_version": "1.7.0-stage1",
+            "engine_version": ENGINE_VERSION,
+            "profile_config_version": ENGINE_VERSION,
             "prompt_version": "phase_c_v2",
-            "source_config_version": "phase_b_v2",
+            "source_config_version": "phase_b_v3",
             "run_mode": run_mode,
         },
     })
@@ -406,7 +412,35 @@ def generate_and_store_briefings(
     as_of = datetime.now(timezone.utc)
     date_text = as_of.astimezone(KST).date().isoformat()
     jobs: dict[str, dict[str, Any]] = {}
+    progress: dict[str, Any] = {"stage": "creating_jobs", "requested_profiles": list(requested),
+                                "discovery_requests": [], "analysis_requests": [], "build": build_info()}
+
+    def record_usage(record: dict[str, Any], *, discovery: bool) -> None:
+        collection = "discovery_requests" if discovery else "analysis_requests"
+        progress[collection].append(record)
+        code = record["profile_code"]
+        owner = code if code in jobs else next(iter(jobs))
+        usage = record.get("usage") or {}
+        record["usage_logged"] = False
+        repo.log_api_usage({
+            "job_id": jobs[owner]["id"], "profile_code": owner, "provider": "openai",
+            "operation": f"web_discovery:{record['lane_code']}" if discovery else "phase_c_analysis",
+            **{field: usage.get(field) for field in ("model_name", "service_tier")},
+            **{field: int(usage.get(field) or 0) for field in ("input_tokens", "cached_input_tokens", "output_tokens",
+                "reasoning_tokens", "web_tool_calls", "search_actions", "search_retry_count", "verification_search_actions")},
+            "metadata": {"engine_version": ENGINE_VERSION, "request_no": record.get("request_no"),
+                         "response_id": record.get("response_id"), "response_status": record.get("status"),
+                         "retry_used": bool(record.get("retry")), "lane_profile_code": code,
+                         "usage_available": bool(record.get("usage_available")),
+                         "charge_uncertain": not bool(record.get("usage_available")),
+                         "requested_max_tool_calls": record.get("requested_max_tool_calls")},
+        })
+        record["usage_logged"] = True
+        repo.update_job(str(jobs[owner]["id"]), {"metadata": {
+            "engine_version": ENGINE_VERSION, "shared_run": True, "partial_diagnostics": progress}})
     try:
+        if not progress["build"]["code_matches_release"]:
+            raise BriefingRunError("배포 파일이 수정 패키지와 일치하지 않습니다. 유료 API 실행을 중단했습니다.")
         for code in requested:
             key = _job_key(code, date_text, "MORNING")
             attempt = repo.next_attempt_no(key)
@@ -419,9 +453,14 @@ def generate_and_store_briefings(
                 "trigger_type": "manual",
                 "job_status": "collecting",
                 "started_at": as_of.isoformat(),
-                "metadata": {"engine_version": "1.7.0-stage1", "shared_run": True},
+                "metadata": {"engine_version": ENGINE_VERSION, "shared_run": True},
             })
-        phase_b = run_phase_b(as_of=as_of, direct_sources=load_direct_source_specs_from_env())
+        progress["stage"] = "web_discovery"
+        phase_b = run_phase_b(as_of=as_of, direct_sources=load_direct_source_specs_from_env(),
+                              on_discovery_response=lambda record: record_usage(record, discovery=True))
+        progress["phase_b"] = {"collection": phase_b.diagnostics, "source_health": phase_b.source_health,
+                               "excluded_counts": phase_b.excluded_counts,
+                               "candidate_count": len(phase_b.candidates), "event_count": len(phase_b.events)}
         for code, job in jobs.items():
             repo.checkpoint(str(job["id"]), "direct_collection_complete", {"candidate_count": len(phase_b.candidates)})
             repo.checkpoint(str(job["id"]), "web_discovery_complete", {
@@ -431,7 +470,7 @@ def generate_and_store_briefings(
 
         # Record Discovery usage against the lane's owning profile only; this
         # prevents the shared four Search Actions from being double-counted.
-        for lane in phase_b.discovery_lanes:
+        for lane in (() if progress["discovery_requests"] else phase_b.discovery_lanes):
             job = jobs.get(lane.profile_code)
             if not job:
                 continue
@@ -454,8 +493,10 @@ def generate_and_store_briefings(
                 "metadata": {"retry_used": lane.retry_used, "response_id": lane.raw_response_id},
             })
 
-        phase_c = run_phase_c(phase_b, profile_codes=requested)
-        for code, usage in phase_c.usage_by_profile.items():
+        progress["stage"] = "analysis"
+        phase_c = run_phase_c(phase_b, profile_codes=requested,
+                             on_analysis_response=lambda record: record_usage(record, discovery=False))
+        for code, usage in ({} if progress["analysis_requests"] else phase_c.usage_by_profile).items():
             job = jobs.get(code)
             if not job:
                 continue
@@ -478,6 +519,7 @@ def generate_and_store_briefings(
             })
 
         results: list[GeneratedProfileResult] = []
+        progress["stage"] = "persistence"
         for code in requested:
             job = jobs[code]
             repo.update_job(str(job["id"]), {"job_status": "generating"})
@@ -491,19 +533,24 @@ def generate_and_store_briefings(
                 run_mode="shadow" if force_shadow else str(profiles[code].get("run_mode") or "shadow"),
             )
             results.append(result)
+            progress["stored_profiles"] = [asdict(r) for r in results]
             repo.update_job(str(job["id"]), {"job_status": "completed", "finished_at": datetime.now(timezone.utc).isoformat()})
 
+        progress["stage"] = "completed"
         return BriefingGenerationResult(
             generated_at=datetime.now(timezone.utc).isoformat(),
             profiles=results,
             search_actions=sum(lane.usage.search_actions for lane in phase_b.discovery_lanes),
             candidate_count=len(phase_b.candidates),
             event_count=len(phase_b.events),
-            diagnostics={"phase_b": phase_b.diagnostics, "source_health": phase_b.source_health, "excluded_counts": phase_b.excluded_counts,
+            diagnostics={"build": build_info(), "phase_b": phase_b.diagnostics, "source_health": phase_b.source_health, "excluded_counts": phase_b.excluded_counts,
+                         "request_progress": progress,
                          "analysis_omitted": phase_c.omitted_by_profile, "analysis_usage": {k: asdict(v) for k,v in phase_c.usage_by_profile.items()},
                          "discovery_usage": [{"lane_code": l.lane_code, "profile_code": l.profile_code, "usage": asdict(l.usage)} for l in phase_b.discovery_lanes]},
         )
     except Exception as exc:
+        details = {**progress, "failure_details": getattr(exc, "diagnostics", {})}
+        cleanup_failures = []
         for job in jobs.values():
             try:
                 repo.update_job(str(job["id"]), {
@@ -511,9 +558,9 @@ def generate_and_store_briefings(
                     "failure_code": "GENERATION_FAILURE",
                     "failure_message": str(exc)[:500],
                     "finished_at": datetime.now(timezone.utc).isoformat(),
+                    "metadata": {"engine_version": ENGINE_VERSION, "shared_run": True, "failure_diagnostics": details},
                 })
             except Exception:
-                pass
-        if isinstance(exc, (BriefingRunError, BriefingRepositoryError)):
-            raise
-        raise BriefingRunError(str(exc)) from exc
+                cleanup_failures.append(str(job["id"]))
+        details["job_cleanup_failures"] = cleanup_failures
+        raise BriefingRunError(str(exc), details) from exc

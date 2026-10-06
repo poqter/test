@@ -15,6 +15,9 @@ from .runtime import PROFILE_LABELS, BriefingRunError, generate_and_store_briefi
 from .normalize import is_safe_url
 from .preflight import run_runtime_preflight, preflight_ready
 from .direct_sources import load_direct_source_specs_from_env
+from .diagnostics import ENGINE_VERSION, DIAGNOSTIC_SCHEMA, build_info, failure_diagnostic
+from .config import SHARED_DISCOVERY_HARD_LIMIT
+from .discovery_budget import DISCOVERY_REQUEST_HARD_LIMIT
 
 
 PROFILE_ORDER = ("MARKET", "INSURANCE", "NEWS")
@@ -465,7 +468,7 @@ def _render_profile_detail(repo: BriefingRepository, code: str, bundle: dict[str
         with st.expander("생성 진단 결과"):
             qa = snapshot.get("qa_payload") or {}
             st.json(qa)
-            st.download_button("진단 JSON 다운로드", json.dumps({"schema_version": "briefing-stage1-diagnostics", "engine_version": "1.7.0-stage1", "profile_code": code, "briefing_date": briefing.get("briefing_date"), "revision_status": {k: revision.get(k) for k in ("publication_status", "validation_status", "coverage_status")}, "qa": qa}, ensure_ascii=False, indent=2), file_name=f"briefing_{code}_stage1_diagnostics.json", mime="application/json", key=f"hw_diag_{snapshot.get('id')}")
+            st.download_button("진단 JSON 다운로드", json.dumps({"schema_version": DIAGNOSTIC_SCHEMA, **build_info(), "profile_code": code, "briefing_date": briefing.get("briefing_date"), "revision_status": {k: revision.get(k) for k in ("publication_status", "validation_status", "coverage_status")}, "qa": qa}, ensure_ascii=False, indent=2), file_name=f"briefing_{code}_stage1_diagnostics.json", mime="application/json", key=f"hw_diag_{snapshot.get('id')}")
 
 
 def _render_generate_panel(repo: BriefingRepository) -> None:
@@ -474,6 +477,7 @@ def _render_generate_panel(repo: BriefingRepository) -> None:
     with st.container(key="hw_briefing_admin_panel"):
         with st.popover("콘텐츠 관리", use_container_width=True):
             st.markdown("**운영 모드 · SHADOW**")
+            st.caption(f"개발 검증 버전 · {ENGINE_VERSION}")
             st.caption("생성 결과는 관리자 미리보기로 저장되며, 검증 후 공개할 수 있습니다.")
             st.caption("INSURANCE·NEWS는 Shared Discovery를 함께 사용해 중복 검색을 줄입니다.")
             checks = run_runtime_preflight(require_direct_sources=False)
@@ -486,6 +490,13 @@ def _render_generate_panel(repo: BriefingRepository) -> None:
             for check in checks:
                 if not check.ok:
                     (st.error if check.required else st.caption)(check.message)
+            st.download_button("배포 진단 다운로드 · API 호출 없음", json.dumps({
+                "schema_version": DIAGNOSTIC_SCHEMA, **build_info(), "status": "preflight",
+                "requested_profiles": requested_profiles,
+                "settings": [{"code": c.code, "ok": c.ok, "required": c.required} for c in checks],
+                "limits": {"search_actions": SHARED_DISCOVERY_HARD_LIMIT, "discovery_requests": DISCOVERY_REQUEST_HARD_LIMIT},
+            }, ensure_ascii=False, indent=2), file_name="briefing_stage1_deployment_diagnostics.json",
+                mime="application/json", key="hw_briefing_deployment_diagnostic_download")
             paid_ack = st.checkbox("이번 1회 유료 API 실행을 확인했습니다.", key="hw_briefing_paid_ack")
             if st.button(
                 "오늘 브리핑 생성",
@@ -511,7 +522,7 @@ def _render_generate_panel(repo: BriefingRepository) -> None:
                         st.session_state.pop("hw_briefing_selected_profile", None)
                         st.rerun()
                     except (BriefingRunError, BriefingRepositoryError, ValueError) as exc:
-                        st.session_state["hw_briefing_last_diagnostic"] = {"engine_version":"1.7.0-stage1", "status":"failed", "failed_at":datetime.now(KST).isoformat(), "failure_message":str(exc), "note":"일부 API 요청은 실패 전 과금되었을 수 있습니다. 추가 생성 전에 이 진단을 검토합니다."}
+                        st.session_state["hw_briefing_last_diagnostic"] = failure_diagnostic(exc)
                         st.error("브리핑 생성에 실패했습니다.")
                         st.caption(str(exc))
             if st.session_state.get("hw_briefing_last_diagnostic"):

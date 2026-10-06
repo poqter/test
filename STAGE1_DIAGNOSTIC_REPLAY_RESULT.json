@@ -1,0 +1,11 @@
+{
+  "mode": "offline_saved_diagnostic_metadata",
+  "input_engine_version": "1.7.0-stage1",
+  "as_of": "2026-10-06T17:27:17+09:00",
+  "api_calls": 0,
+  "db_writes": 0,
+  "input_failure_message": "Shared Discovery hard limit exceeded",
+  "replayable": false,
+  "observed_search_actions": null,
+  "note": "이 진단에는 검색별 응답·사용량이 없어 실제 초과 횟수와 원인을 재현할 수 없습니다. 새 유료 요청은 실행하지 않았습니다."
+}

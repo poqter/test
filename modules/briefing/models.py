@@ -54,6 +54,7 @@ class DiscoveryLaneResult:
     search_performed: bool
     retry_used: bool = False
     raw_response_id: str | None = None
+    request_diagnostics: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass(slots=True)

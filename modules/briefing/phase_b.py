@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Iterable
+from typing import Any, Callable, Iterable
 
 from .clustering import cluster_candidates
 from .config import DISCOVERY_LANES, SHARED_DISCOVERY_HARD_LIMIT
 from .direct_sources import DirectSourceSpec, collect_direct_sources
+from .discovery_budget import DiscoveryBudget, DiscoveryBudgetError
 from .gates import passes_common_gate, route_profiles
 from .models import PhaseBResult, SourceCandidate
 from .normalize import normalize_candidate
@@ -15,7 +16,22 @@ from .source_policy import source_identity
 
 
 class PhaseBBudgetError(RuntimeError):
-    pass
+    def __init__(self, message: str, diagnostics: dict[str, Any]):
+        super().__init__(message)
+        self.diagnostics = diagnostics
+
+
+def candidate_diagnostic(row: SourceCandidate) -> dict[str, Any]:
+    return {"title": row.title[:300], "url": row.canonical_url or row.url,
+            "description": row.description[:700], "source_name": row.source_name[:160],
+            "collector_provider": row.collector_provider, "source_kind": row.source_kind,
+            "source_code": row.source_code, "source_tier": row.source_tier,
+            "lane_code": row.metadata.get("lane_code"),
+            "profile_hint": row.metadata.get("profile_hint"),
+            "profile_hints": row.metadata.get("profile_hints", []),
+            "publication_status": row.metadata.get("publication_status"),
+            "published_at": row.published_at.isoformat() if row.published_at else None,
+            "freshness_tier": row.freshness_tier}
 
 
 def _hint(candidate: SourceCandidate) -> str | None:
@@ -49,21 +65,58 @@ def run_phase_b(
     discovery_client: OpenAIWebDiscoveryClient | None = None,
     enable_web_discovery: bool = True,
     date_enricher: PublicationDateEnricher | None = None,
+    on_discovery_response: Callable[[dict[str, Any]], None] | None = None,
 ) -> PhaseBResult:
     as_of = as_of or datetime.now(timezone.utc)
     direct_sources = list(direct_sources)
     direct_candidates, direct_health = collect_direct_sources(direct_sources)
     lanes = []
     web_candidates: list[SourceCandidate] = []
+    budget = DiscoveryBudget(on_response=on_discovery_response)
+    skipped_lanes: list[dict[str, str]] = []
     if enable_web_discovery:
         client = discovery_client or OpenAIWebDiscoveryClient()
         client.as_of = as_of
-        for lane in DISCOVERY_LANES:
-            result = client.run_lane(lane)
-            lanes.append(result)
-            web_candidates.extend(result.candidates)
-        if sum(item.usage.search_actions for item in lanes) > SHARED_DISCOVERY_HARD_LIMIT:
-            raise PhaseBBudgetError("Shared Discovery hard limit exceeded")
+        try:
+            # Finish all primary lanes before spending the two spare requests on
+            # no-search retries. A retry may never silently crowd out later lanes.
+            for lane in DISCOVERY_LANES:
+                if not budget.can_request():
+                    skipped_lanes.append({"lane_code": lane.lane_code, "reason": "budget_exhausted"})
+                    continue
+                result = client.run_lane(lane, budget=budget, allow_retry=False)
+                lanes.append(result)
+                if sum(item.usage.search_actions for item in lanes) > SHARED_DISCOVERY_HARD_LIMIT:
+                    raise DiscoveryBudgetError("Shared Discovery hard limit exceeded; further calls stopped")
+            for result in lanes:
+                if result.search_performed:
+                    continue
+                if not budget.can_request():
+                    skipped_lanes.append({"lane_code": result.lane_code, "reason": "retry_budget_exhausted"})
+                    continue
+                lane = next(l for l in DISCOVERY_LANES if l.lane_code == result.lane_code)
+                extra = client.run_lane(lane, budget=budget, allow_retry=False, retry=True)
+                for field in ("input_tokens", "cached_input_tokens", "output_tokens", "reasoning_tokens",
+                              "web_tool_calls", "search_actions", "search_retry_count"):
+                    setattr(result.usage, field, getattr(result.usage, field) + getattr(extra.usage, field))
+                result.candidates.extend(extra.candidates)
+                result.search_performed = extra.search_performed
+                result.retry_used = True
+                result.raw_response_id = extra.raw_response_id
+                result.request_diagnostics.extend(extra.request_diagnostics)
+                if sum(item.usage.search_actions for item in lanes) > SHARED_DISCOVERY_HARD_LIMIT:
+                    raise DiscoveryBudgetError("Shared Discovery hard limit exceeded; further calls stopped")
+        except Exception as exc:
+            details = {"stage": "web_discovery", "discovery_budget": budget.snapshot(),
+                       "raw_direct_candidates": len(direct_candidates), "direct_source_health": direct_health,
+                       "completed_lanes": [l.lane_code for l in lanes], "skipped_lanes": skipped_lanes,
+                       "partial_candidates": [candidate_diagnostic(c) for c in direct_candidates[:80]],
+                       "candidate_sample_limit": 80}
+            if isinstance(exc, DiscoveryBudgetError):
+                raise PhaseBBudgetError(str(exc), details) from exc
+            exc.diagnostics = details
+            raise
+        web_candidates = [c for lane in lanes for c in lane.candidates]
 
     excluded: dict[str, int] = {}
     accepted: list[SourceCandidate] = []
@@ -100,7 +153,6 @@ def run_phase_b(
     return PhaseBResult(as_of=as_of, candidates=accepted, events=events, discovery_lanes=lanes, excluded_counts=excluded,
                         source_health=health, diagnostics={"raw_direct_candidates": len(direct_candidates), "raw_web_candidates": len(web_candidates),
                         "publication": dict(enricher.stats), "lanes": lane_health,
-                        "candidate_sample": [{"title": c.title[:300], "url": c.canonical_url or c.url, "lane_code": c.metadata.get("lane_code"),
-                            "source_kind": c.source_kind, "publication_status": c.metadata.get("publication_status"),
-                            "published_at": c.published_at.isoformat() if c.published_at else None,
-                            "freshness_tier": c.freshness_tier} for c in [*ordered_web, *direct_candidates][:16]]})
+                        "discovery_budget": budget.snapshot(), "skipped_lanes": skipped_lanes,
+                        "candidate_sample": [candidate_diagnostic(c) for c in [*ordered_web, *direct_candidates][:80]],
+                        "candidate_sample_limit": 80})

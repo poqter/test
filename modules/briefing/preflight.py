@@ -12,6 +12,7 @@ from .config import (
     SHARED_DISCOVERY_TARGET,
 )
 from .direct_sources import DirectSourceSpec, load_direct_source_specs_from_env
+from .diagnostics import build_info
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,7 +53,11 @@ def run_runtime_preflight(*, direct_sources: list[DirectSourceSpec] | None = Non
     else:
         direct_source_parse_ok = True
 
+    integrity_ok = bool(build_info()["code_matches_release"])
     checks = [
+        PreflightCheck("deployment_integrity", integrity_ok, True,
+                       "배포 파일이 수정 패키지와 일치합니다" if integrity_ok
+                       else "배포 파일이 수정 패키지와 일치하지 않습니다. 새 파일과 STAGE1_CHANGED_FILES.json을 함께 적용하고 앱을 다시 시작하세요."),
         PreflightCheck(
             "supabase_url",
             _present("SUPABASE_URL"),

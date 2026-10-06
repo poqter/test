@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from copy import deepcopy
-from typing import Protocol
+from typing import Any, Callable, Protocol
 
 from .evidence import infer_evidence_status, is_high_risk
 from .models import AnalysisUsage, PhaseBResult, PhaseCResult, ProfileEventAnalysis, SharedEventCandidate
@@ -50,8 +50,9 @@ def run_phase_c(
     analyzer: Analyzer | None = None,
     max_events_per_profile: int = 20,
     profile_codes: tuple[str, ...] | None = None,
+    on_analysis_response: Callable[[dict[str, Any]], None] | None = None,
 ) -> PhaseCResult:
-    client = analyzer or OpenAIAnalysisClient()
+    client = analyzer or OpenAIAnalysisClient(on_response=on_analysis_response)
     by_profile: dict[str, list[SharedEventCandidate]] = defaultdict(list)
     for event in phase_b.events:
         for profile_code in sorted(event.routed_profiles):

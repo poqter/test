@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 import os
 from typing import Any
@@ -7,6 +8,7 @@ from typing import Any
 import requests
 
 from .config import DiscoveryLaneSpec
+from .discovery_budget import DiscoveryBudget, REQUEST_TOOL_CALL_LIMIT
 from .models import DiscoveryLaneResult, DiscoveryUsage, SourceCandidate
 from .normalize import is_safe_url
 from .publication import parse_publication_date
@@ -45,7 +47,8 @@ class OpenAIWebDiscoveryClient:
             ),
             "tools": [{"type": "web_search", "filters": {"allowed_domains": list(LANE_DOMAINS[lane.lane_code])}}],
             "tool_choice": "required",
-            "max_tool_calls": 1,
+            "max_tool_calls": REQUEST_TOOL_CALL_LIMIT,
+            "parallel_tool_calls": False,
             "max_output_tokens": 2000,
             "include": ["web_search_call.results", "web_search_call.action.sources"],
         }
@@ -64,8 +67,8 @@ class OpenAIWebDiscoveryClient:
             data = response.json()
         except ValueError as exc:
             raise BriefingDiscoveryError("OpenAI discovery returned invalid JSON") from exc
-        if not isinstance(data, dict) or data.get("status") in {"failed", "incomplete"}:
-            raise BriefingDiscoveryError("OpenAI discovery response is incomplete or failed")
+        if not isinstance(data, dict):
+            raise BriefingDiscoveryError("OpenAI discovery returned invalid response")
         return data
 
     @staticmethod
@@ -73,13 +76,18 @@ class OpenAIWebDiscoveryClient:
         usage = data.get("usage") if isinstance(data.get("usage"), dict) else {}
         input_details = usage.get("input_tokens_details") if isinstance(usage.get("input_tokens_details"), dict) else {}
         output_details = usage.get("output_tokens_details") if isinstance(usage.get("output_tokens_details"), dict) else {}
+        def count(value: Any) -> int:
+            try:
+                return max(0, int(value or 0))
+            except (ValueError, TypeError, OverflowError):
+                return 0
         return DiscoveryUsage(
             model_name=str(data.get("model") or "") or None,
             service_tier=str(data.get("service_tier") or "") or None,
-            input_tokens=int(usage.get("input_tokens") or 0),
-            cached_input_tokens=int(input_details.get("cached_tokens") or 0),
-            output_tokens=int(usage.get("output_tokens") or 0),
-            reasoning_tokens=int(output_details.get("reasoning_tokens") or 0),
+            input_tokens=count(usage.get("input_tokens")),
+            cached_input_tokens=count(input_details.get("cached_tokens")),
+            output_tokens=count(usage.get("output_tokens")),
+            reasoning_tokens=count(output_details.get("reasoning_tokens")),
         )
 
     @staticmethod
@@ -182,16 +190,60 @@ class OpenAIWebDiscoveryClient:
             ))
         return rows
 
-    def run_lane(self, lane: DiscoveryLaneSpec) -> DiscoveryLaneResult:
-        first = self._request(lane)
+    def _observed_request(self, lane: DiscoveryLaneSpec, budget: DiscoveryBudget, *, retry: bool) -> dict[str, Any]:
+        record = budget.begin(lane.lane_code, lane.profile_code, retry=retry)
+        try:
+            data = self._request(lane)
+        except BriefingDiscoveryError as exc:
+            budget.finish(record, {"status": "request_failed", "failure_message": str(exc)[:240]})
+            raise
+        usage = self._usage(data)
+        usage.web_tool_calls = len(self._web_items(data))
+        usage.search_actions = self._search_count(data)
+        usage.search_retry_count = int(retry)
+        items = self._web_items(data)
+        parse_error = None
+        try:
+            candidates = self._candidates(data, lane)
+        except (TypeError, ValueError, AttributeError, OverflowError) as exc:
+            candidates = []
+            parse_error = type(exc).__name__
+        budget.finish(record, {
+            "status": str(data.get("status") or "completed"),
+            "response_id": str(data.get("id") or "")[:160] or None,
+            "returned_max_tool_calls": data.get("max_tool_calls") if isinstance(data.get("max_tool_calls"), int) else None,
+            "usage": asdict(usage), "usage_available": isinstance(data.get("usage"), dict),
+            "actions": [{"id": str(item.get("id") or "")[:160] or None,
+                         "type": str((item.get("action") or {}).get("type") or "unknown")[:40],
+                         "status": str(item.get("status") or "unknown"),
+                         "query_count": len(item["action"]["queries"]) if isinstance(item.get("action"), dict) and isinstance(item["action"].get("queries"), list) else 0}
+                        for item in items[:64] if not item.get("action") or isinstance(item["action"], dict)],
+            "source_candidates": [{"title": row.title[:300], "url": row.url,
+                                   "source_kind": row.source_kind, "description": row.description[:700],
+                                   "published_at": row.published_at.isoformat() if row.published_at else None}
+                                  for row in candidates[:40]],
+            "candidate_parse_error": parse_error,
+        })
+        if parse_error:
+            raise BriefingDiscoveryError("OpenAI discovery source metadata could not be parsed")
+        if data.get("status") in {"failed", "incomplete", "cancelled", "queued", "in_progress"}:
+            raise BriefingDiscoveryError("OpenAI discovery response is incomplete or failed")
+        return data
+
+    def run_lane(self, lane: DiscoveryLaneSpec, *, budget: DiscoveryBudget | None = None,
+                 allow_retry: bool = True, retry: bool = False) -> DiscoveryLaneResult:
+        budget = budget or DiscoveryBudget()
+        start = len(budget.requests)
+        first = self._observed_request(lane, budget, retry=retry)
         usage = self._usage(first)
         usage.web_tool_calls = len(self._web_items(first))
         usage.search_actions = self._search_count(first)
         data = first
-        retry_used = False
-        if usage.search_actions == 0:
+        retry_used = retry
+        usage.search_retry_count = int(retry)
+        if usage.search_actions == 0 and allow_retry and not retry and budget.can_request():
             retry_used = True
-            second = self._request(lane)
+            second = self._observed_request(lane, budget, retry=True)
             second_usage = self._usage(second)
             usage.input_tokens += second_usage.input_tokens
             usage.cached_input_tokens += second_usage.cached_input_tokens
@@ -210,4 +262,5 @@ class OpenAIWebDiscoveryClient:
             search_performed=usage.search_actions > 0,
             retry_used=retry_used,
             raw_response_id=str(data.get("id") or "") or None,
+            request_diagnostics=budget.snapshot()["requests"][start:],
         )
