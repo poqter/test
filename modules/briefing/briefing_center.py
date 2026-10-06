@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from zoneinfo import ZoneInfo
 import html
 from typing import Any, Callable
 
@@ -21,6 +22,146 @@ COMM_LABELS = {
     "not_applicable": "해당 없음",
 }
 SELECTION_LABELS = {"core": "핵심", "light_digest": "참고", "excluded": "제외"}
+
+PROFILE_META = {
+    "MARKET": {
+        "eyebrow": "MARKET",
+        "title": "경제·주식",
+        "description": "금리·환율·증시와 주요 시장 변수를 압축합니다.",
+        "tone": "market",
+    },
+    "INSURANCE": {
+        "eyebrow": "INSURANCE",
+        "title": "보험업계",
+        "description": "FP 업무와 고객 상담에 영향을 주는 변화만 정리합니다.",
+        "tone": "insurance",
+    },
+    "NEWS": {
+        "eyebrow": "NEWS",
+        "title": "국내 주요 뉴스",
+        "description": "오늘 알아야 할 정책·사회·생활 변화를 선별합니다.",
+        "tone": "news",
+    },
+}
+KST = ZoneInfo("Asia/Seoul")
+
+
+def _inject_briefing_styles() -> None:
+    st.markdown(
+        """
+        <style>
+        .st-key-hw_briefing_hero{
+            margin:2px 0 18px;
+            padding:22px 24px;
+            border:1px solid #dbe4ef;
+            border-radius:18px;
+            background:linear-gradient(135deg,#ffffff 0%,#f7faff 100%);
+            box-shadow:0 10px 30px rgba(27,55,90,.055);
+        }
+        .hw-briefing-eyebrow{
+            font-size:11px;font-weight:800;letter-spacing:.12em;color:#66809f;margin-bottom:8px;
+        }
+        .hw-briefing-title{
+            margin:0;color:#102b4e;font-size:30px;line-height:1.2;font-weight:800;letter-spacing:-.035em;
+        }
+        .hw-briefing-subtitle{
+            margin:9px 0 0;color:#687b91;font-size:14px;line-height:1.65;
+        }
+        .hw-briefing-mode{
+            display:inline-flex;align-items:center;gap:7px;padding:7px 10px;
+            border:1px solid #dbe4ef;border-radius:999px;background:#fff;
+            color:#5b6f86;font-size:11px;font-weight:800;letter-spacing:.04em;
+        }
+        .hw-briefing-mode-dot{width:7px;height:7px;border-radius:999px;background:#e29b32;display:inline-block}
+        .st-key-hw_briefing_tabs [role="radiogroup"]{gap:8px!important}
+        .st-key-hw_briefing_tabs label[data-baseweb="radio"]{
+            min-height:40px;padding:7px 15px!important;border-radius:10px;
+            border:1px solid #dbe4ef;background:#fff;
+        }
+        .st-key-hw_briefing_tabs label:has(input:checked){
+            border-color:#7fa9e6;background:#edf4ff!important;color:#174f9a;
+        }
+        .st-key-hw_briefing_card_market,
+        .st-key-hw_briefing_card_insurance,
+        .st-key-hw_briefing_card_news{
+            min-height:258px;padding:19px 20px 16px!important;border-radius:16px;
+            border:1px solid #dbe4ef;background:#fff;
+            box-shadow:0 6px 20px rgba(31,55,82,.045);
+        }
+        .st-key-hw_briefing_card_market{border-top:3px solid #476f9f}
+        .st-key-hw_briefing_card_insurance{border-top:3px solid #2b7a78}
+        .st-key-hw_briefing_card_news{border-top:3px solid #6a67a5}
+        .hw-profile-eyebrow{font-size:10px;font-weight:800;letter-spacing:.11em;color:#8091a6;margin-bottom:6px}
+        .hw-profile-title{font-size:21px;font-weight:800;color:#112d4f;letter-spacing:-.025em;margin-bottom:6px}
+        .hw-profile-desc{font-size:12.5px;line-height:1.55;color:#7a899b;min-height:40px;margin-bottom:12px}
+        .hw-profile-summary{font-size:14px;line-height:1.55;color:#253b55;min-height:44px;margin:4px 0 10px}
+        .hw-profile-state{display:flex;align-items:center;gap:7px;margin:5px 0 10px}
+        .hw-state-pill{
+            display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;
+            font-size:10.5px;font-weight:800;border:1px solid #dce4ed;background:#f8fafc;color:#61758b;
+        }
+        .hw-state-pill.is-ready{background:#eef8f3;border-color:#cfe7da;color:#267052}
+        .hw-state-pill.is-preview{background:#fff7e8;border-color:#f1dfb7;color:#8a631c}
+        .hw-state-pill.is-waiting{background:#f6f8fb;border-color:#e1e6ed;color:#7d8b9b}
+        .hw-count-row{display:flex;gap:8px;flex-wrap:wrap;margin:7px 0 12px}
+        .hw-count-chip{
+            display:inline-flex;align-items:baseline;gap:5px;padding:6px 9px;border-radius:9px;
+            background:#f5f8fc;border:1px solid #e3e9f1;color:#6a7c91;font-size:11px;
+        }
+        .hw-count-chip strong{font-size:14px;color:#19395f}
+        .st-key-hw_briefing_admin_panel{
+            padding:12px 14px!important;border:1px solid #e2e8f0;border-radius:13px;background:#fbfcfe;
+        }
+        .hw-section-head{display:flex;align-items:flex-end;justify-content:space-between;margin:25px 0 11px}
+        .hw-section-head h3{margin:0;font-size:20px;color:#173352;letter-spacing:-.025em}
+        .hw-section-head span{font-size:12px;color:#8795a5}
+        .st-key-hw_fast_brief{
+            padding:17px 18px!important;border-radius:14px;border:1px solid #dce6f1;background:#f8fbff;
+        }
+        .hw-fast-sentence{font-size:16px;font-weight:750;color:#17395f;line-height:1.55;margin-bottom:10px}
+        .hw-fast-item{font-size:13.5px;color:#425a73;line-height:1.55;padding:4px 0}
+        .st-key-hw_action_review_now,
+        .st-key-hw_action_reference_today,
+        .st-key-hw_action_watch{
+            min-height:150px;padding:15px 16px!important;border-radius:14px;border:1px solid #e1e7ee;background:#fff;
+        }
+        .st-key-hw_action_review_now{border-top:3px solid #c7705f}
+        .st-key-hw_action_reference_today{border-top:3px solid #4f7eaa}
+        .st-key-hw_action_watch{border-top:3px solid #9a8652}
+        .hw-action-title{font-size:13px;font-weight:800;color:#243c58;margin-bottom:8px}
+        .hw-action-item{font-size:12.5px;line-height:1.5;color:#5a6d83;padding:3px 0}
+        .hw-issue-meta{display:flex;gap:7px;flex-wrap:wrap;margin:3px 0 14px}
+        .hw-issue-chip{
+            display:inline-flex;padding:5px 8px;border-radius:8px;background:#f6f8fb;
+            border:1px solid #e3e8ef;font-size:11px;color:#64768b;
+        }
+        [class*="st-key-hw_briefing_history_"]{
+            padding:11px 14px!important;border:1px solid #e3e8ef;border-radius:12px;background:#fff;margin-bottom:8px;
+        }
+        @media(max-width:768px){
+            .st-key-hw_briefing_hero{padding:17px 16px}
+            .hw-briefing-title{font-size:25px}
+            .st-key-hw_briefing_card_market,
+            .st-key-hw_briefing_card_insurance,
+            .st-key-hw_briefing_card_news{min-height:auto}
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _render_section_head(title: str, subtitle: str = "") -> None:
+    st.markdown(
+        f'<div class="hw-section-head"><h3>{html.escape(title)}</h3>'
+        f'<span>{html.escape(subtitle)}</span></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def _status_html(state: str) -> str:
+    css = "is-ready" if state == "공개" else "is-preview" if state == "관리자 미리보기" else "is-waiting"
+    return f'<span class="hw-state-pill {css}">{html.escape(state)}</span>'
 
 
 def _can_manage() -> bool:
@@ -88,25 +229,52 @@ def render_home_summary(navigate: Callable[..., object]) -> None:
 
 
 def _render_profile_card(code: str, bundle: dict[str, Any] | None, *, include_draft: bool) -> bool:
-    label = PROFILE_LABELS[code]
+    meta = PROFILE_META[code]
     with st.container(key=f"hw_briefing_card_{code.lower()}"):
-        st.caption(PROFILE_SHORT[code])
-        st.subheader(label.replace(" 브리핑", ""))
+        st.markdown(
+            f'<div class="hw-profile-eyebrow">{html.escape(meta["eyebrow"])}</div>'
+            f'<div class="hw-profile-title">{html.escape(meta["title"])}</div>'
+            f'<div class="hw-profile-desc">{html.escape(meta["description"])}</div>',
+            unsafe_allow_html=True,
+        )
         if not bundle:
-            if code == "MARKET":
-                st.write("시장 데이터 Source가 연결되면 이곳에서 확인할 수 있습니다.")
-            else:
-                st.write("아직 확인 가능한 브리핑이 없습니다.")
-            st.caption("상태 · 준비 중")
+            waiting_text = (
+                "시장 데이터 Source 연결 후 자동 생성할 수 있습니다."
+                if code == "MARKET"
+                else "첫 브리핑 생성 후 오늘의 핵심 변화가 표시됩니다."
+            )
+            st.markdown(
+                '<div class="hw-profile-state">' + _status_html("준비 중") + '</div>'
+                f'<div class="hw-profile-summary">{html.escape(waiting_text)}</div>'
+                '<div class="hw-count-row">'
+                '<span class="hw-count-chip">핵심 <strong>–</strong></span>'
+                '<span class="hw-count-chip">참고 <strong>–</strong></span>'
+                '</div>',
+                unsafe_allow_html=True,
+            )
         else:
             revision = bundle.get("revision") or {}
             snapshot = bundle.get("snapshot") or {}
             fast = snapshot.get("fast_brief_payload") or {}
             core, light = _counts(bundle)
             state = "공개" if revision.get("publication_status") == "published" else "관리자 미리보기"
-            st.write(str(fast.get("remember_one_sentence") or "오늘의 주요 변화를 확인하세요."))
-            st.caption(f"{state} · 핵심 {core} · 참고 {light} · {_fmt_dt(revision.get('generated_at'))}")
-        return st.button("브리핑 보기 →", key=f"hw_briefing_open_{code}", use_container_width=True, disabled=not bool(bundle))
+            sentence = str(fast.get("remember_one_sentence") or "오늘의 주요 변화를 확인하세요.")
+            st.markdown(
+                '<div class="hw-profile-state">' + _status_html(state)
+                + f'<span style="font-size:11px;color:#8897a7">{html.escape(_fmt_dt(revision.get("generated_at")))}</span></div>'
+                f'<div class="hw-profile-summary">{html.escape(sentence)}</div>'
+                '<div class="hw-count-row">'
+                f'<span class="hw-count-chip">핵심 <strong>{core}</strong></span>'
+                f'<span class="hw-count-chip">참고 <strong>{light}</strong></span>'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+        return st.button(
+            "브리핑 보기 →",
+            key=f"hw_briefing_open_{code}",
+            use_container_width=True,
+            disabled=not bool(bundle),
+        )
 
 
 def _source_map(bundle: dict[str, Any]) -> tuple[dict[str, dict[str, Any]], dict[str, list[str]]]:
@@ -154,10 +322,14 @@ def _render_issue(repo: BriefingRepository, issue: dict[str, Any], action: dict[
     title = str(issue.get("title") or "이슈")
     prefix = "핵심" if tier == "core" else "참고"
     with st.expander(f"[{prefix}] {title}", expanded=False):
-        cols = st.columns(3)
-        cols[0].metric("카테고리", str(issue.get("category") or "-"))
-        cols[1].metric("상태", str(issue.get("issue_status") or "-"))
-        cols[2].metric("근거", str(issue.get("evidence_status") or "-"))
+        st.markdown(
+            '<div class="hw-issue-meta">'
+            f'<span class="hw-issue-chip">카테고리 · {html.escape(str(issue.get("category") or "-"))}</span>'
+            f'<span class="hw-issue-chip">상태 · {html.escape(str(issue.get("issue_status") or "-"))}</span>'
+            f'<span class="hw-issue-chip">근거 · {html.escape(str(issue.get("evidence_status") or "-"))}</span>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
         if issue.get("summary"):
             st.write(str(issue["summary"]))
         fact = issue.get("fact_payload") or {}
@@ -216,32 +388,45 @@ def _render_profile_detail(repo: BriefingRepository, code: str, bundle: dict[str
                 except BriefingRepositoryError as exc:
                     st.error(str(exc))
 
-    st.markdown("### 오늘 5분 FAST BRIEF")
-    st.info(str(fast.get("remember_one_sentence") or "오늘의 핵심 변화를 확인하세요."))
-    for item in (fast.get("items") or [])[:5]:
-        st.write("• " + str(item.get("title") or ""))
+    _render_section_head("오늘 5분 FAST BRIEF", "3~5분 안에 오늘의 흐름을 파악합니다.")
+    with st.container(key="hw_fast_brief"):
+        st.markdown(
+            f'<div class="hw-fast-sentence">{html.escape(str(fast.get("remember_one_sentence") or "오늘의 핵심 변화를 확인하세요."))}</div>',
+            unsafe_allow_html=True,
+        )
+        items = (fast.get("items") or [])[:5]
+        if not items:
+            st.caption("표시할 핵심 흐름이 없습니다.")
+        for item in items:
+            st.markdown(
+                f'<div class="hw-fast-item">• {html.escape(str(item.get("title") or ""))}</div>',
+                unsafe_allow_html=True,
+            )
 
-    st.markdown("### TODAY ACTION")
-    action_cols = st.columns(3)
+    _render_section_head("TODAY ACTION", "지금 확인할 일과 지켜볼 일을 분리합니다.")
+    action_cols = st.columns(3, gap="medium")
     for col, key in zip(action_cols, ("review_now", "reference_today", "watch")):
-        with col:
-            st.markdown(f"**{ACTION_LABELS[key]}**")
+        with col, st.container(key=f"hw_action_{key}"):
+            st.markdown(f'<div class="hw-action-title">{ACTION_LABELS[key]}</div>', unsafe_allow_html=True)
             rows = today.get(key) or []
             if not rows:
-                st.caption("해당 항목 없음")
+                st.markdown('<div class="hw-action-item">해당 항목 없음</div>', unsafe_allow_html=True)
             for row in rows[:4]:
-                st.write("• " + str(row.get("title") or ""))
+                st.markdown(
+                    f'<div class="hw-action-item">• {html.escape(str(row.get("title") or ""))}</div>',
+                    unsafe_allow_html=True,
+                )
 
     core = [row for row in issues if row.get("selection_tier") == "core"]
     light = [row for row in issues if row.get("selection_tier") == "light_digest"]
-    st.markdown("### 핵심 이슈")
+    _render_section_head("핵심 이슈", "오늘 반드시 알아야 할 변화입니다.")
     if not core:
         st.caption("현재 검증된 핵심 이슈가 없습니다.")
     for issue in core:
         _render_issue(repo, issue, actions.get(str(issue.get("id"))), bundle)
 
     if light:
-        st.markdown("### 참고할 소식")
+        _render_section_head("참고할 소식", "오늘의 흐름을 이해하는 데 도움이 되는 정보입니다.")
         for issue in light:
             _render_issue(repo, issue, actions.get(str(issue.get("id"))), bundle)
 
@@ -249,32 +434,39 @@ def _render_profile_detail(repo: BriefingRepository, code: str, bundle: dict[str
 def _render_generate_panel(repo: BriefingRepository) -> None:
     if not _can_manage():
         return
-    with st.expander("콘텐츠 관리", expanded=False):
-        st.caption("현재 초기 운영모드는 shadow입니다. 생성 결과는 관리자 미리보기로 저장되며 자동 공개되지 않습니다.")
-        st.caption("INSURANCE·NEWS는 한 번의 Shared Discovery에서 함께 생성되어 불필요한 검색 호출을 반복하지 않습니다.")
-        if st.button("오늘 브리핑 생성", key="hw_briefing_generate_today", type="primary", use_container_width=True):
-            actor = str((st.session_state.get("login_profile") or {}).get("id") or "") or None
-            with st.spinner("오늘의 이슈를 수집·검증·분석하고 있습니다…"):
-                try:
-                    result = generate_and_store_briefings(actor_user_id=actor, repository=repo)
-                    summary = ", ".join(
-                        f"{row.profile_code} 핵심 {row.core_count} / 참고 {row.light_count}"
-                        for row in result.profiles
-                    )
-                    st.success(f"생성이 완료되었습니다. {summary}")
-                    st.caption(f"Shared Search Actions {result.search_actions} · 후보 {result.candidate_count} · Event {result.event_count}")
-                    st.session_state.pop("hw_briefing_selected_profile", None)
-                    st.rerun()
-                except (BriefingRunError, BriefingRepositoryError, ValueError) as exc:
-                    st.error("브리핑 생성에 실패했습니다.")
-                    st.caption(str(exc))
+    with st.container(key="hw_briefing_admin_panel"):
+        with st.popover("콘텐츠 관리", use_container_width=True):
+            st.markdown("**운영 모드 · SHADOW**")
+            st.caption("생성 결과는 관리자 미리보기로 저장되며, 검증 후 공개할 수 있습니다.")
+            st.caption("INSURANCE·NEWS는 Shared Discovery를 함께 사용해 중복 검색을 줄입니다.")
+            if st.button(
+                "오늘 브리핑 생성",
+                key="hw_briefing_generate_today",
+                type="primary",
+                use_container_width=True,
+            ):
+                actor = str((st.session_state.get("login_profile") or {}).get("id") or "") or None
+                with st.spinner("오늘의 이슈를 수집·검증·분석하고 있습니다…"):
+                    try:
+                        result = generate_and_store_briefings(actor_user_id=actor, repository=repo)
+                        summary = " · ".join(
+                            f"{row.profile_code} 핵심 {row.core_count} / 참고 {row.light_count}"
+                            for row in result.profiles
+                        )
+                        st.session_state["hw_briefing_flash"] = (
+                            f"생성 완료 · {summary} · Search {result.search_actions} · "
+                            f"후보 {result.candidate_count} · Event {result.event_count}"
+                        )
+                        st.session_state.pop("hw_briefing_selected_profile", None)
+                        st.rerun()
+                    except (BriefingRunError, BriefingRepositoryError, ValueError) as exc:
+                        st.error("브리핑 생성에 실패했습니다.")
+                        st.caption(str(exc))
 
 
 def _render_today(repo: BriefingRepository, can_manage: bool) -> None:
-    _render_generate_panel(repo)
     bundles = {code: repo.latest_bundle(code, include_draft=can_manage) for code in PROFILE_ORDER}
-    st.markdown("### 오늘의 브리핑")
-    st.caption("세 영역을 한 번에 훑고, 필요한 브리핑만 상세하게 확인하세요.")
+    _render_section_head("오늘의 브리핑", "세 영역을 한 번에 훑고 필요한 내용만 상세히 확인하세요.")
     clicked: str | None = None
     for col, code in zip(st.columns(3, gap="medium"), PROFILE_ORDER):
         with col:
@@ -335,12 +527,40 @@ def _render_history(repo: BriefingRepository, can_manage: bool) -> None:
 
 
 def run() -> None:
-    st.markdown("# 브리핑 센터")
-    st.caption("오늘의 중요한 변화를 검증하고, 업무에 필요한 다음 행동까지 연결합니다.")
+    _inject_briefing_styles()
     can_manage = _can_manage()
     try:
         repo = _repo()
-        mode = st.radio("브리핑 보기", ["오늘 브리핑", "과거 브리핑"], horizontal=True, label_visibility="collapsed")
+        with st.container(key="hw_briefing_hero"):
+            left, right = st.columns([5, 1.25], vertical_alignment="center")
+            with left:
+                st.markdown(
+                    '<div class="hw-briefing-eyebrow">HWARANG DAILY INTELLIGENCE</div>'
+                    '<h1 class="hw-briefing-title">브리핑 센터</h1>'
+                    '<p class="hw-briefing-subtitle">오늘의 중요한 변화를 검증하고, '
+                    '업무에 필요한 다음 행동까지 연결합니다.</p>',
+                    unsafe_allow_html=True,
+                )
+            with right:
+                if can_manage:
+                    st.markdown(
+                        '<div style="text-align:right"><span class="hw-briefing-mode">'
+                        '<span class="hw-briefing-mode-dot"></span> SHADOW</span></div>',
+                        unsafe_allow_html=True,
+                    )
+                    _render_generate_panel(repo)
+
+        flash = str(st.session_state.pop("hw_briefing_flash", "") or "")
+        if flash:
+            st.success(flash)
+
+        with st.container(key="hw_briefing_tabs"):
+            mode = st.radio(
+                "브리핑 보기",
+                ["오늘 브리핑", "과거 브리핑"],
+                horizontal=True,
+                label_visibility="collapsed",
+            )
         if mode == "오늘 브리핑":
             _render_today(repo, can_manage)
         else:
@@ -349,3 +569,4 @@ def run() -> None:
         st.error("브리핑 데이터를 불러올 수 없습니다.")
         if can_manage:
             st.caption(str(exc))
+
