@@ -7,7 +7,7 @@ from .clustering import cluster_candidates
 from .config import DISCOVERY_LANES, SHARED_DISCOVERY_HARD_LIMIT
 from .direct_sources import DirectSourceSpec, collect_direct_sources
 from .discovery_budget import DiscoveryBudget, DiscoveryBudgetError
-from .gates import passes_common_gate, route_profiles
+from .gates import passes_common_gate, route_profiles, insurance_routing_evidence
 from .models import PhaseBResult, SourceCandidate
 from .normalize import normalize_candidate
 from .openai_discovery import OpenAIWebDiscoveryClient
@@ -29,6 +29,8 @@ def candidate_diagnostic(row: SourceCandidate) -> dict[str, Any]:
             "lane_code": row.metadata.get("lane_code"),
             "profile_hint": row.metadata.get("profile_hint"),
             "profile_hints": row.metadata.get("profile_hints", []),
+            "routed_profiles": sorted(row.routed_profiles),
+            "insurance_routing": insurance_routing_evidence(row),
             "publication_status": row.metadata.get("publication_status"),
             "published_at": row.published_at.isoformat() if row.published_at else None,
             "freshness_tier": row.freshness_tier}
@@ -53,6 +55,9 @@ def _dedupe(candidates: Iterable[SourceCandidate]) -> list[SourceCandidate]:
             continue
         current = by_key[key]
         current.routed_profiles.update(row.routed_profiles)
+        hints = set(current.metadata.get("profile_hints") or []) | set(row.metadata.get("profile_hints") or [])
+        hints.update(str(c.metadata["profile_hint"]) for c in (current, row) if c.metadata.get("profile_hint"))
+        current.metadata["profile_hints"] = sorted(hints)
         if not current.description and row.description:
             current.description = row.description
     return list(by_key.values())
@@ -69,7 +74,8 @@ def run_phase_b(
 ) -> PhaseBResult:
     as_of = as_of or datetime.now(timezone.utc)
     direct_sources = list(direct_sources)
-    direct_candidates, direct_health = collect_direct_sources(direct_sources)
+    direct_details: dict[str, Any] = {}
+    direct_candidates, direct_health = collect_direct_sources(direct_sources, diagnostics=direct_details)
     lanes = []
     web_candidates: list[SourceCandidate] = []
     budget = DiscoveryBudget(on_response=on_discovery_response)
@@ -109,6 +115,7 @@ def run_phase_b(
         except Exception as exc:
             details = {"stage": "web_discovery", "discovery_budget": budget.snapshot(),
                        "raw_direct_candidates": len(direct_candidates), "direct_source_health": direct_health,
+                       "direct_source_details": direct_details,
                        "completed_lanes": [l.lane_code for l in lanes], "skipped_lanes": skipped_lanes,
                        "partial_candidates": [candidate_diagnostic(c) for c in direct_candidates[:80]],
                        "candidate_sample_limit": 80}
@@ -145,7 +152,7 @@ def run_phase_b(
         lane_health.append({"lane_code": lane.lane_code, "profile_code": lane.profile_code,
                             "search_performed": lane.search_performed, "raw_candidates": len(lane.candidates),
                             "usable_candidates": len(usable), "search_actions": lane.usage.search_actions})
-    health = {s.source_code: {"status": direct_health.get(s.source_code, "failed"), "profiles": list(s.profile_hints),
+    health = {s.source_code: {**direct_details.get(s.source_code, {}), "status": direct_health.get(s.source_code, "failed"), "profiles": list(s.profile_hints),
                              "source_kind": s.source_kind, "usable_candidates": sum(c.source_code == s.source_code for c in accepted)} for s in direct_sources}
     accepted = _dedupe(accepted)
     events = cluster_candidates(accepted)

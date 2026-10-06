@@ -200,9 +200,12 @@ def test_low_level_request_sends_tool_cap_and_no_parallel_calls():
             return Response()
     client = OpenAIWebDiscoveryClient(api_key="fixture-secret", model="fixture")
     client.http = Session()
+    client.as_of = NOW
     client.run_lane(DISCOVERY_LANES[0])
     assert client.http.payload["max_tool_calls"] == 1
     assert client.http.payload["parallel_tool_calls"] is False
+    assert "after:2026-10-02 before:2026-10-07" in client.http.payload["input"]
+    assert "검색 쿼리도 하나" in client.http.payload["input"]
 
 
 def test_minimal_original_diagnostic_does_not_invent_missing_usage():

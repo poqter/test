@@ -50,10 +50,14 @@ class DiscoveryBudget:
             raise DiscoveryBudgetError("Shared Discovery hard limit exceeded in API response; further calls stopped")
 
     def snapshot(self) -> dict[str, Any]:
+        status_counts = {name: sum(int((r.get("search_status_counts") or {}).get(name) or 0)
+                                  for r in self.requests) for name in ("completed", "nonfinal", "failed", "unknown")}
         return {"search_action_hard_limit": SHARED_DISCOVERY_HARD_LIMIT,
                 "request_hard_limit": DISCOVERY_REQUEST_HARD_LIMIT,
                 "requested_max_tool_calls": REQUEST_TOOL_CALL_LIMIT,
                 "request_count": len(self.requests), "observed_search_actions": self.search_actions,
                 "observed_web_tool_calls": self.web_tool_calls,
+                "search_status_counts": status_counts,
+                "budget_counting_policy": "All returned search actions count toward the cap, including nonfinal/unknown records. These are not confirmed billable calls.",
                 "usage_unknown_requests": sum(not r.get("usage_available") for r in self.requests),
                 "requests": deepcopy(self.requests)}

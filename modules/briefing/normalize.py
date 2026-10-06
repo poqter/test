@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import hashlib
 import ipaddress
 import re
+from html.parser import HTMLParser
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from .config import CORE_FRESHNESS_HOURS, LIGHT_FRESHNESS_HOURS
@@ -12,6 +13,36 @@ from .models import SourceCandidate
 _TRACKING_PREFIXES = ("utm_",)
 _TRACKING_KEYS = {"fbclid", "gclid", "igshid", "mc_cid", "mc_eid"}
 _TITLE_SPACE_RE = re.compile(r"\s+")
+
+
+class _VisibleText(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts: list[str] = []
+        self.hidden_depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in {"script", "style", "noscript"}:
+            self.hidden_depth += 1
+        elif tag in {"p", "div", "br", "li", "tr"}:
+            self.parts.append(" ")
+
+    def handle_endtag(self, tag):
+        if tag in {"script", "style", "noscript"}:
+            self.hidden_depth = max(0, self.hidden_depth - 1)
+        elif tag in {"p", "div", "li", "tr"}:
+            self.parts.append(" ")
+
+    def handle_data(self, data):
+        if not self.hidden_depth:
+            self.parts.append(data)
+
+
+def visible_text(value: str, *, limit: int = 12000) -> str:
+    """Use bounded article text, never HTML attributes or embedded scripts."""
+    parser = _VisibleText()
+    parser.feed(str(value or "")[:100000])
+    return _TITLE_SPACE_RE.sub(" ", "".join(parser.parts)).strip()[:limit]
 
 
 def is_safe_url(url: str) -> bool:
@@ -92,6 +123,7 @@ def classify_freshness(published_at: datetime | None, as_of: datetime) -> str:
 
 def normalize_candidate(candidate: SourceCandidate, *, as_of: datetime) -> SourceCandidate:
     candidate.title = normalize_title(candidate.title)
+    candidate.description = visible_text(candidate.description)
     candidate.canonical_url = canonicalize_url(candidate.url)
     candidate.publisher_domain = candidate.publisher_domain or publisher_domain(candidate.canonical_url)
     candidate.freshness_tier = classify_freshness(candidate.published_at, as_of)

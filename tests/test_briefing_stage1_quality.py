@@ -52,7 +52,7 @@ def test_executed_search_with_no_valid_dates_is_insufficient():
 
 
 def test_small_valid_collection_can_be_healthy_without_filling_quota():
-    source = SourceCandidate("정부 정책", "https://korea.kr/a", "정부", "openai_web_search", "official", published_at=NOW, freshness_tier="core_window", routed_profiles={"NEWS"})
+    source = SourceCandidate("정부 정책", "https://korea.kr/a", "정부", "openai_web_search", "official", published_at=NOW, freshness_tier="core_window", routed_profiles={"NEWS"}, metadata={"profile_hint":"NEWS"})
     result = PhaseBResult(NOW, [source], [], [], {}, diagnostics={"lanes":[{"profile_code":"NEWS", "search_performed":True,"usable_candidates":1}]*2})
     assert _coverage_status(result, "NEWS", 1) == "healthy"
 

@@ -62,8 +62,9 @@ def replay_stage1(data: dict, as_of: datetime) -> dict:
             if row.get("status") == "request_failed":
                 raise BriefingDiscoveryError(str(row.get("failure_message") or "Saved request failed"))
             usage = row.get("usage") or {}
-            items = [{"type": "web_search_call", "status": a.get("status"),
-                      "action": {"type": a.get("type"), "sources": row.get("source_candidates") or []}}
+            items = [{"type": "web_search_call", "id": a.get("id"), "status": a.get("status"),
+                      "action": {"type": a.get("type"), "queries": a.get("queries") or [],
+                                 "sources": row.get("source_candidates") or []}}
                      for a in row.get("actions") or []]
             if not items:
                 items = [{"type": "web_search_call", "action": {"type": "search",
@@ -88,6 +89,9 @@ def replay_stage1(data: dict, as_of: datetime) -> dict:
                                   date_enricher=PublicationDateEnricher(max_requests=0))
             result.update({"replay_status": "completed", "accepted_candidates": len(phase_b.candidates),
                            "events": len(phase_b.events), "excluded_counts": phase_b.excluded_counts,
+                           "search_status_counts": phase_b.diagnostics["discovery_budget"]["search_status_counts"],
+                           "accepted_by_profile": {profile: sum(profile in c.routed_profiles for c in phase_b.candidates)
+                                                   for profile in ("INSURANCE", "MARKET", "NEWS")},
                            "observed_search_actions": phase_b.diagnostics["discovery_budget"]["observed_search_actions"]})
         except RuntimeError as exc:
             details = getattr(exc, "diagnostics", {})

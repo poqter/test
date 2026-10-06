@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 import os
 from typing import Any
 
@@ -38,12 +39,18 @@ class OpenAIWebDiscoveryClient:
             raise BriefingDiscoveryError("BRIEFING_DISCOVERY_MODEL is not configured")
 
     def _request(self, lane: DiscoveryLaneSpec) -> dict[str, Any]:
+        local_now = self.as_of.astimezone(ZoneInfo("Asia/Seoul"))
+        oldest = local_now - timedelta(hours=96)
+        query_dates = f"after:{oldest.date().isoformat()} before:{(local_now+timedelta(days=1)).date().isoformat()}"
         payload = {
             "model": self.model,
             "input": (
                 f"기준시각={self.as_of.isoformat()}. 핵심 후보는 {(self.as_of-timedelta(hours=36)).isoformat()} 이후, "
                 f"참고 후보는 {(self.as_of-timedelta(hours=96)).isoformat()} 이후 게시된 자료만 탐색한다. "
-                "홈페이지·목록·오래된 해설보다 새 기사/발표의 원문 링크를 수집한다. 게시일을 추측하지 않는다. " + lane.query
+                f"한국 기준 날짜={local_now.isoformat()}. 검색어에 {query_dates}를 포함한다. "
+                "web_search 도구를 정확히 한 번 사용하고 검색 쿼리도 하나만 작성한다. "
+                "여러 하위 주제별 검색이나 추가 탐색 없이 첫 검색 결과의 새 기사/발표 원문 링크만 반환한다. "
+                "홈페이지·목록·첨부파일·오래된 해설은 제외한다. 게시일을 추측하지 않는다. " + lane.query
             ),
             "tools": [{"type": "web_search", "filters": {"allowed_domains": list(LANE_DOMAINS[lane.lane_code])}}],
             "tool_choice": "required",
@@ -99,13 +106,33 @@ class OpenAIWebDiscoveryClient:
     def _search_performed(cls, data: dict[str, Any]) -> bool:
         for item in cls._web_items(data):
             action = item.get("action") if isinstance(item.get("action"), dict) else {}
-            if action.get("type") == "search":
+            if action.get("type") == "search" and item.get("status") not in {"in_progress", "searching", "failed", "incomplete", "cancelled"}:
                 return True
         return False
 
     @classmethod
     def _search_count(cls, data: dict[str, Any]) -> int:
         return sum(isinstance(item.get("action"), dict) and item["action"].get("type") == "search" for item in cls._web_items(data))
+
+    @classmethod
+    def _search_status_counts(cls, data: dict[str, Any]) -> dict[str, int]:
+        counts = {"completed": 0, "nonfinal": 0, "failed": 0, "unknown": 0}
+        for item in cls._web_items(data):
+            if not isinstance(item.get("action"), dict) or item["action"].get("type") != "search":
+                continue
+            status = item.get("status")
+            category = ("completed" if status == "completed" else "nonfinal" if status in {"in_progress", "searching"}
+                        else "failed" if status in {"failed", "incomplete", "cancelled"} else "unknown")
+            counts[category] += 1
+        return counts
+
+    @staticmethod
+    def _action_queries(item: dict[str, Any]) -> list[str]:
+        action = item.get("action") if isinstance(item.get("action"), dict) else {}
+        queries = action.get("queries")
+        if not isinstance(queries, list):
+            queries = [action["query"]] if isinstance(action.get("query"), str) else []
+        return [query[:500] for query in queries[:8] if isinstance(query, str)]
 
     @staticmethod
     def _append_source(target: list[dict[str, Any]], source: Any) -> None:
@@ -120,6 +147,8 @@ class OpenAIWebDiscoveryClient:
     def _extract_source_rows(cls, data: dict[str, Any]) -> list[dict[str, Any]]:
         found: list[dict[str, Any]] = []
         for item in cls._web_items(data):
+            if item.get("status") in {"in_progress", "searching", "failed", "incomplete", "cancelled"}:
+                continue
             action = item.get("action") if isinstance(item.get("action"), dict) else {}
             for key in ("results", "sources"):
                 values = item.get(key)
@@ -213,10 +242,12 @@ class OpenAIWebDiscoveryClient:
             "response_id": str(data.get("id") or "")[:160] or None,
             "returned_max_tool_calls": data.get("max_tool_calls") if isinstance(data.get("max_tool_calls"), int) else None,
             "usage": asdict(usage), "usage_available": isinstance(data.get("usage"), dict),
+            "search_status_counts": self._search_status_counts(data),
             "actions": [{"id": str(item.get("id") or "")[:160] or None,
                          "type": str((item.get("action") or {}).get("type") or "unknown")[:40],
                          "status": str(item.get("status") or "unknown"),
-                         "query_count": len(item["action"]["queries"]) if isinstance(item.get("action"), dict) and isinstance(item["action"].get("queries"), list) else 0}
+                         "query_count": len(item["action"]["queries"]) if isinstance(item.get("action"), dict) and isinstance(item["action"].get("queries"), list) else len(self._action_queries(item)),
+                         "queries": self._action_queries(item)}
                         for item in items[:64] if not item.get("action") or isinstance(item["action"], dict)],
             "source_candidates": [{"title": row.title[:300], "url": row.url,
                                    "source_kind": row.source_kind, "description": row.description[:700],
@@ -257,9 +288,9 @@ class OpenAIWebDiscoveryClient:
         return DiscoveryLaneResult(
             lane_code=lane.lane_code,
             profile_code=lane.profile_code,
-            candidates=self._candidates(data, lane) if usage.search_actions else [],
+            candidates=self._candidates(data, lane) if self._search_performed(data) else [],
             usage=usage,
-            search_performed=usage.search_actions > 0,
+            search_performed=self._search_performed(data),
             retry_used=retry_used,
             raw_response_id=str(data.get("id") or "") or None,
             request_diagnostics=budget.snapshot()["requests"][start:],

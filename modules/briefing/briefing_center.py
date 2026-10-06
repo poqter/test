@@ -14,7 +14,7 @@ from .repository import BriefingRepository, BriefingRepositoryError
 from .runtime import PROFILE_LABELS, BriefingRunError, generate_and_store_briefings
 from .normalize import is_safe_url
 from .preflight import run_runtime_preflight, preflight_ready
-from .direct_sources import load_direct_source_specs_from_env
+from .direct_sources import load_direct_source_specs_from_env, probe_direct_sources
 from .diagnostics import ENGINE_VERSION, DIAGNOSTIC_SCHEMA, build_info, failure_diagnostic
 from .config import SHARED_DISCOVERY_HARD_LIMIT
 from .discovery_budget import DISCOVERY_REQUEST_HARD_LIMIT
@@ -396,6 +396,8 @@ def _render_profile_detail(repo: BriefingRepository, code: str, bundle: dict[str
     actions = {str(row.get("issue_id")): row for row in bundle.get("actions") or [] if row.get("issue_id")}
     if revision.get("coverage_status") == "insufficient":
         st.warning("수집·게시일 확인이 충분하지 않아 공개를 보류합니다. ‘오늘 중요한 뉴스가 없음’을 뜻하지 않습니다.")
+    elif revision.get("coverage_status") == "degraded":
+        st.warning("일부 출처만 확보된 브리핑입니다. 여러 분야의 뉴스가 충분히 수집됐는지 검토해 주세요.")
 
     st.divider()
     h1, h2 = st.columns([4, 1], vertical_alignment="center")
@@ -405,7 +407,9 @@ def _render_profile_detail(repo: BriefingRepository, code: str, bundle: dict[str
         st.caption(f"{briefing.get('briefing_date')} · {status} · 생성 {_fmt_dt(revision.get('generated_at'))} · Coverage {revision.get('coverage_status')}")
     with h2:
         if can_manage and revision.get("publication_status") != "published":
-            can_publish = revision.get("validation_status") == "ok" and revision.get("coverage_status") != "insufficient"
+            can_publish = (revision.get("validation_status") == "ok"
+                           and revision.get("coverage_status") != "insufficient"
+                           and (revision.get("coverage_status") == "healthy" or bool(bundle.get("issues"))))
             if st.button("공개하기", key=f"hw_briefing_publish_{revision.get('id')}", type="primary", use_container_width=True, disabled=not can_publish):
                 try:
                     actor = str((st.session_state.get("login_profile") or {}).get("id") or "") or None
@@ -516,7 +520,7 @@ def _render_generate_panel(repo: BriefingRepository) -> None:
                             for row in result.profiles
                         )
                         st.session_state["hw_briefing_flash"] = (
-                            f"생성 완료 · {summary} · Search {result.search_actions} · "
+                            f"생성 완료 · {summary} · 검색 기록 {result.search_actions} · "
                             f"후보 {result.candidate_count} · Event {result.event_count}"
                         )
                         st.session_state.pop("hw_briefing_selected_profile", None)
@@ -527,6 +531,24 @@ def _render_generate_panel(repo: BriefingRepository) -> None:
                         st.caption(str(exc))
             if st.session_state.get("hw_briefing_last_diagnostic"):
                 st.download_button("이번 실행 전체 진단 다운로드", json.dumps(st.session_state["hw_briefing_last_diagnostic"], ensure_ascii=False, indent=2), file_name="briefing_stage1_run_diagnostics.json", mime="application/json", key="hw_briefing_run_diagnostic_download")
+            st.divider()
+            st.caption("직접 출처 점검은 공개 RSS/Atom에 접속합니다. OpenAI 호출과 DB 쓰기 없이 서버 연결 상태만 확인합니다.")
+            if st.button("직접 출처 점검 · 유료 API 없음", key="hw_briefing_probe_sources", use_container_width=True):
+                with st.spinner("직접 출처 연결과 게시일을 확인하고 있습니다…"):
+                    try:
+                        packet = probe_direct_sources(load_direct_source_specs_from_env())
+                    except (ValueError, KeyError, TypeError):
+                        packet = {"status": "direct_source_config_invalid", "project_openai_api_calls": 0, "db_writes": 0}
+                    st.session_state["hw_briefing_source_probe"] = {"schema_version": DIAGNOSTIC_SCHEMA, **build_info(), **packet}
+            if st.session_state.get("hw_briefing_source_probe"):
+                packet = st.session_state["hw_briefing_source_probe"]
+                if packet.get("status") == "direct_source_config_invalid":
+                    st.error("직접 출처 설정을 읽지 못했습니다. 아래 점검 JSON을 전달해 주세요.")
+                failed = sum(row.get("status") == "failed" for row in (packet.get("direct_sources") or {}).values())
+                st.caption(f"직접 출처 {packet.get('configured_source_count', 0)}개 · 실패 {failed}개 · OpenAI 호출 0회")
+                st.download_button("직접 출처 점검 JSON 다운로드", json.dumps(packet, ensure_ascii=False, indent=2),
+                                   file_name="briefing_direct_source_diagnostics.json", mime="application/json",
+                                   key="hw_briefing_source_probe_download")
 
 
 def _render_today(repo: BriefingRepository, can_manage: bool) -> None:

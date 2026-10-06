@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-ENGINE_VERSION = "1.7.1-stage1"
+ENGINE_VERSION = "1.7.2-stage1"
 DIAGNOSTIC_SCHEMA = "briefing-stage1-diagnostics-v2"
 
 

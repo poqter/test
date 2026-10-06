@@ -3,11 +3,11 @@ from __future__ import annotations
 import re
 
 from .models import SourceCandidate
-from .normalize import is_safe_url
+from .normalize import is_safe_url, visible_text
 from .source_policy import source_identity
 
 _INSURANCE_POSITIVE = {
-    "보험", "실손", "생명보험", "손해보험", "보험료", "보험금", "보험사", "설계사", "ga", "종신보험",
+    "보험", "실손", "생명보험", "손해보험", "보험료", "보험금", "보험사", "설계사", "종신보험",
     "연금보험", "자동차보험", "암보험", "건강보험", "금감원", "금융감독원", "생보협회", "손보협회",
 }
 _INSURANCE_FALSE_POSITIVE = {
@@ -20,7 +20,18 @@ _LOW_QUALITY = {"광고", "sponsored", "협찬", "보도자료 배포 서비스"
 
 
 def _blob(candidate: SourceCandidate) -> str:
-    return f"{candidate.title} {candidate.description}".casefold()
+    return f"{candidate.title} {visible_text(candidate.description)}".casefold()
+
+
+def insurance_routing_evidence(candidate: SourceCandidate) -> dict:
+    blob = _blob(candidate)
+    match = next((token for token in sorted(_INSURANCE_POSITIVE) if token in blob), None)
+    if not match and re.search(r"(?<![a-z0-9])ga(?![a-z0-9])", blob):
+        match = "ga"
+    excluded = next((token for token in sorted(_INSURANCE_FALSE_POSITIVE) if token in blob), None)
+    pos = blob.find(match) if match else 0
+    return {"matched_token": match, "excluded_token": excluded,
+            "matched_text": blob[max(0, pos-40):pos+100] if match else None}
 
 
 def passes_common_gate(candidate: SourceCandidate) -> tuple[bool, str | None]:
@@ -42,8 +53,9 @@ def route_profiles(candidate: SourceCandidate, hinted_profile: str | None = None
     blob = _blob(candidate)
     routed: set[str] = set()
 
-    if hinted_profile == "INSURANCE" or any(token in blob for token in _INSURANCE_POSITIVE):
-        if not any(token in blob for token in _INSURANCE_FALSE_POSITIVE):
+    insurance = insurance_routing_evidence(candidate)
+    if hinted_profile == "INSURANCE" or insurance["matched_token"]:
+        if not insurance["excluded_token"]:
             routed.add("INSURANCE")
 
     if hinted_profile == "NEWS":

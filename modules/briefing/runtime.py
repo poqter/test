@@ -85,18 +85,21 @@ def _source_payload(snapshot_id: str, row: SourceCandidate) -> dict[str, Any]:
 
 def _coverage_status(phase_b: PhaseBResult, profile_code: str, routed_event_count: int) -> str:
     dated = [c for c in phase_b.candidates if profile_code in c.routed_profiles and c.freshness_tier in {"core_window", "light_window"}]
+    lanes = [row for row in phase_b.discovery_lanes if row.profile_code == profile_code]
+    owned = [c for c in dated if c.metadata.get("profile_hint") == profile_code
+             or profile_code in (c.metadata.get("profile_hints") or [])
+             or any(c in lane.candidates for lane in lanes)]
     direct = [h for h in phase_b.source_health.values() if profile_code in h.get("profiles", [])]
     verified_path = any(h.get("status") in {"ok", "empty_valid"} and h.get("source_kind") in {"official", "industry_official"} for h in direct)
-    verified_path = verified_path or any(c.source_kind in {"official", "industry_official"} for c in dated)
+    verified_path = verified_path or any(c.source_kind in {"official", "industry_official"} for c in owned)
     if profile_code in {"INSURANCE", "NEWS"}:
-        lanes = [row for row in phase_b.discovery_lanes if row.profile_code == profile_code]
         lane_health = [h for h in phase_b.diagnostics.get("lanes", []) if h["profile_code"] == profile_code]
         usable_lanes = sum(h["search_performed"] and h["usable_candidates"] > 0 for h in lane_health)
         if not lane_health:
             usable_lanes = sum(row.search_performed and any(c in dated for c in row.candidates) for row in lanes)
         if usable_lanes >= 2 and verified_path:
             return "healthy"
-        if dated:
+        if owned:
             return "degraded"
         return "insufficient"
     # MARKET is Direct/Provider-first in V1. A routed event means at least one
@@ -228,12 +231,12 @@ def _persist_profile(
         "data_as_of": phase_b.as_of.isoformat(),
         "generated_at": now.isoformat(),
         "created_by": actor_user_id,
-        "change_summary": "V1.7 Stage 1 게시일·수집 진단·관련 뉴스 보완",
+        "change_summary": "V1.7.2 Stage 1 직접 출처 점검·본문 분류·검색 상태 진단 보완",
         "version_trace": {
             "engine_version": ENGINE_VERSION,
             "profile_config_version": ENGINE_VERSION,
             "prompt_version": "phase_c_v2",
-            "source_config_version": "phase_b_v3",
+            "source_config_version": "phase_b_v4",
             "run_mode": run_mode,
         },
     })
@@ -421,6 +424,8 @@ def generate_and_store_briefings(
         code = record["profile_code"]
         owner = code if code in jobs else next(iter(jobs))
         usage = record.get("usage") or {}
+        search_status = record.get("search_status_counts") or {}
+        uncertain_search = discovery and any(search_status.get(state, 0) for state in ("nonfinal", "unknown"))
         record["usage_logged"] = False
         repo.log_api_usage({
             "job_id": jobs[owner]["id"], "profile_code": owner, "provider": "openai",
@@ -432,7 +437,9 @@ def generate_and_store_briefings(
                          "response_id": record.get("response_id"), "response_status": record.get("status"),
                          "retry_used": bool(record.get("retry")), "lane_profile_code": code,
                          "usage_available": bool(record.get("usage_available")),
-                         "charge_uncertain": not bool(record.get("usage_available")),
+                         "charge_uncertain": not bool(record.get("usage_available")) or uncertain_search,
+                         "search_status_counts": search_status if discovery else None,
+                         "search_billing_uncertain": uncertain_search,
                          "requested_max_tool_calls": record.get("requested_max_tool_calls")},
         })
         record["usage_logged"] = True

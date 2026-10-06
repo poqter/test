@@ -161,8 +161,13 @@ class PublicationDateEnricher:
         self.requests = 0
 
     def _fetch(self, url: str) -> PublicationMetadata:
-        if urlsplit(url).path in {"", "/"}:
+        path = urlsplit(url).path.casefold()
+        if path in {"", "/"} or re.search(r"(?:^|/)(?:index|main|[a-z]*list)\.(?:do|html?|php)$", path):
             return PublicationMetadata(status="listing_page")
+        if (re.search(r"\.(?:pdf|hwp|hwpx|docx?|xlsx?|zip)$", path)
+                or "/file-manager/" in path
+                or re.search(r"/(?:download|downloadeng\.do|displayfile\.do|downreport/\d+)$", path)):
+            return PublicationMetadata(status="attachment_url")
         def publisher_key(value):
             host = publisher_domain(value) or ""
             return next((d for d in OFFICIAL_DOMAINS + INDUSTRY_DOMAINS + INSURANCE_MEDIA + NEWS_BROADCAST + NEWS_MEDIA if host == d or host.endswith("."+d)), host)
