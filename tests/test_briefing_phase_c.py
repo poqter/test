@@ -71,14 +71,14 @@ def test_light_window_event_cannot_be_core_even_with_high_score():
     assert row.selection_tier == "light_digest"
 
 
-def test_core_and_light_dynamic_caps_are_applied():
+def test_core_does_not_reduce_light_display_capacity():
     events = [_event(f"e{i}", f"중요 정책 {i}", "NEWS", 5) for i in range(1, 8)]
     scores = {f"e{i}": (90 - i if i <= 4 else 40 - i) for i in range(1, 8)}
     phase_b = PhaseBResult(NOW, [c for e in events for c in e.candidates], events, [], {})
     result = run_phase_c(phase_b, analyzer=FakeAnalyzer(scores))
     rows = result.profile_rows("NEWS")
     assert sum(r.selection_tier == "core" for r in rows) == 4
-    assert sum(r.selection_tier == "light_digest" for r in rows) <= 2
+    assert sum(r.selection_tier == "light_digest" for r in rows) == 3
 
 
 def test_high_risk_single_source_core_is_downgraded_pending_validation():

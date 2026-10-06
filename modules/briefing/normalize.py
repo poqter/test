@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import hashlib
+import ipaddress
 import re
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -13,9 +14,27 @@ _TRACKING_KEYS = {"fbclid", "gclid", "igshid", "mc_cid", "mc_eid"}
 _TITLE_SPACE_RE = re.compile(r"\s+")
 
 
+def is_safe_url(url: str) -> bool:
+    try:
+        parts = urlsplit((url or "").strip())
+        if parts.hostname in {"localhost", "localhost.localdomain"}:
+            return False
+        try:
+            if not ipaddress.ip_address(parts.hostname or "").is_global:
+                return False
+        except ValueError:
+            pass
+        return bool(parts.scheme in {"http", "https"} and parts.hostname
+                    and not parts.username and not parts.password
+                    and parts.port in {None, 80, 443}
+                    and not re.search(r"[\s\\\x00-\x1f]", url))
+    except (ValueError, TypeError):
+        return False
+
+
 def canonicalize_url(url: str) -> str:
     raw = (url or "").strip()
-    if not raw:
+    if not raw or not is_safe_url(raw):
         return ""
     parts = urlsplit(raw)
     query = []

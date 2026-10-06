@@ -40,7 +40,7 @@ def _valid_direct_source(spec: DirectSourceSpec) -> bool:
     )
 
 
-def run_runtime_preflight(*, direct_sources: list[DirectSourceSpec] | None = None) -> list[PreflightCheck]:
+def run_runtime_preflight(*, direct_sources: list[DirectSourceSpec] | None = None, require_direct_sources: bool = True) -> list[PreflightCheck]:
     """Validate Phase B live-smoke prerequisites without calling OpenAI or source URLs."""
     if direct_sources is None:
         try:
@@ -110,7 +110,7 @@ def run_runtime_preflight(*, direct_sources: list[DirectSourceSpec] | None = Non
         PreflightCheck(
             "direct_sources",
             bool(direct_sources) and all(_valid_direct_source(s) for s in direct_sources),
-            True,
+            require_direct_sources,
             (
                 f"verified direct sources configured={len(direct_sources)}"
                 if direct_sources and all(_valid_direct_source(s) for s in direct_sources)

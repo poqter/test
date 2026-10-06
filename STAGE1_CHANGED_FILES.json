@@ -1,0 +1,131 @@
+{
+  "engine_version": "1.7.0-stage1",
+  "baseline_zip_sha256": "4a1302456d9993a34dcd352ebecb189df980b45339288769850344346f72ca32",
+  "changed_files": [
+    {
+      "path": "BRIEFING_IMPLEMENTATION_CHECKPOINT_V1_7_STAGE1.md",
+      "status": "added",
+      "sha256": "0b335b0983382bb5df1e37d2c0ff749f3ba8901ccc5c74bb06fd85e35335405e"
+    },
+    {
+      "path": "STAGE1_SAVED_REPLAY_RESULT.json",
+      "status": "added",
+      "sha256": "0592edc939a35a54b90d28394578e3ba0c8b7c1c4ea82cd6bf45dcdf107173c3"
+    },
+    {
+      "path": "STAGE1_TEST_RESULTS.txt",
+      "status": "added",
+      "sha256": "bae37be03cb5b777fcf6e13a0b1ebe4aae035e0cfaa0764851974b33be6b739b"
+    },
+    {
+      "path": "modules/briefing/briefing_center.py",
+      "status": "modified",
+      "sha256": "9a89ecadd0d6ecf3bb88b5a3fd2ac346487bf050ac65106c0f077065b2a541f4"
+    },
+    {
+      "path": "modules/briefing/direct_sources.py",
+      "status": "modified",
+      "sha256": "5205edcbe24d692da20c4cce672ba9e5f4747d94170686fcdd6edc5c211c8dc4"
+    },
+    {
+      "path": "modules/briefing/gates.py",
+      "status": "modified",
+      "sha256": "072a9339247bc5a9757abc5c872a4c38f2938b6c1d627b3c951051e958d71af2"
+    },
+    {
+      "path": "modules/briefing/models.py",
+      "status": "modified",
+      "sha256": "1658d57df5b3e37eb61f6d56472c9bc3654ce4f4e02695ab4a040a01f09aef55"
+    },
+    {
+      "path": "modules/briefing/normalize.py",
+      "status": "modified",
+      "sha256": "0c50de14c9c85ce9ef36cac2d7cd5a0f4efd016b28160ce90f30ec986903bf72"
+    },
+    {
+      "path": "modules/briefing/openai_analysis.py",
+      "status": "modified",
+      "sha256": "f68f81c65bb1b837db06cc1bc0601ecf1e53fe4f9fea6e0b5eea99965b129983"
+    },
+    {
+      "path": "modules/briefing/openai_discovery.py",
+      "status": "modified",
+      "sha256": "c7d968af4d65bcc8e72a0325a74b74143c3f56aaa51f93e69b5573c43f51181c"
+    },
+    {
+      "path": "modules/briefing/phase_b.py",
+      "status": "modified",
+      "sha256": "d4e8131c7feb86d285b9f5e2be1d913539c3ce3244a5aa03d2f88c6cd149004b"
+    },
+    {
+      "path": "modules/briefing/phase_c.py",
+      "status": "modified",
+      "sha256": "5d6079cad9e207bb3fa4d195adc08d899d3487d3807e84215e94b951dc266bb6"
+    },
+    {
+      "path": "modules/briefing/preflight.py",
+      "status": "modified",
+      "sha256": "64c41115ed917453c01f9945dacd4c09c33e2d55f0265ad3a11485fb3bc994e0"
+    },
+    {
+      "path": "modules/briefing/profile_rules.py",
+      "status": "modified",
+      "sha256": "e4770777ea122c058885023eacc73ed54aa5562c6b0aab9b7269f7cd745a2745"
+    },
+    {
+      "path": "modules/briefing/publication.py",
+      "status": "added",
+      "sha256": "82b2aefb8e8c8653bbd551fc05a7cafcdc8551ec65474bd3c31e7a4328fdaf2c"
+    },
+    {
+      "path": "modules/briefing/runtime.py",
+      "status": "modified",
+      "sha256": "e8b68ab66704afc9c88725917aca79874e60a1922e0b29a9c7f00c1eb0a0b197"
+    },
+    {
+      "path": "modules/briefing/source_policy.py",
+      "status": "added",
+      "sha256": "c828fc2fd4e62a80e7f032e169a1c43865342db0d333767ca6fbec172265a66e"
+    },
+    {
+      "path": "modules/briefing/tool_policy.py",
+      "status": "added",
+      "sha256": "0762fb107425b9aacf9cec571f1f9e67044b17abad40d075f7cc5185e4460383"
+    },
+    {
+      "path": "scripts/briefing_stage1_offline_replay.py",
+      "status": "added",
+      "sha256": "5c7ffa6d1758b8551dac8f41aedb54a7b131e5feb61978d8c47aba20a70fac1b"
+    },
+    {
+      "path": "tests/conftest.py",
+      "status": "added",
+      "sha256": "ba68c30de5bde9f3b7bdee17a7de50ffac5d642d9528d9bf837060db203e82c7"
+    },
+    {
+      "path": "tests/test_briefing_phase_c.py",
+      "status": "modified",
+      "sha256": "c5471a89c858236795d604c7c8a8d037f1be94e4c3f9cb6f5ea756cbe2ede5fa"
+    },
+    {
+      "path": "tests/test_briefing_publication.py",
+      "status": "added",
+      "sha256": "5bd818fd38a175dcb6eaebcf83f727766920c13a0780c1d3d900cd3901968697"
+    },
+    {
+      "path": "tests/test_briefing_stage1_quality.py",
+      "status": "added",
+      "sha256": "3ba278d160c800cbb27bf71f574d3c95daab04122fa0047d854058cd8a753e3d"
+    },
+    {
+      "path": "tests/test_briefing_stage1_ui.py",
+      "status": "added",
+      "sha256": "1821acf9df860f7fe87be032e65e6c6b7c18ecf535ab5b8d50b33775fe75f1a0"
+    }
+  ],
+  "schema_changed": false,
+  "sql_migrations_changed": false,
+  "paid_project_api_calls": 0,
+  "tests_passed": 122,
+  "subtests_passed": 61
+}

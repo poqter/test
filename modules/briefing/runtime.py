@@ -42,6 +42,7 @@ class BriefingGenerationResult:
     search_actions: int
     candidate_count: int
     event_count: int
+    diagnostics: dict[str, Any] | None = None
 
 
 class BriefingRunError(RuntimeError):
@@ -77,26 +78,36 @@ def _source_payload(snapshot_id: str, row: SourceCandidate) -> dict[str, Any]:
 
 
 def _coverage_status(phase_b: PhaseBResult, profile_code: str, routed_event_count: int) -> str:
+    dated = [c for c in phase_b.candidates if profile_code in c.routed_profiles and c.freshness_tier in {"core_window", "light_window"}]
+    direct = [h for h in phase_b.source_health.values() if profile_code in h.get("profiles", [])]
+    verified_path = any(h.get("status") in {"ok", "empty_valid"} and h.get("source_kind") in {"official", "industry_official"} for h in direct)
+    verified_path = verified_path or any(c.source_kind in {"official", "industry_official"} for c in dated)
     if profile_code in {"INSURANCE", "NEWS"}:
         lanes = [row for row in phase_b.discovery_lanes if row.profile_code == profile_code]
-        search_ok = sum(1 for row in lanes if row.search_performed)
-        if search_ok == len(lanes) and len(lanes) >= 2:
+        lane_health = [h for h in phase_b.diagnostics.get("lanes", []) if h["profile_code"] == profile_code]
+        usable_lanes = sum(h["search_performed"] and h["usable_candidates"] > 0 for h in lane_health)
+        if not lane_health:
+            usable_lanes = sum(row.search_performed and any(c in dated for c in row.candidates) for row in lanes)
+        if usable_lanes >= 2 and verified_path:
             return "healthy"
-        if search_ok > 0 or routed_event_count > 0:
+        if dated:
             return "degraded"
         return "insufficient"
     # MARKET is Direct/Provider-first in V1. A routed event means at least one
     # configured source produced usable market content; without it we must not
     # claim that there were no important market events.
-    return "degraded" if routed_event_count > 0 else "insufficient"
+    market_direct = [c for c in dated if c.collector_provider.startswith("direct_") and c.metadata.get("profile_hints") and "MARKET" in c.metadata["profile_hints"]]
+    return "degraded" if market_direct else "insufficient"
 
 
 def _fast_brief(profile_code: str, rows: list[ProfileEventAnalysis]) -> dict[str, Any]:
     visible = [r for r in rows if r.selection_tier in {"core", "light_digest"}]
     visible.sort(key=lambda r: (0 if r.selection_tier == "core" else 1, -r.importance_score))
     top = visible[:5]
-    one_sentence = top[0].summary if top and top[0].summary else (
-        "오늘 확인 가능한 주요 변화가 제한적입니다." if visible else "현재 검증 가능한 브리핑 이슈가 충분하지 않습니다."
+    categories = list(dict.fromkeys(r.category for r in visible if r.category))
+    one_sentence = (
+        f"오늘은 {'·'.join(categories)} 영역에서 핵심 변화 {sum(r.selection_tier == 'core' for r in visible)}건과 관련 소식 {sum(r.selection_tier == 'light_digest' for r in visible)}건을 확인합니다."
+        if visible else "현재 검증 가능한 브리핑 이슈가 충분하지 않습니다."
     )
     return {
         "profile_code": profile_code,
@@ -110,9 +121,13 @@ def _fast_brief(profile_code: str, rows: list[ProfileEventAnalysis]) -> dict[str
 def _today_actions(rows: list[ProfileEventAnalysis]) -> dict[str, Any]:
     labels = {"review_now": "지금 확인", "reference_today": "오늘 참고", "watch": "지켜보기"}
     grouped: dict[str, list[dict[str, Any]]] = {key: [] for key in labels}
-    for row in rows:
+    ordered = sorted(rows, key=lambda r: (0 if r.action_state == "review_now" else 1 if r.action_state == "reference_today" else 2, -r.importance_score))
+    remaining = 3
+    for row in ordered:
         if row.selection_tier == "excluded":
             continue
+        if remaining == 0:
+            break
         state = row.action_state if row.action_state in grouped else "watch"
         grouped[state].append({
             "event_key": row.event_key,
@@ -120,8 +135,7 @@ def _today_actions(rows: list[ProfileEventAnalysis]) -> dict[str, Any]:
             "summary": row.impact_summary or row.summary,
             "label": labels[state],
         })
-    for key in grouped:
-        grouped[key] = grouped[key][:4]
+        remaining -= 1
     return grouped
 
 
@@ -208,12 +222,12 @@ def _persist_profile(
         "data_as_of": phase_b.as_of.isoformat(),
         "generated_at": now.isoformat(),
         "created_by": actor_user_id,
-        "change_summary": "V1.6 Action Intelligence 자동 생성",
+        "change_summary": "V1.7 Stage 1 게시일·수집 진단·관련 뉴스 보완",
         "version_trace": {
-            "engine_version": "1.6.0",
-            "profile_config_version": "1.6.0",
-            "prompt_version": "phase_c_v1",
-            "source_config_version": "phase_b_v1",
+            "engine_version": "1.7.0-stage1",
+            "profile_config_version": "1.7.0-stage1",
+            "prompt_version": "phase_c_v2",
+            "source_config_version": "phase_b_v2",
             "run_mode": run_mode,
         },
     })
@@ -221,6 +235,8 @@ def _persist_profile(
     fast_brief = _fast_brief(profile_code, rows)
     today_action = _today_actions(rows)
     content = _content_payload(profile_code, rows, phase_b, coverage_status)
+    # Persist the eligible analysis pool BEFORE display caps for the later customer edition.
+    content["eligible_analysis_pool"] = [asdict(r) for r in phase_c.eligible_analyses if r.profile_code == profile_code]
     content_hash = hashlib.sha256(json.dumps(content, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
     snapshot = repo.create_snapshot({
         "revision_id": revision["id"],
@@ -233,6 +249,8 @@ def _persist_profile(
             "validation_status": validation_status,
             "coverage_status": coverage_status,
             "excluded_counts": phase_b.excluded_counts,
+            "collection_diagnostics": phase_b.diagnostics,
+            "source_health": phase_b.source_health,
         },
     })
     repo.checkpoint(job_id, "snapshot_created", {"snapshot_id": snapshot["id"]})
@@ -371,6 +389,7 @@ def generate_and_store_briefings(
     actor_user_id: str | None = None,
     profile_codes: tuple[str, ...] = ("INSURANCE", "MARKET", "NEWS"),
     repository: BriefingRepository | None = None,
+    force_shadow: bool = False,
 ) -> BriefingGenerationResult:
     """Run one shared Phase B discovery, one Phase C batch per routed profile,
     then persist immutable V1.6 snapshots for the requested profiles.
@@ -387,22 +406,21 @@ def generate_and_store_briefings(
     as_of = datetime.now(timezone.utc)
     date_text = as_of.astimezone(KST).date().isoformat()
     jobs: dict[str, dict[str, Any]] = {}
-    for code in requested:
-        key = _job_key(code, date_text, "MORNING")
-        attempt = repo.next_attempt_no(key)
-        jobs[code] = repo.create_job({
-            "profile_code": code,
-            "briefing_date": date_text,
-            "briefing_type": "MORNING",
-            "job_key": key,
-            "attempt_no": attempt,
-            "trigger_type": "manual",
-            "job_status": "collecting",
-            "started_at": as_of.isoformat(),
-            "metadata": {"engine_version": "1.6.0", "shared_run": True},
-        })
-
     try:
+        for code in requested:
+            key = _job_key(code, date_text, "MORNING")
+            attempt = repo.next_attempt_no(key)
+            jobs[code] = repo.create_job({
+                "profile_code": code,
+                "briefing_date": date_text,
+                "briefing_type": "MORNING",
+                "job_key": key,
+                "attempt_no": attempt,
+                "trigger_type": "manual",
+                "job_status": "collecting",
+                "started_at": as_of.isoformat(),
+                "metadata": {"engine_version": "1.7.0-stage1", "shared_run": True},
+            })
         phase_b = run_phase_b(as_of=as_of, direct_sources=load_direct_source_specs_from_env())
         for code, job in jobs.items():
             repo.checkpoint(str(job["id"]), "direct_collection_complete", {"candidate_count": len(phase_b.candidates)})
@@ -436,7 +454,7 @@ def generate_and_store_briefings(
                 "metadata": {"retry_used": lane.retry_used, "response_id": lane.raw_response_id},
             })
 
-        phase_c = run_phase_c(phase_b)
+        phase_c = run_phase_c(phase_b, profile_codes=requested)
         for code, usage in phase_c.usage_by_profile.items():
             job = jobs.get(code)
             if not job:
@@ -470,7 +488,7 @@ def generate_and_store_briefings(
                 phase_c=phase_c,
                 actor_user_id=actor_user_id,
                 job_id=str(job["id"]),
-                run_mode=str(profiles[code].get("run_mode") or "shadow"),
+                run_mode="shadow" if force_shadow else str(profiles[code].get("run_mode") or "shadow"),
             )
             results.append(result)
             repo.update_job(str(job["id"]), {"job_status": "completed", "finished_at": datetime.now(timezone.utc).isoformat()})
@@ -481,6 +499,9 @@ def generate_and_store_briefings(
             search_actions=sum(lane.usage.search_actions for lane in phase_b.discovery_lanes),
             candidate_count=len(phase_b.candidates),
             event_count=len(phase_b.events),
+            diagnostics={"phase_b": phase_b.diagnostics, "source_health": phase_b.source_health, "excluded_counts": phase_b.excluded_counts,
+                         "analysis_omitted": phase_c.omitted_by_profile, "analysis_usage": {k: asdict(v) for k,v in phase_c.usage_by_profile.items()},
+                         "discovery_usage": [{"lane_code": l.lane_code, "profile_code": l.profile_code, "usage": asdict(l.usage)} for l in phase_b.discovery_lanes]},
         )
     except Exception as exc:
         for job in jobs.values():

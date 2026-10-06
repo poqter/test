@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from copy import deepcopy
 from typing import Protocol
 
 from .evidence import infer_evidence_status, is_high_risk
 from .models import AnalysisUsage, PhaseBResult, PhaseCResult, ProfileEventAnalysis, SharedEventCandidate
 from .openai_analysis import OpenAIAnalysisClient
 from .profile_rules import PROFILE_RULES, light_digest_limit
+from .tool_policy import validated_tool_actions
 
 
 class Analyzer(Protocol):
@@ -32,6 +34,7 @@ def _apply_caps(rows: list[ProfileEventAnalysis], profile_code: str) -> None:
     rule = PROFILE_RULES[profile_code]
     core = sorted((x for x in rows if x.selection_tier == "core"), key=lambda x: x.importance_score, reverse=True)
     for row in core[rule.max_core:]:
+        row.profile_payload["original_selection_tier"] = "core"
         row.selection_tier = "light_digest" if row.importance_score >= rule.light_floor else "excluded"
 
     core_count = sum(1 for x in rows if x.selection_tier == "core")
@@ -46,12 +49,13 @@ def run_phase_c(
     *,
     analyzer: Analyzer | None = None,
     max_events_per_profile: int = 20,
+    profile_codes: tuple[str, ...] | None = None,
 ) -> PhaseCResult:
     client = analyzer or OpenAIAnalysisClient()
     by_profile: dict[str, list[SharedEventCandidate]] = defaultdict(list)
     for event in phase_b.events:
         for profile_code in sorted(event.routed_profiles):
-            if profile_code in PROFILE_RULES:
+            if profile_code in PROFILE_RULES and (profile_codes is None or profile_code in profile_codes):
                 by_profile[profile_code].append(event)
 
     analyses: list[ProfileEventAnalysis] = []
@@ -102,18 +106,19 @@ def run_phase_c(
                 why_important=str(raw.get("why_important") or ""),
                 impact_summary=str(raw.get("impact_summary") or ""),
                 action_state=str(raw.get("action_state") or "watch"),
-                communication_state=str(raw.get("communication_state") or "not_applicable"),
+                communication_state=str(raw.get("communication_state") or "internal_check"),
                 audience_segments=[str(x) for x in (raw.get("audience_segments") or [])],
                 conversation_payload={
                     "recommended_expression": str(raw.get("recommended_expression") or ""),
                     "check_first": str(raw.get("check_first") or ""),
                     "avoid_expression": str(raw.get("avoid_expression") or ""),
                 },
-                workspace_actions=[{"tool_code": str(code)} for code in (raw.get("workspace_tool_codes") or []) if str(code).strip()],
+                workspace_actions=validated_tool_actions(raw.get("workspace_tool_codes")),
                 profile_payload={"next_step": str(raw.get("next_step") or ""), "confidence": confidence},
                 escalation_required=(high_risk and validation_status != "ok") or confidence == "low",
             ))
 
+    eligible = deepcopy([r for r in analyses if r.selection_tier in {"core", "light_digest"} and r.validation_status == "ok"])
     for profile_code in PROFILE_RULES:
         _apply_caps([x for x in analyses if x.profile_code == profile_code], profile_code)
 
@@ -121,4 +126,5 @@ def run_phase_c(
         analyses=analyses,
         usage_by_profile=usage_by_profile,
         omitted_by_profile=omitted_by_profile,
+        eligible_analyses=eligible,
     )

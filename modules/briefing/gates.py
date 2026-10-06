@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 
 from .models import SourceCandidate
+from .normalize import is_safe_url
+from .source_policy import source_identity
 
 _INSURANCE_POSITIVE = {
     "보험", "실손", "생명보험", "손해보험", "보험료", "보험금", "보험사", "설계사", "ga", "종신보험",
@@ -24,6 +26,10 @@ def _blob(candidate: SourceCandidate) -> str:
 def passes_common_gate(candidate: SourceCandidate) -> tuple[bool, str | None]:
     if not candidate.title or not candidate.url:
         return False, "missing_identity"
+    if not is_safe_url(candidate.url):
+        return False, "unsafe_url"
+    if candidate.collector_provider == "openai_web_search" and not source_identity(candidate.url):
+        return False, "untrusted_source"
     if candidate.freshness_tier in {"stale", "undated"}:
         return False, candidate.freshness_tier
     blob = _blob(candidate)

@@ -74,6 +74,8 @@ class PhaseBResult:
     events: list[SharedEventCandidate]
     discovery_lanes: list[DiscoveryLaneResult]
     excluded_counts: dict[str, int]
+    source_health: dict[str, dict[str, Any]] = field(default_factory=dict)
+    diagnostics: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -114,6 +116,7 @@ class PhaseCResult:
     analyses: list[ProfileEventAnalysis]
     usage_by_profile: dict[str, AnalysisUsage]
     omitted_by_profile: dict[str, int]
+    eligible_analyses: list[ProfileEventAnalysis] = field(default_factory=list)
 
     def profile_rows(self, profile_code: str) -> list[ProfileEventAnalysis]:
         return [row for row in self.analyses if row.profile_code == profile_code]

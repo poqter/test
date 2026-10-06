@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import os
 from typing import Any
 
@@ -8,6 +8,9 @@ import requests
 
 from .config import DiscoveryLaneSpec
 from .models import DiscoveryLaneResult, DiscoveryUsage, SourceCandidate
+from .normalize import is_safe_url
+from .publication import parse_publication_date
+from .source_policy import LANE_DOMAINS, source_identity
 
 
 class BriefingDiscoveryError(RuntimeError):
@@ -26,6 +29,7 @@ class OpenAIWebDiscoveryClient:
         self.model = (model or os.getenv("BRIEFING_DISCOVERY_MODEL", "")).strip()
         self.timeout = timeout
         self.http = requests.Session()
+        self.as_of = datetime.now(timezone.utc)
         if not self.api_key:
             raise BriefingDiscoveryError("OPENAI_API_KEY is not configured")
         if not self.model:
@@ -34,10 +38,15 @@ class OpenAIWebDiscoveryClient:
     def _request(self, lane: DiscoveryLaneSpec) -> dict[str, Any]:
         payload = {
             "model": self.model,
-            "input": lane.query,
-            "tools": [{"type": "web_search"}],
+            "input": (
+                f"기준시각={self.as_of.isoformat()}. 핵심 후보는 {(self.as_of-timedelta(hours=36)).isoformat()} 이후, "
+                f"참고 후보는 {(self.as_of-timedelta(hours=96)).isoformat()} 이후 게시된 자료만 탐색한다. "
+                "홈페이지·목록·오래된 해설보다 새 기사/발표의 원문 링크를 수집한다. 게시일을 추측하지 않는다. " + lane.query
+            ),
+            "tools": [{"type": "web_search", "filters": {"allowed_domains": list(LANE_DOMAINS[lane.lane_code])}}],
             "tool_choice": "required",
             "max_tool_calls": 1,
+            "max_output_tokens": 2000,
             "include": ["web_search_call.results", "web_search_call.action.sources"],
         }
         try:
@@ -55,7 +64,9 @@ class OpenAIWebDiscoveryClient:
             data = response.json()
         except ValueError as exc:
             raise BriefingDiscoveryError("OpenAI discovery returned invalid JSON") from exc
-        return data if isinstance(data, dict) else {}
+        if not isinstance(data, dict) or data.get("status") in {"failed", "incomplete"}:
+            raise BriefingDiscoveryError("OpenAI discovery response is incomplete or failed")
+        return data
 
     @staticmethod
     def _usage(data: dict[str, Any]) -> DiscoveryUsage:
@@ -84,13 +95,17 @@ class OpenAIWebDiscoveryClient:
                 return True
         return False
 
+    @classmethod
+    def _search_count(cls, data: dict[str, Any]) -> int:
+        return sum(isinstance(item.get("action"), dict) and item["action"].get("type") == "search" for item in cls._web_items(data))
+
     @staticmethod
     def _append_source(target: list[dict[str, Any]], source: Any) -> None:
         if not isinstance(source, dict):
             return
         url = str(source.get("url") or source.get("link") or "").strip()
         title = str(source.get("title") or source.get("name") or "").strip()
-        if url and title:
+        if is_safe_url(url):
             target.append(source)
 
     @classmethod
@@ -124,7 +139,10 @@ class OpenAIWebDiscoveryClient:
         dedup: dict[str, dict[str, Any]] = {}
         for source in found:
             url = str(source.get("url") or source.get("link") or "").strip()
-            dedup.setdefault(url, source)
+            merged = dedup.setdefault(url, dict(source))
+            for key, value in source.items():
+                if value and not merged.get(key):
+                    merged[key] = value
         return list(dedup.values())
 
     @staticmethod
@@ -145,18 +163,20 @@ class OpenAIWebDiscoveryClient:
         for source in cls._extract_source_rows(data):
             url = str(source.get("url") or source.get("link") or "").strip()
             title = str(source.get("title") or source.get("name") or "").strip()
-            if not (url and title):
+            identity = source_identity(url)
+            if not is_safe_url(url) or not identity:
                 continue
             rows.append(SourceCandidate(
                 title=title,
                 url=url,
                 description=str(source.get("snippet") or source.get("description") or ""),
-                published_at=cls._parse_datetime(source.get("published_at") or source.get("published") or source.get("date")),
+                published_at=parse_publication_date(source.get("published_at") or source.get("published") or source.get("datePublished"), url=url),
                 retrieved_at=retrieved_at,
                 source_name=str(source.get("publisher") or source.get("source") or "Web Search"),
                 publisher_name=str(source.get("publisher") or source.get("source") or "") or None,
                 collector_provider="openai_web_search",
-                source_kind="discovery",
+                source_kind=identity[0],
+                source_tier=identity[1],
                 endpoint_role="discovery",
                 metadata={"lane_code": lane.lane_code, "profile_hint": lane.profile_code},
             ))
@@ -166,7 +186,7 @@ class OpenAIWebDiscoveryClient:
         first = self._request(lane)
         usage = self._usage(first)
         usage.web_tool_calls = len(self._web_items(first))
-        usage.search_actions = 1 if self._search_performed(first) else 0
+        usage.search_actions = self._search_count(first)
         data = first
         retry_used = False
         if usage.search_actions == 0:
@@ -178,7 +198,7 @@ class OpenAIWebDiscoveryClient:
             usage.output_tokens += second_usage.output_tokens
             usage.reasoning_tokens += second_usage.reasoning_tokens
             usage.web_tool_calls += len(self._web_items(second))
-            second_search = 1 if self._search_performed(second) else 0
+            second_search = self._search_count(second)
             usage.search_actions += second_search
             usage.search_retry_count = 1
             data = second

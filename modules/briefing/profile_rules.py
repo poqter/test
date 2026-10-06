@@ -52,9 +52,6 @@ PROFILE_RULES: Final[dict[str, ProfileRule]] = {
 }
 
 
-def light_digest_limit(core_count: int) -> int:
-    if core_count >= 3:
-        return 2
-    if core_count >= 1:
-        return 3
-    return 5
+def light_digest_limit(core_count: int = 0) -> int:
+    """Display cap is independent of core count; first five are shown in the UI."""
+    return 7

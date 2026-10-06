@@ -11,6 +11,8 @@ from xml.etree import ElementTree as ET
 import requests
 
 from .models import SourceCandidate
+from .normalize import is_safe_url
+from .publication import parse_publication_date
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,7 +91,7 @@ def _rss_candidates(root: ET.Element, spec: DirectSourceSpec, retrieved_at: date
         title = _text(item, "title")
         link = _text(item, "link", "guid")
         description = _text(item, "description")
-        published = _parse_dt(_text(item, "pubDate", "published", "updated"))
+        published = parse_publication_date(_text(item, "pubDate", "published"), url=link)
         if title and link:
             rows.append(SourceCandidate(
                 title=title, url=link, description=description, published_at=published,
@@ -110,7 +112,7 @@ def _atom_candidates(root: ET.Element, spec: DirectSourceSpec, retrieved_at: dat
         link_node = entry.find("{http://www.w3.org/2005/Atom}link")
         link = (link_node.get("href") if link_node is not None else "") or ""
         description = _text(entry, "{http://www.w3.org/2005/Atom}summary", "{http://www.w3.org/2005/Atom}content")
-        published = _parse_dt(_text(entry, "{http://www.w3.org/2005/Atom}published", "{http://www.w3.org/2005/Atom}updated"))
+        published = parse_publication_date(_text(entry, "{http://www.w3.org/2005/Atom}published"), url=link)
         if title and link:
             rows.append(SourceCandidate(
                 title=title, url=link, description=description, published_at=published,
@@ -124,6 +126,8 @@ def _atom_candidates(root: ET.Element, spec: DirectSourceSpec, retrieved_at: dat
 
 
 def collect_direct_source(spec: DirectSourceSpec, *, session: requests.Session | None = None) -> list[SourceCandidate]:
+    if not is_safe_url(spec.url):
+        raise ValueError("Invalid Direct Source URL")
     http = session or requests.Session()
     response = http.get(spec.url, timeout=spec.timeout_seconds, headers={"User-Agent": "HWARANG-Briefing/1.6"})
     response.raise_for_status()

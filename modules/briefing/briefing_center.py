@@ -1,14 +1,20 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from zoneinfo import ZoneInfo
 import html
+import hashlib
+import json
+from dataclasses import asdict
 from typing import Any, Callable
 
 import streamlit as st
 
 from .repository import BriefingRepository, BriefingRepositoryError
 from .runtime import PROFILE_LABELS, BriefingRunError, generate_and_store_briefings
+from .normalize import is_safe_url
+from .preflight import run_runtime_preflight, preflight_ready
+from .direct_sources import load_direct_source_specs_from_env
 
 
 PROFILE_ORDER = ("MARKET", "INSURANCE", "NEWS")
@@ -180,7 +186,9 @@ def _fmt_dt(value: Any) -> str:
         return "-"
     try:
         dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
-        return dt.astimezone().strftime("%m.%d %H:%M")
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(KST).strftime("%m.%d %H:%M")
     except ValueError:
         return raw[:16]
 
@@ -300,7 +308,7 @@ def _render_sources(issue: dict[str, Any], bundle: dict[str, Any]) -> None:
         title = str(source.get("title") or source.get("publisher_name") or source.get("source_name") or "출처")
         url = str(source.get("canonical_url") or source.get("url") or "")
         meta = " · ".join(x for x in [str(source.get("publisher_name") or source.get("source_name") or ""), _fmt_dt(source.get("published_at"))] if x and x != "-")
-        if url:
+        if is_safe_url(url):
             st.link_button(title[:80] + ("…" if len(title) > 80 else ""), url, use_container_width=True)
             if meta:
                 st.caption(meta)
@@ -317,11 +325,16 @@ def _render_timeline(repo: BriefingRepository, event_id: str | None) -> None:
         st.caption(f"{_fmt_dt(row.get('observed_at'))} · {str(row.get('change_summary') or row.get('title') or '')}")
 
 
-def _render_issue(repo: BriefingRepository, issue: dict[str, Any], action: dict[str, Any] | None, bundle: dict[str, Any]) -> None:
+def _issue_anchor(issue: dict[str, Any]) -> str:
+    return "hw-issue-" + hashlib.sha256(str(issue.get("id") or issue.get("issue_key") or "").encode()).hexdigest()[:16]
+
+
+def _render_issue(repo: BriefingRepository, issue: dict[str, Any], action: dict[str, Any] | None, bundle: dict[str, Any], *, expanded: bool = False) -> None:
     tier = str(issue.get("selection_tier") or "")
     title = str(issue.get("title") or "이슈")
     prefix = "핵심" if tier == "core" else "참고"
-    with st.expander(f"[{prefix}] {title}", expanded=False):
+    st.markdown(f'<div id="{_issue_anchor(issue)}"></div>', unsafe_allow_html=True)
+    with st.expander(f"[{prefix}] {title}", expanded=expanded):
         st.markdown(
             '<div class="hw-issue-meta">'
             f'<span class="hw-issue-chip">카테고리 · {html.escape(str(issue.get("category") or "-"))}</span>'
@@ -361,6 +374,15 @@ def _render_issue(repo: BriefingRepository, issue: dict[str, Any], action: dict[
         _render_timeline(repo, str(issue.get("event_id") or "") or None)
 
 
+def _render_related_issue(issue: dict[str, Any], bundle: dict[str, Any]) -> None:
+    st.markdown(f'<div id="{_issue_anchor(issue)}"></div>', unsafe_allow_html=True)
+    st.write(str(issue.get("title") or "관련 뉴스"))
+    if issue.get("summary"):
+        st.write(str(issue["summary"]))
+    st.caption(str(issue.get("category") or ""))
+    _render_sources(issue, bundle)
+
+
 def _render_profile_detail(repo: BriefingRepository, code: str, bundle: dict[str, Any], *, can_manage: bool) -> None:
     briefing = bundle.get("briefing") or {}
     revision = bundle.get("revision") or {}
@@ -369,6 +391,8 @@ def _render_profile_detail(repo: BriefingRepository, code: str, bundle: dict[str
     today = snapshot.get("today_action_payload") or {}
     issues = bundle.get("issues") or []
     actions = {str(row.get("issue_id")): row for row in bundle.get("actions") or [] if row.get("issue_id")}
+    if revision.get("coverage_status") == "insufficient":
+        st.warning("수집·게시일 확인이 충분하지 않아 공개를 보류합니다. ‘오늘 중요한 뉴스가 없음’을 뜻하지 않습니다.")
 
     st.divider()
     h1, h2 = st.columns([4, 1], vertical_alignment="center")
@@ -412,8 +436,12 @@ def _render_profile_detail(repo: BriefingRepository, code: str, bundle: dict[str
             if not rows:
                 st.markdown('<div class="hw-action-item">해당 항목 없음</div>', unsafe_allow_html=True)
             for row in rows[:4]:
+                linked_issue = next((i for i in issues if str(i.get("issue_key") or "") == f"{code}:{row.get('event_key')}"), None)
+                label = html.escape(str(row.get("title") or ""))
+                if linked_issue:
+                    label = f'<a href="#{_issue_anchor(linked_issue)}">{label}</a>'
                 st.markdown(
-                    f'<div class="hw-action-item">• {html.escape(str(row.get("title") or ""))}</div>',
+                    f'<div class="hw-action-item">• {label}</div>',
                     unsafe_allow_html=True,
                 )
 
@@ -422,13 +450,22 @@ def _render_profile_detail(repo: BriefingRepository, code: str, bundle: dict[str
     _render_section_head("핵심 이슈", "오늘 반드시 알아야 할 변화입니다.")
     if not core:
         st.caption("현재 검증된 핵심 이슈가 없습니다.")
-    for issue in core:
-        _render_issue(repo, issue, actions.get(str(issue.get("id"))), bundle)
+    for index, issue in enumerate(core):
+        _render_issue(repo, issue, actions.get(str(issue.get("id"))), bundle, expanded=index == 0)
 
     if light:
         _render_section_head("참고할 소식", "오늘의 흐름을 이해하는 데 도움이 되는 정보입니다.")
-        for issue in light:
-            _render_issue(repo, issue, actions.get(str(issue.get("id"))), bundle)
+        for issue in light[:5]:
+            _render_related_issue(issue, bundle)
+        if len(light) > 5:
+            with st.expander(f"관련 뉴스 {min(len(light), 7)-5}개 더 보기"):
+                for issue in light[5:7]:
+                    _render_related_issue(issue, bundle)
+    if can_manage:
+        with st.expander("생성 진단 결과"):
+            qa = snapshot.get("qa_payload") or {}
+            st.json(qa)
+            st.download_button("진단 JSON 다운로드", json.dumps({"schema_version": "briefing-stage1-diagnostics", "engine_version": "1.7.0-stage1", "profile_code": code, "briefing_date": briefing.get("briefing_date"), "revision_status": {k: revision.get(k) for k in ("publication_status", "validation_status", "coverage_status")}, "qa": qa}, ensure_ascii=False, indent=2), file_name=f"briefing_{code}_stage1_diagnostics.json", mime="application/json", key=f"hw_diag_{snapshot.get('id')}")
 
 
 def _render_generate_panel(repo: BriefingRepository) -> None:
@@ -439,16 +476,30 @@ def _render_generate_panel(repo: BriefingRepository) -> None:
             st.markdown("**운영 모드 · SHADOW**")
             st.caption("생성 결과는 관리자 미리보기로 저장되며, 검증 후 공개할 수 있습니다.")
             st.caption("INSURANCE·NEWS는 Shared Discovery를 함께 사용해 중복 검색을 줄입니다.")
+            checks = run_runtime_preflight(require_direct_sources=False)
+            has_market_source = False
+            if preflight_ready(checks):
+                has_market_source = any("MARKET" in s.profile_hints for s in load_direct_source_specs_from_env())
+            requested_profiles = ("INSURANCE", "MARKET", "NEWS") if has_market_source else ("INSURANCE", "NEWS")
+            if not has_market_source:
+                st.caption("MARKET 직접 출처 연결 전에는 보험·국내 뉴스만 생성합니다.")
+            for check in checks:
+                if not check.ok:
+                    (st.error if check.required else st.caption)(check.message)
+            paid_ack = st.checkbox("이번 1회 유료 API 실행을 확인했습니다.", key="hw_briefing_paid_ack")
             if st.button(
                 "오늘 브리핑 생성",
                 key="hw_briefing_generate_today",
                 type="primary",
                 use_container_width=True,
+                disabled=not paid_ack or not preflight_ready(checks),
             ):
                 actor = str((st.session_state.get("login_profile") or {}).get("id") or "") or None
+                st.session_state.pop("hw_briefing_last_diagnostic", None)
                 with st.spinner("오늘의 이슈를 수집·검증·분석하고 있습니다…"):
                     try:
-                        result = generate_and_store_briefings(actor_user_id=actor, repository=repo)
+                        result = generate_and_store_briefings(actor_user_id=actor, repository=repo, profile_codes=requested_profiles, force_shadow=True)
+                        st.session_state["hw_briefing_last_diagnostic"] = asdict(result)
                         summary = " · ".join(
                             f"{row.profile_code} 핵심 {row.core_count} / 참고 {row.light_count}"
                             for row in result.profiles
@@ -460,8 +511,11 @@ def _render_generate_panel(repo: BriefingRepository) -> None:
                         st.session_state.pop("hw_briefing_selected_profile", None)
                         st.rerun()
                     except (BriefingRunError, BriefingRepositoryError, ValueError) as exc:
+                        st.session_state["hw_briefing_last_diagnostic"] = {"engine_version":"1.7.0-stage1", "status":"failed", "failed_at":datetime.now(KST).isoformat(), "failure_message":str(exc), "note":"일부 API 요청은 실패 전 과금되었을 수 있습니다. 추가 생성 전에 이 진단을 검토합니다."}
                         st.error("브리핑 생성에 실패했습니다.")
                         st.caption(str(exc))
+            if st.session_state.get("hw_briefing_last_diagnostic"):
+                st.download_button("이번 실행 전체 진단 다운로드", json.dumps(st.session_state["hw_briefing_last_diagnostic"], ensure_ascii=False, indent=2), file_name="briefing_stage1_run_diagnostics.json", mime="application/json", key="hw_briefing_run_diagnostic_download")
 
 
 def _render_today(repo: BriefingRepository, can_manage: bool) -> None:
@@ -569,4 +623,3 @@ def run() -> None:
         st.error("브리핑 데이터를 불러올 수 없습니다.")
         if can_manage:
             st.caption(str(exc))
-
