@@ -74,3 +74,46 @@ class PhaseBResult:
     events: list[SharedEventCandidate]
     discovery_lanes: list[DiscoveryLaneResult]
     excluded_counts: dict[str, int]
+
+
+@dataclass(slots=True)
+class AnalysisUsage:
+    model_name: str | None = None
+    service_tier: str | None = None
+    input_tokens: int = 0
+    cached_input_tokens: int = 0
+    output_tokens: int = 0
+    reasoning_tokens: int = 0
+
+
+@dataclass(slots=True)
+class ProfileEventAnalysis:
+    event_key: str
+    profile_code: str
+    importance_score: float
+    selection_tier: str
+    evidence_status: str
+    validation_status: str
+    category: str
+    issue_status: str
+    title: str
+    summary: str
+    why_important: str
+    impact_summary: str
+    action_state: str
+    communication_state: str
+    audience_segments: list[str] = field(default_factory=list)
+    conversation_payload: dict[str, Any] = field(default_factory=dict)
+    workspace_actions: list[dict[str, Any]] = field(default_factory=list)
+    profile_payload: dict[str, Any] = field(default_factory=dict)
+    escalation_required: bool = False
+
+
+@dataclass(slots=True)
+class PhaseCResult:
+    analyses: list[ProfileEventAnalysis]
+    usage_by_profile: dict[str, AnalysisUsage]
+    omitted_by_profile: dict[str, int]
+
+    def profile_rows(self, profile_code: str) -> list[ProfileEventAnalysis]:
+        return [row for row in self.analyses if row.profile_code == profile_code]

@@ -78,6 +78,18 @@ def run_runtime_preflight(*, direct_sources: list[DirectSourceSpec] | None = Non
             "BRIEFING_DISCOVERY_MODEL configured" if _present("BRIEFING_DISCOVERY_MODEL") else "BRIEFING_DISCOVERY_MODEL is missing",
         ),
         PreflightCheck(
+            "routine_model",
+            _present("BRIEFING_ROUTINE_MODEL") or _present("BRIEFING_DISCOVERY_MODEL"),
+            True,
+            (
+                "BRIEFING_ROUTINE_MODEL configured"
+                if _present("BRIEFING_ROUTINE_MODEL")
+                else "routine model will reuse BRIEFING_DISCOVERY_MODEL"
+                if _present("BRIEFING_DISCOVERY_MODEL")
+                else "BRIEFING_ROUTINE_MODEL/BRIEFING_DISCOVERY_MODEL is missing"
+            ),
+        ),
+        PreflightCheck(
             "discovery_lanes",
             len(DISCOVERY_LANES) == 4,
             True,

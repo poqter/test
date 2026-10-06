@@ -16,6 +16,7 @@ def test_preflight_passes_with_runtime_config_and_verified_source():
     with patch.dict(os.environ, env, clear=True):
         checks = run_runtime_preflight(direct_sources=specs)
     assert preflight_ready(checks)
+    assert any(c.code == "routine_model" and c.ok for c in checks)
 
 
 def test_preflight_blocks_placeholder_or_missing_runtime_config():
