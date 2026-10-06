@@ -13,7 +13,7 @@ from modules.shared.workbench import render_workbench, restore_page_draft
 from modules.shell.workspace_v2 import render_home, render_sidebar
 
 
-st.set_page_config(page_title="화랑WORKSPACE", page_icon="H", layout="wide", initial_sidebar_state="auto")
+st.set_page_config(page_title="화랑WORKSPACE", page_icon="H", layout="wide", initial_sidebar_state="expanded")
 st.set_option("client.toolbarMode", "minimal")
 inject_global_styles()
 

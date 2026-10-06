@@ -126,29 +126,36 @@ border:1.5px solid #8ea3ba!important;background:#fff!important;border-radius:9px
 }
 
 
-/* Compact Streamlit chrome. Keep the sidebar reopen control usable.
-   Streamlit 1.64 keeps the collapsed control inside the header layer, so a
-   zero-height header can clip the only way to reopen the sidebar. Keep a
-   transparent 48px interaction layer while hiding the toolbar/menu itself. */
+/* Compact Streamlit chrome without disabling the header interaction layer.
+   The sidebar reopen control is owned by Streamlit and can move between DOM
+   containers across versions. Keep the full header clickable and hide only
+   the unrelated toolbar/menu controls. This deliberately prefers a reliable
+   reopen path over shaving the final few pixels from the top chrome. */
 [data-testid="stToolbar"], [data-testid="stMainMenu"], .stAppDeployButton {display:none!important}
-[data-testid="stHeader"]{height:48px!important;min-height:48px!important;background:transparent!important;pointer-events:none!important}
-[data-testid="stHeader"] button,
+[data-testid="stHeader"]{
+    height:48px!important;
+    min-height:48px!important;
+    background:transparent!important;
+    pointer-events:auto!important;
+    overflow:visible!important;
+    z-index:10000!important;
+}
+/* Support current and older Streamlit sidebar-control test ids without
+   forcing them out of Streamlit's own positioning context. */
 [data-testid="stSidebarCollapsedControl"],
 [data-testid="stExpandSidebarButton"],
-[data-testid="stSidebarCollapseButton"],
-[data-testid="stSidebarCollapsedControl"] button,
-[data-testid="stExpandSidebarButton"] button,
-[data-testid="stSidebarCollapseButton"] button{pointer-events:auto!important}
-[data-testid="stSidebarCollapsedControl"],
-[data-testid="stExpandSidebarButton"]{
-    display:flex!important;visibility:visible!important;opacity:1!important;
-    position:fixed!important;top:8px!important;left:8px!important;z-index:10050!important;
-    width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;
-    align-items:center!important;justify-content:center!important;overflow:visible!important;
+[data-testid="stSidebarCollapseButton"]{
+    visibility:visible!important;
+    opacity:1!important;
+    pointer-events:auto!important;
+    z-index:10050!important;
 }
 [data-testid="stSidebarCollapsedControl"] button,
-[data-testid="stExpandSidebarButton"] button{
-    width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;
+[data-testid="stExpandSidebarButton"] button,
+[data-testid="stSidebarCollapseButton"] button{
+    pointer-events:auto!important;
+    min-width:40px!important;
+    min-height:40px!important;
 }
 body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"],
 body:has(.hw-task-marker):not(:has(.hw-calculator-only)) [data-testid="stMainBlockContainer"]{padding-top:1rem!important}
