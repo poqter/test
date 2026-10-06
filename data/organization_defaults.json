@@ -10,6 +10,7 @@
           "header_color": "#112B49",
           "accent_color": "#158391",
           "allowed_tools": [
+            "briefing",
             "consultation_helper",
             "quick_calculators",
             "deposit_vs_shortpay",
