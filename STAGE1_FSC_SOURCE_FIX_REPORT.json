@@ -1,0 +1,18 @@
+{
+  "input_diagnostic_sha256": "7839907b6960bc61d28e892f5bcdb43aa754992850d080109fa092f7ee50e64c",
+  "server_version": "1.7.2-stage1",
+  "server_code_matches_release": true,
+  "user_probe_primary_http_status": 503,
+  "fallback_adapter_version": "fsc_press_board_v1",
+  "public_board_rows_parsed": 10,
+  "rows_within_96h_at_user_probe": 5,
+  "public_article_body_verified": {
+    "url": "https://www.fsc.go.kr/no010101/87882?curPage=&srchBeginDt=&srchCtgry=&srchEndDt=&srchKey=&srchText=",
+    "characters": 4466,
+    "publication_date": "2026-10-05T15:00:00+00:00"
+  },
+  "project_openai_api_calls": 0,
+  "db_writes": 0,
+  "new_adapter_live_server_verified": false,
+  "verification_note": "공식 사이트에서 확보한 실제 HTML의 파싱과 날짜·제목·본문 일치 확인. 원문 전체는 패키지에 포함하지 않음. 개발 환경 DNS 검사 제한으로 Runtime 네트워크 경로 검증은 실서버에서 남아 있음."
+}

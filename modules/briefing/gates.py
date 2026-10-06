@@ -28,9 +28,12 @@ def insurance_routing_evidence(candidate: SourceCandidate) -> dict:
     match = next((token for token in sorted(_INSURANCE_POSITIVE) if token in blob), None)
     if not match and re.search(r"(?<![a-z0-9])ga(?![a-z0-9])", blob):
         match = "ga"
+    topic = next((token for token in sorted(_INSURANCE_POSITIVE - {"금감원", "금융감독원"}) if token in blob), None)
+    if not topic and re.search(r"(?<![a-z0-9])ga(?![a-z0-9])", blob):
+        topic = "ga"
     excluded = next((token for token in sorted(_INSURANCE_FALSE_POSITIVE) if token in blob), None)
     pos = blob.find(match) if match else 0
-    return {"matched_token": match, "excluded_token": excluded,
+    return {"matched_token": match, "topic_matched_token": topic, "excluded_token": excluded,
             "matched_text": blob[max(0, pos-40):pos+100] if match else None}
 
 
@@ -55,7 +58,8 @@ def route_profiles(candidate: SourceCandidate, hinted_profile: str | None = None
 
     insurance = insurance_routing_evidence(candidate)
     if hinted_profile == "INSURANCE" or insurance["matched_token"]:
-        if not insurance["excluded_token"]:
+        if (not insurance["excluded_token"]
+                and (not candidate.metadata.get("insurance_requires_topic") or insurance["topic_matched_token"])):
             routed.add("INSURANCE")
 
     if hinted_profile == "NEWS":

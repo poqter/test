@@ -137,6 +137,18 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
             if st.button("홈", icon=":material/home:", key="v2_nav_home", use_container_width=True, type="primary" if st.session_state.get("active_app") == "home" else "secondary"):
                 navigate("home")
             if "briefing" in allowed:
+                origin = st.session_state.get("hw_briefing_return")
+                if isinstance(origin, dict) and st.session_state.get("active_app") not in {"home", "briefing"}:
+                    if st.button("읽던 브리핑으로 돌아가기", key="hw_sidebar_briefing_return", use_container_width=True):
+                        profile = str(origin.get("profile") or "")
+                        view = origin.get("view")
+                        st.session_state["hw_briefing_selected_profile"] = profile
+                        st.session_state["hw_briefing_view_selected"] = view if view in {"오늘 브리핑", "과거 브리핑"} else "오늘 브리핑"
+                        if view == "과거 브리핑":
+                            st.session_state["hw_briefing_history_profile_selected"] = profile
+                            st.session_state["hw_briefing_history_open"] = str(origin.get("date") or "")
+                        st.session_state.pop("hw_briefing_return", None)
+                        navigate("briefing")
                 if st.button("브리핑 센터", icon=":material/newspaper:", key="hw_sidebar_briefing", use_container_width=True, type="primary" if st.session_state.get("active_app") == "briefing" else "secondary"):
                     navigate("briefing")
             if "analyzer" in allowed:

@@ -18,18 +18,12 @@ from .direct_sources import load_direct_source_specs_from_env, probe_direct_sour
 from .diagnostics import ENGINE_VERSION, DIAGNOSTIC_SCHEMA, build_info, failure_diagnostic
 from .config import SHARED_DISCOVERY_HARD_LIMIT
 from .discovery_budget import DISCOVERY_REQUEST_HARD_LIMIT
+from .reading import COMM_LABELS, COMM_GUIDANCE, communication_state, customer_copy, available_tools, team_brief, issue_validation
 
 
 PROFILE_ORDER = ("MARKET", "INSURANCE", "NEWS")
 PROFILE_SHORT = {"MARKET": "MARKET", "INSURANCE": "INSURANCE", "NEWS": "NEWS"}
 ACTION_LABELS = {"review_now": "지금 확인", "reference_today": "오늘 참고", "watch": "지켜보기"}
-COMM_LABELS = {
-    "customer_ready": "바로 설명 가능",
-    "consultation_reference": "상담 참고",
-    "internal_check": "내부 확인",
-    "do_not_mention": "고객 언급 금지",
-    "not_applicable": "해당 없음",
-}
 SELECTION_LABELS = {"core": "핵심", "light_digest": "참고", "excluded": "제외"}
 
 PROFILE_META = {
@@ -102,8 +96,8 @@ def _inject_briefing_styles() -> None:
         .st-key-hw_briefing_card_news{border-top:3px solid #6a67a5}
         .hw-profile-eyebrow{font-size:10px;font-weight:800;letter-spacing:.11em;color:#8091a6;margin-bottom:6px}
         .hw-profile-title{font-size:21px;font-weight:800;color:#112d4f;letter-spacing:-.025em;margin-bottom:6px}
-        .hw-profile-desc{font-size:12.5px;line-height:1.55;color:#7a899b;min-height:40px;margin-bottom:12px}
-        .hw-profile-summary{font-size:14px;line-height:1.55;color:#253b55;min-height:44px;margin:4px 0 10px}
+        .hw-profile-desc{font-size:14px;line-height:1.65;color:#63758b;min-height:40px;margin-bottom:12px}
+        .hw-profile-summary{font-size:16px;line-height:1.65;color:#253b55;min-height:44px;margin:4px 0 10px}
         .hw-profile-state{display:flex;align-items:center;gap:7px;margin:5px 0 10px}
         .hw-state-pill{
             display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;
@@ -128,7 +122,7 @@ def _inject_briefing_styles() -> None:
             padding:17px 18px!important;border-radius:14px;border:1px solid #dce6f1;background:#f8fbff;
         }
         .hw-fast-sentence{font-size:16px;font-weight:750;color:#17395f;line-height:1.55;margin-bottom:10px}
-        .hw-fast-item{font-size:13.5px;color:#425a73;line-height:1.55;padding:4px 0}
+        .hw-fast-item{font-size:16px;color:#425a73;line-height:1.65;padding:4px 0}
         .st-key-hw_action_review_now,
         .st-key-hw_action_reference_today,
         .st-key-hw_action_watch{
@@ -138,7 +132,13 @@ def _inject_briefing_styles() -> None:
         .st-key-hw_action_reference_today{border-top:3px solid #4f7eaa}
         .st-key-hw_action_watch{border-top:3px solid #9a8652}
         .hw-action-title{font-size:13px;font-weight:800;color:#243c58;margin-bottom:8px}
-        .hw-action-item{font-size:12.5px;line-height:1.5;color:#5a6d83;padding:3px 0}
+        .hw-action-item{font-size:15px;line-height:1.65;color:#5a6d83;padding:3px 0}
+        [class*="st-key-hw_briefing_reader_"] [data-testid="stMarkdownContainer"] p,
+        [class*="st-key-hw_briefing_reader_"] [data-testid="stMarkdownContainer"] li{
+            font-size:16px!important;line-height:1.7!important;word-break:keep-all;overflow-wrap:anywhere;
+        }
+        [class*="st-key-hw_briefing_reader_"] button{min-height:44px}
+        [class*="st-key-hw_briefing_reader_"] pre{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65}
         .hw-issue-meta{display:flex;gap:7px;flex-wrap:wrap;margin:3px 0 14px}
         .hw-issue-chip{
             display:inline-flex;padding:5px 8px;border-radius:8px;background:#f6f8fb;
@@ -269,6 +269,7 @@ def _render_profile_card(code: str, bundle: dict[str, Any] | None, *, include_dr
             fast = snapshot.get("fast_brief_payload") or {}
             core, light = _counts(bundle)
             state = "공개" if revision.get("publication_status") == "published" else "관리자 미리보기"
+            date_text = str((bundle.get("briefing") or {}).get("briefing_date") or "")
             sentence = str(fast.get("remember_one_sentence") or "오늘의 주요 변화를 확인하세요.")
             st.markdown(
                 '<div class="hw-profile-state">' + _status_html(state)
@@ -280,6 +281,7 @@ def _render_profile_card(code: str, bundle: dict[str, Any] | None, *, include_dr
                 '</div>',
                 unsafe_allow_html=True,
             )
+            st.caption("기준일 · " + date_text)
         return st.button(
             "브리핑 보기 →",
             key=f"hw_briefing_open_{code}",
@@ -320,16 +322,109 @@ def _render_sources(issue: dict[str, Any], bundle: dict[str, Any]) -> None:
 def _render_timeline(repo: BriefingRepository, event_id: str | None) -> None:
     if not event_id:
         return
-    updates = repo.event_updates(str(event_id), limit=6)
+    try:
+        updates = repo.event_updates(str(event_id), limit=6)
+    except BriefingRepositoryError:
+        st.caption("변경 이력을 불러오지 못했습니다. 위 요약과 원문은 계속 확인할 수 있습니다.")
+        return
     if not updates:
         return
-    st.markdown("**Event Timeline**")
+    st.markdown("**이 이슈의 변경 이력**")
     for row in reversed(updates):
         st.caption(f"{_fmt_dt(row.get('observed_at'))} · {str(row.get('change_summary') or row.get('title') or '')}")
 
 
 def _issue_anchor(issue: dict[str, Any]) -> str:
     return "hw-issue-" + hashlib.sha256(str(issue.get("id") or issue.get("issue_key") or "").encode()).hexdigest()[:16]
+
+
+def _render_workspace_actions(issue: dict[str, Any], action: dict[str, Any], bundle: dict[str, Any]) -> None:
+    from modules.shell.navigation import allowed_ids, navigate
+    from modules.shell.app_registry import APP_BY_ID
+    allowed = set(allowed_ids(st.session_state.get("login_user")))
+    tools = available_tools(action, allowed)
+    if not tools:
+        return
+    st.markdown("**이어서 사용할 도구**")
+    for tool in tools:
+        code = tool["tool_code"]
+        spec = APP_BY_ID[code]
+        key = _issue_anchor(issue) + "_tool_" + code
+        if not st.button(tool["label"] + (" ↗" if spec.external_app_key else " →"), key=key,
+                         use_container_width=True):
+            continue
+        # Recheck immediately before the action; the shell checks again at dispatch.
+        if code not in set(allowed_ids(st.session_state.get("login_user"))):
+            st.warning("현재 사용할 수 없는 도구입니다.")
+            continue
+        if spec.external_app_key:
+            from modules.shell.workspace_v2 import _external_launch_url
+            url = _external_launch_url(spec)
+            if url:
+                st.link_button("새 창에서 " + tool["label"] + " 열기", url, use_container_width=True)
+            else:
+                st.warning("도구 연결을 준비하지 못했습니다. 계정의 앱 이용 권한과 연결 설정을 확인하세요.")
+        else:
+            st.session_state["hw_briefing_return"] = {
+                "profile": str(issue.get("issue_key") or "").partition(":")[0],
+                "view": st.session_state.get("hw_briefing_view_selected", "오늘 브리핑"),
+                "date": str((bundle.get("briefing") or {}).get("briefing_date") or ""),
+            }
+            navigate(code)
+
+
+def _render_consultation(issue: dict[str, Any], action: dict[str, Any], bundle: dict[str, Any]) -> None:
+    state = communication_state(action)
+    if state in {"customer_ready", "consultation_reference"} and (issue_validation(issue, bundle) != "ok"
+            or (issue.get("profile_payload") or {}).get("confidence") == "low"):
+        state = "internal_check"
+    if state == "not_applicable":
+        st.caption(COMM_GUIDANCE[state])
+        return
+    with st.container(border=True):
+        st.markdown("#### 상담 준비 · " + COMM_LABELS[state])
+        st.caption(COMM_GUIDANCE[state])
+        audiences = action.get("audience_segments") or []
+        if audiences:
+            st.write("관련 고객군 · " + " / ".join(str(x) for x in audiences[:5]))
+        conversation = action.get("conversation_payload") or {}
+        if state in {"customer_ready", "consultation_reference"} and conversation.get("recommended_expression"):
+            st.markdown("**대화 시작 문구**")
+            st.write(str(conversation["recommended_expression"]))
+        for label, value in (("먼저 확인할 항목", conversation.get("check_first")),
+                             ("표현할 때 주의할 점", conversation.get("avoid_expression")),
+                             ("다음 업무 단계", (issue.get("profile_payload") or {}).get("next_step"))):
+            if value:
+                st.markdown("**" + label + "**")
+                st.write(str(value))
+        text, reason = customer_copy(issue, action, bundle)
+        if text:
+            with st.expander("고객 안내 문구 복사"):
+                st.caption("오른쪽 위 복사 아이콘을 누르세요. 원문 링크가 함께 복사됩니다.")
+                st.code(text, language=None, wrap_lines=True)
+        elif state == "customer_ready":
+            st.caption(reason)
+        if state != "do_not_mention":
+            _render_workspace_actions(issue, action, bundle)
+
+
+def _render_internal_export(code: str, bundle: dict[str, Any]) -> None:
+    snapshot_id = str((bundle.get("snapshot") or {}).get("id") or "")
+    if not snapshot_id:
+        return
+    with st.expander("내부 업무용 PDF"):
+        st.caption("현재 화면의 저장본으로 만듭니다. AI 호출은 추가되지 않습니다.")
+        if st.button("내부 PDF 준비", key=f"hw_briefing_pdf_prepare_{snapshot_id}"):
+            try:
+                from .internal_pdf import internal_pdf
+                st.session_state["hw_briefing_pdf"] = {"snapshot_id": snapshot_id, "data": internal_pdf(bundle, PROFILE_LABELS[code])}
+            except Exception:
+                st.error("PDF를 만들지 못했습니다. 화면의 원문과 요약은 계속 확인할 수 있습니다.")
+        prepared = st.session_state.get("hw_briefing_pdf") or {}
+        if prepared.get("snapshot_id") == snapshot_id and prepared.get("data"):
+            date_text = str((bundle.get("briefing") or {}).get("briefing_date") or "")
+            st.download_button("내부 PDF 받기", prepared["data"], file_name=f"hwarang_{code}_{date_text}_internal.pdf",
+                               mime="application/pdf", key=f"hw_briefing_pdf_download_{snapshot_id}")
 
 
 def _render_issue(repo: BriefingRepository, issue: dict[str, Any], action: dict[str, Any] | None, bundle: dict[str, Any], *, expanded: bool = False) -> None:
@@ -354,27 +449,14 @@ def _render_issue(repo: BriefingRepository, issue: dict[str, Any], action: dict[
             st.markdown("**왜 중요한가**")
             st.write(str(fact.get("why_important")))
         if analysis.get("impact_summary"):
-            st.markdown("**영향**")
+            st.markdown("**영향과 해설**")
             st.write(str(analysis.get("impact_summary")))
         if action:
-            st.markdown("**TODAY ACTION**")
-            st.write(f"{ACTION_LABELS.get(str(action.get('action_state')), '지켜보기')} · {str(action.get('summary') or '')}")
-            communication = str(action.get("communication_state") or "not_applicable")
-            if communication != "not_applicable":
-                st.caption("고객 대화 · " + COMM_LABELS.get(communication, communication))
-            audiences = action.get("audience_segments") or []
-            if audiences:
-                st.caption("관련 대상 · " + " / ".join(str(x) for x in audiences[:5]))
-            conversation = action.get("conversation_payload") or {}
-            if conversation.get("recommended_expression"):
-                st.markdown("**권장 표현**")
-                st.write(str(conversation.get("recommended_expression")))
-            if conversation.get("check_first"):
-                st.caption("먼저 확인 · " + str(conversation.get("check_first")))
-            if conversation.get("avoid_expression"):
-                st.caption("주의 표현 · " + str(conversation.get("avoid_expression")))
+            st.caption("오늘의 행동 · " + ACTION_LABELS.get(str(action.get("action_state")), "지켜보기"))
+            _render_consultation(issue, action, bundle)
         _render_sources(issue, bundle)
-        _render_timeline(repo, str(issue.get("event_id") or "") or None)
+        if issue.get("event_id") and st.checkbox("변경 이력 보기", key=_issue_anchor(issue) + "_timeline"):
+            _render_timeline(repo, str(issue["event_id"]))
 
 
 def _render_related_issue(issue: dict[str, Any], bundle: dict[str, Any]) -> None:
@@ -387,6 +469,13 @@ def _render_related_issue(issue: dict[str, Any], bundle: dict[str, Any]) -> None
 
 
 def _render_profile_detail(repo: BriefingRepository, code: str, bundle: dict[str, Any], *, can_manage: bool) -> None:
+    snapshot_id = str((bundle.get("snapshot") or {}).get("id") or code)
+    reader_key = "hw_briefing_reader_" + hashlib.sha256(snapshot_id.encode()).hexdigest()[:16]
+    with st.container(key=reader_key):
+        _render_profile_detail_body(repo, code, bundle, can_manage=can_manage)
+
+
+def _render_profile_detail_body(repo: BriefingRepository, code: str, bundle: dict[str, Any], *, can_manage: bool) -> None:
     briefing = bundle.get("briefing") or {}
     revision = bundle.get("revision") or {}
     snapshot = bundle.get("snapshot") or {}
@@ -394,6 +483,9 @@ def _render_profile_detail(repo: BriefingRepository, code: str, bundle: dict[str
     today = snapshot.get("today_action_payload") or {}
     issues = bundle.get("issues") or []
     actions = {str(row.get("issue_id")): row for row in bundle.get("actions") or [] if row.get("issue_id")}
+    date_text = str(briefing.get("briefing_date") or "")
+    if date_text and date_text < datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat():
+        st.info(f"{date_text}에 저장된 브리핑입니다. 오늘의 새 브리핑이 아직 공개되지 않아 이전 저장본을 보여드립니다.")
     if revision.get("coverage_status") == "insufficient":
         st.warning("수집·게시일 확인이 충분하지 않아 공개를 보류합니다. ‘오늘 중요한 뉴스가 없음’을 뜻하지 않습니다.")
     elif revision.get("coverage_status") == "degraded":
@@ -454,20 +546,31 @@ def _render_profile_detail(repo: BriefingRepository, code: str, bundle: dict[str
 
     core = [row for row in issues if row.get("selection_tier") == "core"]
     light = [row for row in issues if row.get("selection_tier") == "light_digest"]
-    _render_section_head("핵심 이슈", "오늘 반드시 알아야 할 변화입니다.")
+    _render_section_head("오늘의 핵심 이슈", "가장 중요한 1개를 먼저 읽고 나머지 이슈를 확인하세요.")
     if not core:
         st.caption("현재 검증된 핵심 이슈가 없습니다.")
     for index, issue in enumerate(core):
+        if index == 1:
+            st.markdown("**함께 볼 주요 이슈**")
         _render_issue(repo, issue, actions.get(str(issue.get("id"))), bundle, expanded=index == 0)
 
     if light:
-        _render_section_head("참고할 소식", "오늘의 흐름을 이해하는 데 도움이 되는 정보입니다.")
+        _render_section_head("관련 뉴스", "요약을 읽고 원문 링크에서 자세한 내용을 확인하세요.")
         for issue in light[:5]:
             _render_related_issue(issue, bundle)
         if len(light) > 5:
             with st.expander(f"관련 뉴스 {min(len(light), 7)-5}개 더 보기"):
                 for issue in light[5:7]:
                     _render_related_issue(issue, bundle)
+    if code == "INSURANCE":
+        _render_section_head("팀원 1분 브리핑", "확인된 핵심 이슈를 짧게 모았습니다. 내부 업무용입니다.")
+        brief = team_brief(bundle)
+        if brief:
+            st.code(brief, language=None, wrap_lines=True)
+            st.caption("복사 아이콘으로 팀 업무 메모에 사용할 수 있습니다. 추가 AI 호출은 없습니다.")
+        else:
+            st.caption("검증된 핵심 이슈가 확보되면 표시됩니다.")
+    _render_internal_export(code, bundle)
     if can_manage:
         with st.expander("생성 진단 결과"):
             qa = snapshot.get("qa_payload") or {}
@@ -532,7 +635,7 @@ def _render_generate_panel(repo: BriefingRepository) -> None:
             if st.session_state.get("hw_briefing_last_diagnostic"):
                 st.download_button("이번 실행 전체 진단 다운로드", json.dumps(st.session_state["hw_briefing_last_diagnostic"], ensure_ascii=False, indent=2), file_name="briefing_stage1_run_diagnostics.json", mime="application/json", key="hw_briefing_run_diagnostic_download")
             st.divider()
-            st.caption("직접 출처 점검은 공개 RSS/Atom에 접속합니다. OpenAI 호출과 DB 쓰기 없이 서버 연결 상태만 확인합니다.")
+            st.caption("직접 출처 점검은 공개 RSS/Atom과 등록된 공식 대체 게시판에 접속합니다. OpenAI 호출과 DB 쓰기 없이 수집 상태를 확인합니다.")
             if st.button("직접 출처 점검 · 유료 API 없음", key="hw_briefing_probe_sources", use_container_width=True):
                 with st.spinner("직접 출처 연결과 게시일을 확인하고 있습니다…"):
                     try:
@@ -545,7 +648,8 @@ def _render_generate_panel(repo: BriefingRepository) -> None:
                 if packet.get("status") == "direct_source_config_invalid":
                     st.error("직접 출처 설정을 읽지 못했습니다. 아래 점검 JSON을 전달해 주세요.")
                 failed = sum(row.get("status") == "failed" for row in (packet.get("direct_sources") or {}).values())
-                st.caption(f"직접 출처 {packet.get('configured_source_count', 0)}개 · 실패 {failed}개 · OpenAI 호출 0회")
+                fallback = sum(bool(row.get("fallback_used")) for row in (packet.get("direct_sources") or {}).values())
+                st.caption(f"직접 출처 {packet.get('configured_source_count', 0)}개 · 실패 {failed}개 · 대체 경로 사용 {fallback}개 · OpenAI 호출 0회")
                 st.download_button("직접 출처 점검 JSON 다운로드", json.dumps(packet, ensure_ascii=False, indent=2),
                                    file_name="briefing_direct_source_diagnostics.json", mime="application/json",
                                    key="hw_briefing_source_probe_download")
@@ -573,7 +677,11 @@ def _render_history(repo: BriefingRepository, can_manage: bool) -> None:
     st.markdown("### 과거 브리핑")
     c1, c2 = st.columns([1, 2])
     with c1:
-        profile_code = st.selectbox("Profile", options=list(PROFILE_ORDER), format_func=lambda x: PROFILE_LABELS[x])
+        selected = str(st.session_state.get("hw_briefing_history_profile_selected") or "INSURANCE")
+        if "hw_briefing_history_profile_widget" not in st.session_state:
+            st.session_state["hw_briefing_history_profile_widget"] = selected if selected in PROFILE_ORDER else "INSURANCE"
+        profile_code = st.selectbox("브리핑 분야", options=list(PROFILE_ORDER), format_func=lambda x: PROFILE_LABELS[x],
+                                   key="hw_briefing_history_profile_widget", on_change=_remember_history_profile)
     with c2:
         keyword = st.text_input("키워드", placeholder="제목이나 이슈 키워드")
     rows = repo.history(profile_code, limit=60, include_draft=can_manage)
@@ -590,7 +698,9 @@ def _render_history(repo: BriefingRepository, can_manage: bool) -> None:
             continue
         snapshot = bundle.get("snapshot") or {}
         fast = snapshot.get("fast_brief_payload") or {}
-        blob = " ".join(str(x.get("title") or "") for x in fast.get("items") or []).casefold()
+        visible = [i for i in bundle.get("issues") or [] if i.get("selection_tier") in {"core", "light_digest"}]
+        blob = " ".join([str(fast.get("remember_one_sentence") or ""),
+                         *(str(i.get("title") or "") + " " + str(i.get("summary") or "") for i in visible)]).casefold()
         if keyword_cf and keyword_cf not in blob:
             continue
         core, light = _counts(bundle)
@@ -611,6 +721,15 @@ def _render_history(repo: BriefingRepository, can_manage: bool) -> None:
         bundle = repo.bundle_for_date(profile_code, open_date, include_draft=can_manage)
         if bundle:
             _render_profile_detail(repo, profile_code, bundle, can_manage=can_manage)
+
+
+def _remember_history_profile() -> None:
+    st.session_state["hw_briefing_history_profile_selected"] = st.session_state["hw_briefing_history_profile_widget"]
+    st.session_state.pop("hw_briefing_history_open", None)
+
+
+def _remember_briefing_view() -> None:
+    st.session_state["hw_briefing_view_selected"] = st.session_state["hw_briefing_view_widget"]
 
 
 def run() -> None:
@@ -642,11 +761,15 @@ def run() -> None:
             st.success(flash)
 
         with st.container(key="hw_briefing_tabs"):
+            if "hw_briefing_view_widget" not in st.session_state:
+                selected_view = st.session_state.get("hw_briefing_view_selected", "오늘 브리핑")
+                st.session_state["hw_briefing_view_widget"] = selected_view if selected_view in {"오늘 브리핑", "과거 브리핑"} else "오늘 브리핑"
             mode = st.radio(
                 "브리핑 보기",
                 ["오늘 브리핑", "과거 브리핑"],
                 horizontal=True,
                 label_visibility="collapsed",
+                key="hw_briefing_view_widget", on_change=_remember_briefing_view,
             )
         if mode == "오늘 브리핑":
             _render_today(repo, can_manage)

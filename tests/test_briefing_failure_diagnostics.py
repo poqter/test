@@ -1,5 +1,6 @@
 from copy import deepcopy
 import json
+from modules.briefing.diagnostics import ENGINE_VERSION
 
 import pytest
 from streamlit.testing.v1 import AppTest
@@ -57,7 +58,7 @@ with patch.dict(os.environ,env), patch('modules.briefing.briefing_center.generat
     _render_generate_panel(object())
 """).run()
     assert not app.exception and app.button[0].disabled
-    assert any("1.7.2-stage1" in c.value for c in app.caption)
+    assert any(ENGINE_VERSION in c.value for c in app.caption)
     assert any("API 호출 없음" in d.label for d in app.get("download_button"))
     app.checkbox[0].check().run()
     app.button[0].click().run()

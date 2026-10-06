@@ -9,6 +9,7 @@ from .models import AnalysisUsage, PhaseBResult, PhaseCResult, ProfileEventAnaly
 from .openai_analysis import OpenAIAnalysisClient
 from .profile_rules import PROFILE_RULES, light_digest_limit
 from .tool_policy import validated_tool_actions
+from .normalize import publisher_domain
 
 
 class Analyzer(Protocol):
@@ -44,6 +45,31 @@ def _apply_caps(rows: list[ProfileEventAnalysis], profile_code: str) -> None:
         row.selection_tier = "excluded"
 
 
+def _news_analysis_selection(events: list[SharedEventCandidate], limit: int) -> list[SharedEventCandidate]:
+    """Preserve freshness priority and rotate publishers within each time window.
+
+    A fast-moving RSS publisher must not occupy all twenty analysis slots.
+    Multi-source events use a stable primary publisher for this allocation only.
+    """
+    selected: list[SharedEventCandidate] = []
+    for core_window in (True, False):
+        groups: dict[str, list[SharedEventCandidate]] = {}
+        for event in events:
+            if _freshness_allows_core(event) != core_window:
+                continue
+            first = event.candidates[0] if event.candidates else None
+            key = (first.publisher_domain or publisher_domain(first.url) or first.source_name) if first else "unknown"
+            groups.setdefault(key, []).append(event)
+        while groups and len(selected) < limit:
+            for key in list(groups):
+                selected.append(groups[key].pop(0))
+                if not groups[key]:
+                    del groups[key]
+                if len(selected) >= limit:
+                    break
+    return selected
+
+
 def run_phase_c(
     phase_b: PhaseBResult,
     *,
@@ -71,8 +97,12 @@ def run_phase_c(
                 -(e.last_seen_at.timestamp() if e.last_seen_at else 0),
             ),
         )
-        selected_events = prioritized[:max_events_per_profile]
+        limit = max(0, min(20, int(max_events_per_profile)))
+        selected_events = (_news_analysis_selection(prioritized, limit) if profile_code == "NEWS"
+                           else prioritized[:limit])
         omitted_by_profile[profile_code] = max(0, len(prioritized) - len(selected_events))
+        if not selected_events:
+            continue
         raw_rows, usage = client.analyze(profile_code, selected_events)
         usage_by_profile[profile_code] = usage
         raw_by_key = {str(row.get("event_key") or ""): row for row in raw_rows}

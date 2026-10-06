@@ -14,6 +14,7 @@ import requests
 from .models import SourceCandidate
 from .normalize import is_safe_url, visible_text, publisher_domain, classify_freshness
 from .publication import parse_publication_date, _public_destination
+from .fsc_board import supports_feed, collect_board
 
 MAX_FEED_BYTES = 2_000_000
 
@@ -22,7 +23,7 @@ def diagnostic_endpoint(url: str) -> str | None:
     if not is_safe_url(url):
         return None
     parts = urlsplit(url)
-    public_keys = {"fid", "bid", "id", "boardid", "board_id", "mode", "rss", "category", "cat"}
+    public_keys = {"fid", "bid", "id", "boardid", "board_id", "mode", "rss", "category", "cat", "ctxcd", "bbsid", "nttid"}
     query = [(key, value if key.casefold() in public_keys else "REDACTED")
              for key, value in parse_qsl(parts.query, keep_blank_values=True)]
     return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), ""))
@@ -41,11 +42,11 @@ class DirectSourceSpec:
 
 
 def load_direct_source_specs_from_env() -> list[DirectSourceSpec]:
-    """Load verified Direct Source endpoints without hard-coding unstable URLs.
+    """Keep configured sources and supplement NEWS with one official RSS endpoint.
 
-    BRIEFING_DIRECT_SOURCES_JSON must be a JSON array. Endpoint URLs are intentionally
-    deployment configuration because the uploaded SPEC defines source families but does
-    not contain verified feed URLs.
+    The publisher lists the headline endpoint at https://www.mk.co.kr/rss
+    (checked 2026-10-06). Disable with BRIEFING_NEWS_RSS_SUPPLEMENT=0.
+    Empty/missing source configuration remains empty; deployment checks are preserved.
     """
     raw = os.getenv("BRIEFING_DIRECT_SOURCES_JSON", "").strip()
     if not raw:
@@ -69,6 +70,14 @@ def load_direct_source_specs_from_env() -> list[DirectSourceSpec]:
                 timeout_seconds=float(item.get("timeout_seconds") or 10.0),
             )
         )
+    if specs and os.getenv("BRIEFING_NEWS_RSS_SUPPLEMENT", "1").strip().casefold() not in {"0", "false", "off"}:
+        endpoint = "https://www.mk.co.kr/rss/30000001/"
+        duplicate = any(s.source_code == "news_mk_headlines" or
+                        (publisher_domain(s.url) == "mk.co.kr" and urlsplit(s.url).path.rstrip("/") == "/rss/30000001")
+                        for s in specs)
+        if not duplicate:
+            specs.append(DirectSourceSpec("news_mk_headlines", "매일경제 헤드라인", endpoint,
+                                          source_kind="news", source_tier="C", profile_hints=("NEWS",), timeout_seconds=6))
     return specs
 
 
@@ -112,7 +121,7 @@ def _rss_candidates(root: ET.Element, spec: DirectSourceSpec, retrieved_at: date
                 collector_provider="direct_rss", source_kind=spec.source_kind,
                 source_code=spec.source_code, source_family_code=spec.source_family_code,
                 source_tier=spec.source_tier, endpoint_role="primary",
-                metadata={"profile_hints": list(spec.profile_hints)},
+                metadata={"profile_hints": list(spec.profile_hints), "insurance_requires_topic": supports_feed(spec.url)},
             ))
     return rows
 
@@ -133,7 +142,7 @@ def _atom_candidates(root: ET.Element, spec: DirectSourceSpec, retrieved_at: dat
                 collector_provider="direct_atom", source_kind=spec.source_kind,
                 source_code=spec.source_code, source_family_code=spec.source_family_code,
                 source_tier=spec.source_tier, endpoint_role="primary",
-                metadata={"profile_hints": list(spec.profile_hints)},
+                metadata={"profile_hints": list(spec.profile_hints), "insurance_requires_topic": supports_feed(spec.url)},
             ))
     return rows
 
@@ -191,10 +200,12 @@ def collect_direct_source(spec: DirectSourceSpec, *, session: requests.Session |
 
 
 def collect_direct_sources(specs: Iterable[DirectSourceSpec], *, diagnostics: dict[str, Any] | None = None,
-                           session=None, destination_check=_public_destination) -> tuple[list[SourceCandidate], dict[str, str]]:
+                           session=None, destination_check=_public_destination,
+                           as_of: datetime | None = None) -> tuple[list[SourceCandidate], dict[str, str]]:
     candidates: list[SourceCandidate] = []
     status: dict[str, str] = {}
     session = session or requests.Session()
+    as_of = as_of or datetime.now(timezone.utc)
     for spec in specs:
         detail: dict[str, Any] = {"profiles": list(spec.profile_hints), "source_kind": spec.source_kind}
         try:
@@ -210,6 +221,26 @@ def collect_direct_sources(specs: Iterable[DirectSourceSpec], *, diagnostics: di
             known = {"invalid_url", "unsafe_destination", "cross_publisher_redirect", "feed_too_large",
                      "unsupported_xml_declaration", "not_rss_or_atom", "redirect_limit"}
             detail["failure_reason"] = str(exc) if type(exc) is ValueError and str(exc) in known else type(exc).__name__
+            # Only this verified, public FSC feed has a registered HTML adapter.
+            # Never turn arbitrary URLs or rejected destinations into fallback probes.
+            unsafe = str(exc) in {"invalid_url", "unsafe_destination", "cross_publisher_redirect", "unsupported_xml_declaration"}
+            if not unsafe and supports_feed(spec.url) and spec.source_kind == "official":
+                primary = dict(detail)
+                fallback: dict[str, Any] = {}
+                detail.update({"primary": primary, "primary_status": "failed", "fallback_used": True,
+                               "fallback": fallback})
+                try:
+                    rows = collect_board(spec, session=session, destination_check=destination_check,
+                                         as_of=as_of, diagnostics=fallback)
+                    candidates.extend(rows)
+                    status[spec.source_code] = "ok" if rows else "empty_valid"
+                    detail.update({"active_endpoint": fallback.get("board_endpoint"), "raw_candidates": len(rows)})
+                    fallback["status"] = status[spec.source_code]
+                except (requests.RequestException, ValueError) as fallback_exc:
+                    fallback["status"] = "failed"
+                    reason = str(fallback_exc)
+                    fallback["failure_reason"] = reason if type(fallback_exc) is ValueError and reason.startswith("fsc_") else type(fallback_exc).__name__
+                detail["http_requests"] = primary.get("http_requests", 0) + len(fallback.get("http_attempts", []))
         detail["status"] = status[spec.source_code]
         if diagnostics is not None:
             diagnostics[spec.source_code] = detail
@@ -222,7 +253,7 @@ def probe_direct_sources(specs: Iterable[DirectSourceSpec], *, as_of: datetime |
     as_of = as_of or datetime.now(timezone.utc)
     details: dict[str, Any] = {}
     rows, _ = collect_direct_sources(specs, diagnostics=details, session=session,
-                                     destination_check=destination_check)
+                                     destination_check=destination_check, as_of=as_of)
     for code, detail in details.items():
         matching = [row for row in rows if row.source_code == code]
         detail["dated_candidates"] = sum(row.published_at is not None for row in matching)

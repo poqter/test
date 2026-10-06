@@ -1,27 +1,30 @@
 {
-  "engine_version": "1.7.2-stage1",
+  "engine_version": "1.7.4-stage1",
   "baseline_zip_sha256": "4a1302456d9993a34dcd352ebecb189df980b45339288769850344346f72ca32",
   "briefing_code_sha256": {
     "__init__.py": "66c4884dd2d46a2e672f3dc686c8c53e1cbfc0ff7af3a3ee7917ef0b6e90ad47",
-    "briefing_center.py": "51c851cc0ba40e5b4b56b1d40682295bf6025afccd14d7e475b11c9eaa67b994",
+    "briefing_center.py": "d1d18976c1b1a56024f71ab9ab600b933cff43a1bc243aea59b11d692d677cf6",
     "clustering.py": "fdf10bad85f75fc35c91248c3ee0990f554759e61799ecd5136420bb11287b8f",
     "config.py": "7fef0ba59710652e3228999aeb7249890f3a2a97f739f221971f44e8244fdce5",
-    "diagnostics.py": "16cc2210df9a2723c402ff7628904223084cbde137363e0282731f56c81a4c7c",
-    "direct_sources.py": "ed0a542b293822fd1dd9c0de0a4b0b4d025d7550916016caaa0f6da2e45a3743",
+    "diagnostics.py": "583a12115b6bfc3014b39f369ce50e64b2676e01621dece867ab11a0628f3912",
+    "direct_sources.py": "17267bf2bcf609815a851ae50c5eeb8782e1e0e3d0c95655ad35e64e40ecc741",
     "discovery_budget.py": "cdc061db8d2ad846f31817963189fdcddd828095ada99abfa35901d326dc0373",
     "evidence.py": "434c16d525e20014e6f661e6b2c2bb38ef3d1bd7413b3ae2e1461e4b746dd7ab",
-    "gates.py": "e639838080ca5cee92907af002549b675d2c31f18eb4818d1be48be320048b0a",
+    "fsc_board.py": "bfa64084e56b52da01b68855bec3f38df36b30824e6dfd1a4552769046210777",
+    "gates.py": "c399eaae69d76e7b0ac722a52bdf5c62b866ed789895a999a1b9b6cb14225884",
+    "internal_pdf.py": "11f8f4afd75125f78ba1b82118867a98e8e5ea34ff3a52ad53eab88031ef3151",
     "models.py": "1d5d328d1f2a77df7c09ad261cac9a17a9c0944b5284b27dab4f3b2fd5a57937",
     "normalize.py": "a1d2f13b1eec233b8724e44d577fa2a29ddaeac76bfb36a41fd6e55b18ae043a",
-    "openai_analysis.py": "da5bb9ad3f8796d04923e474c50c6a3bba6920fa03451058af6074af2c503ff9",
+    "openai_analysis.py": "1f33edceef26af35d09ca300baa182883223182ea2d260a7f20d120a27e478ac",
     "openai_discovery.py": "05ed7ed04e80e7fd14c1a51d174ad2b4bdcc79750e4bd3307125e785b6c67e39",
-    "phase_b.py": "51976c4ad241c622e548efa85afb40dc5a369487f7c9b914d5d6a375aa8978d4",
-    "phase_c.py": "d602087f693f09c0aa65f80ceaf7116141a7419d4fc52ae5d394b4a8276e1950",
+    "phase_b.py": "370e66b02f12e608116c12f10a4bb8e8ec7a7a8f005e6be933b081055973a9f7",
+    "phase_c.py": "ae75c91bfbab3a183e003150dfeb8f72cce878442f09b2e288d70f50c154da5b",
     "preflight.py": "2d0df18b2d5daaceaee1bc975da1a13970a1b3af4dfc539ecf0bf45d829e9ca2",
     "profile_rules.py": "e4770777ea122c058885023eacc73ed54aa5562c6b0aab9b7269f7cd745a2745",
     "publication.py": "486bfcda3a55ee450adecdb82256cbc3ffba6740de817f1fe6f7079b22dded9c",
+    "reading.py": "37b3fdcde5a0e0180d8c2e2ba6beb5214d5cab1ac71e23d98124126226d11aa7",
     "repository.py": "79a633fce11728ab660763694fd18ff89d12a6ed9c23c8ea5f7b0206339aa3b3",
-    "runtime.py": "ae379ebc3611b8ea98e654f6bd2aa0dd07b037cb440754b7e366e39ede295973",
+    "runtime.py": "f0b203923ebf8f9d0c1f0ec39e89887c1af7e0f95c00ed9eaf2c9807d7bff165",
     "source_policy.py": "c828fc2fd4e62a80e7f032e169a1c43865342db0d333767ca6fbec172265a66e",
     "tool_policy.py": "0762fb107425b9aacf9cec571f1f9e67044b17abad40d075f7cc5185e4460383"
   },
@@ -29,12 +32,22 @@
     {
       "path": "BRIEFING_IMPLEMENTATION_CHECKPOINT_V1_7_STAGE1.md",
       "status": "added",
-      "sha256": "e4acb14ca523007275046f384ad4c0633d2660a644b36a75fb807ac1b48d375c"
+      "sha256": "658e6c73f132179f8882ea167e91613e306e64288cb7d9d6b7331dde2a014abf"
     },
     {
       "path": "STAGE1_DIAGNOSTIC_REPLAY_RESULT.json",
       "status": "added",
       "sha256": "c221e36e64d3ccb165fc74ee16c12281dead9a134207f8639c96970d40a65b7a"
+    },
+    {
+      "path": "STAGE1_FSC_SOURCE_FIX_REPORT.json",
+      "status": "added",
+      "sha256": "d294c73d9a4390feca405c5d05161e0d2b087728f4a7a1da5f32746ecae0c563"
+    },
+    {
+      "path": "STAGE1_INTERNAL_COMPLETION_REPORT.json",
+      "status": "added",
+      "sha256": "f2d62b8460cdb9f16b27d731b5b6baf3090510d9c4d34a036d5ba4860cb38da4"
     },
     {
       "path": "STAGE1_LATEST_DIAGNOSTIC_REPLAY_RESULT.json",
@@ -54,17 +67,17 @@
     {
       "path": "modules/briefing/briefing_center.py",
       "status": "modified",
-      "sha256": "51c851cc0ba40e5b4b56b1d40682295bf6025afccd14d7e475b11c9eaa67b994"
+      "sha256": "d1d18976c1b1a56024f71ab9ab600b933cff43a1bc243aea59b11d692d677cf6"
     },
     {
       "path": "modules/briefing/diagnostics.py",
       "status": "added",
-      "sha256": "16cc2210df9a2723c402ff7628904223084cbde137363e0282731f56c81a4c7c"
+      "sha256": "583a12115b6bfc3014b39f369ce50e64b2676e01621dece867ab11a0628f3912"
     },
     {
       "path": "modules/briefing/direct_sources.py",
       "status": "modified",
-      "sha256": "ed0a542b293822fd1dd9c0de0a4b0b4d025d7550916016caaa0f6da2e45a3743"
+      "sha256": "17267bf2bcf609815a851ae50c5eeb8782e1e0e3d0c95655ad35e64e40ecc741"
     },
     {
       "path": "modules/briefing/discovery_budget.py",
@@ -72,9 +85,19 @@
       "sha256": "cdc061db8d2ad846f31817963189fdcddd828095ada99abfa35901d326dc0373"
     },
     {
+      "path": "modules/briefing/fsc_board.py",
+      "status": "added",
+      "sha256": "bfa64084e56b52da01b68855bec3f38df36b30824e6dfd1a4552769046210777"
+    },
+    {
       "path": "modules/briefing/gates.py",
       "status": "modified",
-      "sha256": "e639838080ca5cee92907af002549b675d2c31f18eb4818d1be48be320048b0a"
+      "sha256": "c399eaae69d76e7b0ac722a52bdf5c62b866ed789895a999a1b9b6cb14225884"
+    },
+    {
+      "path": "modules/briefing/internal_pdf.py",
+      "status": "added",
+      "sha256": "11f8f4afd75125f78ba1b82118867a98e8e5ea34ff3a52ad53eab88031ef3151"
     },
     {
       "path": "modules/briefing/models.py",
@@ -89,7 +112,7 @@
     {
       "path": "modules/briefing/openai_analysis.py",
       "status": "modified",
-      "sha256": "da5bb9ad3f8796d04923e474c50c6a3bba6920fa03451058af6074af2c503ff9"
+      "sha256": "1f33edceef26af35d09ca300baa182883223182ea2d260a7f20d120a27e478ac"
     },
     {
       "path": "modules/briefing/openai_discovery.py",
@@ -99,12 +122,12 @@
     {
       "path": "modules/briefing/phase_b.py",
       "status": "modified",
-      "sha256": "51976c4ad241c622e548efa85afb40dc5a369487f7c9b914d5d6a375aa8978d4"
+      "sha256": "370e66b02f12e608116c12f10a4bb8e8ec7a7a8f005e6be933b081055973a9f7"
     },
     {
       "path": "modules/briefing/phase_c.py",
       "status": "modified",
-      "sha256": "d602087f693f09c0aa65f80ceaf7116141a7419d4fc52ae5d394b4a8276e1950"
+      "sha256": "ae75c91bfbab3a183e003150dfeb8f72cce878442f09b2e288d70f50c154da5b"
     },
     {
       "path": "modules/briefing/preflight.py",
@@ -122,9 +145,14 @@
       "sha256": "486bfcda3a55ee450adecdb82256cbc3ffba6740de817f1fe6f7079b22dded9c"
     },
     {
+      "path": "modules/briefing/reading.py",
+      "status": "added",
+      "sha256": "37b3fdcde5a0e0180d8c2e2ba6beb5214d5cab1ac71e23d98124126226d11aa7"
+    },
+    {
       "path": "modules/briefing/runtime.py",
       "status": "modified",
-      "sha256": "ae379ebc3611b8ea98e654f6bd2aa0dd07b037cb440754b7e366e39ede295973"
+      "sha256": "f0b203923ebf8f9d0c1f0ec39e89887c1af7e0f95c00ed9eaf2c9807d7bff165"
     },
     {
       "path": "modules/briefing/source_policy.py",
@@ -137,9 +165,19 @@
       "sha256": "0762fb107425b9aacf9cec571f1f9e67044b17abad40d075f7cc5185e4460383"
     },
     {
+      "path": "modules/shell/workspace_v2.py",
+      "status": "modified",
+      "sha256": "e546fdc0ed87d2a45ec2cf9300ebfb397ab16cceed150b77d40b5bb544562d03"
+    },
+    {
       "path": "scripts/briefing_stage1_offline_replay.py",
       "status": "added",
       "sha256": "10cbdef7e9490adfc981bb3ff9c5105846e2acd9d40f8ee56a2ccec020cef6a1"
+    },
+    {
+      "path": "tests/README.md",
+      "status": "modified",
+      "sha256": "751326527c373dc1d2f6e199bec1563da53322e549d639d464dd414a8350f7a7"
     },
     {
       "path": "tests/conftest.py",
@@ -154,7 +192,12 @@
     {
       "path": "tests/test_briefing_failure_diagnostics.py",
       "status": "added",
-      "sha256": "0525c79691533bbd5faa171fb26ecc4b500228710c6e0b4c5cdaa0a660e5d962"
+      "sha256": "ac9d518a3708664d7304a4bedd0ede28e1d2242e82efd58dc4b7a32a78b4a64d"
+    },
+    {
+      "path": "tests/test_briefing_fsc_board.py",
+      "status": "added",
+      "sha256": "e0e1f6878babaca12e6535e839de8d98ff92d6e203e8f00fdc11561bf655df80"
     },
     {
       "path": "tests/test_briefing_phase_c.py",
@@ -165,6 +208,11 @@
       "path": "tests/test_briefing_publication.py",
       "status": "added",
       "sha256": "e34ead4e0f6dac85c2de1d5e3c0c8961de2ac5c57fb8996a14b57b3d1d423acc"
+    },
+    {
+      "path": "tests/test_briefing_reading.py",
+      "status": "added",
+      "sha256": "09d9dd7b36def2f39403f5d2bd16d6c9294d132b3c2045cc7799c487f69972a7"
     },
     {
       "path": "tests/test_briefing_source_probe.py",
@@ -182,29 +230,26 @@
       "sha256": "1821acf9df860f7fe87be032e65e6c6b7c18ecf535ab5b8d50b33775fe75f1a0"
     }
   ],
-  "changed_since_1_7_1_stage1": [
+  "changed_since_1_7_3_stage1": [
     "BRIEFING_IMPLEMENTATION_CHECKPOINT_V1_7_STAGE1.md",
-    "STAGE1_LATEST_DIAGNOSTIC_REPLAY_RESULT.json",
+    "STAGE1_INTERNAL_COMPLETION_REPORT.json",
     "modules/briefing/briefing_center.py",
     "modules/briefing/diagnostics.py",
     "modules/briefing/direct_sources.py",
-    "modules/briefing/discovery_budget.py",
-    "modules/briefing/gates.py",
-    "modules/briefing/normalize.py",
-    "modules/briefing/openai_discovery.py",
-    "modules/briefing/phase_b.py",
-    "modules/briefing/publication.py",
+    "modules/briefing/internal_pdf.py",
+    "modules/briefing/openai_analysis.py",
+    "modules/briefing/phase_c.py",
+    "modules/briefing/reading.py",
     "modules/briefing/runtime.py",
-    "scripts/briefing_stage1_offline_replay.py",
-    "tests/test_briefing_discovery_budget.py",
+    "modules/shell/workspace_v2.py",
+    "tests/README.md",
     "tests/test_briefing_failure_diagnostics.py",
-    "tests/test_briefing_source_probe.py",
-    "tests/test_briefing_stage1_quality.py"
+    "tests/test_briefing_reading.py"
   ],
   "db_schema_changes": false,
   "sql_changes": false,
   "tests": {
-    "passed": 169,
+    "passed": 224,
     "subtests_passed": 61,
     "project_api_calls": 0,
     "project_db_requests": 0
