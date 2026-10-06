@@ -131,7 +131,26 @@ border:1.5px solid #8ea3ba!important;background:#fff!important;border-radius:9px
    containers across versions. Keep the full header clickable and hide only
    the unrelated toolbar/menu controls. This deliberately prefers a reliable
    reopen path over shaving the final few pixels from the top chrome. */
-[data-testid="stToolbar"], [data-testid="stMainMenu"], .stAppDeployButton {display:none!important}
+/* Keep the Streamlit toolbar container alive because current Streamlit
+   can host the collapsed-sidebar reopen control inside it. Hiding the whole
+   toolbar with display:none also hides the reopen control. */
+[data-testid="stToolbar"]{
+    display:flex!important;
+    visibility:visible!important;
+    opacity:1!important;
+    pointer-events:auto!important;
+    background:transparent!important;
+    z-index:10020!important;
+}
+
+/* Hide only unrelated Streamlit chrome; never hide the toolbar parent. */
+[data-testid="stMainMenu"],
+.stAppDeployButton,
+[data-testid="stStatusWidget"],
+[data-testid="stDecoration"]{
+    display:none!important;
+}
+
 [data-testid="stHeader"]{
     height:48px!important;
     min-height:48px!important;
