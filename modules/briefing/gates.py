@@ -48,4 +48,9 @@ def route_profiles(candidate: SourceCandidate, hinted_profile: str | None = None
         if re.search(r"정책|법률|시행|정부|국회|재난|안전|주거|고용|의료|교육|통신|개인정보|산업", blob):
             routed.add("NEWS")
 
+    if hinted_profile == "MARKET":
+        routed.add("MARKET")
+    elif re.search(r"금리|채권|환율|달러|원화|코스피|코스닥|증시|주식시장|국채|기준금리|물가|cpi|연준|fed|한국은행|원자재|유가", blob):
+        routed.add("MARKET")
+
     return routed

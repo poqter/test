@@ -38,7 +38,7 @@ class OpenAIWebDiscoveryClient:
             "tools": [{"type": "web_search"}],
             "tool_choice": "required",
             "max_tool_calls": 1,
-            "include": ["web_search_call.action.sources"],
+            "include": ["web_search_call.results", "web_search_call.action.sources"],
         }
         try:
             response = self.http.post(

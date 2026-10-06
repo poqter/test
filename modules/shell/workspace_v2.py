@@ -136,6 +136,9 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
             st.markdown('<div class="sig-brand"><span class="sig-mark">H</span><div><strong>화랑</strong><small>WORKSPACE</small></div></div>', unsafe_allow_html=True)
             if st.button("홈", icon=":material/home:", key="v2_nav_home", use_container_width=True, type="primary" if st.session_state.get("active_app") == "home" else "secondary"):
                 navigate("home")
+            if "briefing" in allowed:
+                if st.button("브리핑 센터", icon=":material/newspaper:", key="hw_sidebar_briefing", use_container_width=True, type="primary" if st.session_state.get("active_app") == "briefing" else "secondary"):
+                    navigate("briefing")
             if "analyzer" in allowed:
                 with st.container(key="hw_sidebar_quick"):
                     if st.button("보장 분석 시작", icon=":material/shield:", key="hw_sidebar_analyzer", use_container_width=True):
@@ -222,6 +225,12 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
                 with portal:
                     st.markdown('<div class="hw-dash-search-label">원수사 포털 검색</div>', unsafe_allow_html=True)
                     render_home_quick_search()
+        if "briefing" in allowed:
+            try:
+                from modules.briefing.briefing_center import render_home_summary
+                render_home_summary(navigate)
+            except Exception:
+                pass
         if "analyzer" in allowed:
             with st.container(key="hw_mobile_quick"):
                 if st.button("보장 분석 시작", icon=":material/shield:", key="hw_feature_launch", use_container_width=True):

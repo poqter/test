@@ -40,7 +40,12 @@ class PermissionCatalogTests(unittest.TestCase):
             self.assertIn(permission_code, PERMISSION_BY_CODE)
 
     def test_sql_seed_contains_every_permission_code(self) -> None:
-        sql = (ROOT / "supabase" / "migrations" / "07_Permissions_Admin.sql").read_text(encoding="utf-8")
+        # Permission codes may be introduced by later additive migrations.
+        # Never rewrite an already-applied migration merely to satisfy this catalog test.
+        sql = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in sorted((ROOT / "supabase" / "migrations").glob("*.sql"))
+        )
         for code in PERMISSION_BY_CODE:
             with self.subTest(code=code):
                 self.assertIn("'" + code + "'", sql)

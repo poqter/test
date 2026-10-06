@@ -35,6 +35,7 @@ class GroupSpec:
 
 
 GROUPS: Final[tuple[GroupSpec, ...]] = (
+    GroupSpec("briefing", "브리핑", "오늘의 주요 변화를 한곳에서 확인합니다.", 5),
     GroupSpec("consultation", "상담·제안서", "상담 흐름과 고객 설명을 준비합니다.", 10),
     GroupSpec("calculators", "재무·보험 계산", "조건과 가정을 확인하며 수치를 계산합니다.", 20),
     GroupSpec("analysis", "보험자료 분석", "보험 자료를 검토하고 분석 결과를 만듭니다.", 30),
@@ -46,6 +47,7 @@ GROUPS: Final[tuple[GroupSpec, ...]] = (
 
 
 APPS: Final[tuple[AppSpec, ...]] = (
+    AppSpec("briefing", "브리핑 센터", "briefing", "경제·보험·국내뉴스의 핵심 변화와 오늘의 Action을 확인합니다.", ("브리핑", "뉴스", "경제", "시장", "보험업계", "오늘의 이슈"), "modules.briefing.briefing_center", icon_key="official", order=5, source_status="v1.6"),
     AppSpec("consultation_helper", "상담 질문지 제작기", "consultation", "필요한 질문을 골라 고객 맞춤 상담 질문지를 만듭니다.", ("상담", "질문지", "질문", "메모", "상담 준비", "PDF"), "modules.consultation.consultation_helper", icon_key="consultation", order=10, source_status="stage3"),
     AppSpec("quick_calculators", "종합 계산기 센터 (88개)", "calculators", "보험·생활자금·연금·재무·세금·상속·법인 실무 계산을 한곳에서 제공합니다.", ("보험나이", "상령일", "총납입", "비상자금", "납입면제", "교육자금", "은퇴", "저축", "물가", "부채", "세금", "상속", "증여", "승계", "법인", "연금"), "modules.calculators.quick_calculators", icon_key="calculator", order=20, source_status="standalone", external_app_key="calculator_url"),
     AppSpec("deposit_vs_shortpay", "적금 vs 단기납", "calculators", "10년 기준 적금과 단기납의 예상 결과를 비교합니다.", ("저축", "적금", "단기납", "환급"), "modules.calculators.comparison.deposit_vs_shortpay", icon_key="compare", order=30),
@@ -72,13 +74,17 @@ _ALL = frozenset(APP_IDS)
 ROLE_PERMISSIONS: Final[Mapping[str, frozenset[str]]] = MappingProxyType({
     "Admin": _ALL,
     "Manager1": _ALL,
-    "Basic": frozenset({"analyzer", "insurer_portal", "insurance_claim_guide", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "academy"}),
-    "Crew": frozenset({"analyzer", "deposit_vs_shortpay", "renewal_vs_nonrenewal", "insurer_portal", "insurance_claim_guide", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "academy"}),
-    "Dream": frozenset({"analyzer", "remodeling", "deposit_vs_shortpay", "renewal_vs_nonrenewal", "inheritance_tax", "insurer_portal", "insurance_claim_guide", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "academy"}),
+    "Basic": frozenset({"briefing", "analyzer", "insurer_portal", "insurance_claim_guide", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "academy"}),
+    "Crew": frozenset({"briefing", "analyzer", "deposit_vs_shortpay", "renewal_vs_nonrenewal", "insurer_portal", "insurance_claim_guide", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "academy"}),
+    "Dream": frozenset({"briefing", "analyzer", "remodeling", "deposit_vs_shortpay", "renewal_vs_nonrenewal", "inheritance_tax", "insurer_portal", "insurance_claim_guide", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "academy"}),
 })
 
 # Search aliases are static public labels only. Customer input never enters this index.
 SEARCH_ALIASES: Final[Mapping[str, tuple[str, str | None]]] = MappingProxyType({
+    "오늘 브리핑": ("briefing", None),
+    "경제 브리핑": ("briefing", None),
+    "보험 브리핑": ("briefing", None),
+    "뉴스 브리핑": ("briefing", None),
     "소득상실": ("quick_calculators", "소득상실·비상자금"),
     "비상자금": ("quick_calculators", "소득상실·비상자금"),
     "상령일": ("quick_calculators", "보험나이·상령일"),

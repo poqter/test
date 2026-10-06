@@ -63,7 +63,6 @@ _UNIT_LABELS = {
 _PAGE_LABELS = {
     "dashboard": "대시보드",
     "accounts": "계정 · 권한",
-    "activity": "활동 기록",
     "academy": "ACADEMY 관리",
     "ai": "AI 사용량 · 비용",
     "settings": "시스템 설정",
@@ -71,7 +70,6 @@ _PAGE_LABELS = {
 _PAGE_SUBTITLES = {
     "dashboard": "플랫폼 운영 상태와 지금 확인해야 할 항목을 한눈에 봅니다.",
     "accounts": "사용자 계정, 앱 접근권한, 세부 기능권한과 이용량을 관리합니다.",
-    "activity": "사용자 활동과 최고관리자 변경 이력을 확인합니다.",
     "academy": "상담 훈련 Session과 평가 결과를 운영 관점에서 확인합니다.",
     "ai": "AI 사용량, 비용, 차단·실패 내역을 운영합니다.",
     "settings": "AI 서비스, 크레딧 정책, 모델·Guardrail과 위험 작업을 관리합니다.",
@@ -332,7 +330,7 @@ def render_sidebar() -> None:
         st.write("")
 
         groups = [
-            ("운영", [("dashboard", "대시보드"), ("accounts", "계정 · 권한"), ("activity", "활동 기록")]),
+            ("운영", [("dashboard", "대시보드"), ("accounts", "계정 · 권한")]),
             ("ACADEMY", [("academy", "학습 운영")]),
             ("AI", [("ai", "사용량 · 비용")]),
             ("시스템", [("settings", "시스템 설정")]),
@@ -367,13 +365,14 @@ def _render_dashboard(auth: HwarangAuthService, actor_id: str) -> None:
     runtime = _fetch_runtime(auth)
     policy = _fetch_credit_policy(auth)
 
-    activity = _safe_rows(
+    recent_logins = _safe_rows(
         auth,
         "/rest/v1/hwarang_activity_log",
         params={
-            "select": "id,user_id,app_code,event_code,feature_code,outcome,created_at",
+            "select": "id,user_id,app_code,created_at",
+            "event_code": "eq.LOGIN_SUCCESS",
             "order": "created_at.desc",
-            "limit": "80",
+            "limit": "12",
         },
     )
     sessions = _safe_rows(
@@ -481,22 +480,20 @@ def _render_dashboard(auth: HwarangAuthService, actor_id: str) -> None:
                     if st.button("확인", key=f"hw_alert_{idx}_{target}", use_container_width=True):
                         _page_change(target)
 
-        st.markdown('<div class="hw-section-head">최근 로그인 · 활동</div>', unsafe_allow_html=True)
+        st.markdown('<div class="hw-section-head">최근 로그인</div>', unsafe_allow_html=True)
         user_map = {str(u.get("user_id")): u for u in users}
         table = []
-        for row in activity[:12]:
+        for row in recent_logins:
             user = user_map.get(str(row.get("user_id")), {})
             table.append({
                 "시간": _fmt_relative(row.get("created_at")),
                 "사용자": user.get("display_name") or user.get("login_id") or "-",
-                "앱": _APP_LABELS.get(str(row.get("app_code") or ""), str(row.get("app_code") or "").upper()),
-                "활동": _EVENT_LABELS.get(str(row.get("event_code") or ""), str(row.get("event_code") or "-")),
-                "결과": str(row.get("outcome") or "-"),
+                "로그인 앱": _APP_LABELS.get(str(row.get("app_code") or ""), str(row.get("app_code") or "").upper()),
             })
         if table:
             st.dataframe(table, hide_index=True, use_container_width=True)
         else:
-            st.caption("아직 활동 기록이 없습니다.")
+            st.caption("아직 로그인 기록이 없습니다.")
 
     with right:
         st.markdown('<div class="hw-section-head">운영 상태</div>', unsafe_allow_html=True)
@@ -845,8 +842,7 @@ def _render_user_detail(auth: HwarangAuthService, actor_id: str, user: dict[str,
         format_func=lambda x: {
             "overview": "개요",
             "permissions": "권한",
-            "activity": "활동 기록",
-            "academy": "ACADEMY",
+                    "academy": "ACADEMY",
             "ai": "AI 이용량",
         }[x],
         key="hw_admin_user_nav_v2",
@@ -1035,12 +1031,21 @@ def _user_permissions(auth: HwarangAuthService, actor_id: str, uid: str) -> None
 
 
 def _user_activity(auth: HwarangAuthService, uid: str) -> None:
+    days = st.segmented_control(
+        "조회 기간",
+        [7, 30, 90],
+        default=30,
+        format_func=lambda value: f"최근 {value}일",
+        key=f"hw_user_activity_days_{uid}",
+    ) or 30
+    since = (datetime.now(timezone.utc) - timedelta(days=int(days))).isoformat()
     rows = _safe_rows(
         auth,
         "/rest/v1/hwarang_activity_log",
         params={
             "select": "id,app_code,event_code,feature_code,outcome,created_at",
             "user_id": f"eq.{uid}",
+            "created_at": f"gte.{since}",
             "order": "created_at.desc",
             "limit": "200",
         },
@@ -1789,8 +1794,6 @@ def render(auth: HwarangAuthService) -> None:
             _render_dashboard(auth, actor_id)
         elif page == "accounts":
             _render_accounts(auth, actor_id)
-        elif page == "activity":
-            _render_activity(auth, actor_id)
         elif page == "academy":
             _render_academy(auth)
         elif page == "ai":

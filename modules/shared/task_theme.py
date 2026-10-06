@@ -126,12 +126,30 @@ border:1.5px solid #8ea3ba!important;background:#fff!important;border-radius:9px
 }
 
 
-/* Compact Streamlit chrome. Keep the sidebar reopen control usable. */
+/* Compact Streamlit chrome. Keep the sidebar reopen control usable.
+   Streamlit 1.64 keeps the collapsed control inside the header layer, so a
+   zero-height header can clip the only way to reopen the sidebar. Keep a
+   transparent 48px interaction layer while hiding the toolbar/menu itself. */
 [data-testid="stToolbar"], [data-testid="stMainMenu"], .stAppDeployButton {display:none!important}
-[data-testid="stHeader"]{height:0!important;min-height:0!important;background:transparent!important;pointer-events:none}
-[data-testid="stHeader"] button,[data-testid="stSidebarCollapsedControl"],[data-testid="stExpandSidebarButton"],
-[data-testid="stSidebarCollapsedControl"] button {pointer-events:auto!important}
-[data-testid="stSidebarCollapsedControl"],[data-testid="stExpandSidebarButton"]{position:fixed!important;top:8px!important;left:8px!important;z-index:1001}
+[data-testid="stHeader"]{height:48px!important;min-height:48px!important;background:transparent!important;pointer-events:none!important}
+[data-testid="stHeader"] button,
+[data-testid="stSidebarCollapsedControl"],
+[data-testid="stExpandSidebarButton"],
+[data-testid="stSidebarCollapseButton"],
+[data-testid="stSidebarCollapsedControl"] button,
+[data-testid="stExpandSidebarButton"] button,
+[data-testid="stSidebarCollapseButton"] button{pointer-events:auto!important}
+[data-testid="stSidebarCollapsedControl"],
+[data-testid="stExpandSidebarButton"]{
+    display:flex!important;visibility:visible!important;opacity:1!important;
+    position:fixed!important;top:8px!important;left:8px!important;z-index:10050!important;
+    width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;
+    align-items:center!important;justify-content:center!important;overflow:visible!important;
+}
+[data-testid="stSidebarCollapsedControl"] button,
+[data-testid="stExpandSidebarButton"] button{
+    width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;
+}
 body:has(.hw-dashboard-marker) [data-testid="stMainBlockContainer"],
 body:has(.hw-task-marker):not(:has(.hw-calculator-only)) [data-testid="stMainBlockContainer"]{padding-top:1rem!important}
 .st-key-hw_home_welcome{padding:16px 22px!important;margin-bottom:4px!important}
