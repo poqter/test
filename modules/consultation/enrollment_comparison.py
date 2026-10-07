@@ -150,7 +150,7 @@ def table_data(m):
     return headers,rows
 class PageOverflow(ValueError):pass
 
-@session_export("enrollment-comparison-pdf-v1", name_arg=False)
+@session_export("enrollment-comparison-pdf-v2", name_arg=False)
 def build_pdf(m):
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4,landscape

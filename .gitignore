@@ -17,8 +17,7 @@ venv/
 .pytest_cache/
 *.log
 
-# External font binaries are intentionally not bundled.
-assets/fonts/
+# Licensed Korean PDF fonts and their OFL files are deployment assets.
 
 # Runtime/test artifacts are not source releases.
 artifacts/

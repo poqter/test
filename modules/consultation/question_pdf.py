@@ -5,7 +5,7 @@ import io
 from modules.shared.runtime_cache import session_export
 
 
-@session_export("consultation-question-pdf-v1", name_arg=False)
+@session_export("consultation-question-pdf-v2", name_arg=False)
 def build_question_pdf(title, questions, customer='', consultation_date=''):
     if not title.strip() or not questions or any(not q['text'].strip() for q in questions):
         raise ValueError('제목과 선택한 질문 내용을 입력해 주세요.')

@@ -217,7 +217,7 @@ def cumulative_premium_chart(current_premium: float, fifth_premium: float) -> No
     )
 
 
-@session_export("silson-generation-pdf-v1", name_arg=False)
+@session_export("silson-generation-pdf-v2", name_arg=False)
 def build_pdf(data: dict) -> bytes:
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4, landscape
@@ -453,8 +453,8 @@ def run() -> None:
                     reference_modified = bool(st.session_state.get("sc_reference_modified", False))
                     premium_basis = "연령 기준 예상값을 사용자가 수정한 금액 · 전체 보장형" if reference_modified else f"만 {age}세 {gender} · 전체 보장형 예상값"
                     st.markdown(
-                        f'<div class="sc-basis"><b>공개 보험료 예시 기반 상담용 추정값</b> · 만 {age}세 {gender} · 전체 보장형<br>'
-                        f'실제 보험료는 보험회사, 직업, 가입조건에 따라 달라질 수 있으며 현재 표시된 금액을 직접 수정할 수 있습니다.</div>',
+                        f'<div class="sc-basis"><b>연령별 상담용 추정값</b> · 만 {age}세 {gender} · 전체 보장형<br>'
+                        f'도구에 설정된 연령·성별 가정을 사용합니다. 실제 제안서 금액을 알고 있다면 ‘가입제안서 직접 입력’을 선택해 주세요.</div>',
                         unsafe_allow_html=True,
                     )
                 else:

@@ -31,7 +31,7 @@ def summary_rows(result):
     return [(row['항목'],money(row['금액'])) for key in keys for row in result.rows if row['항목']==key and (row['금액'] or key in keys[:4]+keys[-1:])]
 
 
-@session_export("estate-pdf-v1", name_arg=False)
+@session_export("estate-pdf-v2", name_arg=False)
 def pdf_report(result, conditions, funding, stamp, alias='', note='', alignment='왼쪽'):
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4

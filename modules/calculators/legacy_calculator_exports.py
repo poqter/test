@@ -26,7 +26,7 @@ def text_report(result):
         title+'\n'+'\n'.join(f'{k}: {v}' for k,v in rows) for title,rows in sections(result))+'\n\n'+NOTE
 
 
-@session_export("exports-v3")
+@session_export("exports-v4")
 def export_bytes(result, kind):
     if kind == 'txt': return text_report(result).encode('utf-8-sig')
     if kind == 'xlsx':

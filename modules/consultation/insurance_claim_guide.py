@@ -776,7 +776,7 @@ def _register_korean_font() -> str:
     from modules.shared.report_fonts import korean_pdf_font
     return korean_pdf_font()
 
-@session_export("insurance-claim-guide-pdf-v1", name_arg=False)
+@session_export("insurance-claim-guide-pdf-v2", name_arg=False)
 def build_guide_pdf(selected_claims: list[str], docs: list[DocumentRule], accident_narrative: str = "", include_accident: bool = False) -> bytes:
     from reportlab.lib import colors
     from reportlab.lib.enums import TA_CENTER, TA_LEFT

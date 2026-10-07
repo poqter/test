@@ -1,30 +1,28 @@
-HWARANG WORKSPACE 2026-10-07 audit patch
-대상: HWARANG_WORKSPACE_PERFORMANCE_V63_1_HOTFIX_FULL 제공 소스
-상태: 로컬 수정 및 회귀 검사 완료. 운영 사이트 배포 전.
+HWARANG WORKSPACE V63.2 유지보수 적용
+기준: poqter/test main fb9fac8ad2eaee7535d96b33eed6b6994ce19733
 
-수정
-- 관리자 AI registry select: id -> request_id
-- 관리자 사용자/운영설정/크레딧정책 읽기: 세션 내 15/30초 캐시
-- 성공한 관리자 RPC 후 읽기 캐시 무효화
-- 공용 PDF 글꼴: bundled NanumGothic + NanumMyeongjo TTF 포함
-- 회귀 검사 5개 추가
+브리핑 관련 소스·명세·수집·생성·발행·예산 설정은 변경하지 않습니다.
 
-적용
-1. 기존 저장소를 백업합니다.
-2. modules/, assets/, tests/를 app.py가 있는 루트에 같은 경로로 반영합니다.
-3. 프로젝트 가상환경에서 python -m pytest tests -q 를 실행합니다.
-   검수 환경: Python 3.11, Streamlit 1.64.0, pytest 9.1.1, pytest-subtests.
-4. 변경 파일을 커밋하고 Streamlit 배포를 갱신·재시작합니다.
-5. 새 세션에서 AI 사용량·비용과 질문지/고객용 비교표 PDF를 확인합니다.
+이번 개선
+- 배포에서 누락된 NanumGothic/NanumMyeongjo TTF와 OFL 라이선스 포함
+- 글꼴을 배포에서 제외하던 규칙 제거
+- PDF 내보내기 캐시 버전 갱신으로 이전 PDF 재사용 방지
+- 계산기/아카데미 버튼을 누를 때 앱 연결 준비
+- 연결 만료·사용 후 재진입 시 새 링크를 바로 준비할 수 있는 버튼 제공
+- 기존 60초/1회 인증 정책 및 앱·도구 접근 권한 유지
+- 학습 AI 비용 지표의 집계 범위 명시
+- 학습/평가 빈 목록 안내 및 이전 페이지 이동 유지
+- 갱신·실손 추정값이 도구의 상담 가정임을 명확히 표시
+- 빌드 표시: hwarang-2026.10.07-platform-v63.2-maintenance
 
-DB SQL, Secrets, 권한, 크레딧 정책, 유료 API 설정 변경은 없습니다.
-이 묶음은 변경 파일 패치이며 전체 저장소가 아닙니다.
-기존 test 폴더 및 requirements.txt를 삭제하거나 교체하지 마세요.
-assets/fonts/의 OFL 라이선스를 글꼴 파일과 함께 유지하세요.
-롤백 시 원본 모듈을 복원하고 앱을 재시작합니다.
+이전 패치의 관리자 request_id 조회 수정과 15/30초 참조 캐시는 유지합니다.
+DB SQL, Secrets, 사용자 권한, 크레딧, 유료 API 설정 변경은 없습니다.
+회귀 검사: Python 3.12.14 / Streamlit 1.64.0 / 190 passed, 61 subtests passed.
+브리핑 관련 원본 파일 45개를 Git 기준과 바이트 단위로 대조했습니다.
 
-검증 결과: 182 passed, 61 subtests passed.
-88개 계산기 UI 실행은 처리되지 않은 예외 0개이며,
-6개는 사전 조건 확인 안내에서 중단했습니다.
-모든 세법·약관·업로드 집계의 완전 검증을 의미하지 않습니다.
-후속 개선 항목은 별도 PDF 보고서에 있습니다.
+배포 확인
+1. main의 새 커밋이 Streamlit 자동 배포에 반영될 때까지 기다립니다.
+2. 화면의 V63.2 버전을 확인합니다.
+3. 관리자 AI 사용량·비용 조회와 질문지·가입안 PDF 다운로드를 확인합니다.
+4. 계산기/아카데미를 클릭하여 앱 열기 창에서 새 탭으로 이동합니다.
+5. 앱이 오래 로딩되거나 연결이 만료되면 연결 다시 준비를 누릅니다.

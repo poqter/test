@@ -428,7 +428,7 @@ def _render_dashboard(auth: HwarangAuthService, actor_id: str) -> None:
         voice_now = sum(1 for s in in_progress if s.get("interaction_mode") == "VOICE")
         _metric_card("진행 중 ACADEMY", f"{len(in_progress):,}", f"Voice {voice_now:,}")
     with cols[3]:
-        _metric_card("오늘 AI 예상비용", f"${today_cost:,.2f}", "실제 API 연결 후 집계")
+        _metric_card("오늘 학습 AI 예상비용", f"${today_cost:,.2f}", "상담 훈련·평가·Voice 사용 기록")
 
     st.write("")
     left, right = st.columns([1.08, .92], gap="large")
@@ -1283,11 +1283,17 @@ def _render_academy(auth: HwarangAuthService) -> None:
             "상태": r.get("status") or "-",
             "생성": _fmt_dt(r.get("generated_at")),
         } for r in rows]
-    st.dataframe(display, hide_index=True, use_container_width=True)
-    _pager(f"hw_academy_{tab}", page, len(rows) == page_size)
+    if display:
+        st.dataframe(display, hide_index=True, use_container_width=True)
+    else:
+        label = "상담 훈련" if tab == "sessions" else "평가 결과"
+        st.info(f"이 페이지에 표시할 {label} 기록이 없습니다.")
+    if display or page > 0:
+        _pager(f"hw_academy_{tab}", page, len(rows) == page_size)
 
 
 def _render_ai(auth: HwarangAuthService) -> None:
+    st.caption("상담 훈련·평가·Voice의 학습 AI 사용 기록을 집계합니다.")
     users=_fetch_users(auth); user_map={str(u.get("user_id")):u for u in users}; policy=_fetch_credit_policy(auth)
     usage=_cached_admin_read("ai:usage_month",30,lambda:_safe_rows(auth,"/rest/v1/hwarang_admin_ai_usage_daily_view",params={
         "select":"usage_day,user_id,ai_role,model,request_count,input_tokens,cached_tokens,output_tokens,credits_charged,calculated_cost_usd",
@@ -1300,10 +1306,10 @@ def _render_ai(auth: HwarangAuthService) -> None:
     today=[r for r in usage if _logged_in_today(r.get("usage_day"))]
     total_cost=sum(float(r.get("calculated_cost_usd") or 0) for r in usage); today_cost=sum(float(r.get("calculated_cost_usd") or 0) for r in today)
     voice_seconds=sum(int(r.get("voice_seconds_charged") or 0) for r in voice_rows); text_requests=sum(int(r.get("request_count") or 0) for r in usage if str(r.get("ai_role") or "")!="VOICE")
-    cols=st.columns(5); cols[0].metric("오늘 AI 비용",f"${today_cost:,.2f}"); cols[1].metric("이번 달 AI 비용",f"${total_cost:,.2f}"); cols[2].metric("Text/평가 요청",f"{text_requests:,}"); cols[3].metric("Voice 사용",f"{voice_seconds/60:.1f}분"); cols[4].metric("차단/실패",len(failed))
+    cols=st.columns(5); cols[0].metric("오늘 학습 AI 비용",f"${today_cost:,.2f}"); cols[1].metric("이번 달 학습 AI 비용",f"${total_cost:,.2f}"); cols[2].metric("Text/평가 요청",f"{text_requests:,}"); cols[3].metric("Voice 사용",f"{voice_seconds/60:.1f}분"); cols[4].metric("차단/실패",len(failed))
     budget=float(policy.get("monthly_ai_budget_usd") or 0); warn=int(policy.get("budget_warning_percent") or 80)
     if budget>0:
-        ratio=total_cost/budget*100; st.markdown("##### 월 AI 운영 예산"); st.progress(min(1.0,max(0.0,ratio/100))); st.caption(f"${total_cost:,.2f} / ${budget:,.2f} · {ratio:.1f}% 사용 · {warn}%부터 관리자 경고")
+        ratio=total_cost/budget*100; st.markdown("##### 월 학습 AI 운영 예산"); st.progress(min(1.0,max(0.0,ratio/100))); st.caption(f"${total_cost:,.2f} / ${budget:,.2f} · {ratio:.1f}% 사용 · {warn}%부터 관리자 경고")
     by_user={}; by_model={}
     for row in usage:
         uid=str(row.get("user_id") or ""); req=int(row.get("request_count") or 0); slot=by_user.setdefault(uid,{"requests":0,"credits":0,"voice_seconds":0,"cost":0.0}); slot["requests"]+=req; slot["credits"]+=int(row.get("credits_charged") or 0); slot["cost"]+=float(row.get("calculated_cost_usd") or 0)

@@ -34,7 +34,7 @@ def _customer_value(value: object) -> str:
     return match.group(1) if match else text
 
 
-@session_export("calculator-pdf-v5")
+@session_export("calculator-pdf-v6")
 def build_result_pdf(
     name,
     inputs,

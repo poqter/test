@@ -34,16 +34,15 @@ _ICONS = {
 
 
 
-# Launch tickets expire shortly in the database. Reuse the still-valid URL across
-# ordinary Streamlit reruns so sidebar/home redraws do not issue fresh Supabase
-# tickets on every interaction.
+# Tickets are prepared only after an explicit app-open request. Background page
+# rendering must not leave an already-expired, one-time URL on the screen.
 _EXTERNAL_LAUNCH_CACHE_SECONDS = 45.0
 
 
-def _external_launch_url(app: AppSpec) -> str:
-    """Return a short-lived launch URL for protected HWARANG apps."""
+def _external_launch_context(app: AppSpec) -> tuple[str, str, str] | None:
+    """Read app configuration and the current permission gate without an RPC."""
     if not app.external_app_key:
-        return ""
+        return None
     target = external_app_url(app.external_app_key)
     target_app = "academy" if app.id == "academy" else "calculator" if app.id == "quick_calculators" else ""
     state = st.session_state.get("hwarang_auth") or {}
@@ -51,16 +50,25 @@ def _external_launch_url(app: AppSpec) -> str:
     uid = str(profile.get("id") or "")
     app_access = st.session_state.get("hw_app_access") or {}
     if not (target and uid and target_app and app_access.get(target_app, False)):
+        return None
+    return target_app, uid, target
+
+
+def _external_launch_url(app: AppSpec, *, fresh: bool = False) -> str:
+    """Issue a fresh ticket on request; keep the database's one-time/60s policy."""
+    context = _external_launch_context(app)
+    if context is None:
         return ""
+    target_app, uid, target = context
 
     cache_key = f"hw.external_launch.{target_app}"
     now = time.time()
     cached = st.session_state.get(cache_key)
-    if isinstance(cached, dict):
+    if not fresh and isinstance(cached, dict):
         if (
             cached.get("user_id") == uid
             and cached.get("target") == target
-            and now - float(cached.get("issued_at") or 0) < _EXTERNAL_LAUNCH_CACHE_SECONDS
+            and 0 <= now - float(cached.get("issued_at") or 0) < _EXTERNAL_LAUNCH_CACHE_SECONDS
         ):
             return str(cached.get("url") or "")
 
@@ -80,6 +88,27 @@ def _external_launch_url(app: AppSpec) -> str:
     return url
 
 
+@st.dialog("앱 열기")
+def _external_launch_dialog(app_id: str) -> None:
+    app = APP_BY_ID.get(app_id)
+    if app is None or app_id not in set(st.session_state.get("ws_allowed_ids") or ()):
+        st.error("현재 계정에서 이용할 수 없는 도구입니다.")
+        return
+    st.subheader(app.label)
+    st.write("아래 버튼으로 새 탭에서 열어 주세요.")
+    st.button("연결 다시 준비", key="hw_refresh_launch_" + app_id,
+              use_container_width=True)
+    # Each dialog run is an explicit open or refresh, never a sidebar redraw.
+    # Reopening cannot reuse a consumed ticket, even inside the cache TTL.
+    url = _external_launch_url(app, fresh=True)
+    if not url:
+        st.error("앱을 연결하지 못했습니다. 이용 권한과 연결 설정을 확인해 주세요.")
+        return
+    st.link_button(app.label + " 열기 ↗", url, type="primary",
+                   key="hw_open_external_" + app_id, use_container_width=True)
+    st.caption("앱 로딩 중 연결이 만료되거나 다시 열리지 않으면 ‘연결 다시 준비’를 눌러 주세요.")
+
+
 def _navigate_once(navigate: Callable[..., object], page_id: str, mode: str | None = None) -> None:
     """Change route in a widget callback; Streamlit supplies the single rerun."""
     navigate(page_id, mode, state=st.session_state)
@@ -94,18 +123,18 @@ def _launch_widget(
     help_text: str | None = None, navigate: Callable[..., object] | None = None,
     mode: str | None = None,
 ) -> bool:
-    """Render an internal navigation button or a protected-app new-tab link."""
+    """Render navigation; prepare a protected-app ticket only when requested."""
     if app.external_app_key:
-        url = _external_launch_url(app)
-        st.link_button(
+        clicked = st.button(
             label + " ↗",
-            url or "https://example.invalid",
             key=key,
             help=help_text,
             type="primary" if primary else "secondary",
-            disabled=not bool(url),
+            disabled=_external_launch_context(app) is None,
             use_container_width=True,
         )
+        if clicked:
+            _external_launch_dialog(app.id)
         return False
     kwargs = {}
     if navigate is not None:

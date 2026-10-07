@@ -5,7 +5,7 @@ from io import BytesIO
 from modules.shared.runtime_cache import session_export
 
 
-@session_export("claim-customer-pdf-v1", name_arg=False)
+@session_export("claim-customer-pdf-v2", name_arg=False)
 def build_customer_pdf(claims, documents, *, name='', note='', accident='', coverages=()):
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4

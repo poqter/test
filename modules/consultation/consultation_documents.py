@@ -41,7 +41,7 @@ def message_draft(intro, template, channel, subject):
     return intro + "\n\n" + template
 
 
-@session_export("consultation-document-pdf-v1", name_arg=False)
+@session_export("consultation-document-pdf-v2", name_arg=False)
 def document_pdf(title, body, *, prepared_on, customer_label="", note=NOTE):
     """No disk writes, user-data cache, remote fonts, or customer metadata."""
     if not body.strip():

@@ -463,10 +463,10 @@ def run() -> None:
         st.table(pd.DataFrame(comparison_rows).set_index("구분"))
 
         if method == "간편 시나리오":
-            note = "보험업계 평균의 갱신배수 흐름을 참고해 재설계한 상담용 가정입니다."
+            note = "간편 시나리오는 이 도구에 설정된 상담용 가정입니다. 실제 갱신보험료를 알고 있다면 가입제안서 직접 입력 방식을 사용해 주세요."
         elif method == "가입제안서 직접 입력":
             note = "입력한 가입제안서의 보험료 예시를 기준으로 계산했습니다. 실제 갱신보험료는 갱신 시점의 위험률과 손해율 등에 따라 달라질 수 있습니다."
         else:
-            note = "보험업계 평균의 갱신배수 흐름을 참고해 재설계한 상담용 가정입니다."
+            note = "이 도구에 설정된 상담용 가정으로 계산했습니다. 실제 갱신보험료를 확인해 주세요."
         st.markdown(f'<div class="rn-note">{html.escape(note)}</div>', unsafe_allow_html=True)
     page_footer("갱신형 vs 비갱신형", APP_VERSION)
