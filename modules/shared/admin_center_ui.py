@@ -135,6 +135,41 @@ def _safe_rpc(auth: HwarangAuthService, path: str, payload: dict[str, Any]) -> A
     return auth._request("POST", f"/rest/v1/rpc/{path}", admin=True, json=payload)
 
 
+_ADMIN_READ_CACHE_KEY = "hw_admin_read_cache_v1"
+
+def _cached_admin_read(cache_key: str, ttl_seconds: int, loader):
+    """Cache short-lived admin read results within the current Streamlit session."""
+    cache = st.session_state.get(_ADMIN_READ_CACHE_KEY)
+    if not isinstance(cache, dict):
+        cache = {}
+        st.session_state[_ADMIN_READ_CACHE_KEY] = cache
+
+    now = time.time()
+    entry = cache.get(str(cache_key))
+    if isinstance(entry, dict):
+        age = now - float(entry.get("at") or 0)
+        if age >= 0 and age < max(0, int(ttl_seconds)):
+            return entry.get("data")
+
+    data = loader()
+    cache[str(cache_key)] = {"at": now, "data": data}
+    return data
+
+
+def _clear_admin_read_cache(prefix: str | None = None) -> None:
+    """Invalidate admin read cache after a state-changing administrator action."""
+    if prefix is None:
+        st.session_state.pop(_ADMIN_READ_CACHE_KEY, None)
+        return
+    cache = st.session_state.get(_ADMIN_READ_CACHE_KEY)
+    if not isinstance(cache, dict):
+        return
+    prefix = str(prefix)
+    for key in list(cache):
+        if str(key).startswith(prefix):
+            cache.pop(key, None)
+
+
 def _fmt_dt(value: Any) -> str:
     if not value:
         return "-"
