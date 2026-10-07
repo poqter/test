@@ -132,7 +132,12 @@ def _safe_rows(
 
 
 def _safe_rpc(auth: HwarangAuthService, path: str, payload: dict[str, Any]) -> Any:
-    return auth._request("POST", f"/rest/v1/rpc/{path}", admin=True, json=payload)
+    result = auth._request("POST", f"/rest/v1/rpc/{path}", admin=True, json=payload)
+    # Only successful writes invalidate reads; failed writes keep the last
+    # confirmed state. RPCs here retain the existing server Audit/Ledger logic.
+    _clear_admin_read_cache()
+    st.session_state.pop("hw_admin_reference_cache", None)
+    return result
 
 
 _ADMIN_READ_CACHE_KEY = "hw_admin_read_cache_v1"
@@ -312,29 +317,29 @@ def _top_header(page: str) -> None:
 
 
 def _fetch_users(auth: HwarangAuthService) -> list[dict[str, Any]]:
-    rows = _safe_rows(
+    rows = _cached_admin_read("reference:users", 15, lambda: _safe_rows(
         auth,
         "/rest/v1/hwarang_admin_user_operations_view",
         params={"select": "*", "order": "display_name.asc.nullslast,login_id.asc"},
-    )
+    ))
     return rows
 
 
 def _fetch_runtime(auth: HwarangAuthService) -> dict[str, Any]:
-    rows = _safe_rows(
+    rows = _cached_admin_read("reference:runtime", 30, lambda: _safe_rows(
         auth,
         "/rest/v1/hwarang_ai_runtime_config",
         params={"select": "*", "config_id": "eq.1", "limit": "1"},
-    )
+    ))
     return rows[0] if rows else {}
 
 
 def _fetch_credit_policy(auth: HwarangAuthService) -> dict[str, Any]:
-    rows = _safe_rows(
+    rows = _cached_admin_read("reference:credit_policy", 30, lambda: _safe_rows(
         auth,
         "/rest/v1/hwarang_credit_policy",
         params={"select": "*", "config_id": "eq.1", "limit": "1"},
-    )
+    ))
     return rows[0] if rows else {
         "monthly_free_credits": 1000,
         "remaining_warning_percent": 20,
@@ -1290,7 +1295,7 @@ def _render_ai(auth: HwarangAuthService) -> None:
     voice_rows=_cached_admin_read("ai:voice_month",30,lambda:_safe_rows(auth,"/rest/v1/hwarang_ai_usage_log",params={
         "select":"user_id,voice_seconds_charged,created_at","created_at":"gte."+_month_start_utc_iso(),"voice_seconds_charged":"gt.0","limit":"1500"}))
     failed=_cached_admin_read("ai:failed_month",30,lambda:_safe_rows(auth,"/rest/v1/hwarang_ai_request_registry",params={
-        "select":"id,user_id,purpose,billing_bucket,status,actual_credits,actual_voice_seconds,block_reason,created_at",
+        "select":"request_id,user_id,purpose,billing_bucket,status,actual_credits,actual_voice_seconds,block_reason,created_at",
         "created_at":"gte."+_month_start_utc_iso(),"or":"(status.in.(blocked,failed),block_reason.not.is.null)","order":"created_at.desc","limit":"500"}))
     today=[r for r in usage if _logged_in_today(r.get("usage_day"))]
     total_cost=sum(float(r.get("calculated_cost_usd") or 0) for r in usage); today_cost=sum(float(r.get("calculated_cost_usd") or 0) for r in today)

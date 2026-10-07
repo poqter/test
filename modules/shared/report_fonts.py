@@ -1,33 +1,38 @@
-"""Built-in Korean PDF font registration without shipping external font files."""
+"""Embed bundled Korean PDF fonts so viewers need no local Korean fonts."""
 from __future__ import annotations
 
 from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+from reportlab.pdfbase.ttfonts import TTFont
+from modules.shared.paths import PROJECT_ROOT
 
-# Keep the existing Gothic CID font as the compatibility default for legacy
-# exports. Calculator customer PDFs use a more editorial Myeongjo body with a
-# clean Gothic heading/value face through the helpers below.
-DEFAULT_KOREAN_FONT = "HYGothic-Medium"
-CUSTOMER_BODY_FONT = "HYSMyeongJo-Medium"
-CUSTOMER_HEADING_FONT = "HYGothic-Medium"
+# Preserve Gothic headings and Myeongjo customer body text. CID substitution
+# previously depended on the PDF viewer and produced missing Korean glyphs.
+DEFAULT_KOREAN_FONT = "HwarangGothicEmbedded"
+CUSTOMER_BODY_FONT = "HwarangMyeongjoEmbedded"
+CUSTOMER_HEADING_FONT = DEFAULT_KOREAN_FONT
+_FONT_FILES = {
+    DEFAULT_KOREAN_FONT: "NanumGothic-Regular.ttf",
+    CUSTOMER_BODY_FONT: "NanumMyeongjo-Regular.ttf",
+}
 
 
 def _register(name: str) -> str:
     if name not in pdfmetrics.getRegisteredFontNames():
-        pdfmetrics.registerFont(UnicodeCIDFont(name))
+        path = PROJECT_ROOT / "assets" / "fonts" / _FONT_FILES[name]
+        pdfmetrics.registerFont(TTFont(name, str(path)))
     return name
 
 
 def korean_pdf_font() -> str:
-    """Return the compatibility Korean font used by existing exports."""
+    """Return the embedded Gothic font used by existing shared exports."""
     return _register(DEFAULT_KOREAN_FONT)
 
 
 def customer_pdf_fonts() -> tuple[str, str]:
     """Return (body, heading/value) fonts for customer-facing calculator PDFs.
 
-    Both are ReportLab built-in Korean CID fonts, so deployment does not depend
-    on a bundled font binary or an external network request.
+    Both fonts are bundled and embedded as subsets. Runtime generation makes
+    no font download and does not depend on fonts installed on the reader's device.
     """
     return _register(CUSTOMER_BODY_FONT), _register(CUSTOMER_HEADING_FONT)
 
@@ -41,11 +46,11 @@ _SAFE_SYMBOLS = str.maketrans({
 
 
 def pdf_text(value: object) -> str:
-    """Use unambiguous printable operators with the bundled-free Korean fonts.
+    """Use unambiguous printable operators with the bundled Korean fonts.
 
     Whole-won digits, signs and decimals are never altered. Unsupported emoji
-    are decorative only; their textual labels remain. No external font file is
-    shipped or downloaded by the application.
+    are decorative only; their textual labels remain. Font files ship with the
+    application and are never downloaded at runtime.
     """
     import re
     text = str(value).translate(_SAFE_SYMBOLS)

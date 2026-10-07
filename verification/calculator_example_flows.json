@@ -1,0 +1,1486 @@
+[
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "보험나이계산기",
+    "group": "보험 기본",
+    "seconds": 0.816,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "산식·가정 자세히 보기",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "다음 상령일계산기",
+    "group": "보험 기본",
+    "seconds": 0.179,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "산식·가정 자세히 보기",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "총 납입보험료계산기",
+    "group": "보험 기본",
+    "seconds": 0.189,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "산식·가정 자세히 보기",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "납입면제 효과계산기",
+    "group": "보험 기본",
+    "seconds": 0.176,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "산식·가정 자세히 보기",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "적정보험료계산기",
+    "group": "보험 기본",
+    "seconds": 0.171,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "정기·종신 비교계산기",
+    "group": "보험 기본",
+    "seconds": 0.171,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "가족 생활자금계산기",
+    "group": "보장·생활자금",
+    "seconds": 0.183,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "산식·가정 자세히 보기",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "교육자금계산기",
+    "group": "보장·생활자금",
+    "seconds": 0.187,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "산식·가정 자세히 보기",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "부채 정리자금계산기",
+    "group": "보장·생활자금",
+    "seconds": 0.232,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "산식·가정 자세히 보기",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "계산하기"
+    ],
+    "name": "비상자금 진단계산기",
+    "group": "보장·생활자금",
+    "seconds": 0.166,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "사망보장 필요액계산기",
+    "group": "보장·생활자금",
+    "seconds": 0.185,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "중대질병 보장계산기",
+    "group": "보장·생활자금",
+    "seconds": 0.169,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "간병·장기요양 필요액계산기",
+    "group": "보장·생활자금",
+    "seconds": 0.167,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "자녀보험 필요액계산기",
+    "group": "보장·생활자금",
+    "seconds": 0.166,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "의료비 부담계산기",
+    "group": "보장·생활자금",
+    "seconds": 0.166,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "계산하기"
+    ],
+    "name": "연금계산기",
+    "group": "연금·은퇴",
+    "seconds": 0.416,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "은퇴계산기",
+    "group": "연금·은퇴",
+    "seconds": 0.178,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "퇴직금계산기",
+    "group": "연금·은퇴",
+    "seconds": 0.187,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "연금저축·IRP 세액공제계산기",
+    "group": "연금·은퇴",
+    "seconds": 0.17,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "국민연금 수령시기계산기",
+    "group": "연금·은퇴",
+    "seconds": 0.201,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "주택연금계산기",
+    "group": "연금·은퇴",
+    "seconds": 0.204,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "일시금·연금 세금비교계산기",
+    "group": "연금·은퇴",
+    "seconds": 0.178,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "은퇴크레바스계산기",
+    "group": "연금·은퇴",
+    "seconds": 0.205,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "3층연금 점검계산기",
+    "group": "연금·은퇴",
+    "seconds": 0.169,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "연금 인출기간계산기",
+    "group": "연금·은퇴",
+    "seconds": 0.248,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "사적연금 과세계산기",
+    "group": "연금·은퇴",
+    "seconds": 0.19,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "IRP 적립계산기",
+    "group": "연금·은퇴",
+    "seconds": 0.187,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "은퇴저축계산기",
+    "group": "연금·은퇴",
+    "seconds": 0.185,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "연금 인출순서계산기",
+    "group": "연금·은퇴",
+    "seconds": 0.188,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "계산하기"
+    ],
+    "name": "미래가치계산기",
+    "group": "재무·투자",
+    "seconds": 0.173,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "계산하기"
+    ],
+    "name": "복리계산기",
+    "group": "재무·투자",
+    "seconds": 0.17,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "계산하기"
+    ],
+    "name": "수익률계산기",
+    "group": "재무·투자",
+    "seconds": 0.17,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "계산하기"
+    ],
+    "name": "재무계산기",
+    "group": "재무·투자",
+    "seconds": 0.172,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "계산하기"
+    ],
+    "name": "투자수익계산기",
+    "group": "재무·투자",
+    "seconds": 0.167,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "계산하기"
+    ],
+    "name": "현재가치계산기",
+    "group": "재무·투자",
+    "seconds": 0.187,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "계산하기"
+    ],
+    "name": "목표자금 계획계산기",
+    "group": "재무·투자",
+    "seconds": 0.168,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "계산하기"
+    ],
+    "name": "기회비용계산기",
+    "group": "재무·투자",
+    "seconds": 0.165,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "물가 반영 필요자금계산기",
+    "group": "재무·투자",
+    "seconds": 0.187,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "산식·가정 자세히 보기",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "ISA 절세계산기",
+    "group": "재무·투자",
+    "seconds": 0.181,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "양도소득세계산기",
+    "group": "개인·부동산 세금",
+    "seconds": 0.216,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "근로소득세계산기",
+    "group": "개인·부동산 세금",
+    "seconds": 0.214,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "종합소득세계산기",
+    "group": "개인·부동산 세금",
+    "seconds": 0.238,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "임대소득세계산기",
+    "group": "개인·부동산 세금",
+    "seconds": 0.216,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "금융소득종합과세계산기",
+    "group": "개인·부동산 세금",
+    "seconds": 0.196,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "주택담보대출 이자공제계산기",
+    "group": "개인·부동산 세금",
+    "seconds": 0.232,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "4대보험계산기",
+    "group": "개인·부동산 세금",
+    "seconds": 0.265,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "취득세 중과계산기",
+    "group": "개인·부동산 세금",
+    "seconds": 0.198,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "해외금융계좌 신고계산기",
+    "group": "개인·부동산 세금",
+    "seconds": 0.16,
+    "exceptions": [],
+    "errors": [
+      "거주자·면제 자격과 월말 원화 합산 잔액을 확인해 주세요."
+    ],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "계산하기"
+    ],
+    "name": "상속세계산기",
+    "group": "상속·증여·승계",
+    "seconds": 0.27,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "계산하기",
+      "현재 결과로 설명 작성"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "증여세계산기",
+    "group": "상속·증여·승계",
+    "seconds": 0.271,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "비상장주식 평가계산기",
+    "group": "상속·증여·승계",
+    "seconds": 0.179,
+    "exceptions": [],
+    "errors": [
+      "인정 시가 우선 적용 여부, 평가 방법과 세법상 자산·부채·순손익 조정금액을 확인해 주세요."
+    ],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "가업승계 세부담계산기",
+    "group": "상속·증여·승계",
+    "seconds": 0.226,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "명의신탁주식계산기",
+    "group": "상속·증여·승계",
+    "seconds": 0.179,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "차등배당계산기",
+    "group": "상속·증여·승계",
+    "seconds": 0.249,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "특정법인 증여의제계산기",
+    "group": "상속·증여·승계",
+    "seconds": 0.203,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "지분 매입자금계산기",
+    "group": "상속·증여·승계",
+    "seconds": 0.166,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "승계 재원계산기",
+    "group": "상속·증여·승계",
+    "seconds": 0.174,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "인정이자계산기",
+    "group": "법인·대표 전략",
+    "seconds": 0.17,
+    "exceptions": [],
+    "errors": [
+      "이자율 선택 요건·특수관계·상계 가능성·적용 제외액을 먼저 확인해 주세요."
+    ],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "급여vs배당 비교계산기",
+    "group": "법인·대표 전략",
+    "seconds": 0.171,
+    "exceptions": [],
+    "errors": [
+      "손금 요건·배당가능이익·국내 소득 구분 및 비교 가정을 확인해 주세요."
+    ],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "개인사업자·법인 비교계산기",
+    "group": "법인·대표 전략",
+    "seconds": 0.201,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "임원퇴직금 한도계산기",
+    "group": "법인·대표 전략",
+    "seconds": 0.183,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "가지급금 정밀진단계산기",
+    "group": "법인·대표 전략",
+    "seconds": 0.161,
+    "exceptions": [],
+    "errors": [
+      "금리 적용요건과 대표자 상여처분 대상임을 확인한 뒤 계산해 주세요."
+    ],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "이익소각계산기",
+    "group": "법인·대표 전략",
+    "seconds": 0.187,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "법인청산 세부담계산기",
+    "group": "법인·대표 전략",
+    "seconds": 0.195,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "지주회사 수입배당금계산기",
+    "group": "법인·대표 전략",
+    "seconds": 0.183,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "합병 세부담계산기",
+    "group": "법인·대표 전략",
+    "seconds": 0.26,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "키맨리스크계산기",
+    "group": "법인·대표 전략",
+    "seconds": 0.182,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "특허권 자본화계산기",
+    "group": "법인·대표 전략",
+    "seconds": 0.187,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "법인 부동산 보유·양도 비교계산기",
+    "group": "법인·대표 전략",
+    "seconds": 0.197,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "특수관계자 임대료계산기",
+    "group": "법인·대표 전략",
+    "seconds": 0.178,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "법인보험 만기계산기",
+    "group": "법인·대표 전략",
+    "seconds": 0.195,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "창업중소기업 세액감면계산기",
+    "group": "사업·법인 실무",
+    "seconds": 0.242,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "성실신고 대상판정계산기",
+    "group": "사업·법인 실무",
+    "seconds": 0.192,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "법인세계산기",
+    "group": "사업·법인 실무",
+    "seconds": 0.208,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "법인세 중간예납계산기",
+    "group": "사업·법인 실무",
+    "seconds": 0.224,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "부가세 예정신고 선택계산기",
+    "group": "사업·법인 실무",
+    "seconds": 0.199,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "업무용승용차 비용계산기",
+    "group": "사업·법인 실무",
+    "seconds": 0.219,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "접대비 한도계산기",
+    "group": "사업·법인 실무",
+    "seconds": 0.197,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "고용증대 세액공제계산기",
+    "group": "사업·법인 실무",
+    "seconds": 0.19,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "연구인력개발비 세액공제계산기",
+    "group": "사업·법인 실무",
+    "seconds": 0.196,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "직무발명보상금계산기",
+    "group": "사업·법인 실무",
+    "seconds": 0.219,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "이월결손금계산기",
+    "group": "사업·법인 실무",
+    "seconds": 0.214,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "주식매수선택권계산기",
+    "group": "사업·법인 실무",
+    "seconds": 0.159,
+    "exceptions": [],
+    "errors": [
+      "국내 재직 근로소득 및 법정 적용 요건을 확인해 주세요."
+    ],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "사내근로복지기금계산기",
+    "group": "사업·법인 실무",
+    "seconds": 0.189,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "법인 4대보험계산기",
+    "group": "사업·법인 실무",
+    "seconds": 0.211,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "상여금·복리후생비 비교계산기",
+    "group": "사업·법인 실무",
+    "seconds": 0.244,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "DC부담금 한도계산기",
+    "group": "사업·법인 실무",
+    "seconds": 0.33,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  },
+  {
+    "actions": [
+      "예시 입력",
+      "계산하기"
+    ],
+    "name": "정책자금 자격진단계산기",
+    "group": "사업·법인 실무",
+    "seconds": 0.228,
+    "exceptions": [],
+    "errors": [],
+    "warnings": [],
+    "buttons": [
+      "예시 입력",
+      "초기화",
+      "계산하기"
+    ]
+  }
+]

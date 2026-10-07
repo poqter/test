@@ -1,0 +1,145 @@
+{
+  "audit_date": "2026-10-07",
+  "deployed_engine_version": "1.7.2-stage1",
+  "live_briefing_hash_files": 22,
+  "code_matches_release": true,
+  "code_mismatched_files": [],
+  "source_probe": {
+    "generated_at": "2026-10-07T09:28:33.057684+00:00",
+    "project_openai_api_calls": 0,
+    "db_writes": 0,
+    "configured_source_count": 2,
+    "direct_sources": {
+      "fsc_press": {
+        "profiles": [
+          "INSURANCE",
+          "NEWS"
+        ],
+        "source_kind": "official",
+        "configured_endpoint": "http://www.fsc.go.kr/about/fsc_bbs_rss/?fid=0111",
+        "http_requests": 2,
+        "http_status": 503,
+        "final_endpoint": "https://www.fsc.go.kr/about/fsc_bbs_rss/?fid=0111",
+        "content_type": "text/plain;charset=UTF-8",
+        "redirect_count": 1,
+        "error_type": "HTTPError",
+        "failure_reason": "HTTPError",
+        "status": "failed",
+        "dated_candidates": 0,
+        "fresh_candidates": 0,
+        "latest_published_at": null
+      },
+      "mois_press": {
+        "profiles": [
+          "NEWS"
+        ],
+        "source_kind": "official",
+        "configured_endpoint": "https://www.mois.go.kr/gpms/view/jsp/rss/rss.jsp?ctxCd=REDACTED",
+        "http_requests": 1,
+        "http_status": 200,
+        "final_endpoint": "https://www.mois.go.kr/gpms/view/jsp/rss/rss.jsp?ctxCd=REDACTED",
+        "content_type": "text/xml;charset=utf-8",
+        "redirect_count": 0,
+        "response_bytes": 1242541,
+        "feed_format": "rss",
+        "raw_candidates": 26,
+        "status": "ok",
+        "dated_candidates": 26,
+        "fresh_candidates": 15,
+        "latest_published_at": "2026-10-07T07:00:00+00:00"
+      }
+    }
+  },
+  "existing_news_snapshot": {
+    "briefing_date": "2026-10-06",
+    "revision_status": {
+      "publication_status": "draft",
+      "validation_status": "ok",
+      "coverage_status": "degraded"
+    },
+    "coverage_status": "degraded",
+    "source_health": {
+      "fsc_press": {
+        "status": "failed",
+        "profiles": [
+          "INSURANCE",
+          "NEWS"
+        ],
+        "source_kind": "official",
+        "usable_candidates": 0
+      },
+      "mois_press": {
+        "status": "ok",
+        "profiles": [
+          "NEWS"
+        ],
+        "source_kind": "official",
+        "usable_candidates": 8
+      }
+    },
+    "excluded_counts": {
+      "stale": 29,
+      "undated": 43,
+      "missing_identity": 2,
+      "direct_health:fsc_press:failed": 1
+    },
+    "collection_diagnostics": {
+      "lanes": [
+        {
+          "lane_code": "official_industry",
+          "profile_code": "INSURANCE",
+          "raw_candidates": 20,
+          "search_actions": 2,
+          "search_performed": true,
+          "usable_candidates": 0
+        },
+        {
+          "lane_code": "trusted_media",
+          "profile_code": "INSURANCE",
+          "raw_candidates": 17,
+          "search_actions": 2,
+          "search_performed": true,
+          "usable_candidates": 0
+        },
+        {
+          "lane_code": "official_wire_broadcast",
+          "profile_code": "NEWS",
+          "raw_candidates": 19,
+          "search_actions": 2,
+          "search_performed": true,
+          "usable_candidates": 0
+        }
+      ],
+      "publication": {
+        "input": 82,
+        "not_html": 2,
+        "confirmed": 11,
+        "too_large": 1,
+        "cache_hits": 5,
+        "unconfirmed": 12,
+        "fetch_failed": 1,
+        "listing_page": 2,
+        "existing_date": 26,
+        "http_requests": 24,
+        "budget_exhausted": 27
+      },
+      "skipped_lanes": [
+        {
+          "reason": "budget_exhausted",
+          "lane_code": "general_economic_media"
+        }
+      ]
+    }
+  },
+  "tests": {
+    "passed": 182,
+    "subtests_passed": 61,
+    "baseline_passed": 177
+  },
+  "calculator_ui_initial_routes": 88,
+  "calculator_ui_initial_unhandled_exceptions": 0,
+  "calculator_execution_routes": 88,
+  "calculator_example_actions": 77,
+  "calculator_precondition_messages": 6,
+  "live_deployment_modified": false
+}
