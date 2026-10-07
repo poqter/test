@@ -34,7 +34,10 @@ _ICONS = {
 
 
 
-_EXTERNAL_LAUNCH_CACHE_SECONDS = 2.0
+# Launch tickets expire shortly in the database. Reuse the still-valid URL across
+# ordinary Streamlit reruns so sidebar/home redraws do not issue fresh Supabase
+# tickets on every interaction.
+_EXTERNAL_LAUNCH_CACHE_SECONDS = 45.0
 
 
 def _external_launch_url(app: AppSpec) -> str:
@@ -77,7 +80,20 @@ def _external_launch_url(app: AppSpec) -> str:
     return url
 
 
-def _launch_widget(app: AppSpec, label: str, *, key: str, primary: bool = False, help_text: str | None = None) -> bool:
+def _navigate_once(navigate: Callable[..., object], page_id: str, mode: str | None = None) -> None:
+    """Change route in a widget callback; Streamlit supplies the single rerun."""
+    navigate(page_id, mode, state=st.session_state)
+
+
+def _set_home_topic(label: str) -> None:
+    st.session_state["hw_home_topic"] = label
+
+
+def _launch_widget(
+    app: AppSpec, label: str, *, key: str, primary: bool = False,
+    help_text: str | None = None, navigate: Callable[..., object] | None = None,
+    mode: str | None = None,
+) -> bool:
     """Render an internal navigation button or a protected-app new-tab link."""
     if app.external_app_key:
         url = _external_launch_url(app)
@@ -91,12 +107,12 @@ def _launch_widget(app: AppSpec, label: str, *, key: str, primary: bool = False,
             use_container_width=True,
         )
         return False
+    kwargs = {}
+    if navigate is not None:
+        kwargs = {"on_click": _navigate_once, "args": (navigate, app.id, mode)}
     return st.button(
-        label,
-        key=key,
-        help=help_text,
-        type="primary" if primary else "secondary",
-        use_container_width=True,
+        label, key=key, help=help_text,
+        type="primary" if primary else "secondary", use_container_width=True, **kwargs,
     )
 
 def _search_text(app: AppSpec) -> str:
@@ -134,27 +150,23 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
     with st.sidebar:
         with st.container(key="hw_sidebar_header"):
             st.markdown('<div class="sig-brand"><span class="sig-mark">H</span><div><strong>화랑</strong><small>WORKSPACE</small></div></div>', unsafe_allow_html=True)
-            if st.button("홈", icon=":material/home:", key="v2_nav_home", use_container_width=True, type="primary" if st.session_state.get("active_app") == "home" else "secondary"):
-                navigate("home")
+            st.button(
+                "홈", icon=":material/home:", key="v2_nav_home", use_container_width=True,
+                type="primary" if st.session_state.get("active_app") == "home" else "secondary",
+                on_click=_navigate_once, args=(navigate, "home", None),
+            )
             if "briefing" in allowed:
-                origin = st.session_state.get("hw_briefing_return")
-                if isinstance(origin, dict) and st.session_state.get("active_app") not in {"home", "briefing"}:
-                    if st.button("읽던 브리핑으로 돌아가기", key="hw_sidebar_briefing_return", use_container_width=True):
-                        profile = str(origin.get("profile") or "")
-                        view = origin.get("view")
-                        st.session_state["hw_briefing_selected_profile"] = profile
-                        st.session_state["hw_briefing_view_selected"] = view if view in {"오늘 브리핑", "과거 브리핑"} else "오늘 브리핑"
-                        if view == "과거 브리핑":
-                            st.session_state["hw_briefing_history_profile_selected"] = profile
-                            st.session_state["hw_briefing_history_open"] = str(origin.get("date") or "")
-                        st.session_state.pop("hw_briefing_return", None)
-                        navigate("briefing")
-                if st.button("브리핑 센터", icon=":material/newspaper:", key="hw_sidebar_briefing", use_container_width=True, type="primary" if st.session_state.get("active_app") == "briefing" else "secondary"):
-                    navigate("briefing")
+                st.button(
+                    "브리핑 센터", icon=":material/newspaper:", key="hw_sidebar_briefing", use_container_width=True,
+                    type="primary" if st.session_state.get("active_app") == "briefing" else "secondary",
+                    on_click=_navigate_once, args=(navigate, "briefing", None),
+                )
             if "analyzer" in allowed:
                 with st.container(key="hw_sidebar_quick"):
-                    if st.button("보장 분석 시작", icon=":material/shield:", key="hw_sidebar_analyzer", use_container_width=True):
-                        navigate("analyzer")
+                    st.button(
+                        "보장 분석 시작", icon=":material/shield:", key="hw_sidebar_analyzer", use_container_width=True,
+                        on_click=_navigate_once, args=(navigate, "analyzer", None),
+                    )
             query = "" if st.session_state.get("active_app") == "home" else st.text_input("기능 빠른 검색", placeholder="상령일, 문자, 실손…", key="sig_nav_search").strip().lower()
         matched_ids = {app.id for app, _mode in _matches(query, allowed)} if query else allowed
         any_match = False
@@ -165,12 +177,10 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
             any_match = True
             with st.expander(topic[0], expanded=bool(query) or st.session_state.get("active_app") in {app.id for app in apps}):
                 for app in apps:
-                    launched = _launch_widget(
+                    _launch_widget(
                         app, app.label, key="v2_nav_" + app.id,
-                        primary=st.session_state.get("active_app") == app.id,
+                        primary=st.session_state.get("active_app") == app.id, navigate=navigate,
                     )
-                    if launched:
-                        navigate(app.id)
         if query and not any_match:
             st.caption("검색 결과가 없습니다.")
         st.divider()
@@ -184,8 +194,9 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
             item for item in (str(profile.get("organization_name") or ""), str(profile.get("position_name") or "")) if item
         )
         st.caption("접속 계정 · " + account_name + ((" · " + account_meta) if account_meta else ""))
-        if st.button("로그아웃", icon=":material/logout:", key="v2_logout", use_container_width=True):
-            logout()
+        st.button(
+            "로그아웃", icon=":material/logout:", key="v2_logout", use_container_width=True, on_click=logout,
+        )
         st.caption("Planned & Built by 박병선 팀장")
 
 
@@ -245,8 +256,10 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
                 pass
         if "analyzer" in allowed:
             with st.container(key="hw_mobile_quick"):
-                if st.button("보장 분석 시작", icon=":material/shield:", key="hw_feature_launch", use_container_width=True):
-                    navigate("analyzer")
+                st.button(
+                    "보장 분석 시작", icon=":material/shield:", key="hw_feature_launch", use_container_width=True,
+                    on_click=_navigate_once, args=(navigate, "analyzer", None),
+                )
         work_title, work_search = st.columns([1, 1.3], gap="large", vertical_alignment="center")
         with work_title:
             st.subheader("어떤 도구가 필요하세요?")
@@ -261,11 +274,11 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
         with st.container(key="hw_category_navigation"):
             for column, label in zip(st.columns(len(labels), gap="small"), labels):
                 with column:
-                    if st.button(label, key="hw_category_" + label,
-                                 type="primary" if st.session_state["hw_home_topic"] == label else "secondary",
-                                 use_container_width=True):
-                        st.session_state["hw_home_topic"] = label
-                        st.rerun()
+                    st.button(
+                        label, key="hw_category_" + label,
+                        type="primary" if st.session_state["hw_home_topic"] == label else "secondary",
+                        use_container_width=True, on_click=_set_home_topic, args=(label,),
+                    )
         choice = st.session_state["hw_home_topic"]
         selected = next(topic for topic in _HOME_TOPICS if topic[0] == choice)
         if query:
@@ -283,10 +296,8 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
                         icon_key, tone = _HOME_ICON_STYLES.get(app.id, (app.icon_key, "blue"))
                         icon = _ICONS.get(icon_key, _ICONS["materials"])
                         st.markdown(f'<div class="hw-tool-heading"><span class="hw-tool-symbol hw-icon-{tone}" aria-hidden="true">{icon}</span><h3>{html.escape(app.label)}</h3></div><p class="hw-dash-tool-desc">{html.escape(app.description)}</p>', unsafe_allow_html=True)
-                        launched = _launch_widget(
+                        _launch_widget(
                             app, app.label + (" 열기" if app.external_app_key else " 열기 →"), key="hw_home_launch_" + app.id,
-                            help_text=None if app.external_app_key else f"{app.label} 열기",
+                            help_text=None if app.external_app_key else f"{app.label} 열기", navigate=navigate, mode=mode,
                         )
-                        if launched:
-                            navigate(app.id, mode)
         st.markdown('<div class="hw-dash-footer">Planned &amp; Built by 박병선 팀장 · 보험 업무의 복잡함, 더 간단하게.</div>', unsafe_allow_html=True)

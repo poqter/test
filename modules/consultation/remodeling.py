@@ -50,15 +50,10 @@ from modules.consultation.remodeling_exports import (
 
 import re
 import html
-from dataclasses import dataclass, field
 from datetime import date
-from io import BytesIO
 
 import streamlit as st
-from openpyxl import Workbook, load_workbook
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-from openpyxl.utils import get_column_letter
-from openpyxl.worksheet.page import PageMargins
+from modules.shared.runtime_cache import cached, fingerprint
 
 try:
     from modules.shared.ui_components import page_footer, page_header, section_intro, tool_guide
@@ -656,11 +651,16 @@ def run() -> None:
         ready = all(all(f.values()) for f in flags)
         limit = 5 if count == 1 else 4
         overflow = [p.name or f"고객 {i+1}" for i,p in enumerate(people) if len(p.plans)>limit]
-        excel, wb = _editor_excel(people, effective_title, consultation_date, clean(consultant), include_detail)
+        export_sig=fingerprint(APP_VERSION,people,effective_title,consultation_date,clean(consultant),include_detail)
+        def _build_editor_export():
+            excel_bytes,workbook=_editor_excel(people,effective_title,consultation_date,clean(consultant),include_detail)
+            return {"bytes":excel_bytes,"sheetnames":tuple(workbook.sheetnames)}
+        export_payload=cached("export:consultation:remodeling_editor",export_sig,_build_editor_export)
+        excel=export_payload["bytes"]; sheetnames=list(export_payload["sheetnames"])
         with right, st.container(key="rm_live_summary"):
             st.markdown("### 미리보기")
             st.caption("입력 후 Enter 또는 다른 입력칸을 선택하면 갱신됩니다.")
-            previews = st.tabs(wb.sheetnames)
+            previews = st.tabs(sheetnames)
             with previews[0]:
                 _simple_report_preview(people, flags, effective_title, consultation_date, clean(consultant))
             if include_detail:
@@ -671,7 +671,7 @@ def run() -> None:
                 st.error(f"첫 장 표시 한도 초과: {', '.join(overflow)}. 고객별 {limit}건 이내로 정리해야 모든 신규 보험이 첫 장에 표시됩니다.")
             if not ready:
                 _show_download_requirements(count)
-            st.caption(f"출력 구성: {len(wb.sheetnames)}개 시트 · 첫 번째 비교안 A4 가로 한 장")
+            st.caption(f"출력 구성: {len(sheetnames)}개 시트 · 첫 번째 비교안 A4 가로 한 장")
             filename_people = '_'.join(f"{safe_filename(n)}님" for n in display_names)
             st.download_button("엑셀 다운로드", excel, f"{filename_people}_보험리모델링_비교안_{date.today():%Y%m%d}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", type="primary", use_container_width=True, disabled=not ready or bool(overflow))
     page_footer("보험 리모델링", APP_VERSION)

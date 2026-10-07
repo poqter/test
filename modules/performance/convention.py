@@ -12,6 +12,7 @@ from openpyxl.styles import Alignment, Font, Border, Side, PatternFill
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.worksheet.table import Table, TableStyleInfo
 from modules.shared.ui_components import page_footer, page_header, section_intro
+from modules.shared.runtime_cache import cached, digest_bytes, fingerprint
 
 APP_VERSION = "1.0.1"
 
@@ -940,7 +941,8 @@ def run():
         file_bytes = uploaded_file.getvalue()
 
         try:
-            raw = load_df(BytesIO(file_bytes)).copy()
+            upload_sig=digest_bytes(file_bytes)
+            raw=cached("parse:convention:upload",upload_sig,lambda:load_df(BytesIO(file_bytes))).copy(deep=True)
         except Exception as e:
             st.error("자료 처리에 실패했습니다. 파일 형식과 입력 내용을 확인한 뒤 다시 시도해 주세요. [PROCESS_FAILED]")
             return
@@ -1167,11 +1169,10 @@ def run():
         group = make_group(df)
         st.dataframe(format_group_for_display(group), use_container_width=True)
 
-        wb = build_workbook(df, group, excluded_disp_all, review_disp_all)
-
-        excel_output = BytesIO()
-        wb.save(excel_output)
-        excel_output.seek(0)
+        export_sig=fingerprint(APP_VERSION,df,group,excluded_disp_all,review_disp_all)
+        def _build_export():
+            wb=build_workbook(df,group,excluded_disp_all,review_disp_all); out=BytesIO(); wb.save(out); return out.getvalue()
+        excel_output=cached("export:performance:convention",export_sig,_build_export)
 
         st.download_button(
             label="📥 컨벤션 환산 결과 엑셀 다운로드",

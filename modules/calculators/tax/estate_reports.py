@@ -2,12 +2,7 @@
 from io import BytesIO
 from html import escape
 from decimal import Decimal
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from modules.shared.pdf_brand import draw_brand
-from modules.shared.report_fonts import korean_pdf_font
+from modules.shared.runtime_cache import session_export
 
 
 def money(v):
@@ -36,7 +31,14 @@ def summary_rows(result):
     return [(row['항목'],money(row['금액'])) for key in keys for row in result.rows if row['항목']==key and (row['금액'] or key in keys[:4]+keys[-1:])]
 
 
+@session_export("estate-pdf-v1", name_arg=False)
 def pdf_report(result, conditions, funding, stamp, alias='', note='', alignment='왼쪽'):
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate,Paragraph,Spacer,Table,TableStyle
+    from modules.shared.pdf_brand import draw_brand
+    from modules.shared.report_fonts import korean_pdf_font
     font = korean_pdf_font()
     navy=colors.HexColor('#112B49'); pale=colors.HexColor('#EEF4F8')
     body=ParagraphStyle('estate',fontName=font,fontSize=9,leading=13,wordWrap='CJK',textColor=navy)
@@ -70,6 +72,7 @@ def pdf_report(result, conditions, funding, stamp, alias='', note='', alignment=
     return buf.getvalue()
 
 
+@session_export("estate-excel-v1", name_arg=False)
 def excel_report(result,inputs,conditions,funding,stamp,note=''):
     from openpyxl import Workbook
     from openpyxl.styles import Font,PatternFill,Alignment

@@ -335,8 +335,7 @@ def _persist_profile(
             "summary": row.summary,
             "fact_payload": {"why_important": row.why_important},
             "analysis_payload": {"impact_summary": row.impact_summary},
-            "profile_payload": {**row.profile_payload, "validation_status": row.validation_status,
-                                "escalation_required": row.escalation_required},
+            "profile_payload": row.profile_payload,
         })
     db_issues = repo.insert_issues(issue_payloads)
     issue_by_key = {str(row.get("issue_key")): row for row in db_issues}

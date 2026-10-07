@@ -3,7 +3,6 @@ import hashlib
 import uuid
 from io import BytesIO
 import streamlit as st
-import pdfplumber
 from modules.shared.ui_components import page_header, workflow_steps
 from . import claim_workflow as w
 from .claim_reports import build_customer_pdf
@@ -180,6 +179,7 @@ def run():
             st.caption(f'선택 담보 {len(selected)}개 · '+('PDF 포함' if include else 'PDF 미포함'))
         if st.button('PDF 미리보기·생성',type='primary'):
             data=build_customer_pdf(c['claims'],docs,name=name,note=note,accident=accident,coverages=selected if include else [])
+            import pdfplumber
             with pdfplumber.open(BytesIO(data)) as pdf: pages=len(pdf.pages)
             st.session_state['cg_pdf_result']=(w.stable_id([docs,name,note,accident,selected,include,c['claims']]),data,pages)
         token=w.stable_id([docs,name,note,accident,selected,include,c['claims']])
@@ -257,6 +257,7 @@ def coverage_section(c,extract_pdf,guarded_upload):
                 if pages:
                     page=st.selectbox('원본 확인 페이지',pages,key='cg_cov_page_'+key)
                     if st.checkbox('원본 페이지 보기',key='cg_cov_preview_'+key):
+                        import pdfplumber
                         with pdfplumber.open(BytesIO(data)) as pdf:
                             if 1<=page<=len(pdf.pages):st.image(pdf.pages[page-1].to_image(resolution=100).original)
             if st.button('수정 복원',key='cg_cov_restore_'+key):

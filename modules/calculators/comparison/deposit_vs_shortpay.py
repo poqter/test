@@ -1,5 +1,3 @@
-import time
-
 import streamlit as st
 
 from modules.shared.ui_components import page_footer, page_header, section_intro, tool_guide
@@ -717,9 +715,6 @@ def run():
         if not values:
             st.info("네 가지 상담 조건을 확인한 뒤 ‘10년 예상 이익 비교’를 눌러주세요.")
             return
-
-        with st.spinner("예상 결과를 계산하고 있습니다..."):
-            time.sleep(0.25)
 
         monthly = values["monthly"]
         annual_rate = values["annual_rate"]

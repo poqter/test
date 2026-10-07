@@ -2,21 +2,22 @@
 import html
 import io
 
-from reportlab.pdfgen import canvas
-from reportlab.lib.colors import HexColor
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle
-from reportlab.platypus import Paragraph
-
-from modules.shared.pdf_brand import draw_brand
-from modules.shared.report_fonts import korean_pdf_font
+from modules.shared.runtime_cache import session_export
 
 
+@session_export("consultation-question-pdf-v1", name_arg=False)
 def build_question_pdf(title, questions, customer='', consultation_date=''):
     if not title.strip() or not questions or any(not q['text'].strip() for q in questions):
         raise ValueError('제목과 선택한 질문 내용을 입력해 주세요.')
     if len(title)>80 or len(customer)>40 or any(len(q['text'])>500 for q in questions):
         raise ValueError('입력 길이를 확인해 주세요.')
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.colors import HexColor
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.platypus import Paragraph
+    from modules.shared.pdf_brand import draw_brand
+    from modules.shared.report_fonts import korean_pdf_font
     font = korean_pdf_font()
     class NumberedCanvas(canvas.Canvas):
         """Retain page drawing states to add accurate totals in a final pass."""

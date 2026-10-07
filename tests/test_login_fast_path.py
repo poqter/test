@@ -33,7 +33,7 @@ class _FastPathAuth(HwarangAuthService):
             }
         if path == "/rest/v1/rpc/complete_hwarang_workspace_login":
             return [{
-                "platform_session_id": "session-1",
+                "platform_session_id": None,
                 "user_id": "user-1",
                 "login_id": "rockexe",
                 "display_name": "테스트 사용자",
@@ -67,7 +67,7 @@ def test_fast_login_uses_exactly_three_sequential_network_requests():
         "/rest/v1/rpc/complete_hwarang_workspace_login",
     ]
     assert state["login_fast_path"] is True
-    assert state["platform_session_id"] == "session-1"
+    assert state["platform_session_id"] == ""
     assert state["profile"]["organization_name"] == "드림지점"
     assert state["profile"]["position_name"] == "팀장"
     assert state["app_access"]["workspace"] is True
@@ -106,9 +106,20 @@ def test_migration_12_contains_login_fast_path_contract():
     assert "to service_role" in sql.lower()
 
 
-def test_workspace_skips_immediate_heartbeat_and_redundant_home_open_log():
-    app_source = (Path(__file__).resolve().parents[1] / "app.py").read_text(encoding="utf-8")
+def test_migration_17_keeps_login_only_and_removes_presence_session_creation():
+    sql=(Path(__file__).resolve().parents[1]/"supabase"/"migrations"/"17_Workspace_Performance_Login_Only.sql").read_text(encoding="utf-8")
+    complete=sql.split("create or replace function public.complete_hwarang_workspace_login",1)[1]
+    compact=complete.replace(" ","")
+    assert "platform_session_id:=null" in compact
+    assert "LOGIN_SUCCESS" in complete
+    assert "last_login_at=now()" in compact
+    assert "insert into public.hwarang_user_sessions" not in complete.lower()
 
-    assert 'state.get("platform_session_id")' in app_source
-    assert 'st.session_state["hw_last_heartbeat_at"] = time.time()' in app_source
-    assert 'st.session_state["hw_last_activity_app"] = "home"' in app_source
+
+def test_workspace_collects_no_post_login_presence_or_page_activity():
+    app_source=(Path(__file__).resolve().parents[1]/"app.py").read_text(encoding="utf-8")
+    assert "hw_last_heartbeat_at" not in app_source
+    assert "hw_last_activity_app" not in app_source
+    assert "log_activity(" not in app_source
+    assert "heartbeat(" not in app_source
+    assert "close_session(" not in app_source

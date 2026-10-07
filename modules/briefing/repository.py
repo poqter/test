@@ -334,6 +334,54 @@ class BriefingRepository:
             params={"briefing_id": f"eq.{briefing_id}", "select": "*", "order": "revision_no.desc", "limit": "1"},
         ))
 
+    @staticmethod
+    def _in_filter(values: Iterable[str]) -> str:
+        clean = [str(value).strip() for value in values if str(value).strip()]
+        return f"in.({','.join(clean)})"
+
+    def latest_summaries(self, profile_codes: Iterable[str], *, include_draft: bool = False) -> dict[str, dict[str, Any] | None]:
+        codes = tuple(dict.fromkeys(str(code).strip().upper() for code in profile_codes if str(code).strip()))
+        result = {code: None for code in codes}
+        if not codes: return result
+        rows = self._request("GET", "/rest/v1/hwarang_briefings", params={
+            "profile_code": self._in_filter(codes),
+            "select": "id,profile_code,briefing_date,briefing_type,current_published_revision_id,created_at",
+            "order": "briefing_date.desc,created_at.desc", "limit": str(max(10,len(codes)*10)),
+        })
+        if not isinstance(rows,list) or not rows: return result
+        candidates = {code: [] for code in codes}
+        for row in rows:
+            code=str(row.get("profile_code") or "").upper()
+            if code in candidates and len(candidates[code])<10: candidates[code].append(row)
+        briefing_ids=[str(r.get("id")) for group in candidates.values() for r in group if r.get("id")]
+        revision_by_briefing={}; revision_by_id={}
+        if include_draft and briefing_ids:
+            revisions=self._request("GET","/rest/v1/hwarang_briefing_revisions",params={
+                "briefing_id":self._in_filter(briefing_ids),
+                "select":"id,briefing_id,revision_no,revision_type,publication_status,validation_status,coverage_status,generated_at",
+                "order":"revision_no.desc"})
+            for rev in revisions if isinstance(revisions,list) else []:
+                bid=str(rev.get("briefing_id") or "")
+                if bid and bid not in revision_by_briefing: revision_by_briefing[bid]=rev
+        else:
+            ids=[str(r.get("current_published_revision_id")) for group in candidates.values() for r in group if r.get("current_published_revision_id")]
+            if ids:
+                revisions=self._request("GET","/rest/v1/hwarang_briefing_revisions",params={"id":self._in_filter(ids),"select":"id,briefing_id,revision_no,revision_type,publication_status,validation_status,coverage_status,generated_at"})
+                revision_by_id={str(r.get("id")):r for r in (revisions if isinstance(revisions,list) else []) if r.get("id")}
+        selected={}
+        for code,group in candidates.items():
+            for briefing in group:
+                rev=revision_by_briefing.get(str(briefing.get("id") or "")) if include_draft else revision_by_id.get(str(briefing.get("current_published_revision_id") or ""))
+                if rev: selected[code]=(briefing,rev); break
+        ids=[str(pair[1].get("id")) for pair in selected.values() if pair[1].get("id")]
+        if not ids: return result
+        snapshots=self._request("GET","/rest/v1/hwarang_briefing_snapshots",params={"revision_id":self._in_filter(ids),"select":"id,revision_id,fast_brief_payload,today_action_payload,qa_payload,snapshot_created_at"})
+        byrev={str(r.get("revision_id")):r for r in (snapshots if isinstance(snapshots,list) else []) if r.get("revision_id")}
+        for code,(briefing,rev) in selected.items():
+            snap=byrev.get(str(rev.get("id") or ""))
+            if snap: result[code]={"briefing":briefing,"revision":rev,"snapshot":snap}
+        return result
+
     def latest_bundle(self, profile_code: str, *, include_draft: bool = False) -> dict[str, Any] | None:
         briefings = self._request(
             "GET",
@@ -388,17 +436,17 @@ class BriefingRepository:
         issues = self._request(
             "GET",
             "/rest/v1/hwarang_briefing_issues",
-            params={"snapshot_id": f"eq.{snapshot_id}", "select": "*", "order": "selection_tier.asc,sort_order.asc"},
+            params={"snapshot_id": f"eq.{snapshot_id}", "select": "id,snapshot_id,event_id,issue_key,sort_order,category,issue_status,selection_tier,evidence_status,title,summary,fact_payload,analysis_payload", "order": "selection_tier.asc,sort_order.asc"},
         )
         actions = self._request(
             "GET",
             "/rest/v1/hwarang_briefing_actions",
-            params={"snapshot_id": f"eq.{snapshot_id}", "select": "*", "order": "sort_order.asc"},
+            params={"snapshot_id": f"eq.{snapshot_id}", "select": "id,snapshot_id,issue_id,event_id,action_state,communication_state,title,summary,audience_segments,conversation_payload,workspace_actions,sort_order", "order": "sort_order.asc"},
         )
         sources = self._request(
             "GET",
             "/rest/v1/hwarang_briefing_sources",
-            params={"snapshot_id": f"eq.{snapshot_id}", "select": "*", "order": "published_at.desc.nullslast"},
+            params={"snapshot_id": f"eq.{snapshot_id}", "select": "id,snapshot_id,source_name,publisher_name,title,url,canonical_url,published_at", "order": "published_at.desc.nullslast"},
         )
         issue_rows = issues if isinstance(issues, list) else []
         relations: list[dict[str, Any]] = []
@@ -421,25 +469,39 @@ class BriefingRepository:
         }
 
     def history(self, profile_code: str, *, limit: int = 60, include_draft: bool = False) -> list[dict[str, Any]]:
-        rows = self._request(
-            "GET",
-            "/rest/v1/hwarang_briefings",
-            params={"profile_code": f"eq.{profile_code}", "select": "*", "order": "briefing_date.desc", "limit": str(max(1, min(limit, 120)))},
-        )
-        result: list[dict[str, Any]] = []
-        if not isinstance(rows, list):
-            return result
+        rows=self._request("GET","/rest/v1/hwarang_briefings",params={
+            "profile_code":f"eq.{profile_code}","select":"id,profile_code,briefing_date,briefing_type,current_published_revision_id,created_at",
+            "order":"briefing_date.desc","limit":str(max(1,min(limit,120)))})
+        if not isinstance(rows,list) or not rows: return []
+        briefing_ids=[str(r.get("id")) for r in rows if r.get("id")]; byb={}; byid={}
+        if include_draft and briefing_ids:
+            revisions=self._request("GET","/rest/v1/hwarang_briefing_revisions",params={"briefing_id":self._in_filter(briefing_ids),"select":"id,briefing_id,revision_no,revision_type,publication_status,validation_status,coverage_status,generated_at","order":"revision_no.desc"})
+            for rev in revisions if isinstance(revisions,list) else []:
+                bid=str(rev.get("briefing_id") or "")
+                if bid and bid not in byb: byb[bid]=rev
+        else:
+            ids=[str(r.get("current_published_revision_id")) for r in rows if r.get("current_published_revision_id")]
+            if ids:
+                revisions=self._request("GET","/rest/v1/hwarang_briefing_revisions",params={"id":self._in_filter(ids),"select":"id,briefing_id,revision_no,revision_type,publication_status,validation_status,coverage_status,generated_at"})
+                byid={str(r.get("id")):r for r in (revisions if isinstance(revisions,list) else []) if r.get("id")}
+        selected=[]
         for briefing in rows:
-            revision = self._latest_revision(str(briefing["id"])) if include_draft else None
-            if not include_draft and briefing.get("current_published_revision_id"):
-                revision = self._first(self._request(
-                    "GET",
-                    "/rest/v1/hwarang_briefing_revisions",
-                    params={"id": f"eq.{briefing['current_published_revision_id']}", "select": "*", "limit": "1"},
-                ))
-            if revision:
-                result.append({"briefing": briefing, "revision": revision})
-        return result
+            rev=byb.get(str(briefing.get("id") or "")) if include_draft else byid.get(str(briefing.get("current_published_revision_id") or ""))
+            if rev: selected.append((briefing,rev))
+        ids=[str(rev.get("id")) for _,rev in selected if rev.get("id")]; snapshots=[]
+        if ids: snapshots=self._request("GET","/rest/v1/hwarang_briefing_snapshots",params={"revision_id":self._in_filter(ids),"select":"id,revision_id,fast_brief_payload,today_action_payload,qa_payload,snapshot_created_at"})
+        byrev={str(r.get("revision_id")):r for r in (snapshots if isinstance(snapshots,list) else []) if r.get("revision_id")}
+        return [{"briefing":b,"revision":r,"snapshot":byrev[str(r["id"])]} for b,r in selected if str(r.get("id") or "") in byrev]
+
+    def event_updates_many(self, event_ids: Iterable[str], *, limit_per_event: int = 6) -> dict[str,list[dict[str,Any]]]:
+        ids=tuple(dict.fromkeys(str(x).strip() for x in event_ids if str(x).strip()))
+        if not ids: return {}
+        rows=self._request("GET","/rest/v1/hwarang_briefing_event_updates",params={"event_id":self._in_filter(ids),"select":"id,event_id,update_type,evidence_status,title,change_summary,observed_at,effective_at","order":"observed_at.desc"})
+        grouped={x:[] for x in ids}
+        for row in rows if isinstance(rows,list) else []:
+            eid=str(row.get("event_id") or "")
+            if eid in grouped and len(grouped[eid])<max(1,limit_per_event): grouped[eid].append(row)
+        return grouped
 
     def event_updates(self, event_id: str, *, limit: int = 6) -> list[dict[str, Any]]:
         rows = self._request(

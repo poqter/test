@@ -3,6 +3,7 @@ from modules.shared.paths import PROJECT_ROOT
 import json
 import re
 from pathlib import Path
+from functools import lru_cache
 from urllib.parse import urlsplit
 from datetime import date
 
@@ -60,6 +61,7 @@ def validate_catalog(data):
     return result,issues
 
 
+@lru_cache(maxsize=1)
 def load_catalog():
     try:
         with (PROJECT_ROOT/'data/portal_catalog.json').open(encoding='utf-8') as f:return validate_catalog(json.load(f))

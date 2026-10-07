@@ -11,6 +11,7 @@ import re
 import numpy as np
 import hashlib
 from modules.shared.ui_components import page_footer, page_header, section_intro
+from modules.shared.runtime_cache import cached, digest_bytes, fingerprint
 
 APP_VERSION = "1.0.1"
 
@@ -795,7 +796,8 @@ def run():
         download_filename = f"{base_filename}_매니저업적_환산결과.xlsx"
 
         try:
-            raw = load_df_from_bytes(file_bytes).copy()
+            upload_sig=digest_bytes(file_bytes)
+            raw=cached("parse:manager_results:upload",upload_sig,lambda:load_df_from_bytes(file_bytes)).copy(deep=True)
         except Exception as e:
             st.error("자료 처리에 실패했습니다. 파일 형식과 입력 내용을 확인한 뒤 다시 시도해 주세요. [PROCESS_FAILED]")
             return
@@ -1068,17 +1070,10 @@ def run():
             ignore_index=True,
         )
 
-        wb = build_workbook(
-            show_df,
-            group,
-            workbook_exclusions,
-            top_amt,
-            top_cnt,
-        )
-
-        excel_output = BytesIO()
-        wb.save(excel_output)
-        excel_output.seek(0)
+        export_sig=fingerprint(APP_VERSION,show_df,group,workbook_exclusions,top_amt,top_cnt)
+        def _build_export():
+            wb=build_workbook(show_df,group,workbook_exclusions,top_amt,top_cnt); out=BytesIO(); wb.save(out); return out.getvalue()
+        excel_output=cached("export:performance:manager_results",export_sig,_build_export)
 
         st.download_button(
             label="📥 환산 결과 엑셀 다운로드 (TOP3 + 요약 + 수금자별 시트 + 제외사유)",

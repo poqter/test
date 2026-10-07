@@ -75,7 +75,7 @@ def run_phase_b(
     as_of = as_of or datetime.now(timezone.utc)
     direct_sources = list(direct_sources)
     direct_details: dict[str, Any] = {}
-    direct_candidates, direct_health = collect_direct_sources(direct_sources, diagnostics=direct_details, as_of=as_of)
+    direct_candidates, direct_health = collect_direct_sources(direct_sources, diagnostics=direct_details)
     lanes = []
     web_candidates: list[SourceCandidate] = []
     budget = DiscoveryBudget(on_response=on_discovery_response)

@@ -51,12 +51,13 @@ def allowed_ids(role: str | None) -> list[str]:
     return permitted_tools([app_id for app_id in APP_IDS if app_id in permitted and APP_BY_ID[app_id].enabled])
 
 
-def normalize_route(page_id: str | None, role: str | None) -> str:
+def normalize_route(page_id: str | None, role: str | None, *, allowed: list[str] | None = None) -> str:
     if page_id == "home":
         return "home"
     if page_id in APP_BY_ID and APP_BY_ID[page_id].external_app_key:
         return "home"
-    return page_id if page_id in allowed_ids(role) else "home"
+    permitted = allowed if allowed is not None else allowed_ids(role)
+    return page_id if page_id in permitted else "home"
 
 
 def navigate(
@@ -74,7 +75,7 @@ def navigate(
     """
     session = st.session_state if state is None else state
     role = session.get("login_user")
-    target = normalize_route(page_id, role)
+    target = normalize_route(page_id, role, allowed=session.get("ws_allowed_ids"))
     save_legacy_draft(str(session.get("active_app", "home")), state=session)
     from modules.shared.runtime_cache import clear_scope
     old_page = str(session.get("active_app", "home"))
@@ -96,10 +97,11 @@ def navigate(
     return target
 
 
-def dispatch(page_id: str, *, role: str | None = None) -> Any:
+def dispatch(page_id: str, *, role: str | None = None, allowed: list[str] | None = None) -> Any:
     """Recheck permission, lazily import the page, and invoke its entrypoint."""
     effective_role = role if role is not None else st.session_state.get("login_user")
-    if page_id not in allowed_ids(effective_role):
+    permitted = allowed if allowed is not None else allowed_ids(effective_role)
+    if page_id not in permitted:
         st.session_state["active_app"] = "home"
         return None
     spec = APP_BY_ID[page_id]

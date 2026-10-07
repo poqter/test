@@ -8,15 +8,6 @@ import io
 import re
 
 import streamlit as st
-from openpyxl import Workbook
-from openpyxl.styles import Alignment, Font, PatternFill
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4, landscape
-from reportlab.lib.styles import ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-
-from modules.shared.pdf_brand import draw_brand
-from modules.shared.report_fonts import korean_pdf_font, pdf_text
 from modules.shared.session_store import commit_input, reset_page
 
 CHECKED = "2026-09-21"
@@ -80,6 +71,8 @@ def session_notice(prefix):
 
 @session_export("exports-v3")
 def workbook_bytes(title, headers, rows, notes=""):
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
     wb = Workbook()
     ws = wb.active
     ws.title = "상담 비교"
@@ -110,6 +103,12 @@ def workbook_bytes(title, headers, rows, notes=""):
 
 @session_export("exports-v3")
 def pdf_bytes(title, headers, rows, notes="", *, center_table=False):
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from modules.shared.pdf_brand import draw_brand
+    from modules.shared.report_fonts import korean_pdf_font, pdf_text
     font = korean_pdf_font()
     output = io.BytesIO()
     page = landscape(A4)

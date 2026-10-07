@@ -5,12 +5,7 @@ from io import BytesIO
 from typing import Dict, Tuple
 
 import streamlit as st
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4, landscape
-from reportlab.lib.units import mm
-from reportlab.pdfgen import canvas
-
-from modules.shared.pdf_brand import draw_brand
+from modules.shared.runtime_cache import session_export
 
 try:
     from modules.shared.ui_components import page_footer, page_header, section_intro
@@ -222,7 +217,13 @@ def cumulative_premium_chart(current_premium: float, fifth_premium: float) -> No
     )
 
 
+@session_export("silson-generation-pdf-v1", name_arg=False)
 def build_pdf(data: dict) -> bytes:
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.units import mm
+    from reportlab.pdfgen import canvas
+    from modules.shared.pdf_brand import draw_brand
     output = BytesIO()
     page_w, page_h = landscape(A4)
     c = canvas.Canvas(output, pagesize=(page_w, page_h))

@@ -9,26 +9,10 @@ from io import BytesIO
 from typing import Iterable
 
 import pandas as pd
-import pdfplumber
 import streamlit as st
 from modules.shared.upload_ui import guarded_upload
+from modules.shared.runtime_cache import session_export
 import streamlit.components.v1 as components
-from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import mm
-from reportlab.platypus import (
-    BaseDocTemplate,
-    Frame,
-    PageTemplate,
-    Paragraph,
-    Spacer,
-    Table,
-    TableStyle,
-)
-
-from modules.shared.pdf_brand import draw_brand
 
 try:
     from modules.shared.ui_components import page_footer, page_header, section_intro, tool_guide
@@ -792,7 +776,15 @@ def _register_korean_font() -> str:
     from modules.shared.report_fonts import korean_pdf_font
     return korean_pdf_font()
 
+@session_export("insurance-claim-guide-pdf-v1", name_arg=False)
 def build_guide_pdf(selected_claims: list[str], docs: list[DocumentRule], accident_narrative: str = "", include_accident: bool = False) -> bytes:
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.platypus import BaseDocTemplate, Frame, PageTemplate, Paragraph, Spacer, Table, TableStyle
+    from modules.shared.pdf_brand import draw_brand
     font_name = _register_korean_font()
     buffer = BytesIO()
 

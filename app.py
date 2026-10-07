@@ -1,8 +1,6 @@
 """HWARANG WORKSPACE entrypoint: unified account, registry, navigation, and dispatch."""
 from __future__ import annotations
 
-import time
-
 import streamlit as st
 
 from modules.shell.app_registry import APP_DEFINITIONS, USER_PERMISSIONS
@@ -44,8 +42,6 @@ def initialize_state() -> None:
     st.session_state.setdefault("hw_app_access", {})
     st.session_state.setdefault("hw_feature_permissions", set())
     st.session_state.setdefault("hw_platform_session_id", None)
-    st.session_state.setdefault("hw_last_heartbeat_at", 0.0)
-    st.session_state.setdefault("hw_last_activity_app", None)
     st.session_state.setdefault("hw_admin_center_open", False)
     st.session_state.setdefault("hw_admin_center_page", "dashboard")
 
@@ -60,32 +56,12 @@ def _set_authenticated(auth: HwarangAuthService, state: dict) -> None:
     st.session_state["hw_feature_permissions"] = set(state.get("feature_permissions") or ())
     st.session_state["active_app"] = "home"
 
-    # Migration 12 fast path creates the platform session inside the same
-    # post-auth RPC that returns profile/permission context. No extra login-time
-    # network call is needed here.
-    platform_session_id = str(state.get("platform_session_id") or "").strip() or None
-
-    # Compatibility fallback only: if code is deployed before migration 12,
-    # preserve the older behavior rather than breaking login.
-    if not platform_session_id:
-        try:
-            from modules.shared.platform_activity import open_session
-
-            uid = str(profile.get("id") or "")
-            if uid:
-                platform_session_id = open_session(auth, uid, "workspace")
-        except Exception:
-            platform_session_id = None
-
-    st.session_state["hw_platform_session_id"] = platform_session_id
-
-    # The platform session was just created, so an immediate heartbeat is
-    # redundant. Start the five-minute heartbeat window from now.
-    st.session_state["hw_last_heartbeat_at"] = time.time() if platform_session_id else 0.0
-
-    # LOGIN_SUCCESS already records the initial HOME entry. Skip the redundant
-    # APP_OPENED/home request; subsequent page changes are still logged.
-    st.session_state["hw_last_activity_app"] = "home"
+    # Login telemetry is intentionally minimal: the post-auth RPC records only
+    # LOGIN_SUCCESS and profiles.last_login_at. Migration 17 returns no platform
+    # presence-session id; older databases may still return one and are tolerated.
+    st.session_state["hw_platform_session_id"] = (
+        str(state.get("platform_session_id") or "").strip() or None
+    )
 
     for key in ("hw_signup_branches", "hw_signup_verified_code"):
         st.session_state.pop(key, None)
@@ -199,31 +175,20 @@ def allowed_app_ids() -> list[str]:
 def workspace_logout() -> None:
     state = st.session_state.get("hwarang_auth")
     auth = auth_service()
-
-    try:
-        profile = (state or {}).get("profile") or {}
-        uid = str(profile.get("id") or "")
-        if uid:
-            from modules.shared.platform_activity import close_session
-
-            close_session(
-                auth,
-                platform_session_id=st.session_state.get("hw_platform_session_id"),
-                user_id=uid,
-            )
-    except Exception:
-        pass
-
     try:
         auth.sign_out(state)
     except HwarangAuthError:
         pass
 
-    clear_workspace_session()
+    # Normal-user telemetry is login-only. Streamlit supplies the callback rerun.
+    clear_workspace_session(state=st.session_state, rerun=lambda: None)
     st.session_state["hw_platform_session_id"] = None
-    st.session_state["hw_last_heartbeat_at"] = 0.0
-    st.session_state["hw_last_activity_app"] = None
     st.session_state["hw_admin_center_open"] = False
+    st.session_state["hw_admin_center_page"] = "dashboard"
+
+
+def _open_admin_center() -> None:
+    st.session_state["hw_admin_center_open"] = True
     st.session_state["hw_admin_center_page"] = "dashboard"
 
 
@@ -256,54 +221,19 @@ def main() -> None:
     if not render_login(auth):
         st.stop()
 
-    # Sparse presence heartbeat. This is not click-level tracking.
-    try:
-        from modules.shared.platform_activity import heartbeat
-
-        profile = st.session_state.get("login_profile") or {}
-        uid = str(profile.get("id") or "")
-        if uid:
-            st.session_state["hw_last_heartbeat_at"] = heartbeat(
-                auth,
-                platform_session_id=st.session_state.get("hw_platform_session_id"),
-                user_id=uid,
-                last_heartbeat_at=st.session_state.get("hw_last_heartbeat_at", 0.0),
-                interval_seconds=300,
-            )
-    except Exception:
-        pass
 
     permission_role = st.session_state.get("login_user")
     permitted = allowed_ids(permission_role)
     st.session_state["ws_allowed_ids"] = permitted
-    active = normalize_route(st.session_state.get("active_app"), permission_role)
+    active = normalize_route(st.session_state.get("active_app"), permission_role, allowed=permitted)
     st.session_state["active_app"] = active
 
     profile = st.session_state.get("login_profile") or {}
     is_super_admin = profile.get("role") == "super_admin"
     admin_center_open = bool(st.session_state.get("hw_admin_center_open")) and is_super_admin
 
-    # Administrator Center is a dedicated console. While it is open, replace the
-    # normal WORKSPACE sidebar instead of stacking a second navigation system on
-    # top of it.
+    # Administrator Center is a dedicated console. Read-only navigation is not activity telemetry.
     if admin_center_open:
-        try:
-            from modules.shared.platform_activity import log_activity
-
-            uid = str(profile.get("id") or "")
-            if uid and st.session_state.get("hw_last_activity_app") != "__admin_center__":
-                log_activity(
-                    auth,
-                    user_id=uid,
-                    platform_session_id=st.session_state.get("hw_platform_session_id"),
-                    app_code="platform",
-                    event_code="ADMIN_CENTER_OPENED",
-                    feature_code="admin_center",
-                )
-                st.session_state["hw_last_activity_app"] = "__admin_center__"
-        except Exception:
-            pass
-
         from modules.shared.admin_center_ui import (
             render as render_admin_center,
             render_sidebar as render_admin_sidebar,
@@ -313,24 +243,6 @@ def main() -> None:
         render_admin_center(auth)
         return
 
-    # Record meaningful WORKSPACE page changes only, not every Streamlit rerun.
-    if st.session_state.get("hw_last_activity_app") != active:
-        try:
-            from modules.shared.platform_activity import log_activity
-
-            uid = str(profile.get("id") or "")
-            if uid:
-                log_activity(
-                    auth,
-                    user_id=uid,
-                    platform_session_id=st.session_state.get("hw_platform_session_id"),
-                    app_code="workspace",
-                    event_code="APP_OPENED",
-                    feature_code=active,
-                )
-        except Exception:
-            pass
-        st.session_state["hw_last_activity_app"] = active
 
     render_sidebar(permitted, navigate, workspace_logout, NOTICE)
     from modules.shared.build_info import BUILD_ID
@@ -338,10 +250,8 @@ def main() -> None:
     with st.sidebar:
         st.caption("버전 " + BUILD_ID)
         if is_super_admin:
-            if st.button("관리자 센터 →", key="hw_open_admin_center", use_container_width=True):
-                st.session_state["hw_admin_center_open"] = True
-                st.session_state["hw_admin_center_page"] = "dashboard"
-                st.rerun()
+            st.button("관리자 센터 →", key="hw_open_admin_center", use_container_width=True,
+                      on_click=_open_admin_center)
 
     if active == "home":
         render_home(permitted, navigate, NOTICE)
@@ -351,8 +261,7 @@ def main() -> None:
     with st.container(key="hw_task_page"):
         st.markdown('<div class="hw-task-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
         render_workbench(active, permitted, navigate)
-        dispatch(active, role=permission_role)
-    inject_global_styles()
+        dispatch(active, role=permission_role, allowed=permitted)
 
 
 if __name__ == "__main__":

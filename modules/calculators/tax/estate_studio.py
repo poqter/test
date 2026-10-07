@@ -6,6 +6,7 @@ import streamlit as st
 from modules.calculators.tax.estate_calculator import NAME,FIELDS,calculate
 from modules.calculators.input_design import number_input
 from modules.calculators.tax.estate_reports import money,metrics,headline,summary_rows,pdf_report,excel_report
+from modules.shared.runtime_cache import cached, digest_bytes
 
 GROUPS=[
  ('expenses','채무·장례비 등이 있습니다',[4,5,6,7]),
@@ -114,7 +115,7 @@ def run():
     note=st.text_area('고객에게 전할 설명',key='estate_note',height=150,max_chars=10000)
     from pypdf import PdfReader
     pdf=pdf_report(result,conditions,funding,stamp,alias,note,align)
-    pages=len(PdfReader(BytesIO(pdf)).pages)
+    pages=cached("meta:estate:pdf_pages",digest_bytes(pdf),lambda:len(PdfReader(BytesIO(pdf)).pages))
     if pages>1:st.warning(f'현재 PDF는 {pages}장입니다. 설명을 줄이면 분량을 줄일 수 있으며, 그대로 다운로드할 수도 있습니다.')
     c1,c2=st.columns(2)
     c1.download_button('고객용 PDF 다운로드',pdf,'상속세_납부재원_요약.pdf','application/pdf',key='estate_pdf')

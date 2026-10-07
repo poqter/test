@@ -72,6 +72,7 @@ from openpyxl.styles import Alignment, Font, Border, Side, PatternFill
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.worksheet.table import Table, TableStyleInfo
 from modules.shared.ui_components import page_footer, page_header, section_intro
+from modules.shared.runtime_cache import cached, digest_bytes, fingerprint
 
 
 # ── 썸머 기준 ────────────────────────────────────────────────
@@ -332,7 +333,8 @@ def run():
         file_bytes = uploaded_file.getvalue()
 
         try:
-            raw = load_df(BytesIO(file_bytes)).copy()
+            upload_sig=digest_bytes(file_bytes)
+            raw=cached("parse:summer:upload",upload_sig,lambda:load_df(BytesIO(file_bytes))).copy(deep=True)
         except Exception as e:
             st.error("자료 처리에 실패했습니다. 파일 형식과 입력 내용을 확인한 뒤 다시 시도해 주세요. [PROCESS_FAILED]")
             return
@@ -714,21 +716,12 @@ def run():
         file_collector_name = safe_filename_part(selected_collector)
         download_filename = f"{base_filename}_썸머환산결과_{file_collector_name}.xlsx"
 
-        wb = build_workbook(
-            df_all=selected_df,
-            july_df=selected_july_df,
-            august_df=selected_august_df,
-            other_month_df=selected_other_month_df,
-            summary=selected_summary,
-            result=selected_result,
-            excluded_disp=selected_excluded_disp,
-            review_disp=selected_review_disp,
-            selected_collector=selected_collector,
-        )
-
-        excel_output = BytesIO()
-        wb.save(excel_output)
-        excel_output.seek(0)
+        export_sig=fingerprint(APP_VERSION,selected_df,selected_july_df,selected_august_df,selected_other_month_df,selected_summary,selected_result,selected_excluded_disp,selected_review_disp,selected_collector)
+        def _build_export():
+            from modules.performance.summer_exports import build_workbook
+            wb=build_workbook(df_all=selected_df,july_df=selected_july_df,august_df=selected_august_df,other_month_df=selected_other_month_df,summary=selected_summary,result=selected_result,excluded_disp=selected_excluded_disp,review_disp=selected_review_disp,selected_collector=selected_collector)
+            out=BytesIO(); wb.save(out); return out.getvalue()
+        excel_output=cached("export:performance:summer",export_sig,_build_export)
 
         st.download_button(
             label=f"📥 {selected_collector} 썸머 환산 결과 엑셀 다운로드",

@@ -478,6 +478,36 @@ class HwarangAuthService:
             "feature_permissions": sorted(set(feature_permissions)),
         }
 
+    def _workspace_context(self, user_id: str) -> dict[str, Any] | None:
+        """Load profile + app/feature authorization in one RPC when Migration 17 exists."""
+        try:
+            data = self._request(
+                "POST", "/rest/v1/rpc/get_hwarang_workspace_context", admin=True, json={"p_user_id": user_id},
+            )
+        except HwarangAuthError as exc:
+            if str(exc) == "계정 서버 설정을 확인해 주세요.":
+                return None
+            raise
+        row = None
+        if isinstance(data, list) and data and isinstance(data[0], dict): row = dict(data[0])
+        elif isinstance(data, dict): row = dict(data)
+        if not row: return None
+        raw_access = row.get("app_access")
+        app_access = dict(raw_access) if isinstance(raw_access, dict) else {}
+        normalized_access = {code: bool(app_access.get(code)) for code in ("workspace", "calculator", "academy")}
+        raw_permissions = row.get("feature_permissions")
+        permissions = [str(code) for code in (raw_permissions if isinstance(raw_permissions, list) else []) if str(code or "").strip()]
+        return {
+            "profile": {
+                "id": str(row.get("user_id") or user_id), "login_id": str(row.get("login_id") or ""),
+                "display_name": str(row.get("display_name") or ""), "role": str(row.get("role") or "user"),
+                "is_active": bool(row.get("is_active")), "position_code": row.get("position_code"),
+                "position_name": row.get("position_name"), "organization_unit_id": row.get("organization_unit_id"),
+                "organization_name": row.get("organization_name"), "organization_code": row.get("organization_code"),
+            },
+            "app_access": normalized_access, "feature_permissions": sorted(set(permissions)),
+        }
+
     def _legacy_sign_in(self, login_id: str, password: str) -> dict[str, Any]:
         """Compatibility path used only when migration 12 is not yet available."""
         profile = self._profile_by_login_id(login_id)
@@ -653,13 +683,21 @@ class HwarangAuthService:
         profile = updated.get("profile") if isinstance(updated.get("profile"), dict) else {}
         uid = str(profile.get("id") or "")
         if uid and now - last_check >= _PROFILE_REFRESH_SECONDS:
-            latest = self._profile_by_id(uid)
-            if not latest or not latest.get("is_active"):
+            context = self._workspace_context(uid)
+            if context is not None:
+                latest_profile = context["profile"]
+                authorization = {"app_access": context["app_access"], "feature_permissions": context["feature_permissions"]}
+            else:
+                latest = self._profile_by_id(uid)
+                if not latest or not latest.get("is_active"):
+                    raise HwarangAuthError("사용할 수 없는 계정입니다. 관리자에게 문의해 주세요.")
+                latest_profile = self._enrich_profile(latest)
+                authorization = self.authorization_for_user(uid)
+            if not latest_profile or not latest_profile.get("is_active"):
                 raise HwarangAuthError("사용할 수 없는 계정입니다. 관리자에게 문의해 주세요.")
-            authorization = self.authorization_for_user(uid)
             if not authorization["app_access"].get("workspace", False):
                 raise HwarangAuthError("이 계정은 HWARANG WORKSPACE 이용 권한이 없습니다.")
-            updated["profile"] = self._enrich_profile(latest)
+            updated["profile"] = latest_profile
             updated.update(authorization)
             updated["profile_checked_at"] = now
 

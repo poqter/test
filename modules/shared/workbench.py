@@ -49,21 +49,23 @@ def _reset_all_and_home() -> None:
 
 def render_workbench(page: str, allowed: list[str], navigate) -> None:
     with st.container(key="hw_task_toolbar", horizontal=True, horizontal_alignment="right"):
-        if st.button("홈", icon=":material/home:", key="wb_home", type="tertiary"):
-            navigate("home")
+        st.button(
+            "홈", icon=":material/home:", key="wb_home", type="tertiary",
+            on_click=lambda: navigate("home", state=st.session_state),
+        )
         with st.popover("도구 메뉴", icon=":material/more_horiz:"):
             choices = [app_id for app_id in allowed if app_id != page]
             def jump_to_selected():
                 target = st.session_state.get("wb_jump")
                 if target:
-                    navigate(target, rerun=lambda: None)
+                    navigate(target, state=st.session_state)
             st.selectbox("다른 도구로 이동", choices, index=None,
                 format_func=lambda app_id: APP_BY_ID[app_id].label,
                 placeholder="도구 선택", key="wb_jump", on_change=jump_to_selected)
             if st.button("이 도구만 초기화", key="wb_reset"):
                 reset_page_dialog(page)
             from modules.shared.legacy_workflow import render_workflow
-            render_workflow(page)
+            render_workflow(page, allowed=allowed)
             with st.expander("전체 작업 관리"):
                 st.caption("현재 도구 외의 입력도 함께 초기화합니다.")
                 if st.button("전체 작업 초기화", key="wb_reset_all"):

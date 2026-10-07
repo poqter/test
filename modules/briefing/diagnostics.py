@@ -4,10 +4,11 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import hashlib
 import json
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-ENGINE_VERSION = "1.7.4-stage1"
+ENGINE_VERSION = "1.7.2-stage1"
 DIAGNOSTIC_SCHEMA = "briefing-stage1-diagnostics-v2"
 
 
@@ -19,6 +20,7 @@ def release_matches(actual: dict[str, str], manifest: dict[str, Any]) -> tuple[b
     return bool(expected) and not mismatch and manifest.get("engine_version") == ENGINE_VERSION, mismatch
 
 
+@lru_cache(maxsize=1)
 def build_info() -> dict[str, Any]:
     root = Path(__file__).parent
     actual = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(root.glob("*.py"))}

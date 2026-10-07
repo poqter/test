@@ -182,6 +182,14 @@ def _active_recent(value: Any, minutes: int = 10) -> bool:
     except Exception:
         return False
 
+def _logged_in_today(value: Any) -> bool:
+    if not value: return False
+    try:
+        dt=datetime.fromisoformat(str(value).replace("Z","+00:00"))
+        if dt.tzinfo is None: dt=dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(_KST).date()==datetime.now(_KST).date()
+    except Exception: return False
+
 
 def _day_start_utc_iso() -> str:
     now = datetime.now(_KST)
@@ -314,9 +322,13 @@ def _cached_reference_data(auth: HwarangAuthService, actor_id: str) -> dict[str,
 
 def _page_change(page: str) -> None:
     st.session_state["hw_admin_center_page"] = page
-    if page != "accounts":
-        st.session_state.pop("hw_admin_selected_user_id", None)
-    st.rerun()
+    if page != "accounts": st.session_state.pop("hw_admin_selected_user_id", None)
+
+def _exit_admin_center() -> None:
+    st.session_state["hw_admin_center_open"] = False; st.session_state["hw_admin_center_page"] = "dashboard"
+
+def _back_to_accounts() -> None:
+    st.session_state.pop("hw_admin_selected_user_id", None)
 
 
 # ---------------------------------------------------------------------------
@@ -338,23 +350,11 @@ def render_sidebar() -> None:
         for group, items in groups:
             st.caption(group)
             for code, label in items:
-                if st.button(
-                    label,
-                    key=f"hw_admin_nav_{code}",
-                    type="primary" if current == code else "secondary",
-                    use_container_width=True,
-                ):
-                    st.session_state["hw_admin_center_page"] = code
-                    if code != "accounts":
-                        st.session_state.pop("hw_admin_selected_user_id", None)
-                    st.rerun()
+                st.button(label,key=f"hw_admin_nav_{code}",type="primary" if current==code else "secondary",use_container_width=True,on_click=_page_change,args=(code,))
             st.write("")
 
         st.divider()
-        if st.button("← WORKSPACE로 돌아가기", key="hw_admin_exit", use_container_width=True):
-            st.session_state["hw_admin_center_open"] = False
-            st.session_state["hw_last_activity_app"] = None
-            st.rerun()
+        st.button("← WORKSPACE로 돌아가기",key="hw_admin_exit",use_container_width=True,on_click=_exit_admin_center)
 
 
 # ---------------------------------------------------------------------------
@@ -365,49 +365,17 @@ def _render_dashboard(auth: HwarangAuthService, actor_id: str) -> None:
     runtime = _fetch_runtime(auth)
     policy = _fetch_credit_policy(auth)
 
-    recent_logins = _safe_rows(
-        auth,
-        "/rest/v1/hwarang_activity_log",
-        params={
-            "select": "id,user_id,app_code,created_at",
-            "event_code": "eq.LOGIN_SUCCESS",
-            "order": "created_at.desc",
-            "limit": "12",
-        },
-    )
-    sessions = _safe_rows(
-        auth,
-        "/rest/v1/academy_sessions",
-        params={
-            "select": "id,user_id,status,stage,mode,interaction_mode,updated_at,started_at",
-            "order": "updated_at.desc",
-            "limit": "200",
-        },
-    )
-    ai_month = _safe_rows(
-        auth,
-        "/rest/v1/hwarang_ai_usage_log",
-        params={
-            "select": "user_id,ai_role,model,calculated_cost_usd,credits_charged,voice_seconds_charged,created_at",
-            "created_at": "gte." + _month_start_utc_iso(),
-            "order": "created_at.desc",
-            "limit": "3000",
-        },
-    )
-    ai_today = [r for r in ai_month if str(r.get("created_at") or "") >= _day_start_utc_iso()]
-    requests_24h = _safe_rows(
-        auth,
-        "/rest/v1/hwarang_ai_request_registry",
-        params={
-            "select": "user_id,status,block_reason,purpose,created_at",
-            "created_at": "gte." + _last_24h_utc_iso(),
-            "order": "created_at.desc",
-            "limit": "500",
-        },
-    )
+    recent_logins=_cached_admin_read("dashboard:recent_logins",15,lambda:_safe_rows(auth,"/rest/v1/hwarang_activity_log",params={"select":"id,user_id,app_code,created_at","event_code":"eq.LOGIN_SUCCESS","order":"created_at.desc","limit":"12"}))
+    sessions=_cached_admin_read("dashboard:academy_sessions",15,lambda:_safe_rows(auth,"/rest/v1/academy_sessions",params={"select":"id,user_id,status,stage,mode,interaction_mode,updated_at,started_at","order":"updated_at.desc","limit":"200"}))
+    ai_month = _cached_admin_read(
+        "dashboard:ai_month",30,lambda:_safe_rows(auth,"/rest/v1/hwarang_admin_ai_usage_daily_view",params={
+            "select":"usage_day,user_id,ai_role,model,request_count,credits_charged,calculated_cost_usd",
+            "usage_day":"gte."+_month_start_utc_iso(),"order":"usage_day.desc","limit":"1000"}))
+    ai_today = [r for r in ai_month if _logged_in_today(r.get("usage_day"))]
+    requests_24h=_cached_admin_read("dashboard:requests_24h",15,lambda:_safe_rows(auth,"/rest/v1/hwarang_ai_request_registry",params={"select":"user_id,status,block_reason,purpose,created_at","created_at":"gte."+_last_24h_utc_iso(),"order":"created_at.desc","limit":"500"}))
 
     total_users = len(users)
-    active_users = sum(1 for u in users if _active_recent(u.get("recent_seen_at")))
+    today_logins = sum(1 for u in users if _logged_in_today(u.get("last_login_at")))
     in_progress = [s for s in sessions if s.get("status") == "in_progress"]
     today_cost = sum(float(r.get("calculated_cost_usd") or 0) for r in ai_today)
 
@@ -415,7 +383,7 @@ def _render_dashboard(auth: HwarangAuthService, actor_id: str) -> None:
     with cols[0]:
         _metric_card("전체 사용자", f"{total_users:,}", f"활성 {sum(1 for u in users if u.get('is_active')):,}")
     with cols[1]:
-        _metric_card("현재 접속", f"{active_users:,}", "최근 10분 기준")
+        _metric_card("오늘 로그인", f"{today_logins:,}", "KST 기준 고유 사용자")
     with cols[2]:
         voice_now = sum(1 for s in in_progress if s.get("interaction_mode") == "VOICE")
         _metric_card("진행 중 ACADEMY", f"{len(in_progress):,}", f"Voice {voice_now:,}")
@@ -810,12 +778,10 @@ def _render_accounts(auth: HwarangAuthService, actor_id: str) -> None:
             st.rerun()
 
 def _render_user_header(user: dict[str, Any]) -> None:
-    if st.button("← 계정 목록", key="hw_admin_back_users"):
-        st.session_state.pop("hw_admin_selected_user_id", None)
-        st.rerun()
+    st.button("← 계정 목록",key="hw_admin_back_users",on_click=_back_to_accounts)
     name = str(user.get("display_name") or user.get("login_id") or "사용자")
     initial = html.escape(name[:2].upper())
-    state_chip = _chip("활동 중", "good") if _active_recent(user.get("recent_seen_at")) else _chip("비활동", "off")
+    state_chip = _chip("활성 계정", "good") if user.get("is_active") else _chip("비활성 계정", "off")
     role = _ROLE_LABELS.get(str(user.get("system_role_code") or "user"), str(user.get("system_role_name") or "일반 사용자"))
     st.markdown(
         f"""
@@ -837,7 +803,7 @@ def _render_user_detail(auth: HwarangAuthService, actor_id: str, user: dict[str,
     current = st.session_state.setdefault("hw_admin_user_page", "overview")
     page = st.segmented_control(
         "사용자 상세",
-        ["overview", "permissions", "activity", "academy", "ai"],
+        ["overview", "permissions", "academy", "ai"],
         default=current,
         format_func=lambda x: {
             "overview": "개요",
@@ -852,60 +818,27 @@ def _render_user_detail(auth: HwarangAuthService, actor_id: str, user: dict[str,
 
     uid = str(user["user_id"])
     if page == "overview":
-        _user_overview(auth, uid)
+        _user_overview(auth, uid, user)
     elif page == "permissions":
         _user_permissions(auth, actor_id, uid)
-    elif page == "activity":
-        _user_activity(auth, uid)
     elif page == "academy":
         _user_academy(auth, uid)
     else:
         _user_ai(auth, actor_id, uid)
 
 
-def _user_overview(auth: HwarangAuthService, uid: str) -> None:
-    since = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
-    activity = _safe_rows(
-        auth,
-        "/rest/v1/hwarang_activity_log",
-        params={
-            "select": "id,event_code,app_code,outcome,created_at",
-            "user_id": f"eq.{uid}",
-            "created_at": "gte." + since,
-            "order": "created_at.desc",
-            "limit": "500",
-        },
-    )
-    sessions = _safe_rows(
-        auth,
-        "/rest/v1/academy_sessions",
-        params={
-            "select": "id,status,mode,stage,interaction_mode,started_at,ended_at",
-            "user_id": f"eq.{uid}",
-            "started_at": "gte." + since,
-            "order": "started_at.desc",
-            "limit": "200",
-        },
-    )
-    credit = get_training_credit_status(auth, uid)
-    cols = st.columns(4)
-    cols[0].metric("최근 30일 활동", len(activity))
-    cols[1].metric("ACADEMY Session", len(sessions))
-    cols[2].metric("완료 Session", sum(1 for s in sessions if s.get("status") == "completed"))
-    cols[3].metric("훈련 크레딧", f"{credit.available_credits:,}" if credit else "-")
-
+def _user_overview(auth: HwarangAuthService, uid: str, user: dict[str, Any]) -> None:
+    since=(datetime.now(timezone.utc)-timedelta(days=30)).isoformat()
+    sessions=_safe_rows(auth,"/rest/v1/academy_sessions",params={"select":"id,status,mode,stage,interaction_mode,started_at,ended_at","user_id":f"eq.{uid}","started_at":"gte."+since,"order":"started_at.desc","limit":"200"})
+    credit=get_training_credit_status(auth,uid)
+    cols=st.columns(4); cols[0].metric("최근 로그인",_fmt_relative(user.get("last_login_at"))); cols[1].metric("ACADEMY Session",len(sessions)); cols[2].metric("완료 Session",sum(1 for row in sessions if row.get("status")=="completed")); cols[3].metric("훈련 크레딧",f"{credit.available_credits:,}" if credit else "-")
     if credit:
-        st.markdown('<div class="hw-section-head">크레딧 구성</div>', unsafe_allow_html=True)
-        c1, c2, c3 = st.columns(3)
-        c1.metric("이번 달 기본", f"{credit.monthly_available_credits:,}")
-        c2.metric("구매/추가", f"{credit.purchased_available_credits:,}")
-        c3.metric("Voice", f"{credit.voice_available_seconds / 60:.0f}분")
-        st.caption("월 기본 크레딧이 먼저 사용되며 구매/추가 크레딧은 만료되지 않습니다.")
+        st.markdown('<div class="hw-section-head">크레딧 구성</div>',unsafe_allow_html=True); c1,c2,c3=st.columns(3); c1.metric("이번 달 기본",f"{credit.monthly_available_credits:,}"); c2.metric("구매/추가",f"{credit.purchased_available_credits:,}"); c3.metric("Voice",f"{credit.voice_available_seconds/60:.0f}분"); st.caption("월 기본 크레딧이 먼저 사용되며 구매/추가 크레딧은 만료되지 않습니다.")
 
 
 def _apply_user_changes(auth: HwarangAuthService, actor_id: str, uid: str, changes: dict[str, Any]) -> None:
     auth.admin_apply_user_changes(actor_user_id=actor_id, target_user_id=uid, **changes)
-    st.session_state.pop("hw_admin_reference_cache", None)
+    st.session_state.pop("hw_admin_reference_cache", None); _clear_admin_read_cache()
     st.success("계정과 권한을 저장했습니다.")
     st.rerun()
 
@@ -1028,36 +961,6 @@ def _user_permissions(auth: HwarangAuthService, actor_id: str, uid: str) -> None
         if c2.button("위험 변경 적용", key=f"hw_apply_danger_{uid}", type="primary", use_container_width=True):
             st.session_state.pop(pending_key, None)
             _apply_user_changes(auth, actor_id, uid, pending)
-
-
-def _user_activity(auth: HwarangAuthService, uid: str) -> None:
-    days = st.segmented_control(
-        "조회 기간",
-        [7, 30, 90],
-        default=30,
-        format_func=lambda value: f"최근 {value}일",
-        key=f"hw_user_activity_days_{uid}",
-    ) or 30
-    since = (datetime.now(timezone.utc) - timedelta(days=int(days))).isoformat()
-    rows = _safe_rows(
-        auth,
-        "/rest/v1/hwarang_activity_log",
-        params={
-            "select": "id,app_code,event_code,feature_code,outcome,created_at",
-            "user_id": f"eq.{uid}",
-            "created_at": f"gte.{since}",
-            "order": "created_at.desc",
-            "limit": "200",
-        },
-    )
-    display = [{
-        "시간": _fmt_dt(r.get("created_at")),
-        "앱": _APP_LABELS.get(str(r.get("app_code") or ""), str(r.get("app_code") or "").upper()),
-        "활동": _EVENT_LABELS.get(str(r.get("event_code") or ""), str(r.get("event_code") or "-")),
-        "기능": r.get("feature_code") or "-",
-        "결과": r.get("outcome") or "-",
-    } for r in rows]
-    st.dataframe(display, hide_index=True, use_container_width=True)
 
 
 def _user_academy(auth: HwarangAuthService, uid: str) -> None:
@@ -1268,99 +1171,17 @@ def _pager(prefix: str, page: int, has_next: bool) -> int:
 
 
 def _render_activity(auth: HwarangAuthService, actor_id: str) -> None:
-    users = _fetch_users(auth)
-    user_map = {str(u.get("user_id")): u for u in users}
-    tab = st.segmented_control(
-        "로그 종류",
-        ["user", "admin"],
-        default="user",
-        format_func=lambda x: "사용자 활동" if x == "user" else "관리자 감사 로그",
-        label_visibility="collapsed",
-        key="hw_admin_activity_tab_v2",
-    )
-    page_size = 100
-
-    if tab == "admin":
-        logs = auth.admin_audit_log(actor_id, limit=200)
-        table = [{
-            "시간": _fmt_dt(r.get("created_at")),
-            "관리자": (user_map.get(str(r.get("actor_user_id"))) or {}).get("display_name") or r.get("actor_user_id"),
-            "대상": (user_map.get(str(r.get("target_user_id"))) or {}).get("display_name") or r.get("target_user_id") or "-",
-            "작업": _ADMIN_ACTION_LABELS.get(str(r.get("action") or ""), str(r.get("action") or "-")),
-        } for r in logs]
-        st.dataframe(table, hide_index=True, use_container_width=True)
-        return
-
-    c1, c2, c3 = st.columns(3)
-    app = c1.selectbox("앱", ["전체", "workspace", "calculator", "academy", "platform"])
-    outcome = c2.selectbox("결과", ["전체", "success", "info", "blocked", "failed"])
-    page_size = c3.selectbox("페이지 크기", [50, 100, 200], index=1)
-    page_key = "hw_activity_user_page"
-    page = int(st.session_state.get(page_key, 0))
-    params: dict[str, Any] = {
-        "select": "id,user_id,app_code,event_code,feature_code,outcome,created_at",
-        "order": "created_at.desc",
-        "limit": str(page_size),
-        "offset": str(page * page_size),
-    }
-    if app != "전체":
-        params["app_code"] = f"eq.{app}"
-    if outcome != "전체":
-        params["outcome"] = f"eq.{outcome}"
-    rows = _safe_rows(auth, "/rest/v1/hwarang_activity_log", params=params)
-    table = [{
-        "시간": _fmt_dt(r.get("created_at")),
-        "사용자": (user_map.get(str(r.get("user_id"))) or {}).get("display_name") or "-",
-        "앱": _APP_LABELS.get(str(r.get("app_code") or ""), str(r.get("app_code") or "").upper()),
-        "활동": _EVENT_LABELS.get(str(r.get("event_code") or ""), str(r.get("event_code") or "-")),
-        "기능": r.get("feature_code") or "-",
-        "결과": r.get("outcome") or "-",
-    } for r in rows]
-    event = st.dataframe(
-        table,
-        hide_index=True,
-        use_container_width=True,
-        on_select="rerun",
-        selection_mode="single-row",
-        key="hw_activity_table_v2",
-    )
-    try:
-        selected = int(event.selection.rows[0])
-    except Exception:
-        selected = -1
-    if 0 <= selected < len(rows):
-        raw = rows[selected]
-        with st.expander("선택 로그 상세"):
-            st.code(
-                f"event_code: {raw.get('event_code')}\nfeature_code: {raw.get('feature_code')}\noutcome: {raw.get('outcome')}",
-                language="text",
-            )
-    _pager("hw_activity_user", page, len(rows) == page_size)
+    """Legacy route compatibility: show only state-changing admin audit."""
+    users=_fetch_users(auth); user_map={str(u.get("user_id")):u for u in users}; logs=auth.admin_audit_log(actor_id,limit=200)
+    table=[{"시간":_fmt_dt(r.get("created_at")),"관리자":(user_map.get(str(r.get("actor_user_id"))) or {}).get("display_name") or r.get("actor_user_id"),"대상":(user_map.get(str(r.get("target_user_id"))) or {}).get("display_name") or r.get("target_user_id") or "-","작업":_ADMIN_ACTION_LABELS.get(str(r.get("action") or ""),str(r.get("action") or "-"))} for r in logs]
+    st.dataframe(table,hide_index=True,use_container_width=True)
 
 
 def _render_academy(auth: HwarangAuthService) -> None:
     users = _fetch_users(auth)
     user_map = {str(u.get("user_id")): u for u in users}
-    sessions_recent = _safe_rows(
-        auth,
-        "/rest/v1/academy_sessions",
-        params={
-            "select": "id,user_id,status,interaction_mode,started_at,ended_at,updated_at",
-            "started_at": "gte." + _day_start_utc_iso(),
-            "order": "started_at.desc",
-            "limit": "1000",
-        },
-    )
-    assessments_today = _safe_rows(
-        auth,
-        "/rest/v1/academy_assessments",
-        params={
-            "select": "id,user_id,overall_score,generated_at",
-            "generated_at": "gte." + _day_start_utc_iso(),
-            "order": "generated_at.desc",
-            "limit": "1000",
-        },
-    )
+    sessions_recent = _cached_admin_read("academy:today_sessions",15,lambda:_safe_rows(auth,"/rest/v1/academy_sessions",params={"select":"id,user_id,status,interaction_mode,started_at,ended_at,updated_at","started_at":"gte."+_day_start_utc_iso(),"order":"started_at.desc","limit":"1000"}))
+    assessments_today = _cached_admin_read("academy:today_assessments",15,lambda:_safe_rows(auth,"/rest/v1/academy_assessments",params={"select":"id,user_id,overall_score,generated_at","generated_at":"gte."+_day_start_utc_iso(),"order":"generated_at.desc","limit":"1000"}))
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("오늘 시작", len(sessions_recent))
     c2.metric("오늘 완료", sum(1 for s in sessions_recent if s.get("status") == "completed"))
@@ -1427,110 +1248,40 @@ def _render_academy(auth: HwarangAuthService) -> None:
 
 
 def _render_ai(auth: HwarangAuthService) -> None:
-    users = _fetch_users(auth)
-    user_map = {str(u.get("user_id")): u for u in users}
-    policy = _fetch_credit_policy(auth)
-    usage = _safe_rows(
-        auth,
-        "/rest/v1/hwarang_ai_usage_log",
-        params={
-            "select": "user_id,ai_role,model,input_tokens,cached_tokens,output_tokens,credits_charged,voice_seconds_charged,calculated_cost_usd,status,created_at",
-            "created_at": "gte." + _month_start_utc_iso(),
-            "order": "created_at.desc",
-            "limit": "5000",
-        },
-    )
-    requests = _safe_rows(
-        auth,
-        "/rest/v1/hwarang_ai_request_registry",
-        params={
-            "select": "user_id,purpose,billing_bucket,status,actual_credits,actual_voice_seconds,block_reason,created_at",
-            "created_at": "gte." + _month_start_utc_iso(),
-            "order": "created_at.desc",
-            "limit": "3000",
-        },
-    )
-    today_usage = [r for r in usage if str(r.get("created_at") or "") >= _day_start_utc_iso()]
-    total_cost = sum(float(r.get("calculated_cost_usd") or 0) for r in usage)
-    today_cost = sum(float(r.get("calculated_cost_usd") or 0) for r in today_usage)
-    voice_seconds = sum(int(r.get("voice_seconds_charged") or 0) for r in usage)
-    failed = [r for r in requests if r.get("status") in ("blocked", "failed") or r.get("block_reason")]
-
-    cols = st.columns(5)
-    cols[0].metric("오늘 AI 비용", f"${today_cost:,.2f}")
-    cols[1].metric("이번 달 AI 비용", f"${total_cost:,.2f}")
-    cols[2].metric("Text/평가 요청", sum(1 for r in usage if str(r.get("ai_role")) != "VOICE"))
-    cols[3].metric("Voice 사용", f"{voice_seconds / 60:.1f}분")
-    cols[4].metric("차단/실패", len(failed))
-
-    budget = float(policy.get("monthly_ai_budget_usd") or 0)
-    budget_warning = int(policy.get("budget_warning_percent") or 80)
-    if budget > 0:
-        ratio = total_cost / budget * 100
-        st.markdown("##### 월 AI 운영 예산")
-        st.progress(min(1.0, max(0.0, ratio / 100)))
-        st.caption(f"${total_cost:,.2f} / ${budget:,.2f} · {ratio:.1f}% 사용 · {budget_warning}%부터 관리자 경고")
-
-    by_user: dict[str, dict[str, Any]] = {}
-    by_model: dict[str, dict[str, Any]] = {}
+    users=_fetch_users(auth); user_map={str(u.get("user_id")):u for u in users}; policy=_fetch_credit_policy(auth)
+    usage=_cached_admin_read("ai:usage_month",30,lambda:_safe_rows(auth,"/rest/v1/hwarang_admin_ai_usage_daily_view",params={
+        "select":"usage_day,user_id,ai_role,model,request_count,input_tokens,cached_tokens,output_tokens,credits_charged,calculated_cost_usd",
+        "usage_day":"gte."+_month_start_utc_iso(),"order":"usage_day.desc","limit":"1500"}))
+    voice_rows=_cached_admin_read("ai:voice_month",30,lambda:_safe_rows(auth,"/rest/v1/hwarang_ai_usage_log",params={
+        "select":"user_id,voice_seconds_charged,created_at","created_at":"gte."+_month_start_utc_iso(),"voice_seconds_charged":"gt.0","limit":"1500"}))
+    failed=_cached_admin_read("ai:failed_month",30,lambda:_safe_rows(auth,"/rest/v1/hwarang_ai_request_registry",params={
+        "select":"id,user_id,purpose,billing_bucket,status,actual_credits,actual_voice_seconds,block_reason,created_at",
+        "created_at":"gte."+_month_start_utc_iso(),"or":"(status.in.(blocked,failed),block_reason.not.is.null)","order":"created_at.desc","limit":"500"}))
+    today=[r for r in usage if _logged_in_today(r.get("usage_day"))]
+    total_cost=sum(float(r.get("calculated_cost_usd") or 0) for r in usage); today_cost=sum(float(r.get("calculated_cost_usd") or 0) for r in today)
+    voice_seconds=sum(int(r.get("voice_seconds_charged") or 0) for r in voice_rows); text_requests=sum(int(r.get("request_count") or 0) for r in usage if str(r.get("ai_role") or "")!="VOICE")
+    cols=st.columns(5); cols[0].metric("오늘 AI 비용",f"${today_cost:,.2f}"); cols[1].metric("이번 달 AI 비용",f"${total_cost:,.2f}"); cols[2].metric("Text/평가 요청",f"{text_requests:,}"); cols[3].metric("Voice 사용",f"{voice_seconds/60:.1f}분"); cols[4].metric("차단/실패",len(failed))
+    budget=float(policy.get("monthly_ai_budget_usd") or 0); warn=int(policy.get("budget_warning_percent") or 80)
+    if budget>0:
+        ratio=total_cost/budget*100; st.markdown("##### 월 AI 운영 예산"); st.progress(min(1.0,max(0.0,ratio/100))); st.caption(f"${total_cost:,.2f} / ${budget:,.2f} · {ratio:.1f}% 사용 · {warn}%부터 관리자 경고")
+    by_user={}; by_model={}
     for row in usage:
-        uid = str(row.get("user_id") or "")
-        slot = by_user.setdefault(uid, {"requests": 0, "credits": 0, "voice_seconds": 0, "cost": 0.0})
-        slot["requests"] += 1
-        slot["credits"] += int(row.get("credits_charged") or 0)
-        slot["voice_seconds"] += int(row.get("voice_seconds_charged") or 0)
-        slot["cost"] += float(row.get("calculated_cost_usd") or 0)
-        model = str(row.get("model") or "-")
-        m = by_model.setdefault(model, {"requests": 0, "cost": 0.0})
-        m["requests"] += 1
-        m["cost"] += float(row.get("calculated_cost_usd") or 0)
-
-    left, right = st.columns(2, gap="large")
+        uid=str(row.get("user_id") or ""); req=int(row.get("request_count") or 0); slot=by_user.setdefault(uid,{"requests":0,"credits":0,"voice_seconds":0,"cost":0.0}); slot["requests"]+=req; slot["credits"]+=int(row.get("credits_charged") or 0); slot["cost"]+=float(row.get("calculated_cost_usd") or 0)
+        model=str(row.get("model") or "-"); m=by_model.setdefault(model,{"requests":0,"cost":0.0}); m["requests"]+=req; m["cost"]+=float(row.get("calculated_cost_usd") or 0)
+    for row in voice_rows:
+        uid=str(row.get("user_id") or ""); by_user.setdefault(uid,{"requests":0,"credits":0,"voice_seconds":0,"cost":0.0})["voice_seconds"]+=int(row.get("voice_seconds_charged") or 0)
+    left,right=st.columns(2,gap="large")
     with left:
-        st.markdown("##### 사용자별")
-        summary = [{
-            "사용자": (user_map.get(uid) or {}).get("display_name") or uid,
-            "호출": v["requests"],
-            "훈련 크레딧": v["credits"],
-            "Voice(분)": round(v["voice_seconds"] / 60, 2),
-            "예상비용(USD)": round(v["cost"], 6),
-        } for uid, v in sorted(by_user.items(), key=lambda item: item[1]["cost"], reverse=True)]
-        if summary:
-            st.dataframe(summary, hide_index=True, use_container_width=True)
-        else:
-            st.caption("아직 실제 AI 호출 기록이 없습니다.")
+        st.markdown("##### 사용자별"); rows=[{"사용자":(user_map.get(uid) or {}).get("display_name") or uid,"호출":v["requests"],"훈련 크레딧":v["credits"],"Voice(분)":round(v["voice_seconds"]/60,2),"예상비용(USD)":round(v["cost"],6)} for uid,v in sorted(by_user.items(),key=lambda x:x[1]["cost"],reverse=True)]; st.dataframe(rows,hide_index=True,use_container_width=True) if rows else st.caption("아직 실제 AI 호출 기록이 없습니다.")
     with right:
-        st.markdown("##### 모델별")
-        model_rows = [{
-            "모델": model,
-            "호출": v["requests"],
-            "예상비용(USD)": round(v["cost"], 6),
-        } for model, v in sorted(by_model.items(), key=lambda item: item[1]["cost"], reverse=True)]
-        if model_rows:
-            st.dataframe(model_rows, hide_index=True, use_container_width=True)
-        else:
-            st.caption("모델 사용 기록이 없습니다.")
-
-    st.markdown("##### 실패 · 차단")
-    blocked_rows = [{
-        "시간": _fmt_dt(r.get("created_at")),
-        "사용자": (user_map.get(str(r.get("user_id"))) or {}).get("display_name") or r.get("user_id"),
-        "용도": r.get("purpose"),
-        "상태": r.get("status"),
-        "사유": r.get("block_reason") or "-",
-    } for r in failed[:200]]
-    if blocked_rows:
-        st.dataframe(blocked_rows, hide_index=True, use_container_width=True)
-    else:
-        st.caption("이번 달 차단/실패 기록이 없습니다.")
-
+        st.markdown("##### 모델별"); rows=[{"모델":m,"호출":v["requests"],"예상비용(USD)":round(v["cost"],6)} for m,v in sorted(by_model.items(),key=lambda x:x[1]["cost"],reverse=True)]; st.dataframe(rows,hide_index=True,use_container_width=True) if rows else st.caption("모델 사용 기록이 없습니다.")
+    st.markdown("##### 실패 · 차단"); blocked=[{"시간":_fmt_dt(r.get("created_at")),"사용자":(user_map.get(str(r.get("user_id"))) or {}).get("display_name") or r.get("user_id"),"용도":r.get("purpose"),"상태":r.get("status"),"사유":r.get("block_reason") or "-"} for r in failed[:200]]; st.dataframe(blocked,hide_index=True,use_container_width=True) if blocked else st.caption("이번 달 차단/실패 기록이 없습니다.")
     with st.expander("상세 원장"):
-        detail = []
-        for r in usage[:500]:
-            item = dict(r)
-            item["사용자"] = (user_map.get(str(r.get("user_id"))) or {}).get("display_name") or r.get("user_id")
-            detail.append(item)
-        st.dataframe(detail, hide_index=True, use_container_width=True)
+        st.caption("상세 원장은 필요할 때만 불러옵니다.")
+        if st.checkbox("상세 원장 불러오기",key="hw_admin_ai_load_detail"):
+            details=_safe_rows(auth,"/rest/v1/hwarang_ai_usage_log",params={"select":"user_id,ai_role,model,input_tokens,cached_tokens,output_tokens,credits_charged,voice_seconds_charged,calculated_cost_usd,status,created_at","created_at":"gte."+_month_start_utc_iso(),"order":"created_at.desc","limit":"500"})
+            for r in details: r["사용자"]=(user_map.get(str(r.get("user_id"))) or {}).get("display_name") or r.get("user_id")
+            st.dataframe(details,hide_index=True,use_container_width=True)
 
 
 # ---------------------------------------------------------------------------

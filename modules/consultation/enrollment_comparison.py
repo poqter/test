@@ -6,15 +6,8 @@ import html, io, json, re
 
 import pandas as pd
 import streamlit as st
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4,landscape
-from reportlab.lib.styles import ParagraphStyle
-from reportlab.pdfgen import canvas
-from reportlab.platypus import Paragraph,Table,TableStyle,SimpleDocTemplate,Spacer
-from pypdf import PdfReader
-from modules.shared.pdf_brand import draw_brand
+from modules.shared.runtime_cache import cached, digest_bytes, session_export
 from modules.shared.ui_components import page_header, workflow_steps, workflow_button
-from modules.shared.report_fonts import korean_pdf_font
 
 EXAMPLES={'암 보장':'일반암 3,000만원 / 유사암 600만원\n암주요치료 포함 (10년 또는 만기 보장)','뇌·심장 보장':'뇌혈관질환 1,000만원 / 허혈성심장질환 1,000만원\n순환계주요치료 포함 (10년 또는 만기 보장)','수술 보장':'1-5종 수술 최대 1,000만원\n질병수술 30만원 / 상해수술 50만원','입원·간병 보장':'질병입원일당 2만원 / 간병인사용일당 10만원','실손의료비':'입원 5,000만원·통원 20만원 보장 / \n자기부담금과 한도 기재','사망·후유장해':'상해사망 1억원 / 상해후유장해 5,000만원','운전자·배상책임':'교통사고처리지원금 2억원 / 일상생활배상책임 1억원'}
 NOTE_EXAMPLE = '각 안의 최종 월 보험료에는 공통 보험료가 포함됩니다. 보장 범위·지급 조건·면책 및 감액기간은 실제 가입설계와 약관을 확인해 주세요.\n\n보장과 보험료의 균형을 고려해 B안을 추천드립니다. 암·뇌·심장 보장을 확보하면서 장기적으로 유지할 수 있는 보험료를 고려한 구성입니다.\n\n보험료 절감이 우선이면 A안, 보장금액 확대가 우선이면 C안을 고려하실 수 있습니다. 기존 보험과의 중복 여부와 고객님의 예산·우선순위를 확인해 최종 선택해 주세요.'
@@ -157,7 +150,14 @@ def table_data(m):
     return headers,rows
 class PageOverflow(ValueError):pass
 
+@session_export("enrollment-comparison-pdf-v1", name_arg=False)
 def build_pdf(m):
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4,landscape
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.platypus import Paragraph,Table,TableStyle,SimpleDocTemplate,Spacer
+    from modules.shared.pdf_brand import draw_brand
+    from modules.shared.report_fonts import korean_pdf_font
     font = korean_pdf_font()
     w,h=landscape(A4);usable=w-64
     body=ParagraphStyle('body',fontName=font,fontSize=10,leading=14,wordWrap='CJK',textColor=colors.HexColor('#112B49'))
@@ -338,7 +338,11 @@ def run():
         headers,rows=table_data(m);st.dataframe(pd.DataFrame(rows,columns=headers),hide_index=True,width='stretch')
         errors=issues(m);pdf=None
         pdf=build_pdf(m)
-        pages=len(PdfReader(io.BytesIO(pdf)).pages)
+        
+        def _page_count():
+            from pypdf import PdfReader
+            return len(PdfReader(io.BytesIO(pdf)).pages)
+        pages=cached("meta:enrollment_comparison:pdf_pages",digest_bytes(pdf),_page_count)
         if pages==1:st.success('A4 가로 한 장 출력 가능')
         else:
             st.warning(f'한 장 분량을 초과하여 총 {pages}페이지로 출력됩니다. 그대로 PDF를 저장할 수 있습니다.')

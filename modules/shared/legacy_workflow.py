@@ -27,7 +27,7 @@ def help_dialog(page):
     st.caption('계산 기준: 기존 업무 코드 유지 · 안내 개편: 8단계 · 제도·약관 최신성 확인일이 아닙니다.')
 
 
-def render_workflow(page):
+def render_workflow(page, allowed=None):
     if page not in WORKFLOWS:
         return
     flow, preparation, checks, caution, related = WORKFLOWS[page]
@@ -42,11 +42,13 @@ def render_workflow(page):
                 st.markdown('- '+check)
             st.info(caution)
         from modules.shell.navigation import allowed_ids, navigate
-        allowed = allowed_ids(st.session_state.get('login_user'))
-        targets = [p for p in related if p in allowed]
+        permitted = allowed if allowed is not None else allowed_ids(st.session_state.get('login_user'))
+        targets = [p for p in related if p in permitted]
         if targets:
             with st.expander('관련 도구로 이동'):
                 st.caption('다른 도구로 이동합니다. 업로드 파일과 계산 결과는 자동 전달하지 않습니다.')
                 for target in targets:
-                    if st.button(APP_BY_ID[target].label, key='ux8_go_'+page+'_'+target, use_container_width=True):
-                        navigate(target)
+                    st.button(
+                        APP_BY_ID[target].label, key='ux8_go_'+page+'_'+target, use_container_width=True,
+                        on_click=lambda t=target: navigate(t, state=st.session_state),
+                    )

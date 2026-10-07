@@ -2,15 +2,17 @@
 from datetime import date
 from html import escape
 from io import BytesIO
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle
-from reportlab.lib.units import mm
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
-from modules.shared.pdf_brand import draw_brand
+from modules.shared.runtime_cache import session_export
 
 
+@session_export("claim-customer-pdf-v1", name_arg=False)
 def build_customer_pdf(claims, documents, *, name='', note='', accident='', coverages=()):
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+    from modules.shared.pdf_brand import draw_brand
     from .insurance_claim_guide import _register_korean_font
     font = _register_korean_font()
     buffer = BytesIO()
