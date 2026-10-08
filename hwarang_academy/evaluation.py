@@ -180,6 +180,20 @@ def _mission_outcome(s:Session) -> dict:
     }
 
 
+def _evidence_gate(s: Session, contract: dict) -> str:
+    if s.scenario_id != 'C07-S01' or contract['criterion_id'] != 'L2':
+        return contract['full_evidence_gate']
+    # Use only facts already disclosed in this round, never the hidden profile.
+    known = []
+    for fact in s.disclosed.values():
+        label, value = str(fact.get('label', '')), str(fact.get('value', ''))
+        if ('보험료' in label or '부담 계약' in label or '보험료' in value) and value:
+            known.append(f'{label}: {value}')
+    context = ' / '.join(known[:4])
+    return ('이 회차에서 확인한 금액과 확실성을 정확하게 요약'
+            + (f' · {context}' if context else ' · 아직 확인하지 않은 금액은 추정하지 않음'))
+
+
 def report(s:Session) -> dict:
     spec=SCENARIOS[s.scenario_id]
     weights=CATEGORIES[s.scenario_id[0]]['rubric_weights']
@@ -209,7 +223,10 @@ def report(s:Session) -> dict:
                 state='full';value=2;reason='V1.1의 연락중단 존중 대체 경로를 이행했습니다.';evidence_nums=sorted(set(evidence_nums+[s.flags['respectful_closure']]))
             if cid=='L2':
                 state='partial';value=1;reason='중단 의사는 수용했습니다. 재확인의 구체성은 대화 복기에서 확인합니다.'
-        rows.append({'id':cid,'axis':axis,'name':CRITERIA[cid]['name'],'gate':contract['full_evidence_gate'],
+        gate = _evidence_gate(s, contract)
+        rows.append({'id':cid,'axis':axis,'name':CRITERIA[cid]['name'],'gate':gate,
+                     'review_turns':uncertain_turns if state=='unresolved' else [],
+                     'next_action':f'{gate}. 한 번에 한 가지 질문으로 확인하고 고객의 답변을 연결해 보세요.' if value != 2 else '',
                      'state':state,'value':value,'reason':reason,'turns':evidence_nums,
                      'evidence':[{'turn':t.number,'text':t.text,'customer':t.response_text} for t in s.turns if t.number in evidence_nums]})
     low=Decimal(0);high=Decimal(0);axes=[]

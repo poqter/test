@@ -16,7 +16,7 @@ LEGACY_PREFIXES: dict[str, tuple[str, ...]] = {
     "inheritance_tax": ("it_",),
     "insurance_claim_guide": ("cg_",),
     "silson_generation_comparison": ("sc_",),
-    "quick_calculators": ("a_", "jc_", "finance_", "cov_", "coverage_", "pp_", "gift_", "wo_", "retirement_", "estate_"),
+    "quick_calculators": ("a_", "hwcalc_", "finance_", "cov_", "coverage_", "pp_", "gift_", "wo_", "retirement_", "estate_"),
     "consultation_helper": ("b_",),
     "comparison_builder": ("c_", "enroll_", "comparison_mode"),
     "insurer_portal": ("f_", "home_insurer_"),
@@ -39,11 +39,11 @@ _SKIP_TOKENS = (
 # Action widgets are events, not draft input. This explicit list also handles
 # sessions saved by older releases, whose drafts contain button booleans.
 _CALCULATOR_ACTION_KEYS = frozenset({
-    "jc_search_clear", "jc_back_catalog", "jc_transfer_apply",
-    "jc_valuation_transfer",
+    "hwcalc_search_clear", "hwcalc_back_catalog", "hwcalc_transfer_apply",
+    "hwcalc_valuation_transfer",
     "estate_explain", "estate_pdf", "estate_excel", "estate_replace_note", "estate_transfer_open",
 })
-_CALCULATOR_ACTION_PREFIXES = ("jc_card_", "jc_purpose_", "jc_category_")
+_CALCULATOR_ACTION_PREFIXES = ("hwcalc_card_", "hwcalc_purpose_", "hwcalc_category_")
 
 
 def _transient_draft_key(key: str) -> bool:
@@ -231,10 +231,10 @@ def restore_legacy_draft(page: str, *, state: MutableMapping[str, Any] | None = 
             del envelope["fields"][key]
     for key, value in get_draft(page, state=session).items():
         if key.startswith(LEGACY_PREFIXES.get(page, ())):
-            if key == "jc_search":
+            if key == "hwcalc_search":
                 # The search widget disappears in detail view; its durable
                 # query may be newer than the saved widget snapshot.
-                value = session.get("jc_catalog_query", value)
+                value = session.get("hwcalc_catalog_query", value)
             session.setdefault(key, copy.deepcopy(value))
 
 

@@ -14,6 +14,9 @@ from hwarang_academy.service import AppState, handle, present
 from modules.shared.external_apps import workspace_url
 from modules.shared.ai_guardrails import get_training_credit_status
 from modules.shared.academy_credit_ui import render_training_credit_strip
+from modules.shared.build_info import BUILD_ID as PLATFORM_BUILD_ID
+from hwarang_academy.history import TrainingHistory, initialize_history, save_history, public_history
+from hwarang_academy.review_export import review_html
 
 
 st.set_page_config(
@@ -183,14 +186,43 @@ def main() -> None:
     if mode not in MODES:
         mode = "GUIDE"
 
+    prior_history = st.session_state.get('_academy_history_state') or {}
+    prior_model = st.session_state.get('_academy_model')
+    prior_owner = (st.session_state.get('_academy_model_owner')
+                   or prior_history.get('user_id')
+                   or getattr(getattr(prior_model, 'session', None), 'user_id', None))
+    if prior_owner and prior_owner != viewer_user_id:
+        for key in ('_academy_model', '_academy_route', '_academy_history_state'):
+            st.session_state.pop(key, None)
+    st.session_state['_academy_model_owner'] = viewer_user_id
+
     route_key = (independent, sid)
     if st.session_state.get("_academy_route") != route_key:
         st.session_state["_academy_route"] = route_key
         st.session_state["_academy_model"] = AppState(independent=independent, selection=sid, mode=mode)
     app = st.session_state["_academy_model"]
 
+    history_client = TrainingHistory(auth, viewer_user_id)
+    history_state = st.session_state.get('_academy_history_state')
+    if not isinstance(history_state, dict) or history_state.get('user_id') != viewer_user_id:
+        history_state = initialize_history(app, history_client) if 'academy.simulator' in feature_permissions else {'available': False, 'rows': [], 'summary': {}}
+        history_state['user_id'] = viewer_user_id
+        st.session_state['_academy_history_state'] = history_state
+    if history_state.get('error') and 'academy.simulator' in feature_permissions:
+        st.warning(history_state['error'])
+        if st.button('기록 연결 다시 확인', key='academy_history_retry'):
+            if app.session:
+                save_history(app, history_client, history_state)
+            else:
+                history_state = initialize_history(app, history_client)
+                history_state['user_id'] = viewer_user_id
+                st.session_state['_academy_history_state'] = history_state
+            st.rerun()
+
     _inject_shell_css(gate=False, independent=independent)
     payload = present(app)
+    payload['learning_history'] = public_history(history_state)
+    payload['platform_build'] = PLATFORM_BUILD_ID
     payload["base_url"] = base_url()
     payload["workspace_url"] = workspace_url()
     payload["feature_permissions"] = sorted(feature_permissions)
@@ -230,15 +262,31 @@ def main() -> None:
 
     if "academy.simulator" in feature_permissions:
         render_training_credit_strip(credit_status)
+        if app.session and app.session.ended:
+            export_payload = present(AppState(session=app.session, independent=True))
+            st.download_button('복기 HTML 저장 ↓', review_html(export_payload).encode('utf-8'),
+                               file_name=f'화랑_상담복기_{app.session.scenario_id}.html',
+                               mime='text/html; charset=utf-8', on_click='ignore', key='academy_review_download')
+            st.caption('대화·평가 근거·미션 결과를 저장합니다. 파일을 열어 인쇄할 수도 있습니다.')
 
     event = component()(model=payload, key="academy_engine_component_v61", default=None)
     if isinstance(event, dict) and event.get("event_id") != app.ack:
         try:
-            if event.get("kind") == "open_simulator" and "academy.simulator" not in feature_permissions:
+            if event.get("kind") != "academy_home" and "academy.simulator" not in feature_permissions:
                 raise ValueError("AI 상담 시뮬레이터 이용 권한이 없습니다.")
-            handle(app, event)
-        except (ValueError, TypeError):
-            app.error = "요청을 확인해 주세요."
+            if event.get('kind') == 'history_open':
+                session, version = history_client.load(str(event.get('session_id') or ''))
+                app.session, app.independent = session, True
+                app.selection, app.mode, app.session_length = session.scenario_id, session.mode, session.session_length
+                app.error, app.ack = '', event.get('event_id')
+                app.revision += 1
+                history_state.update(session_id=session.session_id, version=version)
+            else:
+                handle(app, event)
+                if not app.error and event.get('kind') in ('start', 'send', 'commit', 'examples', 'finish', 'retry', 'retry_new', 'retry_harder'):
+                    save_history(app, history_client, history_state)
+        except (AcademyAuthError, ValueError, TypeError) as exc:
+            app.error = str(exc) or "요청을 확인해 주세요."
             app.ack = event.get("event_id")
         st.rerun()
 

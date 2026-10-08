@@ -122,6 +122,12 @@ class HwarangAuthService:
     @staticmethod
     def _friendly_error(status: int, message: str) -> str:
         low = message.lower()
+        if "rule_history_conflict" in low:
+            return "다른 접속에서 이 상담 기록이 변경됐습니다. 학습 기록에서 다시 열어 최신 상태를 확인해 주세요."
+        if "rule_training_access_denied" in low:
+            return "현재 계정에서 이 상담 기록을 이용할 수 없습니다."
+        if "invalid_or_expired_launch_ticket" in low:
+            return "이미 사용했거나 시간이 지난 연결입니다. 원래 화면의 ‘연결 다시 준비’를 누른 뒤 새 링크로 열어 주세요."
         if "invalid login credentials" in low or "invalid_credentials" in low:
             return "아이디 또는 비밀번호를 확인해 주세요."
         if "email" in low and ("already" in low or "registered" in low or "exists" in low):
@@ -881,4 +887,3 @@ class HwarangAuthService:
             "identity_checked_at": int(time.time()),
             **authorization,
         }
-

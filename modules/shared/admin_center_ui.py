@@ -142,6 +142,30 @@ def _safe_rpc(auth: HwarangAuthService, path: str, payload: dict[str, Any]) -> A
 
 _ADMIN_READ_CACHE_KEY = "hw_admin_read_cache_v1"
 
+
+def _operations_summary(auth: HwarangAuthService) -> dict | None:
+    actor = str((st.session_state.get('login_profile') or {}).get('id') or '')
+    if not actor:
+        return None
+    key = f'operations:{actor}:{datetime.now(_KST).date()}'
+    def load():
+        try:
+            value = auth._request('POST', '/rest/v1/rpc/get_hwarang_admin_operations_summary',
+                                  admin=True, json={'p_actor_user_id': actor})
+            return value if isinstance(value, dict) and isinstance(value.get('ai'), dict) else None
+        except HwarangAuthError:
+            return None
+    return _cached_admin_read(key, 30, load)
+
+
+def _statistics_status(summary: dict | None, key: str) -> None:
+    col, action = st.columns([5, 1])
+    if summary:
+        col.caption('전체 기록 집계 · KST · 마지막 갱신 ' + _fmt_dt(summary.get('updated_at')))
+    else:
+        col.caption('통계 집계 연결 전: 아래 값은 불러온 기록 기준입니다.')
+    action.button('새로고침', key=key, on_click=_clear_admin_read_cache, use_container_width=True)
+
 def _cached_admin_read(cache_key: str, ttl_seconds: int, loader):
     """Cache short-lived admin read results within the current Streamlit session."""
     cache = st.session_state.get(_ADMIN_READ_CACHE_KEY)
@@ -401,6 +425,8 @@ def render_sidebar() -> None:
 # Dashboard
 # ---------------------------------------------------------------------------
 def _render_dashboard(auth: HwarangAuthService, actor_id: str) -> None:
+    operations = _operations_summary(auth)
+    _statistics_status(operations, "hw_dashboard_refresh")
     users = _fetch_users(auth)
     runtime = _fetch_runtime(auth)
     policy = _fetch_credit_policy(auth)
@@ -410,14 +436,14 @@ def _render_dashboard(auth: HwarangAuthService, actor_id: str) -> None:
     ai_month = _cached_admin_read(
         "dashboard:ai_month",30,lambda:_safe_rows(auth,"/rest/v1/hwarang_admin_ai_usage_daily_view",params={
             "select":"usage_day,user_id,ai_role,model,request_count,credits_charged,calculated_cost_usd",
-            "usage_day":"gte."+_month_start_utc_iso(),"order":"usage_day.desc","limit":"1000"}))
+            "usage_day":"gte."+_month_start_utc_iso(),"order":"usage_day.desc","limit":"1000"})) if operations is None else []
     ai_today = [r for r in ai_month if _logged_in_today(r.get("usage_day"))]
     requests_24h=_cached_admin_read("dashboard:requests_24h",15,lambda:_safe_rows(auth,"/rest/v1/hwarang_ai_request_registry",params={"select":"user_id,status,block_reason,purpose,created_at","created_at":"gte."+_last_24h_utc_iso(),"order":"created_at.desc","limit":"500"}))
 
     total_users = len(users)
     today_logins = sum(1 for u in users if _logged_in_today(u.get("last_login_at")))
     in_progress = [s for s in sessions if s.get("status") == "in_progress"]
-    today_cost = sum(float(r.get("calculated_cost_usd") or 0) for r in ai_today)
+    today_cost = float(operations["ai"]["today_cost"]) if operations else sum(float(r.get("calculated_cost_usd") or 0) for r in ai_today)
 
     cols = st.columns(4, gap="medium")
     with cols[0]:
@@ -426,7 +452,9 @@ def _render_dashboard(auth: HwarangAuthService, actor_id: str) -> None:
         _metric_card("오늘 로그인", f"{today_logins:,}", "KST 기준 고유 사용자")
     with cols[2]:
         voice_now = sum(1 for s in in_progress if s.get("interaction_mode") == "VOICE")
-        _metric_card("진행 중 ACADEMY", f"{len(in_progress):,}", f"Voice {voice_now:,}")
+        active_count = int(operations["academy"]["in_progress"]) if operations else len(in_progress)
+        voice_now = int(operations["academy"]["voice_in_progress"]) if operations else voice_now
+        _metric_card("진행 중 ACADEMY", f"{active_count:,}", f"Voice {voice_now:,}")
     with cols[3]:
         _metric_card("오늘 학습 AI 예상비용", f"${today_cost:,.2f}", "상담 훈련·평가·Voice 사용 기록")
 
@@ -522,14 +550,14 @@ def _render_dashboard(auth: HwarangAuthService, actor_id: str) -> None:
             unsafe_allow_html=True,
         )
 
-        st.markdown('<div class="hw-section-head">이번 달 AI 예산</div>', unsafe_allow_html=True)
-        month_cost = sum(float(r.get("calculated_cost_usd") or 0) for r in ai_month)
+        st.markdown('<div class="hw-section-head">이번 달 학습 AI 예산</div>', unsafe_allow_html=True)
+        month_cost = float(operations["ai"]["month_cost"]) if operations else sum(float(r.get("calculated_cost_usd") or 0) for r in ai_month)
         budget = float(policy.get("monthly_ai_budget_usd") or 0)
         budget_warning = int(policy.get("budget_warning_percent") or 80)
         if budget > 0:
             ratio = month_cost / budget * 100
             st.progress(min(1.0, max(0.0, ratio / 100)))
-            st.caption(f"${month_cost:,.2f} / ${budget:,.2f} · {ratio:.1f}% 사용")
+            st.caption(f"USD {month_cost:,.2f} / USD {budget:,.2f} · {ratio:.1f}% 사용")
             if ratio >= budget_warning:
                 st.warning(f"월 AI 예산의 {budget_warning}% 이상을 사용했습니다.")
         else:
@@ -1018,6 +1046,7 @@ def _user_academy(auth: HwarangAuthService, uid: str) -> None:
     for r in sessions:
         display.append({
             "상태": r.get("status"),
+            "훈련": "규칙 기반" if (r.get("metadata") or {}).get("training_engine") == "rules" else "AI/기타",
             "단계": r.get("stage"),
             "시나리오": r.get("scenario_id") or "-",
             "모드": r.get("mode") or "-",
@@ -1218,15 +1247,19 @@ def _render_activity(auth: HwarangAuthService, actor_id: str) -> None:
 
 
 def _render_academy(auth: HwarangAuthService) -> None:
+    operations = _operations_summary(auth)
+    _statistics_status(operations, "hw_academy_refresh")
+    counts = operations.get("academy", {}) if operations else {}
     users = _fetch_users(auth)
     user_map = {str(u.get("user_id")): u for u in users}
-    sessions_recent = _cached_admin_read("academy:today_sessions",15,lambda:_safe_rows(auth,"/rest/v1/academy_sessions",params={"select":"id,user_id,status,interaction_mode,started_at,ended_at,updated_at","started_at":"gte."+_day_start_utc_iso(),"order":"started_at.desc","limit":"1000"}))
-    assessments_today = _cached_admin_read("academy:today_assessments",15,lambda:_safe_rows(auth,"/rest/v1/academy_assessments",params={"select":"id,user_id,overall_score,generated_at","generated_at":"gte."+_day_start_utc_iso(),"order":"generated_at.desc","limit":"1000"}))
+    sessions_recent = _cached_admin_read("academy:today_sessions",15,lambda:_safe_rows(auth,"/rest/v1/academy_sessions",params={"select":"id,user_id,status,interaction_mode,started_at,ended_at,updated_at","started_at":"gte."+_day_start_utc_iso(),"order":"started_at.desc","limit":"1000"})) if operations is None else []
+    assessments_today = _cached_admin_read("academy:today_assessments",15,lambda:_safe_rows(auth,"/rest/v1/academy_assessments",params={"select":"id,user_id,overall_score,evaluator_type,generated_at","generated_at":"gte."+_day_start_utc_iso(),"order":"generated_at.desc","limit":"1000"})) if operations is None else []
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("오늘 시작", len(sessions_recent))
-    c2.metric("오늘 완료", sum(1 for s in sessions_recent if s.get("status") == "completed"))
-    c3.metric("오늘 정식 평가", len(assessments_today))
-    c4.metric("Voice Session", sum(1 for s in sessions_recent if s.get("interaction_mode") == "VOICE"))
+    c1.metric("오늘 시작", counts.get("today_started", len(sessions_recent)))
+    c2.metric("오늘 완료", counts.get("today_completed", sum(1 for s in sessions_recent if s.get("status") == "completed")))
+    c3.metric("오늘 정식 평가", counts.get("today_formal", sum(1 for r in assessments_today if r.get("evaluator_type") in ("ai", "hybrid"))))
+    st.caption(f"오늘 규칙 기반 잠정 평가: {counts.get("today_rules", sum(1 for r in assessments_today if r.get("evaluator_type") == "rules"))}회 · 정식 평가와 별도 집계")
+    c4.metric("Voice Session", counts.get("today_voice", sum(1 for s in sessions_recent if s.get("interaction_mode") == "VOICE")))
 
     tab = st.segmented_control(
         "ACADEMY 종류",
@@ -1246,7 +1279,7 @@ def _render_academy(auth: HwarangAuthService) -> None:
             auth,
             "/rest/v1/academy_sessions",
             params={
-                "select": "id,user_id,status,stage,scenario_id,mode,training_focus,interaction_mode,last_turn_no,started_at,ended_at,updated_at",
+                "select": "id,user_id,status,stage,scenario_id,mode,training_focus,interaction_mode,last_turn_no,started_at,ended_at,updated_at,metadata",
                 "order": "updated_at.desc",
                 "limit": str(page_size),
                 "offset": str(page * page_size),
@@ -1268,7 +1301,7 @@ def _render_academy(auth: HwarangAuthService) -> None:
             auth,
             "/rest/v1/academy_assessments",
             params={
-                "select": "id,user_id,session_id,assessment_type,evaluator_type,overall_score,grade,status,generated_at",
+                "select": "id,user_id,session_id,assessment_type,evaluator_type,overall_score,score_lower,score_upper,grade,status,generated_at",
                 "order": "generated_at.desc",
                 "limit": str(page_size),
                 "offset": str(page * page_size),
@@ -1277,8 +1310,8 @@ def _render_academy(auth: HwarangAuthService) -> None:
         display = [{
             "사용자": (user_map.get(str(r.get("user_id"))) or {}).get("display_name") or r.get("user_id"),
             "평가": r.get("assessment_type"),
-            "Evaluator": r.get("evaluator_type"),
-            "점수": r.get("overall_score"),
+            "평가 방식": "규칙 기반 · 잠정" if r.get("evaluator_type") == "rules" else r.get("evaluator_type"),
+            "점수": r.get("overall_score") if r.get("overall_score") is not None else f"{r.get("score_lower", "—")}–{r.get("score_upper", "—")}",
             "등급": r.get("grade") or "-",
             "상태": r.get("status") or "-",
             "생성": _fmt_dt(r.get("generated_at")),
@@ -1293,34 +1326,45 @@ def _render_academy(auth: HwarangAuthService) -> None:
 
 
 def _render_ai(auth: HwarangAuthService) -> None:
+    operations = _operations_summary(auth)
+    _statistics_status(operations, "hw_ai_refresh")
     st.caption("상담 훈련·평가·Voice의 학습 AI 사용 기록을 집계합니다.")
     users=_fetch_users(auth); user_map={str(u.get("user_id")):u for u in users}; policy=_fetch_credit_policy(auth)
     usage=_cached_admin_read("ai:usage_month",30,lambda:_safe_rows(auth,"/rest/v1/hwarang_admin_ai_usage_daily_view",params={
         "select":"usage_day,user_id,ai_role,model,request_count,input_tokens,cached_tokens,output_tokens,credits_charged,calculated_cost_usd",
-        "usage_day":"gte."+_month_start_utc_iso(),"order":"usage_day.desc","limit":"1500"}))
+        "usage_day":"gte."+_month_start_utc_iso(),"order":"usage_day.desc","limit":"1500"})) if operations is None else []
     voice_rows=_cached_admin_read("ai:voice_month",30,lambda:_safe_rows(auth,"/rest/v1/hwarang_ai_usage_log",params={
-        "select":"user_id,voice_seconds_charged,created_at","created_at":"gte."+_month_start_utc_iso(),"voice_seconds_charged":"gt.0","limit":"1500"}))
+        "select":"user_id,voice_seconds_charged,created_at","created_at":"gte."+_month_start_utc_iso(),"voice_seconds_charged":"gt.0","limit":"1500"})) if operations is None else []
     failed=_cached_admin_read("ai:failed_month",30,lambda:_safe_rows(auth,"/rest/v1/hwarang_ai_request_registry",params={
         "select":"request_id,user_id,purpose,billing_bucket,status,actual_credits,actual_voice_seconds,block_reason,created_at",
         "created_at":"gte."+_month_start_utc_iso(),"or":"(status.in.(blocked,failed),block_reason.not.is.null)","order":"created_at.desc","limit":"500"}))
     today=[r for r in usage if _logged_in_today(r.get("usage_day"))]
     total_cost=sum(float(r.get("calculated_cost_usd") or 0) for r in usage); today_cost=sum(float(r.get("calculated_cost_usd") or 0) for r in today)
     voice_seconds=sum(int(r.get("voice_seconds_charged") or 0) for r in voice_rows); text_requests=sum(int(r.get("request_count") or 0) for r in usage if str(r.get("ai_role") or "")!="VOICE")
-    cols=st.columns(5); cols[0].metric("오늘 학습 AI 비용",f"${today_cost:,.2f}"); cols[1].metric("이번 달 학습 AI 비용",f"${total_cost:,.2f}"); cols[2].metric("Text/평가 요청",f"{text_requests:,}"); cols[3].metric("Voice 사용",f"{voice_seconds/60:.1f}분"); cols[4].metric("차단/실패",len(failed))
+    if operations:
+        totals = operations["ai"]
+        total_cost, today_cost = float(totals["month_cost"]), float(totals["today_cost"])
+        voice_seconds, text_requests = int(totals["voice_seconds"]), int(totals["text_requests"])
+    failure_count = int(operations["ai"]["failed_count"]) if operations else len(failed)
+    cols=st.columns(5); cols[0].metric("오늘 학습 AI 비용",f"${today_cost:,.2f}"); cols[1].metric("이번 달 학습 AI 비용",f"${total_cost:,.2f}"); cols[2].metric("Text/평가 요청",f"{text_requests:,}"); cols[3].metric("Voice 사용",f"{voice_seconds/60:.1f}분"); cols[4].metric("차단/실패",failure_count)
     budget=float(policy.get("monthly_ai_budget_usd") or 0); warn=int(policy.get("budget_warning_percent") or 80)
     if budget>0:
-        ratio=total_cost/budget*100; st.markdown("##### 월 학습 AI 운영 예산"); st.progress(min(1.0,max(0.0,ratio/100))); st.caption(f"${total_cost:,.2f} / ${budget:,.2f} · {ratio:.1f}% 사용 · {warn}%부터 관리자 경고")
+        ratio=total_cost/budget*100; st.markdown("##### 월 학습 AI 운영 예산"); st.progress(min(1.0,max(0.0,ratio/100))); st.caption(f"USD {total_cost:,.2f} / USD {budget:,.2f} · {ratio:.1f}% 사용 · {warn}%부터 관리자 경고")
     by_user={}; by_model={}
     for row in usage:
         uid=str(row.get("user_id") or ""); req=int(row.get("request_count") or 0); slot=by_user.setdefault(uid,{"requests":0,"credits":0,"voice_seconds":0,"cost":0.0}); slot["requests"]+=req; slot["credits"]+=int(row.get("credits_charged") or 0); slot["cost"]+=float(row.get("calculated_cost_usd") or 0)
         model=str(row.get("model") or "-"); m=by_model.setdefault(model,{"requests":0,"cost":0.0}); m["requests"]+=req; m["cost"]+=float(row.get("calculated_cost_usd") or 0)
     for row in voice_rows:
         uid=str(row.get("user_id") or ""); by_user.setdefault(uid,{"requests":0,"credits":0,"voice_seconds":0,"cost":0.0})["voice_seconds"]+=int(row.get("voice_seconds_charged") or 0)
+    if operations:
+        by_user = {str(r["user_id"]): {"requests":int(r["requests"]),"credits":int(r["credits"]),"voice_seconds":int(r["voice_seconds"]),"cost":float(r["cost"])} for r in operations.get("by_user", [])}
+        by_model = {str(r["model"]): {"requests":int(r["requests"]),"cost":float(r["cost"])} for r in operations.get("by_model", [])}
     left,right=st.columns(2,gap="large")
     with left:
         st.markdown("##### 사용자별"); rows=[{"사용자":(user_map.get(uid) or {}).get("display_name") or uid,"호출":v["requests"],"훈련 크레딧":v["credits"],"Voice(분)":round(v["voice_seconds"]/60,2),"예상비용(USD)":round(v["cost"],6)} for uid,v in sorted(by_user.items(),key=lambda x:x[1]["cost"],reverse=True)]; st.dataframe(rows,hide_index=True,use_container_width=True) if rows else st.caption("아직 실제 AI 호출 기록이 없습니다.")
     with right:
         st.markdown("##### 모델별"); rows=[{"모델":m,"호출":v["requests"],"예상비용(USD)":round(v["cost"],6)} for m,v in sorted(by_model.items(),key=lambda x:x[1]["cost"],reverse=True)]; st.dataframe(rows,hide_index=True,use_container_width=True) if rows else st.caption("모델 사용 기록이 없습니다.")
+    st.caption("실패·차단 목록은 최근 200건을 표시하며, 위 총계는 전체 기록을 집계합니다." if operations else "실패·차단 목록은 조회된 기록 기준입니다.")
     st.markdown("##### 실패 · 차단"); blocked=[{"시간":_fmt_dt(r.get("created_at")),"사용자":(user_map.get(str(r.get("user_id"))) or {}).get("display_name") or r.get("user_id"),"용도":r.get("purpose"),"상태":r.get("status"),"사유":r.get("block_reason") or "-"} for r in failed[:200]]; st.dataframe(blocked,hide_index=True,use_container_width=True) if blocked else st.caption("이번 달 차단/실패 기록이 없습니다.")
     with st.expander("상세 원장"):
         st.caption("상세 원장은 필요할 때만 불러옵니다.")

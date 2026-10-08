@@ -27,16 +27,16 @@ def run(*, isolated=False, fixed_name=None):
     from modules.calculators.drafts import activate, capture
     from modules.calculators.valuation_transfer import apply_pending
     isolated = bool(isolated)
-    st.session_state['jc_isolated_single'] = isolated
+    st.session_state['hwcalc_isolated_single'] = isolated
     if isolated:
         if fixed_name not in ITEMS:
             st.error('유효한 독립 계산기 링크가 아닙니다.')
             return
         selected = fixed_name
-        st.session_state.pop('jc_valuation_transfer', None)
+        st.session_state.pop('hwcalc_valuation_transfer', None)
     else:
-        pending = st.session_state.get('jc_valuation_transfer')
-        selected = pending[0] if pending else st.session_state.get('jc_open')
+        pending = st.session_state.get('hwcalc_valuation_transfer')
+        selected = pending[0] if pending else st.session_state.get('hwcalc_open')
     if selected:
         activate(selected)
     else:
@@ -53,23 +53,23 @@ def run(*, isolated=False, fixed_name=None):
 
 
 def _render(*, isolated=False, fixed_name=None):
-    notice = st.session_state.pop('jc_transfer_notice', None)
+    notice = st.session_state.pop('hwcalc_transfer_notice', None)
     if notice:
         st.info(notice)
-    if not isolated and not st.session_state.get('jc_open'):
+    if not isolated and not st.session_state.get('hwcalc_open'):
         page_header('화랑 CALCULATOR', '종합 계산기 센터 (88개)', '보험·생활자금·연금·재무·세금·법인 의사결정을 위한 88개 통합 계산 도구', 'QC')
     if notice:
-        st.session_state['jc_open'] = st.session_state.get('jc_selected')
+        st.session_state['hwcalc_open'] = st.session_state.get('hwcalc_selected')
     from modules.calculators.catalog_browser import render_catalog, back_to_catalog
     permissions = set(st.session_state.get('hw_feature_permissions') or ())
     allowed_groups = tuple(group for group in GROUPS if CALCULATOR_GROUP_PERMISSION.get(group) in permissions)
     allowed_items = {name: value for name, value in ITEMS.items() if value[0] in allowed_groups}
-    active = fixed_name if isolated else st.session_state.get('jc_open')
+    active = fixed_name if isolated else st.session_state.get('hwcalc_open')
     if active and active not in allowed_items:
         st.warning('이 계정에는 해당 계산기 분류 이용 권한이 없습니다.')
         if not isolated:
-            st.session_state.pop('jc_open', None)
-            st.session_state.pop('jc_selected', None)
+            st.session_state.pop('hwcalc_open', None)
+            st.session_state.pop('hwcalc_selected', None)
             active = None
         else:
             return
@@ -80,7 +80,7 @@ def _render(*, isolated=False, fixed_name=None):
         if(main)main.scrollTop=0;w.scrollTo(0,0);
         })();</script>""",height=1)
         if not isolated:
-            st.button('← 계산기 목록', key='jc_back_catalog', on_click=back_to_catalog)
+            st.button('← 계산기 목록', key='hwcalc_back_catalog', on_click=back_to_catalog)
     # The audited catalog is the single source of truth for public routes.
     # UI-route regression tests exercise every one of the 88 entries.
     implemented = set(ITEMS)

@@ -95,8 +95,8 @@ border:1.5px solid #8ea3ba!important;background:#fff!important;border-radius:9px
 .st-key-hw_task_page [class*="_hero_result"] [data-testid="stMetricValue"]{font-size:30px!important}
 .st-key-hw_task_page [class*="_support_result"] [data-testid="stMetric"]{padding:10px 14px!important}
 .st-key-hw_task_page [class*="_support_result"] [data-testid="stMetricValue"]{font-size:21px!important}
-.st-key-jc_categories{padding:4px 0 8px!important;margin-bottom:0!important}
-.st-key-jc_purposes{gap:6px!important}
+.st-key-hwcalc_categories{padding:4px 0 8px!important;margin-bottom:0!important}
+.st-key-hwcalc_purposes{gap:6px!important}
 .st-key-hw_task_page [data-testid="stFileUploaderDropzone"]{background:#f4f8fd!important;border:1.5px dashed #91a9c4!important;border-radius:12px!important;padding:14px!important}
 [data-testid="stSidebar"] .st-key-hw_sidebar_header{position:sticky;top:0;z-index:20;background:#fff;padding-bottom:10px;box-shadow:0 8px 12px #fff}
 [data-testid="stSidebar"] .sig-brand{margin-bottom:8px!important;padding:12px!important}
@@ -121,7 +121,7 @@ border:1.5px solid #8ea3ba!important;background:#fff!important;border-radius:9px
 @media(max-width:768px){
 .st-key-hw_task_page [class*="st-key-hw_calc_input_"],.st-key-hw_task_page [class*="st-key-hw_calc_result_"]{padding:14px!important}
 .st-key-hw_task_page [data-testid="stMetricValue"] *{white-space:normal!important;overflow-wrap:anywhere}
-.st-key-hw_task_page [class*="st-key-jc_actions_"] button{white-space:normal!important;min-height:44px!important}
+.st-key-hw_task_page [class*="st-key-hwcalc_actions_"] button{white-space:normal!important;min-height:44px!important}
 .st-key-hw_task_page [data-testid="stNumberInput"] input{min-width:0!important}
 }
 

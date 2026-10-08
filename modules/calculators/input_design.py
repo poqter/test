@@ -114,7 +114,7 @@ def number_input(label, **kwargs):
         return st.number_input(label, **kwargs)
     from modules.shared.numeric import integer_won, NumericInputError
     policy = money_policy(label, policy)
-    base = kwargs.pop("key", None) or "jc_money_" + hashlib.sha256(label.encode()).hexdigest()[:12]
+    base = kwargs.pop("key", None) or "hwcalc_money_" + hashlib.sha256(label.encode()).hexdigest()[:12]
     scale = 1 if policy == "exact_won" else 10_000
     key = money_widget_key(base)
     default = kwargs.get("value", kwargs.get("min_value", 0))

@@ -4,6 +4,7 @@ from __future__ import annotations
 import html
 import time
 from typing import Callable
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import streamlit as st
 
@@ -54,12 +55,18 @@ def _external_launch_context(app: AppSpec) -> tuple[str, str, str] | None:
     return target_app, uid, target
 
 
-def _external_launch_url(app: AppSpec, *, fresh: bool = False) -> str:
+def _external_launch_url(app: AppSpec, *, fresh: bool = False, mode: str | None = None) -> str:
     """Issue a fresh ticket on request; keep the database's one-time/60s policy."""
     context = _external_launch_context(app)
     if context is None:
         return ""
     target_app, uid, target = context
+    search = {'보험나이·상령일': '상령일', '소득상실·비상자금': '비상자금'}.get(mode)
+    if target_app == 'calculator' and search:
+        parts = urlsplit(target)
+        query = dict(parse_qsl(parts.query, keep_blank_values=True))
+        query['search'] = search
+        target = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
 
     cache_key = f"hw.external_launch.{target_app}"
     now = time.time()
@@ -89,7 +96,7 @@ def _external_launch_url(app: AppSpec, *, fresh: bool = False) -> str:
 
 
 @st.dialog("앱 열기")
-def _external_launch_dialog(app_id: str) -> None:
+def _external_launch_dialog(app_id: str, mode: str | None = None) -> None:
     app = APP_BY_ID.get(app_id)
     if app is None or app_id not in set(st.session_state.get("ws_allowed_ids") or ()):
         st.error("현재 계정에서 이용할 수 없는 도구입니다.")
@@ -100,7 +107,7 @@ def _external_launch_dialog(app_id: str) -> None:
               use_container_width=True)
     # Each dialog run is an explicit open or refresh, never a sidebar redraw.
     # Reopening cannot reuse a consumed ticket, even inside the cache TTL.
-    url = _external_launch_url(app, fresh=True)
+    url = _external_launch_url(app, fresh=True, mode=mode)
     if not url:
         st.error("앱을 연결하지 못했습니다. 이용 권한과 연결 설정을 확인해 주세요.")
         return
@@ -134,7 +141,7 @@ def _launch_widget(
             use_container_width=True,
         )
         if clicked:
-            _external_launch_dialog(app.id)
+            _external_launch_dialog(app.id, mode)
         return False
     kwargs = {}
     if navigate is not None:
@@ -150,11 +157,10 @@ def _search_text(app: AppSpec) -> str:
 
 def _matches(query: str, allowed: set[str]) -> list[tuple[AppSpec, str | None]]:
     found: dict[str, tuple[AppSpec, str | None]] = {}
-    # Alias matches currently route to the page. Page-specific mode consumption
-    # remains a later feature-stage integration.
+    # Calculator purpose is carried to the external app; unrelated routes stay unchanged.
     for alias, (page_id, _mode) in SEARCH_ALIASES.items():
         if page_id in allowed and query in alias.lower():
-            found[page_id] = (APP_BY_ID[page_id], None)
+            found[page_id] = (APP_BY_ID[page_id], _mode if page_id == 'quick_calculators' else None)
     for app in APP_BY_ID.values():
         if app.id in allowed and query in _search_text(app):
             found.setdefault(app.id, (app, None))

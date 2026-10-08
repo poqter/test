@@ -5,7 +5,7 @@ import html
 import streamlit as st
 
 from modules.calculators.calculator_shell import render_sidebar
-from modules.calculators.jarvia_calculator_center import ITEMS, ITEM_IDS
+from modules.calculators.hwarang_calculator_center import ITEMS, ITEM_IDS
 from modules.calculators.calculator_theme import apply as apply_calculator_theme
 from modules.shared.external_apps import workspace_url
 from modules.shared.hwarang_auth import HwarangAuthError, HwarangAuthService, SupabaseConfig
@@ -111,9 +111,9 @@ def _apply_calculator_deep_link() -> bool:
     if not _is_isolated_view() and st.session_state.get("hw.calculator.last_deep_link") == value:
         return True
     st.session_state["hw.calculator.last_deep_link"] = value
-    st.session_state["jc_open"] = name
-    st.session_state["jc_selected"] = name
-    st.session_state["jc_catalog_last"] = name
+    st.session_state["hwcalc_open"] = name
+    st.session_state["hwcalc_selected"] = name
+    st.session_state["hwcalc_catalog_last"] = name
     return True
 
 
@@ -138,26 +138,31 @@ def main() -> None:
 
     isolated = _is_isolated_view()
     valid_deep_link = _apply_calculator_deep_link()
+    search = _query_value('search')[:120]
+    if search and not isolated and not valid_deep_link:
+        st.session_state['hwcalc_catalog_query'] = search
+        st.session_state['hwcalc_search'] = search
+        _remove_query_param('search')
 
     inject_global_styles()
     apply_calculator_theme()
     st.markdown('<div class="hw-calculator-standalone" aria-hidden="true"></div>', unsafe_allow_html=True)
 
     if isolated:
-        st.session_state["jc_isolated_single"] = True
+        st.session_state["hwcalc_isolated_single"] = True
         st.markdown('<div class="hw-auth-bg hw-calc-isolated-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
         with st.container(key="hw_calc_isolated_shell"):
             _isolated_brand()
-            if not valid_deep_link or not st.session_state.get("jc_open"):
+            if not valid_deep_link or not st.session_state.get("hwcalc_open"):
                 st.error("유효한 계산기 링크가 아닙니다. 계산기 센터에서 다시 열어주세요.")
             else:
                 from modules.calculators.calculator_center import run
-                run(isolated=True, fixed_name=st.session_state.get("jc_open"))
+                run(isolated=True, fixed_name=st.session_state.get("hwcalc_open"))
             from modules.shared.build_info import BUILD_ID
             st.markdown(f'<div class="hw-calc-isolated-footer">Planned &amp; Built by 박병선 팀장 · {BUILD_ID}</div>', unsafe_allow_html=True)
         return
 
-    st.session_state["jc_isolated_single"] = False
+    st.session_state["hwcalc_isolated_single"] = False
     render_sidebar()
     with st.container(key="hw_calc_shell"):
         from modules.calculators.calculator_center import run

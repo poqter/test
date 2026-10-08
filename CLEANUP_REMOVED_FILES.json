@@ -1,0 +1,203 @@
+{
+  "source_version": "V63.3 verified source",
+  "categories": {
+    "generated_cache": {
+      "files": 144,
+      "bytes": 1905504
+    },
+    "superseded_package_document_or_old_result": {
+      "files": 15,
+      "bytes": 27508
+    },
+    "development_verification_output": {
+      "files": 14,
+      "bytes": 249443
+    }
+  },
+  "explicit_cleanup": [
+    {
+      "path": "ADMIN_CENTER_V2_AUDIT.md",
+      "category": "superseded_package_document_or_old_result",
+      "bytes": 1122,
+      "sha256": "5d870bfbd65f8e55083b548306949a1d18c10a0779b069ce39742b8d10a9f43b"
+    },
+    {
+      "path": "API_PREFLIGHT_AUDIT.md",
+      "category": "superseded_package_document_or_old_result",
+      "bytes": 1204,
+      "sha256": "5797b49fee40e0ad726dfeb3a804d4eae49c9975c336be189e363e3c12d15718"
+    },
+    {
+      "path": "CHANGED_FILES.json",
+      "category": "superseded_package_document_or_old_result",
+      "bytes": 1691,
+      "sha256": "1f6496290aa699876326ea277c4a1562a29bd49ec7d4b2ad2197deda9fbdc74f"
+    },
+    {
+      "path": "MANIFEST.json",
+      "category": "superseded_package_document_or_old_result",
+      "bytes": 840,
+      "sha256": "0ff9a066f3aee840cdbaa4df604e0ab7ad5722c543a5b04f0f59768fe6bc8706"
+    },
+    {
+      "path": "PACKAGE_MANIFEST.json",
+      "category": "superseded_package_document_or_old_result",
+      "bytes": 3921,
+      "sha256": "55f69ec56074ec2e460c797a20a68689e4db9b621c718b0b0159ccd73c5201f9"
+    },
+    {
+      "path": "PACKAGE_README.txt",
+      "category": "superseded_package_document_or_old_result",
+      "bytes": 2045,
+      "sha256": "dcb2b569b5d06e0e23b35e59746cab4b5efe9fe0668a2716b75053104adcb282"
+    },
+    {
+      "path": "PERFORMANCE_OPTIMIZATION_APPLY.md",
+      "category": "superseded_package_document_or_old_result",
+      "bytes": 3684,
+      "sha256": "6f45c53ce00973def83e579f8e6916a2cc202a9e5aaf4e441704a0787c4d94cf"
+    },
+    {
+      "path": "PERFORMANCE_PATCH_FILELIST.txt",
+      "category": "superseded_package_document_or_old_result",
+      "bytes": 1393,
+      "sha256": "78726cc9da163d083f139d04ec41b755ccb5ca0f55fb04cd2573c97cc1ff850c"
+    },
+    {
+      "path": "PRE_API_FINAL_AUDIT.md",
+      "category": "superseded_package_document_or_old_result",
+      "bytes": 3001,
+      "sha256": "d5a3f61df0a402d891c39525584e1b617f5cfab084967bb811eee8d030369769"
+    },
+    {
+      "path": "README_APPLY.md",
+      "category": "superseded_package_document_or_old_result",
+      "bytes": 3441,
+      "sha256": "655de8be1526065fa0b2597962ff3a938b8df492293c4a7aed78b7234dd75cdc"
+    },
+    {
+      "path": "README_APPLY.txt",
+      "category": "superseded_package_document_or_old_result",
+      "bytes": 1731,
+      "sha256": "baa424e2842751954780a31f9f560c28482c565dd6ad7c8a6cd39c24f368f417"
+    },
+    {
+      "path": "STAGE1_DIAGNOSTIC_REPLAY_RESULT.json",
+      "category": "superseded_package_document_or_old_result",
+      "bytes": 474,
+      "sha256": "c221e36e64d3ccb165fc74ee16c12281dead9a134207f8639c96970d40a65b7a"
+    },
+    {
+      "path": "STAGE1_LATEST_DIAGNOSTIC_REPLAY_RESULT.json",
+      "category": "superseded_package_document_or_old_result",
+      "bytes": 808,
+      "sha256": "7c2a75e550b4efdd1bd91ca0de9fae594e05f5e52a96a540978fc9ffaeebd387"
+    },
+    {
+      "path": "STAGE1_SAVED_REPLAY_RESULT.json",
+      "category": "superseded_package_document_or_old_result",
+      "bytes": 629,
+      "sha256": "0592edc939a35a54b90d28394578e3ba0c8b7c1c4ea82cd6bf45dcdf107173c3"
+    },
+    {
+      "path": "STAGE1_TEST_RESULTS.txt",
+      "category": "superseded_package_document_or_old_result",
+      "bytes": 1524,
+      "sha256": "421695ed5afd2edc758b474882886302b212f0e46d98de9ae4aa337d486ab9f0"
+    },
+    {
+      "path": "verification/calculator_example_flows.json",
+      "category": "development_verification_output",
+      "bytes": 28862,
+      "sha256": "6201b3fea1606c0031d6e9918dd442816db98fa2880b4ded3f0cb670d43da988"
+    },
+    {
+      "path": "verification/calculator_initial_routes.json",
+      "category": "development_verification_output",
+      "bytes": 22560,
+      "sha256": "385b95b49c7347590533e834d6fac06a0ee719ddb8e49f878e9de45206ca52f3"
+    },
+    {
+      "path": "verification/local_ui/launch.html",
+      "category": "development_verification_output",
+      "bytes": 1716,
+      "sha256": "7315fa53945acbbfc1c986fabf26d5367d85ce7502636a8091f5d1084f653563"
+    },
+    {
+      "path": "verification/local_ui/models.json",
+      "category": "development_verification_output",
+      "bytes": 82649,
+      "sha256": "d00a68bb2956bb567363e1b4d9e6b0351765121a482331976effa56b63f90059"
+    },
+    {
+      "path": "verification/local_ui/review.html",
+      "category": "development_verification_output",
+      "bytes": 3477,
+      "sha256": "a63b9eaaeedcff961a1b88f0ed89e7ff420a6cc65f5909343e605fa3a45dfd4d"
+    },
+    {
+      "path": "verification/pytest_results.xml",
+      "category": "development_verification_output",
+      "bytes": 26999,
+      "sha256": "61c19631b81221abc0fa7c3bcf367c60f520c70e71da1e34a6cdebaa14cf00d5"
+    },
+    {
+      "path": "verification/summary.json",
+      "category": "development_verification_output",
+      "bytes": 4037,
+      "sha256": "d975a5ef4772421bb2af17f4843f3a486cb17c797e64f2069152ff54c826fe0e"
+    },
+    {
+      "path": "verification/v633_final_pytest.xml",
+      "category": "development_verification_output",
+      "bytes": 33346,
+      "sha256": "fd4b6827d9a309fe37c4b448fe24a77e45be2c5d9f9b5f0c16035b053f84eb75"
+    },
+    {
+      "path": "verification/v633_launch_script.json",
+      "category": "development_verification_output",
+      "bytes": 144,
+      "sha256": "a10002d998a761c4a6628e5978f9c65a7b2e974e13bdd1bcd67c41558e9c0744"
+    },
+    {
+      "path": "verification/v633_preservation.json",
+      "category": "development_verification_output",
+      "bytes": 134,
+      "sha256": "bc9b15eb83e162a5144cb87b6e9ced2e412ac067da4f0c1002224030ad71f81d"
+    },
+    {
+      "path": "verification/v63_2_pytest_results.xml",
+      "category": "development_verification_output",
+      "bytes": 28146,
+      "sha256": "4bb0694047c6fa7a2e57fbd31ecdaf024da36caddb3a994f744b3166d46ed3d3"
+    },
+    {
+      "path": "verification/verify_v633_database.mjs",
+      "category": "development_verification_output",
+      "bytes": 9013,
+      "sha256": "75ed88469b77b5817d47e8f7484fc2466e4fe8b8ee5c8d5a94cf9e5974e5d2d5"
+    },
+    {
+      "path": "verification/verify_v633_launch_script.mjs",
+      "category": "development_verification_output",
+      "bytes": 2591,
+      "sha256": "88cbcc453b0ae192bda664d1947136f658bfb080cc24f44dc474e7ba54dced33"
+    },
+    {
+      "path": "verification/verify_v633_local_ui.mjs",
+      "category": "development_verification_output",
+      "bytes": 5769,
+      "sha256": "aff0c529d1234023b36475df6d925339a0b374e6a0286daa80ab9b47b2216ebd"
+    }
+  ],
+  "cleanup_by_hash": [
+    {
+      "directory": "modules/calculators",
+      "pattern": "*.py",
+      "sha256": [
+        "95169f99caa7264a23f701de2c94ee53c8a9375795a36e501afbd3a180c82271"
+      ],
+      "category": "superseded_calculator_module"
+    }
+  ]
+}

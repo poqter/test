@@ -4,15 +4,15 @@ import streamlit as st
 TARGETS=('가업승계 세부담계산기','증여세계산기','상속세계산기')
 
 def apply_pending():
-    if st.session_state.get('jc_isolated_single'):
-        st.session_state.pop('jc_valuation_transfer',None)
+    if st.session_state.get('hwcalc_isolated_single'):
+        st.session_state.pop('hwcalc_valuation_transfer',None)
         return
-    pending=st.session_state.pop('jc_valuation_transfer',None)
+    pending=st.session_state.pop('hwcalc_valuation_transfer',None)
     if not pending:return
     target,amount=pending
-    st.session_state['jc_group']='전체'
-    st.session_state['jc_search']=''
-    st.session_state['jc_selected']=target
+    st.session_state['hwcalc_group']='전체'
+    st.session_state['hwcalc_search']=''
+    st.session_state['hwcalc_selected']=target
     if target==TARGETS[0]:
         st.session_state[f'cov_{target}_0']=amount
     elif target==TARGETS[2]:
@@ -26,11 +26,11 @@ def apply_pending():
     # The adapter chooses an exact value, not a rounded display-unit transfer.
     set_money_state(f"cov_{target}_{index}", "확인된 평가액", amount, policy="exact_won")
     st.session_state.pop('coverage_result_'+target,None)
-    st.session_state['jc_transfer_notice']=f'{target}에 평가액 {amount:,}원을 원 단위로 입력했습니다. 다른 재산·공제·적격요건을 확인한 뒤 계산하세요.'
+    st.session_state['hwcalc_transfer_notice']=f'{target}에 평가액 {amount:,}원을 원 단위로 입력했습니다. 다른 재산·공제·적격요건을 확인한 뒤 계산하세요.'
 
 def render():
     # 새 탭 독립 계산기에서는 다른 계산기로 이동하는 기능을 노출하지 않습니다.
-    if st.session_state.get('jc_isolated_single'):
+    if st.session_state.get('hwcalc_isolated_single'):
         return
     stored=st.session_state.get('coverage_result_비상장주식 평가계산기')
     if not stored:return
@@ -38,13 +38,13 @@ def render():
     per_share=result.metrics['1주당 보충적 평가액']
     with st.expander('평가액으로 증여·상속·가업승계 계산 이어가기'):
         st.caption('계산된 세법상 1주 평가액을 사용합니다. 업종 보정·경영권 프리미엄 참고값은 전달하지 않습니다. 대상 계산기의 해당 주식 평가액을 바꾸며, 다른 재산·공제는 이동한 화면에서 다시 확인하세요.')
-        shares=st.number_input('이번에 이전할 주식 수',min_value=1,max_value=int(args[1]),value=1,key='jc_transfer_shares')
+        shares=st.number_input('이번에 이전할 주식 수',min_value=1,max_value=int(args[1]),value=1,key='hwcalc_transfer_shares')
         amount=int((per_share*Decimal(shares)).quantize(Decimal('1'),rounding=ROUND_DOWN))
         st.write(f'이전 주식 평가액: {amount:,}원 (원 미만 절사)')
-        target=st.selectbox('이어서 계산할 항목',TARGETS,key='jc_transfer_target')
-        if st.button('평가액 입력하고 이동',key='jc_transfer_apply'):
+        target=st.selectbox('이어서 계산할 항목',TARGETS,key='hwcalc_transfer_target')
+        if st.button('평가액 입력하고 이동',key='hwcalc_transfer_apply'):
             if amount>10**12:
                 st.error('연결 대상 계산기의 입력 한도 1조원을 초과합니다.')
             else:
-                st.session_state['jc_valuation_transfer']=(target,amount)
+                st.session_state['hwcalc_valuation_transfer']=(target,amount)
                 st.rerun()

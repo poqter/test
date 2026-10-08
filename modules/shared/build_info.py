@@ -1,5 +1,5 @@
 """Public build identity shared by HWARANG WORKSPACE, CALCULATOR and ACADEMY."""
 
-BUILD_ID = "hwarang-2026.10.07-platform-v63.2-maintenance"
+BUILD_ID = "hwarang-2026.10.08-platform-v63.3-reaudit"
 PYTHON_TARGET = "3.12"
 STREAMLIT_TARGET = "1.64.0"

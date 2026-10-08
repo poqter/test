@@ -54,7 +54,7 @@ def assumptions_dialog(formula: str, assumptions: str) -> None:
 
 def run(*, isolated=False, fixed_name=None) -> None:
     """Render the complete 88-calculator center."""
-    from modules.calculators.jarvia_calculator_center import run as run_integrated
+    from modules.calculators.hwarang_calculator_center import run as run_integrated
 
     run_integrated(isolated=isolated, fixed_name=fixed_name)
 

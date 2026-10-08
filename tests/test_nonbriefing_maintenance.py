@@ -119,4 +119,4 @@ _render_academy(Auth())
         assert not app.button(key='hw_academy_sessions_prev').disabled
         assert app.button(key='hw_academy_sessions_next').disabled
     else:
-        assert not app.button
+        assert not any(button.label in ('← 이전', '다음 →') for button in app.button)

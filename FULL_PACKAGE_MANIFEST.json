@@ -1,0 +1,1831 @@
+{
+  "package": "HWARANG V63.3 optimized full source",
+  "build_id": "hwarang-2026.10.08-platform-v63.3-reaudit",
+  "files": [
+    {
+      "path": ".github/scripts/hwarang_keepalive.py",
+      "bytes": 3822,
+      "sha256": "0458d712de3fe0d6ddce2360ec912bf273377946708d9f1c9816ea59edc25b72"
+    },
+    {
+      "path": ".github/workflows/hwarang_keepalive.yml",
+      "bytes": 1192,
+      "sha256": "b57fd948d02a9e76e2be087571817e4f0371c7a3014c8a0d9cabeb7fbb20bd91"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 349,
+      "sha256": "047ab14b4bdb4d5a0e428c6f2570d59f9567cb23712a210744e91afb90bf4e6f"
+    },
+    {
+      "path": ".python-version",
+      "bytes": 5,
+      "sha256": "7b55f8e67b5623c4bef3fa691288da9437d79d3aba156de48d481db32ac7d16d"
+    },
+    {
+      "path": ".streamlit/config.toml",
+      "bytes": 273,
+      "sha256": "0099f094fad0df99f915e63aab74b463a943a9ad32db4bf2d8d0e37884c2155e"
+    },
+    {
+      "path": ".streamlit/secrets.example.toml",
+      "bytes": 1792,
+      "sha256": "71e279255faa02870be78d57e09d5dc83e2cdf10665ab8d088f755a18d2ef70d"
+    },
+    {
+      "path": "BRIEFING_IMPLEMENTATION_CHECKPOINT_V1_7_STAGE1.md",
+      "bytes": 28128,
+      "sha256": "43350ea7015afb3dbeec62b20406cc45d00892ab0aaa5a528a4f32d1899a3ed1"
+    },
+    {
+      "path": "BRIEFING_PHASE_B_IMPLEMENTATION_NOTES.md",
+      "bytes": 4173,
+      "sha256": "cb0cd68a4be3d89b1efd6eb2b93a2c214b3a1cd3d9574669998e68ba18a4c5e4"
+    },
+    {
+      "path": "BRIEFING_WORKSPACE_LIVE_IMPLEMENTATION_NOTES.md",
+      "bytes": 1918,
+      "sha256": "1744961dbf494a946041c40de75afec920526a437e926ede1782e8355161140f"
+    },
+    {
+      "path": "CLEANUP_REMOVED_FILES.json",
+      "bytes": 7083,
+      "sha256": "73190dad7cc3c7016bbb62b8daf83ecee04e54ff286f5c6a7d93bd1ea1448e58"
+    },
+    {
+      "path": "FINANCIAL_CALCULATORS_CATALOG.json",
+      "bytes": 33256,
+      "sha256": "f3a846978330f1b4e953a4749bb4f4cfb3d32c2ce3e3590eb1eba2cd1cdd6295"
+    },
+    {
+      "path": "README_V63_3_FULL.txt",
+      "bytes": 6071,
+      "sha256": "7f570443d771876980ab29baeaa38330f1c11841e772ffc9cf375f2b094c434a"
+    },
+    {
+      "path": "STAGE1_CHANGED_FILES.json",
+      "bytes": 10848,
+      "sha256": "5f69d5ac963f48b3b47d5e02752a45470ac6977271472e4266fbd2e23fccfdb3"
+    },
+    {
+      "path": "VERIFICATION_SUMMARY.json",
+      "bytes": 1457,
+      "sha256": "de61aea41c2f1d402f265aa8ff2cb6df2ed159989ce4800d1ec4598c3b099606"
+    },
+    {
+      "path": "academy_app.py",
+      "bytes": 14016,
+      "sha256": "3ffcad5bf6597f3fe861c877edcb8fc4cd2fc6eda37a38cb1a6eec4450143f24"
+    },
+    {
+      "path": "app.py",
+      "bytes": 12383,
+      "sha256": "ed33348234faa9ee5afa460b8f0f31c411548b3d12f7e0416e0b6236e5171bad"
+    },
+    {
+      "path": "assets/fonts/NanumGothic-Regular.ttf",
+      "bytes": 2054744,
+      "sha256": "76f45ef4a6bcff344c837c95a7dcc26e017e38b5846d5ae0cdcb5b86be2e2d31"
+    },
+    {
+      "path": "assets/fonts/NanumMyeongjo-Regular.ttf",
+      "bytes": 3058408,
+      "sha256": "7ed9e8653a8ed04285d51dc343ffea6eb3d9c73afc27383ea8929ee4ffd03205"
+    },
+    {
+      "path": "assets/fonts/nanumgothic-OFL.txt",
+      "bytes": 4534,
+      "sha256": "eeacf16032901d0ed0456876ec77b8f0fda6b3fecec7d972f8543eb602e6c30f"
+    },
+    {
+      "path": "assets/fonts/nanummyeongjo-OFL.txt",
+      "bytes": 4497,
+      "sha256": "8eb1c1019fe7fe6d0b6e7d7bbbba1d9cbdd969d8c5f26455708f6cfb8a77284c"
+    },
+    {
+      "path": "assets/insurer_logos/abl_life.png",
+      "bytes": 2177,
+      "sha256": "f2b6b29a65cad81ba7f102530df540d7267d447ce116bef41d03f1b01063d369"
+    },
+    {
+      "path": "assets/insurer_logos/aig_insurance.png",
+      "bytes": 3332,
+      "sha256": "ca920ab65c8b155259ce655da804c89f8301424ba2260182541b1d3b295cb385"
+    },
+    {
+      "path": "assets/insurer_logos/bnp_cardif_life.png",
+      "bytes": 4066,
+      "sha256": "aab1821de3ae97e1c0635254cf9d22f87bd3627bd42e5d123c72354b6f173fb2"
+    },
+    {
+      "path": "assets/insurer_logos/db_insurance.png",
+      "bytes": 4636,
+      "sha256": "7aa0bf24e335a3bc9b6f6243fab05f28bff1289b0b00f44bfd898c10fc1ffc74"
+    },
+    {
+      "path": "assets/insurer_logos/db_life.png",
+      "bytes": 4636,
+      "sha256": "7aa0bf24e335a3bc9b6f6243fab05f28bff1289b0b00f44bfd898c10fc1ffc74"
+    },
+    {
+      "path": "assets/insurer_logos/hana_insurance.png",
+      "bytes": 2763,
+      "sha256": "bc3f37afa1dcbfe01f58708ee4256eec9123142ec1dcf5fb2f5cf597ce992493"
+    },
+    {
+      "path": "assets/insurer_logos/hanwha_general.png",
+      "bytes": 7294,
+      "sha256": "fdd59a128bca612d7d0de060f024d4346bbda33133bcfb50c5ebdd77841fe2f5"
+    },
+    {
+      "path": "assets/insurer_logos/hanwha_life.png",
+      "bytes": 6811,
+      "sha256": "572bb6bc11bb7f2c812987caa9ae2fe9dd28b68b985d62b32dc7bc97f5d79df8"
+    },
+    {
+      "path": "assets/insurer_logos/heungkuk_fire.png",
+      "bytes": 2852,
+      "sha256": "8d516234b38de45686e9b2b27752b2fc5dbdddcea983e3fa50525ed70339b987"
+    },
+    {
+      "path": "assets/insurer_logos/heungkuk_life.png",
+      "bytes": 3459,
+      "sha256": "9f8ba078e506a5d2e4f7bf7e0fc7f09644f6178354a841502fadf174292ce701"
+    },
+    {
+      "path": "assets/insurer_logos/hyundai_marine.png",
+      "bytes": 1695,
+      "sha256": "3647dd0fe5ae58f88e5e59ac9ebfd41a893b61ac82e8e4c592e6027fab671279"
+    },
+    {
+      "path": "assets/insurer_logos/ibk_pension.png",
+      "bytes": 6517,
+      "sha256": "7c51cc1aae634fdbc32b6c430e8beb3142331694f887d57bc3cbd90ada576106"
+    },
+    {
+      "path": "assets/insurer_logos/kb_insurance.png",
+      "bytes": 6812,
+      "sha256": "26fcf7ed8eecffa493a9232ec1093e175693d524cc4d642613fd60372fe8a7bd"
+    },
+    {
+      "path": "assets/insurer_logos/kb_life.png",
+      "bytes": 3198,
+      "sha256": "d5f227612343a10d71222c9139401dcbe0477db4afbd0cb31d339ba6b8b1c21e"
+    },
+    {
+      "path": "assets/insurer_logos/kdb_life.png",
+      "bytes": 4352,
+      "sha256": "e9c7ec7f774cc45bd55cf7e4cbefda616b0101b9465da5d3d2dae15043d679f8"
+    },
+    {
+      "path": "assets/insurer_logos/kyobo_life.png",
+      "bytes": 2968,
+      "sha256": "e2232fc2e20b3edfbd0f1abb26dda7ec45d1ad359f61402d21c59b8aecda4eda"
+    },
+    {
+      "path": "assets/insurer_logos/lina_life.png",
+      "bytes": 1864,
+      "sha256": "c7d0581f309cee9baa1f7c85549e2e2085be7d9768e7c3f28276bbd395d78783"
+    },
+    {
+      "path": "assets/insurer_logos/lotte_insurance.png",
+      "bytes": 2072,
+      "sha256": "548de104f6aeaf4b3a4114cecfbea02769641b7e915d0d3f087378cab1a6626f"
+    },
+    {
+      "path": "assets/insurer_logos/meritz_fire.png",
+      "bytes": 1701,
+      "sha256": "f5bdefe0e5da92eab066932008dcc6f3676aee657f8d3f25e08249f071cb41fc"
+    },
+    {
+      "path": "assets/insurer_logos/metlife.png",
+      "bytes": 2433,
+      "sha256": "bc5f7d0e5f29e13bf623fe44b1aa78f58cfedb25ae02d25d1582b41842c03beb"
+    },
+    {
+      "path": "assets/insurer_logos/mg_insurance.png",
+      "bytes": 2027,
+      "sha256": "ac5f9aafaa48f9a9caf700abfe9fd3e45fcc9e050cae303a3fd7c9667272970c"
+    },
+    {
+      "path": "assets/insurer_logos/miraeasset_life.png",
+      "bytes": 3179,
+      "sha256": "bfca4ea6f113afb1a70b69413d3c9933fae12f3f18334797977a98821d996845"
+    },
+    {
+      "path": "assets/insurer_logos/nh_life.png",
+      "bytes": 5164,
+      "sha256": "1f8632a5a9ae6de476db29654ca4b736a99d38f736e559eef9be4f1375593ff0"
+    },
+    {
+      "path": "assets/insurer_logos/samsung_fire.png",
+      "bytes": 2103,
+      "sha256": "35bc0e51eca3deb3323b336ad293d1f8a4d594e42db0fa909fb0ebb8ba3a2103"
+    },
+    {
+      "path": "assets/insurer_logos/samsung_life.png",
+      "bytes": 3438,
+      "sha256": "0522342e6ac1ce8de3218a53437c54269489a39a1ee8c074908e9caa7980f2ec"
+    },
+    {
+      "path": "assets/insurer_logos/shinhan_life.png",
+      "bytes": 2256,
+      "sha256": "f8b9ad0082d6e2441b5960d35dec483dbf842c9b9551e0e9ac9b465ba5e97b7d"
+    },
+    {
+      "path": "assets/insurer_logos/tongyang_life.png",
+      "bytes": 1496,
+      "sha256": "fa395c2d028129c6d06239949260f43f904462267aacde1e2fcd936bb3ccf82f"
+    },
+    {
+      "path": "calculator_app.py",
+      "bytes": 7094,
+      "sha256": "5ab1b69e6d1d4623bdf7e939783ee93ea7ba8743f1134579dca50ab3f2e1717c"
+    },
+    {
+      "path": "cleanup_obsolete_files.py",
+      "bytes": 3956,
+      "sha256": "366a5b1feeee9b61f6caebd07893c22463a2fc8505e0e3b1d9ed1d11737c6edc"
+    },
+    {
+      "path": "constraints.txt",
+      "bytes": 927,
+      "sha256": "fc2dfe5b9d5a1decddc6cacfdd515fdf2317be864e8ced9242787174c57aac14"
+    },
+    {
+      "path": "data/briefing_direct_sources.example.json",
+      "bytes": 337,
+      "sha256": "5ecd45ef0893ca2da85cda5a457182bdd8e6e1db26ee7422b3447b1102943633"
+    },
+    {
+      "path": "data/calculator_input_policies.json",
+      "bytes": 56297,
+      "sha256": "d080825a398141c21713e6d922a3d295f5e52c2f7737650611cfe088fc16f548"
+    },
+    {
+      "path": "data/calculator_rules.json",
+      "bytes": 137592,
+      "sha256": "08332741014e4849d47a013eca0a171e949ae0fae6b509aa7ef82f5bd63124a5"
+    },
+    {
+      "path": "data/calculator_ux_profiles.json",
+      "bytes": 25868,
+      "sha256": "1cd95b17de3a7e41b2376063c93db47b8cb5113525065013d14b90e5c60144d1"
+    },
+    {
+      "path": "data/checklists.json",
+      "bytes": 1071,
+      "sha256": "ede29a75a4d5c07761a6dfd2836ce1dcc41b6c61202bd7f8458a0d8bfe901603"
+    },
+    {
+      "path": "data/consultation_scripts.json",
+      "bytes": 1861,
+      "sha256": "09568b7356e6267eb27f88a366e59c52c25de5e64254b1ab5b62de6916255f87"
+    },
+    {
+      "path": "data/consultation_topics.json",
+      "bytes": 1571,
+      "sha256": "0b0cf7760cb1365684be270bacaea435044950540e110c1c5d1ac95bee4e286e"
+    },
+    {
+      "path": "data/message_templates.json",
+      "bytes": 1927,
+      "sha256": "6113dc3110cdda5529e90d13d9f72839c528e6dc051d480fc616e042b14c7f8b"
+    },
+    {
+      "path": "data/organization_defaults.json",
+      "bytes": 1056,
+      "sha256": "69b4caed666b1f23548d704f8bbc2ab7837cefcbffef9d6db801885d490219d7"
+    },
+    {
+      "path": "data/portal_catalog.json",
+      "bytes": 22191,
+      "sha256": "e0ae424299cad5d4fe1ba29d789c7c63d1e0b3dca3cbf1099bb823c5a507908e"
+    },
+    {
+      "path": "hwarang_academy/__init__.py",
+      "bytes": 88,
+      "sha256": "5dfc2c7d0b73efcce6ab83fe2e37ce4e9760a993cb7c3a5ffb098c68fa4cf78c"
+    },
+    {
+      "path": "hwarang_academy/auth_service.py",
+      "bytes": 293,
+      "sha256": "9c361eaaf4f06846d0ffb18e659c1ddb62dc12177d97f336a866256087af51d5"
+    },
+    {
+      "path": "hwarang_academy/content.py",
+      "bytes": 3082,
+      "sha256": "c24b653600875c706f48eb5dd82e1fdc2a5aefbe7b6ae9443b85268b5eb58176"
+    },
+    {
+      "path": "hwarang_academy/core_scenarios.py",
+      "bytes": 4739,
+      "sha256": "fe2d949ed2555386cb6df83f7a9e981f62fd39d4835bf050b5f5c6d4bb79e13b"
+    },
+    {
+      "path": "hwarang_academy/coverage_master.py",
+      "bytes": 10873,
+      "sha256": "b69d1d3dce7667eb9645b70388ac6c7c36cacc8e9613e50a0b6680306ef7a55f"
+    },
+    {
+      "path": "hwarang_academy/data/interaction_responses.json",
+      "bytes": 3144,
+      "sha256": "07bf82a8f6cca86db089417bd346b87bfe85b894f336443be3c1ac343ace786f"
+    },
+    {
+      "path": "hwarang_academy/data/source/evaluation_policy.json",
+      "bytes": 17292,
+      "sha256": "4378c38bede0cf8875946b3453298b63d7a172e19ab8d7a0f127170c88706314"
+    },
+    {
+      "path": "hwarang_academy/data/source/intent_dictionary.json",
+      "bytes": 103722,
+      "sha256": "b4f7c57dd2953488e88edb153436791ff93899a95a9ac435845b209f73ab2b2d"
+    },
+    {
+      "path": "hwarang_academy/data/source/map_v1.json",
+      "bytes": 224553,
+      "sha256": "c01f9cf41945e6f6b55086f19f113646600fb828fb3a07e3fb3a997b0ebf7c1e"
+    },
+    {
+      "path": "hwarang_academy/data/source/mode_contracts.json",
+      "bytes": 3120,
+      "sha256": "b74a8818f83178de0ae8d0cf7e41d8a41ed2d1a9302d33b1b7a656ba2866e30c"
+    },
+    {
+      "path": "hwarang_academy/data/source/response_library.json",
+      "bytes": 52304,
+      "sha256": "d1f3084634c4db35681aa5b44c07dfd983a2dd89bd3cfbd6b7eef4332511586f"
+    },
+    {
+      "path": "hwarang_academy/data/source/worked_scenario_rules.json",
+      "bytes": 56878,
+      "sha256": "071d60674f8c5ea14d302aa0602bd125beadea8f5ec75c34155e83baae05720c"
+    },
+    {
+      "path": "hwarang_academy/data/templates/coverage_analysis_v3_template.xlsx",
+      "bytes": 46288,
+      "sha256": "0bb584d3a4e9107e6bbd4c49a8a29d840f52c381d1cdb5dfc3627130786b70f6"
+    },
+    {
+      "path": "hwarang_academy/dialogue_context.py",
+      "bytes": 11604,
+      "sha256": "03ba27d9d28d542facbf5f47499de98565c4d78588a4184fffde508629f498e7"
+    },
+    {
+      "path": "hwarang_academy/dialogue_v5.py",
+      "bytes": 64948,
+      "sha256": "8f72d7c73b7459ffbb5841f78d8703980646c96bfd6d83f7ad1b4781fe267147"
+    },
+    {
+      "path": "hwarang_academy/director_v5.py",
+      "bytes": 5444,
+      "sha256": "5981fa16480e5c174eeca22280fd34265f503077214cd62d85e240ad13632fef"
+    },
+    {
+      "path": "hwarang_academy/engine.py",
+      "bytes": 64510,
+      "sha256": "337872521293bed80fe93c0cfd5af8f39d26a4a5a45f85a7ff1d6e1c95e11160"
+    },
+    {
+      "path": "hwarang_academy/evaluation.py",
+      "bytes": 18641,
+      "sha256": "f555145ced750e0653661f1f1135c716868fc621137d48b76cd31f8399516574"
+    },
+    {
+      "path": "hwarang_academy/frontend/app.js",
+      "bytes": 39689,
+      "sha256": "425d44cbced81b46246036e356a12f475c382a2ea6226281c68e06bcd4608d38"
+    },
+    {
+      "path": "hwarang_academy/frontend/index.html",
+      "bytes": 441,
+      "sha256": "e99dc8443fcf4529c8358b3688551ec8e00acce4f69576a7d12a0cd0ce884ea8"
+    },
+    {
+      "path": "hwarang_academy/frontend/styles.css",
+      "bytes": 49046,
+      "sha256": "b3038973450304e96ce513a64be0f179f4426fa106b4acb537d88ba5cef4fce8"
+    },
+    {
+      "path": "hwarang_academy/history.py",
+      "bytes": 10396,
+      "sha256": "a65090632e7d50508bfeef4c73af191a504e47a77a338a648f8f93c2aee392a6"
+    },
+    {
+      "path": "hwarang_academy/language.py",
+      "bytes": 24756,
+      "sha256": "96462fa67735c5a0514f6fc2443fd1ccaa341dd2bcc09565573a1eb1a9f82def"
+    },
+    {
+      "path": "hwarang_academy/mission_graph_v5.py",
+      "bytes": 18393,
+      "sha256": "b36bae12be7e880ee6fd9a68777a126bf58a8096c11adc46cdf4de3283e5eae6"
+    },
+    {
+      "path": "hwarang_academy/pre_api/__init__.py",
+      "bytes": 2869,
+      "sha256": "7362fbf91c7a284ab7d438aeb33a5a081f367c13a74bdb6245763ca4d12502e8"
+    },
+    {
+      "path": "hwarang_academy/pre_api/api_contracts.py",
+      "bytes": 16293,
+      "sha256": "6e1d6ce2647678dff359f4794d393d558fd46f992b7b209f1e2ba12cc107ead3"
+    },
+    {
+      "path": "hwarang_academy/pre_api/case_engine.py",
+      "bytes": 6453,
+      "sha256": "35f1008049751d95bd3b55460ba2e440b072091815906eb2f466e7d44e0295e2"
+    },
+    {
+      "path": "hwarang_academy/pre_api/constants.py",
+      "bytes": 2929,
+      "sha256": "6c5c49c4bcb0e4a7d07e0ea0f01914e75d8c2795ca4012ba385f45ac3f8efabd"
+    },
+    {
+      "path": "hwarang_academy/pre_api/coverage.py",
+      "bytes": 7456,
+      "sha256": "c114a08df1835bd45ea8aa559c33596d2387c9aeb3c5da1e88556ac0900a3e64"
+    },
+    {
+      "path": "hwarang_academy/pre_api/customer.py",
+      "bytes": 11341,
+      "sha256": "54bd6f3347892d3b279496ecbd38ccee8195f650d66dc1213bf8b8cf605dfe93"
+    },
+    {
+      "path": "hwarang_academy/pre_api/disclosure.py",
+      "bytes": 5854,
+      "sha256": "021df36535d79d756026848f73be7bdfd7afd34e24d9cf531178e7a70ee9dc9b"
+    },
+    {
+      "path": "hwarang_academy/pre_api/evidence.py",
+      "bytes": 1324,
+      "sha256": "56c97ea18b2e807b4eee98ed747fae55f34df2179eb787f84cc973eaa5f11ca2"
+    },
+    {
+      "path": "hwarang_academy/pre_api/excel.py",
+      "bytes": 5236,
+      "sha256": "fc3fa7bb0cc64b63390e21b6aa59ba406724ca2056a3f804a6a2a3728ceafcb7"
+    },
+    {
+      "path": "hwarang_academy/pre_api/insurance.py",
+      "bytes": 13292,
+      "sha256": "5e4d477fdc066e49eedbca2b220f54138be255137efae01b953d61531fa75f5e"
+    },
+    {
+      "path": "hwarang_academy/pre_api/mock_ai.py",
+      "bytes": 6581,
+      "sha256": "ae56f43f2e064e0669d57cefc2e2797685221585b4f00ed2559c0eae9179a648"
+    },
+    {
+      "path": "hwarang_academy/pre_api/prompt_builder.py",
+      "bytes": 9985,
+      "sha256": "7ef315826d7ab6e80c149d4a23216c429cda07baa83e2d8f3026907e619b6ce8"
+    },
+    {
+      "path": "hwarang_academy/pre_api/proposal.py",
+      "bytes": 5095,
+      "sha256": "6060dc6a9d9dfb19a6155fd48024441e610d306dc323beb7685a5f93f9885469"
+    },
+    {
+      "path": "hwarang_academy/pre_api/readiness.py",
+      "bytes": 2315,
+      "sha256": "acb73f49ba1dbc1ec2f8227c6c9775314da319387cb32d011dceb6742db66cd3"
+    },
+    {
+      "path": "hwarang_academy/pre_api/repository.py",
+      "bytes": 8898,
+      "sha256": "d997b5c2a3f503d5b24973541a5e8623007f2c5474e7de22a030de438e1b90a6"
+    },
+    {
+      "path": "hwarang_academy/pre_api/retry_policy.py",
+      "bytes": 1823,
+      "sha256": "7bbc8e9c67bc4b4a75e0f6305fbb1dd34da181e9655415b7d21c681f86d021c8"
+    },
+    {
+      "path": "hwarang_academy/pre_api/runtime.py",
+      "bytes": 12256,
+      "sha256": "5571eba3c94fc71a83f33c5e54fbec6ab96cb89f8718847f3e275418865acd9b"
+    },
+    {
+      "path": "hwarang_academy/pre_api/state_validator.py",
+      "bytes": 5812,
+      "sha256": "809109b58db5a0e4ae22e070a8a52eb2398eb45dfc2d103cc0251f4601ff2ffb"
+    },
+    {
+      "path": "hwarang_academy/pre_api/training.py",
+      "bytes": 6327,
+      "sha256": "ed9cba9a8906ef75ece45d3e7fb255a560dd41b7b8478a3d64c8a0c27322a100"
+    },
+    {
+      "path": "hwarang_academy/pre_api/validation.py",
+      "bytes": 5903,
+      "sha256": "729a72b11958d6e64fa51844cc4d60e9c3436c3196dafdc74358a638ba11fd13"
+    },
+    {
+      "path": "hwarang_academy/review_export.py",
+      "bytes": 2013,
+      "sha256": "54a71ced4ef8b07cf7143375127d480e1963506b230d3cd91f9affa5a3c7c45a"
+    },
+    {
+      "path": "hwarang_academy/scenario_v2.py",
+      "bytes": 21113,
+      "sha256": "ff795e7b1a09d7644a5ba9ef9028df4efd8dc53bda84f5d424daa27f225999a1"
+    },
+    {
+      "path": "hwarang_academy/semantic_v3.py",
+      "bytes": 13433,
+      "sha256": "aa3f843897cb4843e6a1ba0c7713878bbb2d1627f8010b84a5df6390066ffdaa"
+    },
+    {
+      "path": "hwarang_academy/service.py",
+      "bytes": 12724,
+      "sha256": "15eb9e55c8e6e0e59f4a7900235d3c1a099b4e282bf84a98155e795b0e637237"
+    },
+    {
+      "path": "hwarang_academy/training_policy_v55.py",
+      "bytes": 9354,
+      "sha256": "1625c208bc7e1f6774b535f27c94257aea0503d2ff8641dcb810184d1688cc56"
+    },
+    {
+      "path": "hwarang_academy/world_v5.py",
+      "bytes": 35863,
+      "sha256": "d31659df4728b496610cd406c9c9ea23b178a1bb8c9d3647d6c92e3309a8d5d7"
+    },
+    {
+      "path": "modules/__init__.py",
+      "bytes": 60,
+      "sha256": "d4181a5cf39c0198710c53bec22df7a0700bf5cc0285fd7980a210c4ed905fdf"
+    },
+    {
+      "path": "modules/briefing/__init__.py",
+      "bytes": 1501,
+      "sha256": "66c4884dd2d46a2e672f3dc686c8c53e1cbfc0ff7af3a3ee7917ef0b6e90ad47"
+    },
+    {
+      "path": "modules/briefing/briefing_center.py",
+      "bytes": 35450,
+      "sha256": "fa17973bc599ecdeffd86bc7417c0972e93d2acb2dbc0c7e679ed83095b62715"
+    },
+    {
+      "path": "modules/briefing/clustering.py",
+      "bytes": 2167,
+      "sha256": "fdf10bad85f75fc35c91248c3ee0990f554759e61799ecd5136420bb11287b8f"
+    },
+    {
+      "path": "modules/briefing/config.py",
+      "bytes": 2610,
+      "sha256": "7fef0ba59710652e3228999aeb7249890f3a2a97f739f221971f44e8244fdce5"
+    },
+    {
+      "path": "modules/briefing/diagnostics.py",
+      "bytes": 2081,
+      "sha256": "9af8c78b9f679f47ef437a8e36c99366b7666a4c03b42201c2270c95d2cb9487"
+    },
+    {
+      "path": "modules/briefing/direct_sources.py",
+      "bytes": 11515,
+      "sha256": "ed0a542b293822fd1dd9c0de0a4b0b4d025d7550916016caaa0f6da2e45a3743"
+    },
+    {
+      "path": "modules/briefing/discovery_budget.py",
+      "bytes": 3322,
+      "sha256": "cdc061db8d2ad846f31817963189fdcddd828095ada99abfa35901d326dc0373"
+    },
+    {
+      "path": "modules/briefing/evidence.py",
+      "bytes": 1476,
+      "sha256": "434c16d525e20014e6f661e6b2c2bb38ef3d1bd7413b3ae2e1461e4b746dd7ab"
+    },
+    {
+      "path": "modules/briefing/gates.py",
+      "bytes": 3292,
+      "sha256": "e639838080ca5cee92907af002549b675d2c31f18eb4818d1be48be320048b0a"
+    },
+    {
+      "path": "modules/briefing/models.py",
+      "bytes": 3662,
+      "sha256": "1d5d328d1f2a77df7c09ad261cac9a17a9c0944b5284b27dab4f3b2fd5a57937"
+    },
+    {
+      "path": "modules/briefing/normalize.py",
+      "bytes": 4666,
+      "sha256": "a1d2f13b1eec233b8724e44d577fa2a29ddaeac76bfb36a41fd6e55b18ae043a"
+    },
+    {
+      "path": "modules/briefing/openai_analysis.py",
+      "bytes": 12102,
+      "sha256": "da5bb9ad3f8796d04923e474c50c6a3bba6920fa03451058af6074af2c503ff9"
+    },
+    {
+      "path": "modules/briefing/openai_discovery.py",
+      "bytes": 15490,
+      "sha256": "05ed7ed04e80e7fd14c1a51d174ad2b4bdcc79750e4bd3307125e785b6c67e39"
+    },
+    {
+      "path": "modules/briefing/phase_b.py",
+      "bytes": 9405,
+      "sha256": "51976c4ad241c622e548efa85afb40dc5a369487f7c9b914d5d6a375aa8978d4"
+    },
+    {
+      "path": "modules/briefing/phase_c.py",
+      "bytes": 6486,
+      "sha256": "d602087f693f09c0aa65f80ceaf7116141a7419d4fc52ae5d394b4a8276e1950"
+    },
+    {
+      "path": "modules/briefing/preflight.py",
+      "bytes": 4866,
+      "sha256": "2d0df18b2d5daaceaee1bc975da1a13970a1b3af4dfc539ecf0bf45d829e9ca2"
+    },
+    {
+      "path": "modules/briefing/profile_rules.py",
+      "bytes": 2234,
+      "sha256": "e4770777ea122c058885023eacc73ed54aa5562c6b0aab9b7269f7cd745a2745"
+    },
+    {
+      "path": "modules/briefing/publication.py",
+      "bytes": 10740,
+      "sha256": "486bfcda3a55ee450adecdb82256cbc3ffba6740de817f1fe6f7079b22dded9c"
+    },
+    {
+      "path": "modules/briefing/repository.py",
+      "bytes": 25275,
+      "sha256": "6e1905afc4fb3d768091f5974d1034686c6052b715ba805de13411a6623f8242"
+    },
+    {
+      "path": "modules/briefing/runtime.py",
+      "bytes": 28077,
+      "sha256": "ae379ebc3611b8ea98e654f6bd2aa0dd07b037cb440754b7e366e39ede295973"
+    },
+    {
+      "path": "modules/briefing/source_policy.py",
+      "bytes": 1855,
+      "sha256": "c828fc2fd4e62a80e7f032e169a1c43865342db0d333767ca6fbec172265a66e"
+    },
+    {
+      "path": "modules/briefing/tool_policy.py",
+      "bytes": 842,
+      "sha256": "0762fb107425b9aacf9cec571f1f9e67044b17abad40d075f7cc5185e4460383"
+    },
+    {
+      "path": "modules/calculators/__init__.py",
+      "bytes": 33,
+      "sha256": "46f1a1351563ada193a80c98f727d0b493d3abd5780c56738133a78762743836"
+    },
+    {
+      "path": "modules/calculators/calculator_catalog.py",
+      "bytes": 5931,
+      "sha256": "733e95aea29f696c77ac7ba92cd53cfd166891ee3c71c764359b4655e9d26447"
+    },
+    {
+      "path": "modules/calculators/calculator_center.py",
+      "bytes": 19595,
+      "sha256": "7495ffee93b331a2e50368b0df5a31e9857cf088966b439e7c5065846a3c81d7"
+    },
+    {
+      "path": "modules/calculators/calculator_core.py",
+      "bytes": 4607,
+      "sha256": "89bf5966a52d52eb415ca3a061bd8d005f8094848a16f9f440e2a7395c70433d"
+    },
+    {
+      "path": "modules/calculators/calculator_exports.py",
+      "bytes": 1281,
+      "sha256": "2d8757364de77af24d96e54283345cc4bccbfb666f5326ce20e8e05081a6d325"
+    },
+    {
+      "path": "modules/calculators/calculator_shell.py",
+      "bytes": 2917,
+      "sha256": "a208174c04681414b61fbd0c681a9faec82e3d894d172b8ce363690573d72fdd"
+    },
+    {
+      "path": "modules/calculators/calculator_theme.py",
+      "bytes": 8397,
+      "sha256": "5ffae84de9b642d2698c5a39d6378f5a1724346d897b8f067ba889526d7277d5"
+    },
+    {
+      "path": "modules/calculators/catalog_browser.py",
+      "bytes": 18988,
+      "sha256": "5e9ea202dfb1d1ebcac34ee4e30dead54382d118eb8b42900677c49ce25a7f02"
+    },
+    {
+      "path": "modules/calculators/comparison/__init__.py",
+      "bytes": 33,
+      "sha256": "46f1a1351563ada193a80c98f727d0b493d3abd5780c56738133a78762743836"
+    },
+    {
+      "path": "modules/calculators/comparison/deposit_vs_shortpay.py",
+      "bytes": 32706,
+      "sha256": "81a68b98eb39fea8f1cdc450f740ba63e35323976c07d419ebb3b4f39696f20e"
+    },
+    {
+      "path": "modules/calculators/comparison/renewal_vs_nonrenewal.py",
+      "bytes": 27881,
+      "sha256": "4ca01c602c562ea86d9f8fdb72d60725fe2e01a2bbfa8d409cac846244b0fc5c"
+    },
+    {
+      "path": "modules/calculators/comparison/silson_generation_comparison.py",
+      "bytes": 38416,
+      "sha256": "056c0610170cd045703c01f827e0ccc7a1b101045ef570e57464479441d0f25a"
+    },
+    {
+      "path": "modules/calculators/corporate/__init__.py",
+      "bytes": 33,
+      "sha256": "46f1a1351563ada193a80c98f727d0b493d3abd5780c56738133a78762743836"
+    },
+    {
+      "path": "modules/calculators/corporate/bonus_welfare.py",
+      "bytes": 5867,
+      "sha256": "499ce3fdd2be32b7850b00fab342e555fa85a15737386fa0dfd228d351719496"
+    },
+    {
+      "path": "modules/calculators/corporate/business_succession.py",
+      "bytes": 4711,
+      "sha256": "ee376fce6e74951cb529620dffdbac1fc4ef5ecbf05671878e4fedceb983d3c1"
+    },
+    {
+      "path": "modules/calculators/corporate/carryforward_loss.py",
+      "bytes": 4076,
+      "sha256": "32fdff938105a565168c7c4179762f08fbeb8d1878d791260c70199ac1667777"
+    },
+    {
+      "path": "modules/calculators/corporate/corp_real_estate.py",
+      "bytes": 5542,
+      "sha256": "e14337306bf241fffcbb64a63a2b12f690ce08d914766e8b5716c29ef1a4be0f"
+    },
+    {
+      "path": "modules/calculators/corporate/corp_vs_individual.py",
+      "bytes": 8353,
+      "sha256": "07edf1747430ba264713e545187077a6a9a341f7de3e789ea2096ae42f9b46b7"
+    },
+    {
+      "path": "modules/calculators/corporate/corporate_funding.py",
+      "bytes": 4192,
+      "sha256": "4992316963ef98b5ae440e1211c70024202ac31f8cc0b9450d4ffaa8ae395e54"
+    },
+    {
+      "path": "modules/calculators/corporate/corporate_insurance_maturity.py",
+      "bytes": 5166,
+      "sha256": "0ab555b396cccd28ae2f29b89a7fdfa0d1dd399e6574d529ebbe9c4b61a874b1"
+    },
+    {
+      "path": "modules/calculators/corporate/corporate_interim_tax.py",
+      "bytes": 6022,
+      "sha256": "f002a3990c9982e6d758666bc4729e984ed7f941a17c973a292193388d5862a3"
+    },
+    {
+      "path": "modules/calculators/corporate/corporate_liquidation.py",
+      "bytes": 4083,
+      "sha256": "07be5f11d0591a4328f3913cb8fd6ca8f57fa5d18cca0db597a397c5f349f47e"
+    },
+    {
+      "path": "modules/calculators/corporate/corporate_social_insurance.py",
+      "bytes": 4891,
+      "sha256": "f6ad09eab22e41b92cba12ec202d60a6168e3f1c59ab5ab633b93405ac399233"
+    },
+    {
+      "path": "modules/calculators/corporate/corporate_tax.py",
+      "bytes": 5704,
+      "sha256": "24a963809b752e275e55888c6fe5a85232d0a4ba9dd60ab13cbcb34ef4024787"
+    },
+    {
+      "path": "modules/calculators/corporate/dc_contribution.py",
+      "bytes": 4626,
+      "sha256": "e8533acb1e5ab4ece112a8b4e87d9242df5d754830a9f996375a9cd0ecf61e2a"
+    },
+    {
+      "path": "modules/calculators/corporate/deemed_interest.py",
+      "bytes": 6868,
+      "sha256": "3ab1ecd869cc6f42f678e59f8effe45e035093df74c21307f2945b8c92687668"
+    },
+    {
+      "path": "modules/calculators/corporate/deemed_interest_diagnostic.py",
+      "bytes": 3876,
+      "sha256": "876f7087ce5ccbb5b435e558f4ec7ebea633c684f8775f3997c68022e79e92aa"
+    },
+    {
+      "path": "modules/calculators/corporate/differential_dividend.py",
+      "bytes": 9645,
+      "sha256": "861ce8b6cff303af32678d80cd1fa53ce39f88fbdc1734852f42af6e5215f12b"
+    },
+    {
+      "path": "modules/calculators/corporate/employment_credit.py",
+      "bytes": 4527,
+      "sha256": "80b76ba2eee2ba4ce99db75c78658612265415972bd6aa85b8d1c6a7499c0cd0"
+    },
+    {
+      "path": "modules/calculators/corporate/entertainment_limit.py",
+      "bytes": 4344,
+      "sha256": "a141f03b3957c62be1a6f7630303f248e3fe4c5ede87b4087438f07332c3e558"
+    },
+    {
+      "path": "modules/calculators/corporate/executive_severance.py",
+      "bytes": 4630,
+      "sha256": "37ed763e4d66a1a1ba9c3fbf104ad9159f36a7aa0cbedee6036b38e15b212239"
+    },
+    {
+      "path": "modules/calculators/corporate/family_corp_gift.py",
+      "bytes": 5813,
+      "sha256": "45130a1c652b2c1e7345af13e6f774849d05f0f5a8a6972959d781742e795abe"
+    },
+    {
+      "path": "modules/calculators/corporate/holding_company.py",
+      "bytes": 4941,
+      "sha256": "2c962c8371f48d37e4610f821fdc8dcca1db6f06db6d1c9e7dc0061f03c11553"
+    },
+    {
+      "path": "modules/calculators/corporate/insurance_transfer.py",
+      "bytes": 5823,
+      "sha256": "1e8f11ab554ea695c26b54f32c7f38c2a5179dce80d9dc828c497c39ddfe89f3"
+    },
+    {
+      "path": "modules/calculators/corporate/invention_compensation.py",
+      "bytes": 9215,
+      "sha256": "3b24c109a7eb0b8d8c43cbe17cfb2962eaf836eec7d29a6014a5b5634d4f453e"
+    },
+    {
+      "path": "modules/calculators/corporate/merger_tax.py",
+      "bytes": 3959,
+      "sha256": "c7023054f76ec3c9bae368da84ff658d73c1ffea1ec66f094f5ebd40d12102c9"
+    },
+    {
+      "path": "modules/calculators/corporate/nominee_trust.py",
+      "bytes": 3023,
+      "sha256": "93e399d30a89cfc703cf5fc6fd78ff9e0b4c0f6c93162b437677b9e9b01907a2"
+    },
+    {
+      "path": "modules/calculators/corporate/overseas_accounts.py",
+      "bytes": 4246,
+      "sha256": "928ae5c797233c7dceab37d5f09526123164f0a9cbe20c60c500ccbbcedce1c6"
+    },
+    {
+      "path": "modules/calculators/corporate/patent_capitalization.py",
+      "bytes": 5697,
+      "sha256": "4986b1e32ee4c457e9adb7f0adbb4d2da27cc9575cf3f1e43d6f199ba14d39fb"
+    },
+    {
+      "path": "modules/calculators/corporate/policy_fund.py",
+      "bytes": 7352,
+      "sha256": "29478555ed42410c099a3da3b3e7a1157e97c78b1909a3f2248348598bac03cf"
+    },
+    {
+      "path": "modules/calculators/corporate/profit_retirement.py",
+      "bytes": 916,
+      "sha256": "ad663a762294cee6c39a9b6c4c9f2fdeed4d6bc1c2008a0527182f93f332b9a7"
+    },
+    {
+      "path": "modules/calculators/corporate/related_party_rent.py",
+      "bytes": 3846,
+      "sha256": "c1e78783204dc23ae1b4e084860fc84d2c98ed963fa5647df652a530979a83ca"
+    },
+    {
+      "path": "modules/calculators/corporate/rnd_credit.py",
+      "bytes": 5472,
+      "sha256": "0abc40f3abf9318a29edf0eebc0225600f9fbf880ac5faa3aefcd9ef6c6e57ff"
+    },
+    {
+      "path": "modules/calculators/corporate/salary_dividend.py",
+      "bytes": 7411,
+      "sha256": "21cf93076934962d02c84acf1e71e2b1333310e678ff050c0403041ae186bbdb"
+    },
+    {
+      "path": "modules/calculators/corporate/shareholder_distribution.py",
+      "bytes": 4264,
+      "sha256": "c3921ffd11ae3f210fe809eedbcf7a4982639c8d8cde6f8186d994fcc7b234d4"
+    },
+    {
+      "path": "modules/calculators/corporate/sincere_report.py",
+      "bytes": 4052,
+      "sha256": "a651962d304d50b85cdb76b841868976d3b641ed96596064d272f9b8af3a391e"
+    },
+    {
+      "path": "modules/calculators/corporate/specific_corp_transaction.py",
+      "bytes": 5317,
+      "sha256": "db5a586e1565c5b3e622902b1baae5929c02bcb566fe7f32aa38119d4e6ccc93"
+    },
+    {
+      "path": "modules/calculators/corporate/stock_option.py",
+      "bytes": 4244,
+      "sha256": "67d439b0f81c97b6b1e2e86e7faed2eed25e37b4d5c96e0dd6dd72f23c1b7025"
+    },
+    {
+      "path": "modules/calculators/corporate/unlisted_valuation.py",
+      "bytes": 5892,
+      "sha256": "d642ecf08a9558c08dd70cb917ab2689ea066c9f4ee1ca5f84a73f4240d533b4"
+    },
+    {
+      "path": "modules/calculators/corporate/vat_preliminary.py",
+      "bytes": 4959,
+      "sha256": "6ca812e07156ddef3d73221532c9d8b72a9b607b61be40dc209f45e39786a0c8"
+    },
+    {
+      "path": "modules/calculators/corporate/vehicle_expense.py",
+      "bytes": 5883,
+      "sha256": "41e27fc2d1e0fe4bdafe181a0f39e9d4f73f2316f04e21428f4a1f991d478253"
+    },
+    {
+      "path": "modules/calculators/corporate/welfare_fund.py",
+      "bytes": 4345,
+      "sha256": "9830daf80d29fc8e340db2c5a711c204d4b20c6730101359c4e424c8951b5cbc"
+    },
+    {
+      "path": "modules/calculators/coverage/__init__.py",
+      "bytes": 33,
+      "sha256": "46f1a1351563ada193a80c98f727d0b493d3abd5780c56738133a78762743836"
+    },
+    {
+      "path": "modules/calculators/coverage/coverage_calculator_ui.py",
+      "bytes": 13473,
+      "sha256": "f094635e54e9586a014dff9f66c6ccb21d1daa158628a2943598907e233999ff"
+    },
+    {
+      "path": "modules/calculators/coverage/coverage_models.py",
+      "bytes": 8291,
+      "sha256": "9ad103c55c60f602fc7717b08e705ea2f16dcc49fcde1ed932b615d2c52a8813"
+    },
+    {
+      "path": "modules/calculators/drafts.py",
+      "bytes": 3776,
+      "sha256": "a7949df26f258305dcf5a8449f7b647d680826f0eb0e82a5671c893f717e9955"
+    },
+    {
+      "path": "modules/calculators/finance/__init__.py",
+      "bytes": 33,
+      "sha256": "46f1a1351563ada193a80c98f727d0b493d3abd5780c56738133a78762743836"
+    },
+    {
+      "path": "modules/calculators/finance/finance_calculator_ui.py",
+      "bytes": 11518,
+      "sha256": "3127e12ad59fd2725292a288cfd85c8af7bd5d1305bc3e14082681a1358ceea3"
+    },
+    {
+      "path": "modules/calculators/finance/finance_models.py",
+      "bytes": 11638,
+      "sha256": "4e4e9a2601fc3e54ebfdc5ee457560a86b9e33c5b63bbcdbd55151162531ee1f"
+    },
+    {
+      "path": "modules/calculators/hwarang_calculator_center.py",
+      "bytes": 23131,
+      "sha256": "a70ee9d64003443c0a9df69ca29c1ed1ae30ffa2fd96018ebef12620a84e5a0f"
+    },
+    {
+      "path": "modules/calculators/input_design.py",
+      "bytes": 9444,
+      "sha256": "e02c2b242fda95f64e258562f3657a560c0fc829d503254917bf0aad3c864739"
+    },
+    {
+      "path": "modules/calculators/input_policy.py",
+      "bytes": 628,
+      "sha256": "67700702e7132d7576c207a30f5497ea4fdf5085f4021dfce0d29cb65742237c"
+    },
+    {
+      "path": "modules/calculators/legacy_calculator_exports.py",
+      "bytes": 2941,
+      "sha256": "0e8859c4add7bdc36077f23a3d7a6d2cf94b2282f8c66ce265a138e9e94d4dd9"
+    },
+    {
+      "path": "modules/calculators/pension/__init__.py",
+      "bytes": 33,
+      "sha256": "46f1a1351563ada193a80c98f727d0b493d3abd5780c56738133a78762743836"
+    },
+    {
+      "path": "modules/calculators/pension/housing_pension.py",
+      "bytes": 2007,
+      "sha256": "9e12e0b1d39e5a3331bdf3653bc431dff006d087ba839054c862d5757b878490"
+    },
+    {
+      "path": "modules/calculators/pension/housing_pension_rates.json",
+      "bytes": 7437,
+      "sha256": "35e0630b4a72116f614c327c718e0cb6672a9891b7aa82e880ed363011e73639"
+    },
+    {
+      "path": "modules/calculators/pension/pension_calculator_ui.py",
+      "bytes": 14178,
+      "sha256": "e84d10753d60a12c7aad216cc7db381c0d1ca15b2e58b8ba07f4aab9fca4eda1"
+    },
+    {
+      "path": "modules/calculators/pension/pension_credit.py",
+      "bytes": 1555,
+      "sha256": "cdad5342081590ad8b7dc85e39405d48bd6cfa54b5734dfa8851d8169cac6583"
+    },
+    {
+      "path": "modules/calculators/pension/pension_models.py",
+      "bytes": 5272,
+      "sha256": "1bf6438f9e7100d20aacd5f69956fbb91f749f40729a15cb8f157a0b7e2e2fb3"
+    },
+    {
+      "path": "modules/calculators/pension/retirement_models.py",
+      "bytes": 10021,
+      "sha256": "3c0bda0b375cc369235a91eef3f038749c2679b74c9889341dd4203e2b399862"
+    },
+    {
+      "path": "modules/calculators/pension/retirement_plan.py",
+      "bytes": 5220,
+      "sha256": "1f057e7b65e8fbf6b907fa21b757f7ff5bf176816544b1db0cc2564c2b1f509b"
+    },
+    {
+      "path": "modules/calculators/pension/retirement_remaining.py",
+      "bytes": 4751,
+      "sha256": "df21bd08f382fafb1f09656e36cb4206cff25b8207d32d32b06abd8039a2c3dd"
+    },
+    {
+      "path": "modules/calculators/pension/severance.py",
+      "bytes": 6450,
+      "sha256": "71a95ede34ab55970678be17614257d817f635f6684806269adc8e6a1e4ba1d0"
+    },
+    {
+      "path": "modules/calculators/quick_calculators.py",
+      "bytes": 1561,
+      "sha256": "f017fb314033f44310beac07ba06b51e71ae19f3f01ae423e023a9c076d9f796"
+    },
+    {
+      "path": "modules/calculators/result_chart.py",
+      "bytes": 1722,
+      "sha256": "7033ac42882c471504d25924b3860ffec2d18affed12e4813fdc4d5f826e1510"
+    },
+    {
+      "path": "modules/calculators/result_pdf.py",
+      "bytes": 10304,
+      "sha256": "0659b59e893ef661ca171d0773a922a0a291b21105c31ba1fdbd6cd96d59b691"
+    },
+    {
+      "path": "modules/calculators/rule_metadata.py",
+      "bytes": 1421,
+      "sha256": "9ae499606785a498664ed1b296757fdf9767a662a3a5887fdfd00825fb22a770"
+    },
+    {
+      "path": "modules/calculators/structured_inputs.py",
+      "bytes": 9193,
+      "sha256": "296726fd29a460261a2a118c0a8924e0ee08f8fb8049430bdcbf2760217f9c7d"
+    },
+    {
+      "path": "modules/calculators/tax/__init__.py",
+      "bytes": 33,
+      "sha256": "46f1a1351563ada193a80c98f727d0b493d3abd5780c56738133a78762743836"
+    },
+    {
+      "path": "modules/calculators/tax/acquisition_tax.py",
+      "bytes": 3291,
+      "sha256": "d851f08317ef7eba05f6762db2b2f888bcbb87115b08ee7aad4d038643fba32b"
+    },
+    {
+      "path": "modules/calculators/tax/capital_gains_tax.py",
+      "bytes": 8909,
+      "sha256": "29e95c5536babd0fec40e466abfe77541a0de041b8d0bde7877e554deb820c9e"
+    },
+    {
+      "path": "modules/calculators/tax/dividend_grossup.py",
+      "bytes": 1056,
+      "sha256": "b9aaba7b0504e8c745df756c7cd5a1226a0ad420460eb625d83b00e6cdebfd6c"
+    },
+    {
+      "path": "modules/calculators/tax/earned_income_tax.py",
+      "bytes": 7722,
+      "sha256": "4804d69ca2b7305ad4510e8248830d1dc04e0544a20986b4e8145e08eed98ea0"
+    },
+    {
+      "path": "modules/calculators/tax/estate_calculator.py",
+      "bytes": 14291,
+      "sha256": "802bd50c9d0238c2fedd0fb6634987596740855a3bcc60166e9aac260c597cc6"
+    },
+    {
+      "path": "modules/calculators/tax/estate_reports.py",
+      "bytes": 7030,
+      "sha256": "57bb5270be83065f313beaa631f69d3de9dcce9930049dc54219d56877acfdc5"
+    },
+    {
+      "path": "modules/calculators/tax/estate_studio.py",
+      "bytes": 8784,
+      "sha256": "7cd02613aea609270b97abe8695667a4071f4abd52fcb9dbec91ba931a3f47e3"
+    },
+    {
+      "path": "modules/calculators/tax/gift_comparisons.py",
+      "bytes": 9881,
+      "sha256": "263f85a7b252f4ff17c9290e93991a88c9d55852b8c9080f49c0fdd93eeed9ac"
+    },
+    {
+      "path": "modules/calculators/tax/gift_planning.py",
+      "bytes": 8725,
+      "sha256": "b442979eb6c2de1cc8f44eb18698e6150e5bd03ee88af16afc5d9dd681e4c697"
+    },
+    {
+      "path": "modules/calculators/tax/gift_tax.py",
+      "bytes": 11267,
+      "sha256": "1ea9e667ee97615914e5eeb67b6f7abf2410795dd39fcc2396184d2b4facf968"
+    },
+    {
+      "path": "modules/calculators/tax/global_income_tax.py",
+      "bytes": 9060,
+      "sha256": "9e54225ee07fa1bd90cc473ac41e3fa743446c4a4e795c09a50b1513ce87787c"
+    },
+    {
+      "path": "modules/calculators/tax/housing_surcharge.py",
+      "bytes": 2735,
+      "sha256": "ca3314daccb0292e9c564d14c6b9c489e48a40d758f9198d60c2c951f044b4bf"
+    },
+    {
+      "path": "modules/calculators/tax/inheritance_tax.py",
+      "bytes": 70039,
+      "sha256": "b4ba9b74940b50b2dc3b20ce9a0d440fd4cb725854de291e9f44240e94d4954f"
+    },
+    {
+      "path": "modules/calculators/tax/mortgage_deduction.py",
+      "bytes": 8035,
+      "sha256": "88fec1fa137de3c8358ab0ffadd3cff097b85b48e7c819c9c4f9bf4d80167eff"
+    },
+    {
+      "path": "modules/calculators/tax/personal_tax_models.py",
+      "bytes": 7805,
+      "sha256": "810e6d6f666cae52c3e2c5124171c84fe0ceae951f3036f3d1c8ce36cd5fc43f"
+    },
+    {
+      "path": "modules/calculators/tax/rental_tax.py",
+      "bytes": 6654,
+      "sha256": "d8e5226bf12c13d1d71a479738afe60e16c4dce169ebcec810146d5cdbf4eda3"
+    },
+    {
+      "path": "modules/calculators/tax/social_insurance.py",
+      "bytes": 5303,
+      "sha256": "121ed94fbd6617a08cc4435da48794a4e2134735e1b10b4d605b0ab0b3f2211f"
+    },
+    {
+      "path": "modules/calculators/tax/startup_tax_credit.py",
+      "bytes": 7169,
+      "sha256": "0ec28a59cec9e0761ede823ad8fe4f8d83fb576cceab27ca907b66c970bcd909"
+    },
+    {
+      "path": "modules/calculators/tax/transfer_tax_rules.py",
+      "bytes": 624,
+      "sha256": "4a62c5bcb516077d59fc30795c366a83ca7d107e65dd569157e475c649eba534"
+    },
+    {
+      "path": "modules/calculators/ux_profiles.py",
+      "bytes": 11780,
+      "sha256": "6d68a07fcad4c04bcba3089ab0e6243d71d58948c70f1fef7c7064b29631bcc4"
+    },
+    {
+      "path": "modules/calculators/valuation_transfer.py",
+      "bytes": 3056,
+      "sha256": "278fecbb8c7bf9b2706858c9169f544d195d9fccbf071de66b2664d35fbfe824"
+    },
+    {
+      "path": "modules/calculators/visuals.py",
+      "bytes": 2812,
+      "sha256": "822010b5d5b1bbf56f13f564e0eb9436f76d103511d131efddba1af85160953c"
+    },
+    {
+      "path": "modules/consultation/__init__.py",
+      "bytes": 33,
+      "sha256": "46f1a1351563ada193a80c98f727d0b493d3abd5780c56738133a78762743836"
+    },
+    {
+      "path": "modules/consultation/analyzer.py",
+      "bytes": 13798,
+      "sha256": "a8e130653352bb176fe89107436f42e85c38f05582d92fdbe66d7e4041375ee9"
+    },
+    {
+      "path": "modules/consultation/analyzer_exports.py",
+      "bytes": 24499,
+      "sha256": "05a5610bb6d5c94d09b8df98320a784f905644156655500e4c9f177c9adf708b"
+    },
+    {
+      "path": "modules/consultation/analyzer_model.py",
+      "bytes": 63963,
+      "sha256": "817e0a1c52e4cb76c2cb21e88f23b8b96dcc84315124600eb6b41e045594285e"
+    },
+    {
+      "path": "modules/consultation/claim_pdf_parser.py",
+      "bytes": 9713,
+      "sha256": "765599efa54e5b27eb6042d819c25bbde86e22e0bb22694a92c3560314896008"
+    },
+    {
+      "path": "modules/consultation/claim_reports.py",
+      "bytes": 3668,
+      "sha256": "6027f9b2cf796d58b12d45d952b569db915b4018ca0d8328adb2b25dcb1d7196"
+    },
+    {
+      "path": "modules/consultation/claim_studio.py",
+      "bytes": 20467,
+      "sha256": "fe2e8794dde51a39152520f0810ace51a5c8bbc85b124069d712e5ca72259765"
+    },
+    {
+      "path": "modules/consultation/claim_workflow.py",
+      "bytes": 16449,
+      "sha256": "c0485934d68a0f9bb25e0fbf86bcc767b7daa5f64820a5e90044fe4e5d301124"
+    },
+    {
+      "path": "modules/consultation/comparison_builder.py",
+      "bytes": 178,
+      "sha256": "93fbc0e9d56a7bb82e71d0033a06a9e37933f40d2a6d7fe3898fb26ffaa173fc"
+    },
+    {
+      "path": "modules/consultation/consultation_documents.py",
+      "bytes": 4315,
+      "sha256": "619d00687ebac8a384863aa2a272e948488b385120fbc3ab76ad17e9edcd02b6"
+    },
+    {
+      "path": "modules/consultation/consultation_helper.py",
+      "bytes": 13336,
+      "sha256": "c3741ee1cecef5a35cb1620fe0f1a97c4a6b5d69792d3e5967787a3282b3092b"
+    },
+    {
+      "path": "modules/consultation/enrollment_comparison.py",
+      "bytes": 26973,
+      "sha256": "7a6e0a3c0527d8c250917c8bae0d03b7d1882873dab59707e33aeb339f26e8f0"
+    },
+    {
+      "path": "modules/consultation/insurance_claim_guide.py",
+      "bytes": 76177,
+      "sha256": "fa7d404863a48b90d665f07e2cc022ab9ebd01be700456cb957872315dd07828"
+    },
+    {
+      "path": "modules/consultation/question_bank.py",
+      "bytes": 7545,
+      "sha256": "353409348f6cf92a4592591ed1d364314fe42f78b9bcb1f033f243133e9e727b"
+    },
+    {
+      "path": "modules/consultation/question_pdf.py",
+      "bytes": 4189,
+      "sha256": "ed837a0e1c80dd6af702b236940cff01b84cacb0f5cb8b11818cf71ced68082e"
+    },
+    {
+      "path": "modules/consultation/question_studio.py",
+      "bytes": 7624,
+      "sha256": "52512efc48679b6442f29ad4b6ad4920cdb45b85d668b6aa81063fe3d92a8d8d"
+    },
+    {
+      "path": "modules/consultation/remodeling.py",
+      "bytes": 38088,
+      "sha256": "f0e947240eb0935a683a4ad75870df4e260cf64b731aaec5973f4cfb24baab69"
+    },
+    {
+      "path": "modules/consultation/remodeling_exports.py",
+      "bytes": 15291,
+      "sha256": "8662d00e9493844c4f2fb0668bed73a8679d27a1c8307a7d0a3604cd899bb706"
+    },
+    {
+      "path": "modules/consultation/remodeling_model.py",
+      "bytes": 3925,
+      "sha256": "3aebd2cca990e5c28c3a5b6d7bef666ced04267dbb44a0d10a0b16e642e587d3"
+    },
+    {
+      "path": "modules/performance/__init__.py",
+      "bytes": 33,
+      "sha256": "46f1a1351563ada193a80c98f727d0b493d3abd5780c56738133a78762743836"
+    },
+    {
+      "path": "modules/performance/commission_calculator.py",
+      "bytes": 50143,
+      "sha256": "fe7eabf96fa5c3013ebb724c3002e998da0a0f0d77a39d444304e03293e9f1dd"
+    },
+    {
+      "path": "modules/performance/commission_calculator_core.py",
+      "bytes": 52539,
+      "sha256": "24309db93941a457b5c4c07bbcbaf4ac0076ee43ba7f9358cd8e536fcd790592"
+    },
+    {
+      "path": "modules/performance/commission_calculator_exports.py",
+      "bytes": 5639,
+      "sha256": "6b2469ab49505190934e27f273917887910315e13596c7789af224ab72fe97f5"
+    },
+    {
+      "path": "modules/performance/convention.py",
+      "bytes": 41363,
+      "sha256": "61090b98852a87a3f2098608b91aaccc6196cf938002c9bdd5dc50f173351485"
+    },
+    {
+      "path": "modules/performance/manager_results.py",
+      "bytes": 33495,
+      "sha256": "04eec68b9f41ef8215ccd24f6e35053f3297198ec2da6560801412248620513f"
+    },
+    {
+      "path": "modules/performance/summer.py",
+      "bytes": 32009,
+      "sha256": "55d52ed4d645e1858c71c73a8a613d778004ef4675725a6fc428eec35611ad92"
+    },
+    {
+      "path": "modules/performance/summer_core.py",
+      "bytes": 31918,
+      "sha256": "f81a647cf87e3761b4dfe7acee5133c247ca3f8545dbf593de22362457d5f802"
+    },
+    {
+      "path": "modules/performance/summer_exports.py",
+      "bytes": 8326,
+      "sha256": "0ac67f144e5f22ad18913c38f562b70df0beffe2d0fc9265afaa070d38665624"
+    },
+    {
+      "path": "modules/resources/__init__.py",
+      "bytes": 33,
+      "sha256": "46f1a1351563ada193a80c98f727d0b493d3abd5780c56738133a78762743836"
+    },
+    {
+      "path": "modules/resources/insurer_portal.py",
+      "bytes": 11447,
+      "sha256": "1ea7a04f1e77086bffda78618b32db51d0f73263d5aa3b7af86ebe0cb2e93c19"
+    },
+    {
+      "path": "modules/resources/official_resources.py",
+      "bytes": 4009,
+      "sha256": "700dccaa47bec3293408622995205bf6dead0d15284b804aed67b15f3927c783"
+    },
+    {
+      "path": "modules/resources/portal_repository.py",
+      "bytes": 3996,
+      "sha256": "c8cf65a9be13020005830c3f301f728114f8713aad2014e1235b8d54466385b3"
+    },
+    {
+      "path": "modules/shared/__init__.py",
+      "bytes": 33,
+      "sha256": "46f1a1351563ada193a80c98f727d0b493d3abd5780c56738133a78762743836"
+    },
+    {
+      "path": "modules/shared/academy_credit_ui.py",
+      "bytes": 5516,
+      "sha256": "3863065838a761bda6a7a496d2ca89bbc44f50b050bc5d1a8a384ab9a0d9bd08"
+    },
+    {
+      "path": "modules/shared/account_admin_ui.py",
+      "bytes": 9719,
+      "sha256": "953298500544953ebf70995d14b5261de50ab931e308bcf570d87c967dfd4c49"
+    },
+    {
+      "path": "modules/shared/admin_center_ui.py",
+      "bytes": 84006,
+      "sha256": "da609b78332d6ddedb73e82e103bf99a78fa66e2c0951447eccbcc59a5837c85"
+    },
+    {
+      "path": "modules/shared/ai_guardrails.py",
+      "bytes": 16689,
+      "sha256": "62b73dedec7876701af382c3853424cee9bd452dd99a648ae5f7361cf95dba02"
+    },
+    {
+      "path": "modules/shared/build_info.py",
+      "bytes": 188,
+      "sha256": "519dd7ed175a08fee487d44eeea6e486e0c836481c08c380c9d015876c052f7c"
+    },
+    {
+      "path": "modules/shared/content_repository.py",
+      "bytes": 1545,
+      "sha256": "ed55bba48e9af4015af406693e1c569b4ebfe3b6672fe0544989a0a419ffa93b"
+    },
+    {
+      "path": "modules/shared/design_tokens.py",
+      "bytes": 1382,
+      "sha256": "d61b96f3e075f4fe948423b0f7a4bd803a614f084c29809b17f3badf9267120b"
+    },
+    {
+      "path": "modules/shared/error_reporting.py",
+      "bytes": 1069,
+      "sha256": "3a04690e0bc6387a4aca4c334e017eeea062dea317a58394a15acbb1169e2b7f"
+    },
+    {
+      "path": "modules/shared/external_apps.py",
+      "bytes": 1375,
+      "sha256": "b353dff6e2ff02e8db2d36aa9920d6fdaca2e2be687b3db0029caebb48e4211f"
+    },
+    {
+      "path": "modules/shared/hwarang_auth.py",
+      "bytes": 38930,
+      "sha256": "1a67625dd4a401ed064ea4309766afdb447f920fedd19ce375da5f27f1322976"
+    },
+    {
+      "path": "modules/shared/input_states.py",
+      "bytes": 3193,
+      "sha256": "3355202878dfde90bc5561f0351f80fcf1cd832129e9cdfd970e27e5267d39b0"
+    },
+    {
+      "path": "modules/shared/launch_link_ui.py",
+      "bytes": 2262,
+      "sha256": "00202432b0c882632c330d5d288a9b3e06a47da09404168421d61574cf1dbdb1"
+    },
+    {
+      "path": "modules/shared/legacy_workflow.py",
+      "bytes": 7241,
+      "sha256": "11c6929ed1b78396a74221c33ba37219a51f82055d47398f1c2692c2b4853de8"
+    },
+    {
+      "path": "modules/shared/numeric.py",
+      "bytes": 2408,
+      "sha256": "3a993b6a2a846d5ff84f36f83c89228a0701e4f354a05e70e2c5d42493970d56"
+    },
+    {
+      "path": "modules/shared/organization.py",
+      "bytes": 7753,
+      "sha256": "26d05b7d5ab553dab03c1623950f4d3591fac27f0af3eb25f5a17428b3467160"
+    },
+    {
+      "path": "modules/shared/organization_ui.py",
+      "bytes": 4537,
+      "sha256": "b251385e11483d3127ecd7376c03b9dbd39aa5391e18028773714e4251636ef2"
+    },
+    {
+      "path": "modules/shared/page_layouts.py",
+      "bytes": 704,
+      "sha256": "e5dfdfc857a7c56df2f00a4b873ecd84f92c06b92c3b726cf38b21e1cd704609"
+    },
+    {
+      "path": "modules/shared/paths.py",
+      "bytes": 116,
+      "sha256": "1769aa6b12f91d76d4e1c88e93438cebbea7d7a9888c37a6276dfc8ba428bb15"
+    },
+    {
+      "path": "modules/shared/pdf_brand.py",
+      "bytes": 888,
+      "sha256": "f4aeb651e9a5d7e6bbe300dc13da5f3f362fa47e9f9d465d8dbfaa262847ecec"
+    },
+    {
+      "path": "modules/shared/permissions.py",
+      "bytes": 6064,
+      "sha256": "6cd1cc2453ca4319c837f2d8d4eb793159d225a0e85defaf3092f7ec8bde0f06"
+    },
+    {
+      "path": "modules/shared/platform_activity.py",
+      "bytes": 3513,
+      "sha256": "dc84cf25b5bc8bbd3d9a9b4c698e3283ebffa4874680767e2338d71e12472e61"
+    },
+    {
+      "path": "modules/shared/report_fonts.py",
+      "bytes": 2274,
+      "sha256": "96e0630277a89a81a0932599e5f8b50e55449f70db3cb45feab78057ba1e027d"
+    },
+    {
+      "path": "modules/shared/runtime_cache.py",
+      "bytes": 6606,
+      "sha256": "ecdb2445df97c609b9c953e81a9f66adf5ccd0eb5bcc82138f78035a2d02069f"
+    },
+    {
+      "path": "modules/shared/session_store.py",
+      "bytes": 11352,
+      "sha256": "07222b60de56b91996ba907526574576da87889d693ff5a6970eb31715d60134"
+    },
+    {
+      "path": "modules/shared/signature_theme.py",
+      "bytes": 30694,
+      "sha256": "020b3b4a8ba2961edb1164195f165ddb0e242aabba3e51440d3dd73d696180ed"
+    },
+    {
+      "path": "modules/shared/task_theme.py",
+      "bytes": 20669,
+      "sha256": "82217013b07a150626ef1649c0f3851a0faaa7cd1c20b766c82d73787272cf02"
+    },
+    {
+      "path": "modules/shared/ui_components.py",
+      "bytes": 4385,
+      "sha256": "ebdc9256b4e63d3f7a6fc26470ab18874abe21fcd0d54c234e8af5adeb39740a"
+    },
+    {
+      "path": "modules/shared/upload_ui.py",
+      "bytes": 2036,
+      "sha256": "bd69b424c3d9777f0f809ae2d0038ec0cf27529564d344ba2ac36a9735b758b6"
+    },
+    {
+      "path": "modules/shared/validators.py",
+      "bytes": 6864,
+      "sha256": "60ccadf58206460e2ddea617aa6788f5d3771fc87144e55908282c0c110f4250"
+    },
+    {
+      "path": "modules/shared/workbench.py",
+      "bytes": 4298,
+      "sha256": "dfe301ede16011ef396c2b4de44fb7f86afc31f6b1a28c5ed61bd355ea3ac633"
+    },
+    {
+      "path": "modules/shared/workspace_tools.py",
+      "bytes": 6509,
+      "sha256": "50dd98cb6b35a16aff964a54940cde5c360cca875a3b248cb4e625f347bdbdfd"
+    },
+    {
+      "path": "modules/shared/xlsx_structure.py",
+      "bytes": 3554,
+      "sha256": "bf215469b71fc6edaadd908d76c7612b2ce64c35797ec6f71d7d69d4b244c42f"
+    },
+    {
+      "path": "modules/shell/__init__.py",
+      "bytes": 33,
+      "sha256": "46f1a1351563ada193a80c98f727d0b493d3abd5780c56738133a78762743836"
+    },
+    {
+      "path": "modules/shell/app_registry.py",
+      "bytes": 9575,
+      "sha256": "b550c216edc842b743a98d903343d6927732435344a8c7349f476db52f2bb3a8"
+    },
+    {
+      "path": "modules/shell/navigation.py",
+      "bytes": 5186,
+      "sha256": "53502232338df19b1af700bd4b28dc152be71d669cf86d8194eae31482e95452"
+    },
+    {
+      "path": "modules/shell/workspace_v2.py",
+      "bytes": 18227,
+      "sha256": "2c208d8a5dc1dada3706b2f83a7cf1ed157008388d5dd5e92081947ad5c41800"
+    },
+    {
+      "path": "requirements.txt",
+      "bytes": 246,
+      "sha256": "96c1d5275d1e27b7481f81428854f87c9e545aee492095ccf87eb783b3aa75e2"
+    },
+    {
+      "path": "scripts/briefing_phase_b_preflight.py",
+      "bytes": 704,
+      "sha256": "6eefad657d2f3969c0cb2aca1f4b5667498acc4db2ce48027c4581ae48d6a1bc"
+    },
+    {
+      "path": "scripts/briefing_phase_b_smoke.py",
+      "bytes": 1301,
+      "sha256": "d10e16797521b1ddb544fc7c6a1b6499c6f0de9e7effc93608ff882691b54eb1"
+    },
+    {
+      "path": "scripts/briefing_phase_bc_smoke.py",
+      "bytes": 1775,
+      "sha256": "b979b46fe6efe4e4bcfa0612027a278c4dbddc596ab276d3b2b8f7e1d84927c1"
+    },
+    {
+      "path": "scripts/briefing_stage1_offline_replay.py",
+      "bytes": 9101,
+      "sha256": "10cbdef7e9490adfc981bb3ff9c5105846e2acd9d40f8ee56a2ccec020cef6a1"
+    },
+    {
+      "path": "supabase/README.md",
+      "bytes": 2596,
+      "sha256": "97226bd965df6875fca7aa69d8c63aa63f53a98706d37ea9a4464ba6669c94f3"
+    },
+    {
+      "path": "supabase/migrations/01_Core_Setup.sql",
+      "bytes": 31632,
+      "sha256": "6a793955e83f9d8a675b38db4883a06b87e3d51c66f847de492532d6ad089c18"
+    },
+    {
+      "path": "supabase/migrations/02_Admin_Setup.sql",
+      "bytes": 3260,
+      "sha256": "79548d7d0e659737b2a3229f0061b729a8ad9a4852ebac2d2ae36b5526e655ac"
+    },
+    {
+      "path": "supabase/migrations/03_Academy_Data.sql",
+      "bytes": 12900,
+      "sha256": "81856e54be72bfdcee00a363f5b40832e0b8709909e794645646e8dc4075d77a"
+    },
+    {
+      "path": "supabase/migrations/04_Admin_View.sql",
+      "bytes": 1097,
+      "sha256": "9d99c7101cd6822a05b8a07a5246b8b1d8063bc3a9ead75c8daef4801c220268"
+    },
+    {
+      "path": "supabase/migrations/05_API_Access.sql",
+      "bytes": 1744,
+      "sha256": "b94e2c88b68528d1f7b6c5874a90bf8103aaf07c327c104653d5c9f2fe148399"
+    },
+    {
+      "path": "supabase/migrations/06_Platform_Update.sql",
+      "bytes": 8735,
+      "sha256": "6097667fc936411c6835a32688c76846f2b18d9c8d42f4f039a70d795064d478"
+    },
+    {
+      "path": "supabase/migrations/07_Permissions_Admin.sql",
+      "bytes": 12869,
+      "sha256": "c90aa4ee2480dfc784c4d28964ce42c4974c79b6cdb5e31f19daa7f1038b9075"
+    },
+    {
+      "path": "supabase/migrations/08_Pre_API_Engine.sql",
+      "bytes": 2129,
+      "sha256": "a8fa251a7083cf9f30f104c9514b54e6127d006b3fb66039a55599effce93d11"
+    },
+    {
+      "path": "supabase/migrations/09_Admin_Operations_AI_Guardrails.sql",
+      "bytes": 36625,
+      "sha256": "57b6723073fde0601be596b0283740cdea8751dc3c9cdaf59ab51a26f50cdcc7"
+    },
+    {
+      "path": "supabase/migrations/10_Pre_API_Finalization.sql",
+      "bytes": 36839,
+      "sha256": "7393b4736fd9a06ce401660fb203fd3b02841411c2a380b3a82cb39bdef2a910"
+    },
+    {
+      "path": "supabase/migrations/11_API_Preflight_Fixes.sql",
+      "bytes": 26087,
+      "sha256": "bc5ab50362d28ad84d2f03eb54ec76a92c38f451d93e8b7dda77cb8fb617b759"
+    },
+    {
+      "path": "supabase/migrations/12_Login_Fast_Path.sql",
+      "bytes": 5457,
+      "sha256": "c354e0736062b939a6498d18f557f08ec30a0cd444175bb97c4e9400b056026b"
+    },
+    {
+      "path": "supabase/migrations/13_Admin_Center_V2_Credit_Buckets.sql",
+      "bytes": 52436,
+      "sha256": "768d16acd86531c4384d8dbb1eaa1cb396f8954c1d9255b26f03baec7f354e90"
+    },
+    {
+      "path": "supabase/migrations/14_Admin_Center_V2_Asset_Adjustments.sql",
+      "bytes": 22391,
+      "sha256": "294ceaccf9130a3f0d6c78a39b3a2d598680a2d6463c208ad996a9bbd9b866b1"
+    },
+    {
+      "path": "supabase/migrations/15_Admin_Center_V2_Voice_Ambiguity_Fix.sql",
+      "bytes": 5299,
+      "sha256": "71ba086276408ccf2ecc64be3404d8ccb79b2c2e856d5b647e64f7a5415ac173"
+    },
+    {
+      "path": "supabase/migrations/16_Briefing_Engine_V1_6_Action_Intelligence.sql",
+      "bytes": 36568,
+      "sha256": "361a0378713b88580b9760354f1e8dcf186d3fffaea97d8a347d77eb14335c3b"
+    },
+    {
+      "path": "supabase/migrations/16_Briefing_Engine_V1_6_Action_Intelligence_FINAL.sql",
+      "bytes": 37346,
+      "sha256": "d92412d19a3ca3dba02c722a67b2783622d2a801133a9c33b60593751d3aca2d"
+    },
+    {
+      "path": "supabase/migrations/17_Workspace_Performance_Login_Only.sql",
+      "bytes": 4445,
+      "sha256": "9bf8e925544940bb24b2aff28f2fba80807799025859341f199416b1969da0f5"
+    },
+    {
+      "path": "supabase/migrations/18_NonBriefing_Training_History.sql",
+      "bytes": 10047,
+      "sha256": "22fea9587feec06493df5a4aa1767bebe3cd439c8fd2780db5f363fc8e8091a6"
+    },
+    {
+      "path": "supabase/migrations/POST_MIGRATION16_VERIFY.sql",
+      "bytes": 3255,
+      "sha256": "367fe6bdb37fdb3a93dcc4bc9913592aaec660bebf837ca3852da5cf73652899"
+    },
+    {
+      "path": "supabase/migrations/POST_MIGRATION16_VERIFY_FINAL.sql",
+      "bytes": 4802,
+      "sha256": "54843158606decc1a5beab56cb8158e62645291bff277dff3cc1f49cbc2fe160"
+    },
+    {
+      "path": "supabase/migrations/POST_MIGRATION17_VERIFY.sql",
+      "bytes": 573,
+      "sha256": "546c8df6cdecf4e38beb5b2762d6c9b3dd644e70e2aaa370ccc958fbf6df505a"
+    },
+    {
+      "path": "supabase/migrations/PRE_MIGRATION16_CHECK.sql",
+      "bytes": 1225,
+      "sha256": "0b16ff5f6bb92333aeea366e85f53e6fd904408567fcd8aae83219e5ce5f2a94"
+    },
+    {
+      "path": "supabase/migrations/PRE_MIGRATION16_CHECK_FINAL.sql",
+      "bytes": 2647,
+      "sha256": "cdf19ed23553643f02ca9c95eb9633b9fdf4fc65087105e4df352c5ee1fee35d"
+    },
+    {
+      "path": "tests/README.md",
+      "bytes": 229,
+      "sha256": "5223223f6c044b136120152a0ef837b5311c7deaeb743b0b0299aa92c4958c5c"
+    },
+    {
+      "path": "tests/conftest.py",
+      "bytes": 361,
+      "sha256": "ba68c30de5bde9f3b7bdee17a7de50ffac5d642d9528d9bf837060db203e82c7"
+    },
+    {
+      "path": "tests/test_admin_center_v2_credit_buckets.py",
+      "bytes": 4444,
+      "sha256": "e4eddef9aaa343c9f23600cd7ac7f016a8acc2cce7b33f860eaf99f6dfb4a495"
+    },
+    {
+      "path": "tests/test_admin_dashboard_login_only.py",
+      "bytes": 665,
+      "sha256": "458e0c63c3508184a0a3bf7c48a252ca4de20b401e45db63584cc15835594751"
+    },
+    {
+      "path": "tests/test_admin_live_query_contract.py",
+      "bytes": 2951,
+      "sha256": "22330e1c62a9c318ce386431985f460db25fd6d0f6b5fb4d9ba1684d8b385258"
+    },
+    {
+      "path": "tests/test_admin_ops_guardrails.py",
+      "bytes": 1812,
+      "sha256": "7749362e122cf451d1adbb09be1347d4758320764e9622e25df589febfa74f78"
+    },
+    {
+      "path": "tests/test_auth_core.py",
+      "bytes": 3533,
+      "sha256": "af51608d7e90b9e066c2e541241a0f86e7f75346f6b02a405b316c63c45d887f"
+    },
+    {
+      "path": "tests/test_briefing_discovery_budget.py",
+      "bytes": 12608,
+      "sha256": "e2b7cb938a0dae583bd8e9625d1ba44f9b946d79ffdfec59757cc6cecf33609d"
+    },
+    {
+      "path": "tests/test_briefing_failure_diagnostics.py",
+      "bytes": 4550,
+      "sha256": "0525c79691533bbd5faa171fb26ecc4b500228710c6e0b4c5cdaa0a660e5d962"
+    },
+    {
+      "path": "tests/test_briefing_final_access_gate.py",
+      "bytes": 1022,
+      "sha256": "c8c8f81224e20e3ba03a4ae0305ef97c5a7b2d5546736bf019e5ac3c4ff96bf9"
+    },
+    {
+      "path": "tests/test_briefing_openai_analysis_contract.py",
+      "bytes": 2386,
+      "sha256": "886737e35ee3decbf5889b6da4141bd9859058767fc027ea51eeda6059a47f95"
+    },
+    {
+      "path": "tests/test_briefing_phase_b.py",
+      "bytes": 4720,
+      "sha256": "576baf5dfee516e8ae2c8b66db0ddadd3a40f4b9b706f0e59891b0fbe5539eee"
+    },
+    {
+      "path": "tests/test_briefing_phase_c.py",
+      "bytes": 4675,
+      "sha256": "c5471a89c858236795d604c7c8a8d037f1be94e4c3f9cb6f5ea756cbe2ede5fa"
+    },
+    {
+      "path": "tests/test_briefing_publication.py",
+      "bytes": 8327,
+      "sha256": "e34ead4e0f6dac85c2de1d5e3c0c8961de2ac5c57fb8996a14b57b3d1d423acc"
+    },
+    {
+      "path": "tests/test_briefing_runtime_persistence.py",
+      "bytes": 5634,
+      "sha256": "646e5f7caff6b6281c452a0ec036a1c9be44069a9a6c73c24f23561fa6e24a4b"
+    },
+    {
+      "path": "tests/test_briefing_runtime_preflight.py",
+      "bytes": 1219,
+      "sha256": "a725bf99d344c881202cd644cac2182e5d385ff3289876010a100958ce7fce30"
+    },
+    {
+      "path": "tests/test_briefing_source_probe.py",
+      "bytes": 9986,
+      "sha256": "521d8798e7a06fa91078d93b7006442f477fc8cb2f3ab76731ced6cc6d97e4de"
+    },
+    {
+      "path": "tests/test_briefing_stage1_quality.py",
+      "bytes": 7361,
+      "sha256": "93e7eef7ca0826b24143a1c58611ce698108be437bc7c88c418a5267a86abce4"
+    },
+    {
+      "path": "tests/test_briefing_stage1_ui.py",
+      "bytes": 3456,
+      "sha256": "1821acf9df860f7fe87be032e65e6c6b7c18ecf535ab5b8d50b33775fe75f1a0"
+    },
+    {
+      "path": "tests/test_briefing_workspace_integration.py",
+      "bytes": 1462,
+      "sha256": "465a47f7e8b45afb8f1c6258f1bd55361c0bc2598cac4fa6638f8176cdc2186a"
+    },
+    {
+      "path": "tests/test_login_fast_path.py",
+      "bytes": 4918,
+      "sha256": "8a2429f0a8775ee869b8541b8ed9e2b98b3b6dec85d5a921f0d43c6914a52d10"
+    },
+    {
+      "path": "tests/test_nonbriefing_maintenance.py",
+      "bytes": 5353,
+      "sha256": "921a0ea3647b309d74e4bd460872134f7f8d8275dafff614ecfcda0b5ce543d4"
+    },
+    {
+      "path": "tests/test_package_cleanup.py",
+      "bytes": 3566,
+      "sha256": "80cad28a030d0d7002f2eb2bc79b4ecd09826827f963c7e6e5d05a460f96d414"
+    },
+    {
+      "path": "tests/test_pdf_embedded_korean.py",
+      "bytes": 1594,
+      "sha256": "dab7e7a49bfa22a189e6ae2a212cdea0730e09cbe44000251c42350ee5460660"
+    },
+    {
+      "path": "tests/test_performance_v63_hotfix.py",
+      "bytes": 683,
+      "sha256": "46a16a11f4ea3cba42edcc222295b8af821f622ea96f6d9a8bd6fdced425c06a"
+    },
+    {
+      "path": "tests/test_permission_catalog.py",
+      "bytes": 2532,
+      "sha256": "d88e9c6125afab93cf72eba718c929e49ce232d4b3cc7885ab1a1e9c983c25c3"
+    },
+    {
+      "path": "tests/test_pre_api_finalization.py",
+      "bytes": 13812,
+      "sha256": "4b3e11cb723be89c8c00ac16139316bb05991f6dfa8763dc617c192bb2c93c62"
+    },
+    {
+      "path": "tests/test_reaudit_improvements.py",
+      "bytes": 9503,
+      "sha256": "c9cd1bd2b7084a4d77cde2f5e111404ebb6bd297b9916426d99cfaf02762d1a5"
+    },
+    {
+      "path": "tests/test_registry_integrity.py",
+      "bytes": 899,
+      "sha256": "dbeaabf56a8e452a56341d25968583faab393de0629dd6fa92a0629da40cdee1"
+    },
+    {
+      "path": "tests/test_sidebar_reopen_control.py",
+      "bytes": 887,
+      "sha256": "67b147f5765fc576980dce70c6f91c0b4665d87faeb6bebb4af10557ddb37ea1"
+    },
+    {
+      "path": "tests/test_sql_contract.py",
+      "bytes": 1387,
+      "sha256": "17c3c37ace7d90f9990bf6efc63477f9c67c14e3c2d252b305db29863d27fabb"
+    },
+    {
+      "path": "tests/test_workspace_performance_optimization.py",
+      "bytes": 3020,
+      "sha256": "8dcf1a9b8feb88d1c3a352d95a6be98f8d339e60544ed76135c854d0feab0644"
+    }
+  ]
+}

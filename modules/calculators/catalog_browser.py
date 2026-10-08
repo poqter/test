@@ -2,6 +2,7 @@
 import hashlib
 import json
 import re
+import time
 from html import escape
 from urllib.parse import quote, urlsplit, urlunsplit
 import streamlit as st
@@ -47,7 +48,7 @@ def matches(name, group, description, item_tags, query):
                for keys, names in RULES)
 
 def card_key(name):
-    return 'jc_card_' + hashlib.sha256(name.encode()).hexdigest()[:12]
+    return 'hwcalc_card_' + hashlib.sha256(name.encode()).hexdigest()[:12]
 
 
 def calculator_deep_link(name, ids=None):
@@ -58,15 +59,8 @@ def calculator_deep_link(name, ids=None):
 
 
 
-def request_new_tab(name):
-    st.session_state['jc_new_tab_request'] = name
-
-
 def prepared_new_tab_url(name, ids=None):
-    if st.session_state.get('jc_new_tab_request') != name:
-        cached = st.session_state.get('jc_new_tab_url')
-        return cached.get('url', '') if isinstance(cached, dict) and cached.get('name') == name else ''
-    st.session_state.pop('jc_new_tab_request', None)
+    """Called only by an explicit dialog open/refresh. Never reuse a ticket."""
     identity = st.session_state.get('_hwarang_calculator_identity') or {}
     profile = identity.get('profile') or {}
     user_id = str(profile.get('id') or '')
@@ -87,8 +81,20 @@ def prepared_new_tab_url(name, ids=None):
         url = auth.create_launch_ticket(user_id=user_id, target_app='calculator', target_url=target)
     except Exception:
         return ''
-    st.session_state['jc_new_tab_url'] = {'name': name, 'url': url}
     return url
+
+
+@st.dialog('계산기 새 탭 열기')
+def open_new_tab(name, ids=None):
+    from modules.shared.launch_link_ui import render_launch_link
+    st.subheader(name)
+    st.button('연결 다시 준비', key='hwcalc_refresh_launch', use_container_width=True)
+    issued_at = time.time()
+    url = prepared_new_tab_url(name, ids)
+    if not url:
+        st.error('연결을 준비하지 못했습니다. 다시 준비하거나 WORKSPACE에서 계산기를 다시 열어 주세요.')
+        return
+    render_launch_link(url, '새 탭으로 열기 ↗', issued_at=issued_at)
 
 def clear_calculator_query():
     try:
@@ -99,29 +105,29 @@ def clear_calculator_query():
 
 
 def open_calculator(name):
-    st.session_state['jc_open'] = name
-    st.session_state['jc_selected'] = name
-    st.session_state['jc_catalog_last'] = name
+    st.session_state['hwcalc_open'] = name
+    st.session_state['hwcalc_selected'] = name
+    st.session_state['hwcalc_catalog_last'] = name
 
 
 def back_to_catalog():
-    st.session_state.pop('jc_open', None)
-    st.session_state.pop('jc_selected', None)
+    st.session_state.pop('hwcalc_open', None)
+    st.session_state.pop('hwcalc_selected', None)
     clear_calculator_query()
-    st.session_state['jc_catalog_restore'] = True
+    st.session_state['hwcalc_catalog_restore'] = True
 
 
 def save_query():
-    st.session_state['jc_catalog_query'] = st.session_state.get('jc_search', '')
+    st.session_state['hwcalc_catalog_query'] = st.session_state.get('hwcalc_search', '')
 
 
 def set_query(query):
-    st.session_state['jc_catalog_query'] = query
-    st.session_state['jc_search'] = query
+    st.session_state['hwcalc_catalog_query'] = query
+    st.session_state['hwcalc_search'] = query
 
 
 def set_group(group):
-    st.session_state['jc_catalog_group'] = group
+    st.session_state['hwcalc_catalog_group'] = group
 
 
 def scroll_memory(last, restore):
@@ -133,7 +139,7 @@ def scroll_memory(last, restore):
       if (!container) return;
       if (w.__hwCatalogClick) d.removeEventListener('click', w.__hwCatalogClick, true);
       w.__hwCatalogClick = e => {
-        if (e.target.closest('[class*="st-key-jc_card_"]')) {
+        if (e.target.closest('[class*="st-key-hwcalc_card_"]')) {
           w.__hwOpenCalculator = true;
           try { w.sessionStorage.setItem(key, JSON.stringify({top:container.scrollTop, y:w.scrollY})); } catch (_) {}
         }
@@ -160,41 +166,41 @@ def render_catalog(items, groups, implemented, *, tags=None, ids=None):
     tags = tags or {}
     ids = ids or {}
 
-    st.session_state.setdefault('jc_catalog_query', st.session_state.get('jc_search', ''))
-    st.session_state.setdefault('jc_catalog_group', st.session_state.get('jc_group', '전체'))
-    group = st.session_state['jc_catalog_group']
+    st.session_state.setdefault('hwcalc_catalog_query', st.session_state.get('hwcalc_search', ''))
+    st.session_state.setdefault('hwcalc_catalog_group', st.session_state.get('hwcalc_group', '전체'))
+    group = st.session_state['hwcalc_catalog_group']
     is_home = group == '전체'
 
     if is_home:
         st.markdown('#### 🔎 계산기 검색')
         st.caption('계산기 이름 또는 고객의 상황으로 검색하세요.')
-        if 'jc_search' not in st.session_state:
-            st.session_state['jc_search'] = st.session_state['jc_catalog_query']
+        if 'hwcalc_search' not in st.session_state:
+            st.session_state['hwcalc_search'] = st.session_state['hwcalc_catalog_query']
         search, clear = st.columns([8, 1])
         search.text_input(
             '계산기 이름 또는 상담 목적',
-            key='jc_search',
+            key='hwcalc_search',
             on_change=save_query,
             placeholder='예: 노후 생활비, 자녀 증여, 보험료 부담',
             label_visibility='collapsed',
         )
         clear.button(
             '초기화',
-            key='jc_search_clear',
+            key='hwcalc_search_clear',
             on_click=set_query,
             args=('',),
             use_container_width=True,
         )
-        with st.container(key='jc_purposes', horizontal=True):
+        with st.container(key='hwcalc_purposes', horizontal=True):
             for i, (label, purpose_query) in enumerate(PURPOSES):
                 st.button(
                     purpose_label(label),
-                    key=f'jc_purpose_{i}',
+                    key=f'hwcalc_purpose_{i}',
                     on_click=set_query,
                     args=(purpose_query,),
                     type='tertiary',
                 )
-        query = st.session_state['jc_catalog_query'].strip()
+        query = st.session_state['hwcalc_catalog_query'].strip()
     else:
         # 업무 분류 화면은 탐색 결과에 집중합니다. 숨겨진 검색 상태를 적용하지 않습니다.
         query = ''
@@ -229,24 +235,24 @@ def render_catalog(items, groups, implemented, *, tags=None, ids=None):
     .hw-catalog-category-title{display:flex;align-items:center;gap:9px;margin:5px 0 13px;min-width:0}
     .hw-catalog-category-title span{font-size:20px;font-weight:700;line-height:1.4;color:#203a58;letter-spacing:-.025em;word-break:keep-all}
     .hw-catalog-category-title b{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;min-height:25px;padding:2px 9px;border:1px solid #cbd9e7;border-radius:999px;background:#edf3f9;color:#426588;font-size:12px;font-weight:700;line-height:1}
-    .st-key-jc_search [data-baseweb="input"],
-    .st-key-jc_search [data-testid="stTextInput"] > div > div{
+    .st-key-hwcalc_search [data-baseweb="input"],
+    .st-key-hwcalc_search [data-testid="stTextInput"] > div > div{
         background:#fff!important;
         border:2px solid #b7c6d6!important;
         border-radius:12px!important;
         box-shadow:0 1px 3px rgba(25,57,89,.08)!important;
         transition:border-color .16s ease,box-shadow .16s ease!important;
     }
-    .st-key-jc_search:hover [data-baseweb="input"],
-    .st-key-jc_search:hover [data-testid="stTextInput"] > div > div{
+    .st-key-hwcalc_search:hover [data-baseweb="input"],
+    .st-key-hwcalc_search:hover [data-testid="stTextInput"] > div > div{
         border-color:#8faac3!important;
     }
-    .st-key-jc_search [data-baseweb="input"]:focus-within,
-    .st-key-jc_search [data-testid="stTextInput"] > div > div:focus-within{
+    .st-key-hwcalc_search [data-baseweb="input"]:focus-within,
+    .st-key-hwcalc_search [data-testid="stTextInput"] > div > div:focus-within{
         border-color:#4d7fab!important;
         box-shadow:0 0 0 3px rgba(77,127,171,.14)!important;
     }
-    .st-key-jc_search input{
+    .st-key-hwcalc_search input{
         background:transparent!important;
         color:#203a58!important;
         min-height:44px!important;
@@ -254,38 +260,38 @@ def render_catalog(items, groups, implemented, *, tags=None, ids=None):
         outline:0!important;
         box-shadow:none!important;
     }
-    .st-key-jc_search input::placeholder{color:#8395a8!important;opacity:1!important}
-    .st-key-jc_search_clear button{min-height:48px!important;border:1px solid #c9d6e3!important;border-radius:11px!important}
-    [class*="st-key-jc_card_"][data-testid="stVerticalBlock"]{background:#fff;border:1px solid #dce5ef;border-radius:14px;padding:20px;transition:border-color .18s,box-shadow .18s}
-    [class*="st-key-jc_card_"][data-testid="stVerticalBlock"]:hover{border-color:#9cb6d0;box-shadow:0 4px 14px #18395c0a}
+    .st-key-hwcalc_search input::placeholder{color:#8395a8!important;opacity:1!important}
+    .st-key-hwcalc_search_clear button{min-height:48px!important;border:1px solid #c9d6e3!important;border-radius:11px!important}
+    [class*="st-key-hwcalc_card_"][data-testid="stVerticalBlock"]{background:#fff;border:1px solid #dce5ef;border-radius:14px;padding:20px;transition:border-color .18s,box-shadow .18s}
+    [class*="st-key-hwcalc_card_"][data-testid="stVerticalBlock"]:hover{border-color:#9cb6d0;box-shadow:0 4px 14px #18395c0a}
     .hw-calc-card-copy{display:flex;align-items:flex-start;gap:12px;padding:5px 0}
     .hw-calc-card-icon{display:grid;place-items:center;flex-shrink:0;width:42px;height:42px;border-radius:12px;background:#eef3fa;font-size:24px}
     .hw-calc-card-title{font-size:17px;font-weight:700;color:#203a58;line-height:1.45;margin-bottom:6px;word-break:keep-all;overflow-wrap:anywhere}
     .hw-calc-card-summary{font-size:13px;line-height:1.65;color:#657b91;word-break:keep-all;overflow-wrap:anywhere}
     .hw-calc-card-core{font-size:12px;line-height:1.5;color:#426e98;margin-top:7px;word-break:keep-all;overflow-wrap:anywhere}
-    [class*="st-key-jc_actions_"][data-testid="stVerticalBlock"]{gap:8px!important;border-left:1px solid #edf1f6;padding-left:14px;justify-content:center}
-    [class*="st-key-jc_card_"] button,.hw-calc-new-tab{width:100%;min-height:42px!important;padding:9px 8px!important;border-radius:9px!important;font-size:12px!important;line-height:1.35!important;transform:none!important;box-shadow:none!important}
-    [class*="st-key-jc_card_"] [data-testid="stButton"] button{background:#e9f0f8!important;color:#214b76!important;border:1px solid #cbd9e7!important;justify-content:center!important;font-weight:650!important}
-    [class*="st-key-jc_card_"] [data-testid="stButton"] button:hover{background:#dfeaf6!important;border-color:#a9bfd5!important}
-    [class*="st-key-jc_card_"] button p{font-size:12px!important;white-space:nowrap!important}
+    [class*="st-key-hwcalc_actions_"][data-testid="stVerticalBlock"]{gap:8px!important;border-left:1px solid #edf1f6;padding-left:14px;justify-content:center}
+    [class*="st-key-hwcalc_card_"] button,.hw-calc-new-tab{width:100%;min-height:42px!important;padding:9px 8px!important;border-radius:9px!important;font-size:12px!important;line-height:1.35!important;transform:none!important;box-shadow:none!important}
+    [class*="st-key-hwcalc_card_"] [data-testid="stButton"] button{background:#e9f0f8!important;color:#214b76!important;border:1px solid #cbd9e7!important;justify-content:center!important;font-weight:650!important}
+    [class*="st-key-hwcalc_card_"] [data-testid="stButton"] button:hover{background:#dfeaf6!important;border-color:#a9bfd5!important}
+    [class*="st-key-hwcalc_card_"] button p{font-size:12px!important;white-space:nowrap!important}
     .hw-calc-new-tab{display:flex;align-items:center;justify-content:center;box-sizing:border-box;background:#fff!important;color:#365f87!important;border:1px solid #cbd9e7!important;text-decoration:none!important;font-weight:600!important;white-space:nowrap}
     .hw-calc-new-tab:hover{background:#f5f8fc!important;border-color:#9fb7cf!important;color:#214b76!important;text-decoration:none!important}
-    [class*="st-key-jc_actions_"] [data-testid="stMarkdownContainer"]{width:100%!important}
-    [class*="st-key-jc_actions_"] [data-testid="stMarkdownContainer"] p{margin:0!important;width:100%!important}
-    .st-key-jc_purposes{padding:2px 0 12px;border-bottom:1px solid #e4ebf2;margin-bottom:10px}
-    .st-key-jc_purposes button{font-size:12px!important;min-height:28px!important;padding:3px 9px!important;border-radius:16px!important;background:#edf2f7!important;color:#526982!important}
-    .st-key-jc_purposes button p{font-size:12px!important}
-    [class*="st-key-jc_card_"] button:focus-visible,.hw-calc-new-tab:focus-visible{outline:3px solid rgba(45,106,213,.28)!important;outline-offset:2px!important}
+    [class*="st-key-hwcalc_actions_"] [data-testid="stMarkdownContainer"]{width:100%!important}
+    [class*="st-key-hwcalc_actions_"] [data-testid="stMarkdownContainer"] p{margin:0!important;width:100%!important}
+    .st-key-hwcalc_purposes{padding:2px 0 12px;border-bottom:1px solid #e4ebf2;margin-bottom:10px}
+    .st-key-hwcalc_purposes button{font-size:12px!important;min-height:28px!important;padding:3px 9px!important;border-radius:16px!important;background:#edf2f7!important;color:#526982!important}
+    .st-key-hwcalc_purposes button p{font-size:12px!important}
+    [class*="st-key-hwcalc_card_"] button:focus-visible,.hw-calc-new-tab:focus-visible{outline:3px solid rgba(45,106,213,.28)!important;outline-offset:2px!important}
     @media(max-width:768px){
-        [class*="st-key-jc_card_"]>[data-testid="stHorizontalBlock"]{flex-direction:column!important}
-        [class*="st-key-jc_card_"]>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]{width:100%!important;flex:1 1 100%!important}
-        [class*="st-key-jc_actions_"][data-testid="stVerticalBlock"]{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px!important;border-left:0;border-top:1px solid #edf1f6;padding:12px 0 0;justify-content:stretch}
-        [class*="st-key-jc_card_"] button,.hw-calc-new-tab{min-height:44px!important}
+        [class*="st-key-hwcalc_card_"]>[data-testid="stHorizontalBlock"]{flex-direction:column!important}
+        [class*="st-key-hwcalc_card_"]>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]{width:100%!important;flex:1 1 100%!important}
+        [class*="st-key-hwcalc_actions_"][data-testid="stVerticalBlock"]{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px!important;border-left:0;border-top:1px solid #edf1f6;padding:12px 0 0;justify-content:stretch}
+        [class*="st-key-hwcalc_card_"] button,.hw-calc-new-tab{min-height:44px!important}
     }
-    @media(max-width:480px){[class*="st-key-jc_actions_"][data-testid="stVerticalBlock"]{grid-template-columns:1fr!important}}
+    @media(max-width:480px){[class*="st-key-hwcalc_actions_"][data-testid="stVerticalBlock"]{grid-template-columns:1fr!important}}
     @media(prefers-reduced-motion:reduce){
-        [class*="st-key-jc_card_"]{transition:none!important}
-        .st-key-jc_search [data-baseweb="input"],.st-key-jc_search [data-baseweb="base-input"]{transition:none!important}
+        [class*="st-key-hwcalc_card_"]{transition:none!important}
+        .st-key-hwcalc_search [data-baseweb="input"],.st-key-hwcalc_search [data-baseweb="base-input"]{transition:none!important}
     }
     </style>''', unsafe_allow_html=True)
 
@@ -325,18 +331,13 @@ def render_catalog(items, groups, implemented, *, tags=None, ids=None):
                         f'<div class="hw-calc-card-core">먼저 입력 · {escape(meta.get("core", "핵심 조건"))}</div></div></div>',
                         unsafe_allow_html=True,
                     )
-                    with actions.container(key="jc_actions_"+card_key(name)):
+                    with actions.container(key="hwcalc_actions_"+card_key(name)):
                         st.button('현재 화면에서 열기',key=card_key(name)+'_open_here',on_click=open_calculator,args=(name,),use_container_width=True)
-                        st.button('새 탭 준비', key=card_key(name)+'_prepare_tab', on_click=request_new_tab, args=(name,), use_container_width=True)
-                        prepared_url = prepared_new_tab_url(name, ids)
-                        if prepared_url:
-                            st.markdown(
-                                f'<a class="hw-calc-new-tab" href="{escape(prepared_url)}" target="_blank" rel="noopener noreferrer">새 탭으로 열기 ↗</a>',
-                                unsafe_allow_html=True,
-                            )
+                        if st.button('새 탭으로 열기 ↗', key=card_key(name)+'_prepare_tab', use_container_width=True):
+                            open_new_tab(name, ids)
     if not found:
         st.info('일치하는 계산기가 없습니다. 다른 키워드를 입력해보세요.')
-    last = st.session_state.get('jc_catalog_last')
+    last = st.session_state.get('hwcalc_catalog_last')
     if last:
         st.markdown(f'<style>.st-key-{card_key(last)}[data-testid="stVerticalBlock"]{{border-color:#5584b2!important;box-shadow:0 0 0 2px #bcd3ea60!important}}</style>', unsafe_allow_html=True)
-    scroll_memory(last, st.session_state.pop('jc_catalog_restore', False))
+    scroll_memory(last, st.session_state.pop('hwcalc_catalog_restore', False))
