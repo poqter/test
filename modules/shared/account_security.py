@@ -13,6 +13,30 @@ def password_valid(value: str) -> bool:
     return 8 <= len(value) <= 128 and bool(re.search(r"[A-Za-z]", value)) and bool(re.search(r"\d", value))
 
 
+def password_validation_error(value: str, confirm: str, *, current: str | None = None) -> str | None:
+    """Report the failed rule without logging or modifying any password."""
+    if current is not None and not current:
+        return "현재 비밀번호를 입력해 주세요."
+    if not 8 <= len(value) <= 128:
+        return "새 비밀번호는 8~128자로 입력해 주세요."
+    if not re.search(r"[A-Za-z]", value):
+        return "새 비밀번호에 영문을 하나 이상 포함해 주세요."
+    if not re.search(r"\d", value):
+        return "새 비밀번호에 숫자를 하나 이상 포함해 주세요."
+    if value != confirm:
+        return "새 비밀번호와 확인란이 일치하지 않습니다."
+    if current is not None and value == current:
+        return "현재와 다른 새 비밀번호를 입력해 주세요."
+    return None
+
+
+def account_error_message(exc: HwarangAuthError) -> str:
+    message = str(exc)
+    if exc.status is not None:
+        message += f" (진단: HTTP {exc.status}" + (f" · {exc.code}" if exc.code else "") + ")"
+    return message
+
+
 def request_recovery(auth: HwarangAuthService, email: str) -> None:
     email = email.strip().lower()
     if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email):
@@ -36,8 +60,8 @@ def recovery_dialog(auth: HwarangAuthService) -> None:
             request_recovery(auth, email)
             st.session_state["hw_recovery_sent_at"] = time.time()
             st.success("등록된 계정이 있다면 재설정 메일을 보냈습니다. 메일함과 스팸함을 확인해 주세요.")
-        except HwarangAuthError:
-            st.error("메일 요청을 처리하지 못했습니다. 이메일 형식을 확인하고 잠시 후 다시 시도해 주세요.")
+        except HwarangAuthError as exc:
+            st.error(account_error_message(exc))
     st.link_button("이메일을 사용할 수 없어요 · 관리자 문의", "https://open.kakao.com/o/sFxdv4Rf")
 
 
@@ -77,12 +101,14 @@ def render_recovery_entry(auth: HwarangAuthService) -> bool:
             st.query_params.clear(); st.rerun()
         return True
     with st.form("hw_recovery_password"):
-        password = st.text_input("새 비밀번호", type="password", help="8~128자, 영문과 숫자 포함")
-        confirm = st.text_input("새 비밀번호 확인", type="password")
+        st.caption("새 비밀번호: 8~128자, 영문과 숫자를 각각 하나 이상 포함해 주세요.")
+        password = st.text_input("새 비밀번호", type="password", key="hw_reset_new_password")
+        confirm = st.text_input("새 비밀번호 확인", type="password", key="hw_reset_confirm_password")
         submitted = st.form_submit_button("새 비밀번호 저장", type="primary", use_container_width=True)
     if submitted:
-        if password != confirm or not password_valid(password):
-            st.error("비밀번호 확인을 맞추고 영문·숫자를 포함해 8~128자로 입력해 주세요.")
+        validation_error = password_validation_error(password, confirm)
+        if validation_error:
+            st.error(validation_error)
             return True
         try:
             auth._request("PUT", "/auth/v1/user", access_token=recovery["access_token"], json={"password": password})
@@ -95,8 +121,8 @@ def render_recovery_entry(auth: HwarangAuthService) -> bool:
             st.session_state["password_correct"] = False
             st.session_state["hw_account_flash"] = "비밀번호를 변경했습니다. 새 비밀번호로 로그인해 주세요."
             st.rerun()
-        except HwarangAuthError:
-            st.error("변경 결과를 확인하지 못했습니다. 새 비밀번호로 로그인해 보거나 재설정 메일을 다시 요청해 주세요.")
+        except HwarangAuthError as exc:
+            st.error(account_error_message(exc))
     return True
 
 
@@ -116,15 +142,19 @@ def account_dialog(auth: HwarangAuthService) -> None:
     st.caption("이 이메일을 현재 사용할 수 있는지 확인해 주세요. 가입 당시 인증 완료 표시만으로 실제 수신 여부를 알 수는 없습니다.")
     tabs = st.tabs(["비밀번호 변경", "이메일 변경"])
     with tabs[0], st.form("hw_account_password"):
-        current = st.text_input("현재 비밀번호", type="password")
-        password = st.text_input("새 비밀번호", type="password", help="8~128자, 영문·숫자 포함")
-        confirm = st.text_input("새 비밀번호 확인", type="password")
+        st.caption("새 비밀번호: 8~128자, 영문과 숫자를 각각 하나 이상 포함하고 현재 비밀번호와 달라야 합니다.")
+        current = st.text_input("현재 비밀번호", type="password", key="hw_account_current_password")
+        password = st.text_input("새 비밀번호", type="password", key="hw_account_new_password")
+        confirm = st.text_input("새 비밀번호 확인", type="password", key="hw_account_confirm_password")
         save = st.form_submit_button("비밀번호 변경", type="primary")
     if save:
-        if password != confirm or not password_valid(password) or password == current:
-            st.error("현재와 다른 새 비밀번호를 입력하고 확인란을 맞춰 주세요."); return
+        validation_error = password_validation_error(password, confirm, current=current)
+        if validation_error:
+            st.error(validation_error); return
         try:
             verified = auth.sign_in(str(profile.get("login_id") or ""), current)
+            if str((verified.get("profile") or {}).get("id") or "") != uid:
+                raise HwarangAuthError("현재 로그인한 계정의 인증 정보를 확인하지 못했습니다. 다시 로그인해 주세요.")
             auth._request("PUT", "/auth/v1/user", access_token=verified["access_token"], json={"password": password})
             try:
                 auth._request("POST", "/auth/v1/logout", access_token=verified["access_token"], params={"scope": "global"})
@@ -134,7 +164,7 @@ def account_dialog(auth: HwarangAuthService) -> None:
             st.session_state["hw_account_flash"] = "비밀번호를 변경했습니다. 새 비밀번호로 다시 로그인해 주세요."
             st.rerun()
         except HwarangAuthError as exc:
-            st.error(str(exc))
+            st.error(account_error_message(exc))
     with tabs[1], st.form("hw_account_email"):
         st.caption("현재 비밀번호를 확인한 뒤 이메일 변경을 요청합니다. Supabase에서 발송한 인증 메일을 확인해야 변경이 완료됩니다.")
         current_email_password = st.text_input("현재 비밀번호", type="password", key="hw_email_current_password")

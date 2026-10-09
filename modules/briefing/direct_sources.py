@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Iterable
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 from xml.etree import ElementTree as ET
@@ -41,19 +42,21 @@ class DirectSourceSpec:
 
 
 def load_direct_source_specs_from_env() -> list[DirectSourceSpec]:
-    """Load verified Direct Source endpoints without hard-coding unstable URLs.
+    """Load the published RSS catalog plus deployment-specific sources.
 
-    BRIEFING_DIRECT_SOURCES_JSON must be a JSON array. Endpoint URLs are intentionally
-    deployment configuration because the uploaded SPEC defines source families but does
-    not contain verified feed URLs.
+    Old institution-only configuration augments the catalog. Override a feed by
+    source_code, or explicitly turn the catalog off for controlled deployments.
+    Endpoint availability and reuse rights are separate runtime/operator checks.
     """
     raw = os.getenv("BRIEFING_DIRECT_SOURCES_JSON", "").strip()
-    if not raw:
-        return []
-    data = json.loads(raw)
+    data = json.loads(raw) if raw else []
     if not isinstance(data, list):
         raise ValueError("BRIEFING_DIRECT_SOURCES_JSON must be a JSON array")
-    specs: list[DirectSourceSpec] = []
+    from .feed_catalog import CATALOG
+    specs = [DirectSourceSpec(code, name, url, source_kind="news", source_tier="C",
+                profile_hints=hints, timeout_seconds=6.0) for code,name,url,hints in CATALOG]
+    if os.getenv("BRIEFING_DEFAULT_NEWS_FEEDS", "true").lower() in {"false", "0", "off"}:
+        specs = []
     for item in data:
         if not isinstance(item, dict):
             continue
@@ -69,7 +72,9 @@ def load_direct_source_specs_from_env() -> list[DirectSourceSpec]:
                 timeout_seconds=float(item.get("timeout_seconds") or 10.0),
             )
         )
-    return specs
+    # User configuration overrides a matching code but does not silently remove
+    # the media catalog when an old config still contains only MOIS/FSC.
+    return list({s.source_code:s for s in specs}.values())
 
 
 def _text(node: ET.Element | None, *names: str) -> str:
@@ -105,14 +110,14 @@ def _rss_candidates(root: ET.Element, spec: DirectSourceSpec, retrieved_at: date
         link = _text(item, "link", "guid")
         description = visible_text(_text(item, "description"))
         published = parse_publication_date(_text(item, "pubDate", "published"), url=link)
-        if title and link:
+        if title and link and publisher_domain(link) == publisher_domain(spec.url):
             rows.append(SourceCandidate(
                 title=title, url=link, description=description, published_at=published,
                 retrieved_at=retrieved_at, source_name=spec.source_name,
                 collector_provider="direct_rss", source_kind=spec.source_kind,
                 source_code=spec.source_code, source_family_code=spec.source_family_code,
                 source_tier=spec.source_tier, endpoint_role="primary",
-                metadata={"profile_hints": list(spec.profile_hints)},
+                metadata={"profile_hints": list(spec.profile_hints), "publication_date_source": "publisher_rss"},
             ))
     return rows
 
@@ -120,13 +125,13 @@ def _rss_candidates(root: ET.Element, spec: DirectSourceSpec, retrieved_at: date
 def _atom_candidates(root: ET.Element, spec: DirectSourceSpec, retrieved_at: datetime) -> list[SourceCandidate]:
     rows: list[SourceCandidate] = []
     ns = {"a": "http://www.w3.org/2005/Atom"}
-    for entry in root.findall(".//a:entry", ns):
+    for entry in root.findall(".//a:entry", ns)[:80]:
         title = _text(entry, "{http://www.w3.org/2005/Atom}title")
-        link_node = entry.find("{http://www.w3.org/2005/Atom}link")
+        link_node = next((n for n in entry.findall("a:link", ns) if n.get("rel", "alternate")=="alternate"),None)
         link = (link_node.get("href") if link_node is not None else "") or ""
         description = visible_text(_text(entry, "{http://www.w3.org/2005/Atom}summary", "{http://www.w3.org/2005/Atom}content"))
         published = parse_publication_date(_text(entry, "{http://www.w3.org/2005/Atom}published"), url=link)
-        if title and link:
+        if title and link and publisher_domain(link) == publisher_domain(spec.url):
             rows.append(SourceCandidate(
                 title=title, url=link, description=description, published_at=published,
                 retrieved_at=retrieved_at, source_name=spec.source_name,
@@ -194,25 +199,33 @@ def collect_direct_sources(specs: Iterable[DirectSourceSpec], *, diagnostics: di
                            session=None, destination_check=_public_destination) -> tuple[list[SourceCandidate], dict[str, str]]:
     candidates: list[SourceCandidate] = []
     status: dict[str, str] = {}
-    session = session or requests.Session()
-    for spec in specs:
+    specs = list(specs)[:24]
+    def collect(spec):
         detail: dict[str, Any] = {"profiles": list(spec.profile_hints), "source_kind": spec.source_kind}
         try:
             rows = collect_direct_source(spec, session=session, diagnostics=detail,
                                          destination_check=destination_check)
-            candidates.extend(rows)
-            status[spec.source_code] = "ok" if rows else "empty_valid"
+            rows = rows[:80]
+            state = "ok" if rows else "empty_valid"
             detail["raw_candidates"] = len(rows)
         except (requests.RequestException, ET.ParseError, ValueError) as exc:
-            status[spec.source_code] = "failed"
+            rows = []; state = "failed"
             detail["error_type"] = type(exc).__name__
             # Never export exception text containing request URLs or credentials.
             known = {"invalid_url", "unsafe_destination", "cross_publisher_redirect", "feed_too_large",
                      "unsupported_xml_declaration", "not_rss_or_atom", "redirect_limit"}
             detail["failure_reason"] = str(exc) if type(exc) is ValueError and str(exc) in known else type(exc).__name__
-        detail["status"] = status[spec.source_code]
+        detail["status"] = state
+        return spec.source_code, rows, state, detail
+    # Each production worker owns its HTTP session; injected sessions are
+    # sequential so deterministic tests do not rely on thread safety.
+    if session is not None:results=list(map(collect,specs))
+    else:
+        with ThreadPoolExecutor(max_workers=4) as executor:results=list(executor.map(collect,specs))
+    for code, rows, state, detail in results:
+        candidates.extend(rows);status[code]=state
         if diagnostics is not None:
-            diagnostics[spec.source_code] = detail
+            diagnostics[code] = detail
     return candidates, status
 
 

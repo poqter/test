@@ -1,0 +1,6 @@
+name = "hwarang-briefing-reader"
+main = "worker.js"
+compatibility_date = "2026-10-09"
+workers_dev = true
+# Use the Workers Free plan. No routes/custom domains or paid plan are required.
+# SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be added as encrypted secrets.

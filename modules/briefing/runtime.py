@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
+import os
 import hashlib
 import json
 from typing import Any, Iterable
@@ -144,6 +145,7 @@ def _today_actions(rows: list[ProfileEventAnalysis]) -> dict[str, Any]:
 def _content_payload(profile_code: str, rows: list[ProfileEventAnalysis], phase_b: PhaseBResult, coverage_status: str) -> dict[str, Any]:
     selected = [r for r in rows if r.selection_tier != "excluded"]
     selected.sort(key=lambda r: (0 if r.selection_tier == "core" else 1, -r.importance_score))
+    representative_key = next((r.event_key for r in selected if r.selection_tier == "core"), None)
     event_map = _event_lookup(phase_b.events)
     return {
         "profile_code": profile_code,
@@ -166,7 +168,7 @@ def _content_payload(profile_code: str, rows: list[ProfileEventAnalysis], phase_
                 "action_state": r.action_state,
                 "communication_state": r.communication_state,
                 "audience_segments": r.audience_segments,
-                "representative": r.selection_tier == "core",
+                "representative": r.event_key == representative_key,
                 "sources": [{"title": c.title, "source_name": c.source_name, "url": c.canonical_url or c.url, "published_at": _iso(c.published_at)} for c in event_map[r.event_key].candidates if c.published_at],
             }
             for r in selected
@@ -179,12 +181,47 @@ def _event_lookup(events: Iterable[SharedEventCandidate]) -> dict[str, SharedEve
 
 
 def _overall_validation(rows: list[ProfileEventAnalysis], coverage_status: str) -> str:
-    if coverage_status == "insufficient":
+    if coverage_status != "healthy":
         return "required"
     visible = [r for r in rows if r.selection_tier != "excluded"]
     if any(r.validation_status != "ok" for r in visible):
         return "required"
     return "ok"
+
+
+def body_quality_ready(body: dict[str, Any]) -> bool:
+    """Apply the same minimum to new and previously saved publication candidates."""
+    issues = body.get("issues") or []
+    # Two articles are a minimum sanity check, not the desired edition size.
+    if len(issues) < 2:
+        return False
+    if body.get("profile_code") in {"NEWS", "MARKET"}:
+        from .normalize import publisher_domain
+        from .source_policy import LANE_DOMAINS
+        domains = {d for lane in LANE_DOMAINS.values() for d in lane}
+        publishers = set()
+        for issue in issues:
+            for source in issue.get("sources") or []:
+                if not source.get("published_at"):
+                    continue
+                host = publisher_domain(str(source.get("url") or "")) or ""
+                family = next((d for d in sorted(domains, key=len, reverse=True)
+                               if host == d or host.endswith("." + d)), host)
+                if family:
+                    publishers.add(family)
+        if len(publishers) < 2:
+            return False
+    return True
+
+
+def _display_coverage_status(profile_code: str, rows: list[ProfileEventAnalysis], phase_b: PhaseBResult, collection_status: str) -> str:
+    """Search success alone cannot certify the articles that survived analysis."""
+    if not any(r.selection_tier != "excluded" for r in rows):
+        return "insufficient"
+    if collection_status != "healthy":
+        return collection_status
+    body = _content_payload(profile_code, rows, phase_b, collection_status)
+    return "healthy" if body_quality_ready(body) else "degraded"
 
 
 def _revision_type(revision_no: int) -> str:
@@ -212,6 +249,7 @@ def _persist_profile(
     rows = phase_c.profile_rows(profile_code)
     routed_events = [event for event in phase_b.events if profile_code in event.routed_profiles]
     coverage_status = _coverage_status(phase_b, profile_code, len(routed_events))
+    coverage_status = _display_coverage_status(profile_code, rows, phase_b, coverage_status)
     validation_status = _overall_validation(rows, coverage_status)
     if profile_code == "MARKET" and not (market_context or {}).get("market_metrics", {}).get("complete"):
         validation_status = "required"
@@ -245,10 +283,13 @@ def _persist_profile(
     content = _content_payload(profile_code, rows, phase_b, coverage_status)
     if profile_code == "MARKET": content.update(market_context or {})
     external = customer_body(content)
-    public_ready = bool(external["issues"]) and len(external["issues"]) == len(content["issues"])
+    public_ready = body_quality_ready(external)
+    if profile_code != "INSURANCE": public_ready = public_ready and len(external["issues"]) == len(content["issues"])
+    internal_ready = body_quality_ready(content)
     if profile_code == "MARKET":
-        public_ready = public_ready and len(external["market_metrics"]) == 6
-    if not public_ready: validation_status = "required"
+        public_ready = public_ready and len(external["market_metrics"]) == 6 and 3 <= len(content.get('market_flow') or []) <= 5
+        internal_ready = internal_ready and bool(content.get('market_metrics',{}).get('complete'))
+    if not internal_ready: validation_status = "required"
     if validation_status != revision.get("validation_status"):
         repo.update_revision(str(revision["id"]), {"validation_status": validation_status})
     # Persist the eligible analysis pool BEFORE display caps for the later customer edition.
@@ -264,6 +305,7 @@ def _persist_profile(
         "qa_payload": {
             "validation_status": validation_status,
             "public_body_ready": public_ready,
+            "internal_body_ready": internal_ready,
             "coverage_status": coverage_status,
             "excluded_counts": phase_b.excluded_counts,
             "collection_diagnostics": phase_b.diagnostics,
@@ -383,7 +425,7 @@ def _persist_profile(
     # Shadow/manual modes never auto-publish. Auto mode is allowed only after
     # validation and coverage gates pass. Initial deployment remains shadow.
     publication_status = "draft"
-    if run_mode == "auto" and validation_status == "ok" and coverage_status != "insufficient":
+    if run_mode == "auto" and validation_status == "ok" and coverage_status == "healthy" and repo.operating_policy().get('automatic_publication_enabled'):
         repo.publish_revision(str(briefing["id"]), str(revision["id"]), actor_user_id=None)
         publication_status = "published"
         repo.checkpoint(job_id, "published", {"revision_id": revision["id"]})
@@ -421,12 +463,18 @@ def generate_and_store_briefings(
     """
     repo = repository or BriefingRepository()
     profiles = {str(row.get("profile_code")): row for row in repo.profiles()}
+    if not repo.ai_generation_enabled():
+        raise BriefingRunError('플랫폼 AI 서비스가 꺼져 있습니다. 유료 생성은 시작하지 않았습니다.')
     requested = tuple(code for code in profile_codes if code in profiles and bool(profiles[code].get("is_enabled", True)))
     if not requested:
         raise BriefingRunError("활성화된 브리핑 Profile이 없습니다")
 
     as_of = as_of or datetime.now(timezone.utc)
     saved = checkpoint if checkpoint is not None else {}
+    if 'MARKET' in requested and not (saved.get('market_observations') or {}).get('complete'):
+        saved['market_observations']=collect_metrics(as_of)
+        if not saved['market_observations'].get('complete'):
+            raise BriefingRunError('6개 경제 지표의 실제 관측값 확인을 완료하지 못했습니다. 유료 API는 시작하지 않았습니다.')
     from .checkpoints import encode, phase_b as restore_b, phase_c as restore_c
     from .openai_discovery import OpenAIWebDiscoveryClient
     from .openai_analysis import OpenAIAnalysisClient
@@ -465,6 +513,9 @@ def generate_and_store_briefings(
         if discovery and before_request:
             repo._request("POST", "/rest/v1/rpc/hwarang_observe_briefing_search", json={"p_date":date_text,"p_actions":int(usage.get("search_actions") or 0)})
         record["usage_logged"] = True
+        if record['charge_uncertain']:
+            saved['charge_uncertain']=True;save()
+            raise BriefingRunError('API 사용량 또는 검색 완료 상태가 확인되지 않았습니다. 추가 유료 호출을 중단했습니다.')
         if record.get("usage_available") and not record["charge_uncertain"]:
             saved.pop("pending_request", None); save()
         repo.update_job(str(jobs[owner]["id"]), {"metadata": {
@@ -498,7 +549,8 @@ def generate_and_store_briefings(
             phase_b = run_phase_b(as_of=as_of, direct_sources=load_direct_source_specs_from_env(),
                 discovery_client=discovery_client, profile_codes=requested,
                 previous_lanes=previous, on_lane_complete=lane_done if save_checkpoint else None,
-                retry_missing_search=trigger_type == "manual" and before_request is None,
+                retry_missing_search=False, supplement_only=True,
+                include_research=os.getenv("BRIEFING_ENABLE_RESEARCH", "false").lower()=="true",
                 on_discovery_response=lambda record: record_usage(record, discovery=True))
             saved["phase_b"] = encode(phase_b); save()
         progress["phase_b"] = {"collection": phase_b.diagnostics, "source_health": phase_b.source_health,
@@ -537,31 +589,29 @@ def generate_and_store_briefings(
             })
 
         progress["stage"] = "analysis"
-        if save_checkpoint:
-            completed_c = saved.setdefault("phase_c_by_profile", {})
-            for code in requested:
-                if code not in completed_c:
-                    client = OpenAIAnalysisClient(on_response=lambda record: record_usage(record, discovery=False))
-                    client.before_request = before_request
-                    completed_c[code] = encode(run_phase_c(phase_b, profile_codes=(code,), analyzer=client))
-                    save()
-            pieces = [restore_c(completed_c[code]) for code in requested]
-            phase_c = PhaseCResult([r for p in pieces for r in p.analyses],
-                {k:v for p in pieces for k,v in p.usage_by_profile.items()},
-                {k:v for p in pieces for k,v in p.omitted_by_profile.items()}, [r for p in pieces for r in p.eligible_analyses])
-        else:
-            phase_c = run_phase_c(phase_b, profile_codes=requested,
-                                 on_analysis_response=lambda record: record_usage(record, discovery=False))
+        completed_c = saved.setdefault("phase_c_by_profile", {})
+        for code in requested:
+            if code not in completed_c:
+                client = OpenAIAnalysisClient(on_response=lambda record: record_usage(record, discovery=False))
+                client.before_request = before_request
+                if code=='MARKET':client.market_metrics=saved.get('market_observations',{}).get('items',[])
+                completed_c[code] = encode(run_phase_c(phase_b, profile_codes=(code,), analyzer=client))
+                if code=='MARKET':saved['market_flow']=client.market_flow
+                save()
+        pieces = [restore_c(completed_c[code]) for code in requested]
+        phase_c = PhaseCResult([r for p in pieces for r in p.analyses],
+            {k:v for p in pieces for k,v in p.usage_by_profile.items()},
+            {k:v for p in pieces for k,v in p.omitted_by_profile.items()}, [r for p in pieces for r in p.eligible_analyses])
         market_context = saved.get("market_context", {})
         if "MARKET" in requested and not market_context:
             client = None
-            if any(c.metadata.get("lane_code") == "broker_research" for c in phase_b.candidates):
+            if os.getenv("BRIEFING_ENABLE_RESEARCH", "false").lower()=="true" and any(c.metadata.get("lane_code") == "broker_research" for c in phase_b.candidates):
                 client = OpenAIAnalysisClient(); client.before_request = before_request
-            research, _ = build_research(phase_b.candidates, client=client,
+            research, _ = build_research(phase_b.candidates if client else [], client=client,
                 on_response=lambda record: record_usage(record, discovery=False))
             market_rows = sorted([r for r in phase_c.profile_rows("MARKET") if r.selection_tier != "excluded"], key=lambda r:-r.importance_score)
-            market_context = {"market_metrics": collect_metrics(as_of), "research": research,
-                "market_flow": [re.split(r"(?<=[.!?。])\s+|\n", r.impact_summary or r.summary)[0] for r in market_rows[:5] if r.impact_summary or r.summary]}
+            market_context = {"market_metrics": saved.get('market_observations') or collect_metrics(as_of), "research": research,
+                "market_flow": [r['text'] for r in saved.get('market_flow',[])], "market_flow_facts":saved.get('market_flow',[])}
             saved["market_context"] = market_context; save()
         for code, usage in ({} if progress["analysis_requests"] or save_checkpoint else phase_c.usage_by_profile).items():
             job = jobs.get(code)

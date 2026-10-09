@@ -75,6 +75,8 @@ def run_phase_b(
     previous_lanes: list | None = None,
     on_lane_complete: Callable | None = None,
     retry_missing_search: bool = True,
+    supplement_only: bool = False,
+    include_research: bool = True,
 ) -> PhaseBResult:
     as_of = as_of or datetime.now(timezone.utc)
     direct_sources = list(direct_sources)
@@ -91,10 +93,25 @@ def run_phase_b(
             # Finish all primary lanes before spending the two spare requests on
             # no-search retries. A retry may never silently crowd out later lanes.
             for lane in DISCOVERY_LANES:
+                if lane.lane_code=="broker_research" and not include_research:
+                    skipped_lanes.append({"lane_code":lane.lane_code,"reason":"optional_research_disabled"});continue
                 if profile_codes is not None and lane.profile_code not in profile_codes:
                     continue
                 if any(done.lane_code == lane.lane_code for done in lanes):
                     continue
+                if supplement_only and lane.lane_code!='broker_research':
+                    eligible=[]
+                    for candidate in direct_candidates:
+                        if not candidate.published_at or not candidate.title:continue
+                        normalize_candidate(candidate,as_of=as_of)
+                        ok,_=passes_common_gate(candidate)
+                        hints=candidate.metadata.get('profile_hints') or []
+                        routed=set().union(*(route_profiles(candidate,h) for h in hints)) if hints else route_profiles(candidate)
+                        if ok and lane.profile_code in routed:eligible.append(candidate)
+                    publishers={c.publisher_domain for c in eligible}
+                    if len(eligible)>=12 and len(publishers)>=2:
+                        skipped_lanes.append({'lane_code':lane.lane_code,'reason':'sufficient_publisher_feeds'})
+                        continue
                 if not budget.can_request():
                     skipped_lanes.append({"lane_code": lane.lane_code, "reason": "budget_exhausted"})
                     continue

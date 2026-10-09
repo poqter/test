@@ -73,7 +73,15 @@ def run_phase_c(
                 -(e.last_seen_at.timestamp() if e.last_seen_at else 0),
             ),
         )
-        selected_events = prioritized[:max_events_per_profile]
+        # Round-robin by publisher before analysis so a busy single feed cannot
+        # occupy the entire paid input pool. Importance is still scored by facts.
+        from .normalize import publisher_domain
+        buckets={}
+        for event in prioritized:
+            host=next((publisher_domain(c.url) for c in event.candidates if c.source_kind=='news'),None) or 'official'
+            buckets.setdefault(host,[]).append(event)
+        balanced=[group[i] for i in range(max(map(len,buckets.values()),default=0)) for group in buckets.values() if i<len(group)]
+        selected_events = balanced[:max_events_per_profile]
         omitted_by_profile[profile_code] = max(0, len(prioritized) - len(selected_events))
         raw_rows, usage = client.analyze(profile_code, selected_events)
         usage_by_profile[profile_code] = usage

@@ -41,7 +41,8 @@ def _valid_direct_source(spec: DirectSourceSpec) -> bool:
     )
 
 
-def run_runtime_preflight(*, direct_sources: list[DirectSourceSpec] | None = None, require_direct_sources: bool = True) -> list[PreflightCheck]:
+def run_runtime_preflight(*, direct_sources: list[DirectSourceSpec] | None = None, require_direct_sources: bool = True,
+                          require_market_observations: bool = False) -> list[PreflightCheck]:
     """Validate Phase B live-smoke prerequisites without calling OpenAI or source URLs."""
     if direct_sources is None:
         try:
@@ -117,12 +118,17 @@ def run_runtime_preflight(*, direct_sources: list[DirectSourceSpec] | None = Non
             bool(direct_sources) and all(_valid_direct_source(s) for s in direct_sources),
             require_direct_sources,
             (
-                f"verified direct sources configured={len(direct_sources)}"
+                f"publisher/source endpoints configured={len(direct_sources)}"
                 if direct_sources and all(_valid_direct_source(s) for s in direct_sources)
-                else "no verified direct sources configured (or placeholder URL detected)"
+                else "no direct source endpoints configured (or placeholder URL detected)"
             ),
         ),
     ]
+    from .market_metrics import market_observations_configured
+    configured = market_observations_configured()
+    checks.append(PreflightCheck("market_observations", configured, require_market_observations,
+        "시장 지표 공급원 설정이 있습니다. 실제 값·기준일·표시 권한은 별도 확인이 필요합니다."
+        if configured else "시장 지표 공급원이 설정되지 않았습니다. 경제·금융 유료 생성 전에 BRIEFING_MARKET_PROVIDER 또는 BRIEFING_MARKET_OBSERVATIONS_JSON/FILE/URL을 연결해 주세요."))
     return checks
 
 

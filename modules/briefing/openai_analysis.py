@@ -24,6 +24,9 @@ _RESULT_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "properties": {
+        "market_flow": {"type":"array","maxItems":5,"items":{"type":"object","additionalProperties":False,
+            "properties":{"text":{"type":"string"},"fact_refs":{"type":"array","items":{"type":"string"}}},
+            "required":["text","fact_refs"]}},
         "events": {
             "type": "array",
             "items": {
@@ -60,7 +63,7 @@ _RESULT_SCHEMA: dict[str, Any] = {
             },
         }
     },
-    "required": ["events"],
+    "required": ["events","market_flow"],
 }
 
 
@@ -75,6 +78,8 @@ class OpenAIAnalysisClient:
         self.http = requests.Session()
         self.on_response = on_response
         self.before_request = None
+        self.market_metrics = []
+        self.market_flow = []
         if not self.api_key:
             raise BriefingAnalysisError("OPENAI_API_KEY is not configured")
         if not self.model:
@@ -134,6 +139,9 @@ class OpenAIAnalysisClient:
             "Keep FACT/analysis distinction conservative. TODAY ACTION is an information/workflow priority, never a sales, political, or investment directive. "
             "For insurance, do not use fear, scarcity, or forced replacement language. For market, do not recommend buy/sell. "
             "For NEWS, do not turn political claims into facts. workspace_tool_codes must be empty unless an exact registered tool code is supplied in the input."
+            " For MARKET, market_flow must contain 3-5 short Korean sentences synthesizing the supplied observations and several events, not copying the first article. "
+            "Describe observed changes, attributed reported background, conditional effects, and the next thing to watch. Each sentence needs supplied event:<event_key> or metric:<code> fact_refs. "
+            "Do not invent causal links or values. If evidence is insufficient, use fewer factual sentences. For other profiles, market_flow must be []."
         )
 
     def analyze(self, profile_code: str, events: list[SharedEventCandidate]) -> tuple[list[dict[str, Any]], AnalysisUsage]:
@@ -145,7 +153,8 @@ class OpenAIAnalysisClient:
                 {"role": "system", "content": self._instructions(profile_code)},
                 {
                     "role": "user",
-                    "content": json.dumps({"profile_code": profile_code, "registered_tools": registered_briefing_tools(), "events": [self._event_payload(e) for e in events]}, ensure_ascii=False),
+                    "content": json.dumps({"profile_code": profile_code, "registered_tools": registered_briefing_tools(), "events": [self._event_payload(e) for e in events],
+                        "market_observations":self.market_metrics if profile_code=="MARKET" else []}, ensure_ascii=False),
                 },
             ],
             "text": {
@@ -233,4 +242,7 @@ class OpenAIAnalysisClient:
         if any(row["category"] not in PROFILE_RULES[profile_code].categories or not row["summary"].strip() or not row["title"].strip() for row in rows):
             record["output_text_sample"] = str(output_text or "")[:40000]
             raise notify_failure("Structured analysis category or content is invalid")
+        valid_refs={"event:"+e.event_key for e in events}|{"metric:"+str(r['code']) for r in self.market_metrics if r.get('value') is not None}
+        self.market_flow=[r for r in parsed['market_flow'] if profile_code=='MARKET' and r['text'].strip()
+                          and r['fact_refs'] and set(r['fact_refs'])<=valid_refs]
         return [row for row in rows if isinstance(row, dict)], usage

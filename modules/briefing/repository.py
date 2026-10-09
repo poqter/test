@@ -27,6 +27,12 @@ class BriefingRepository:
         if not self.url or not self.secret_key:
             raise BriefingRepositoryError("Supabase server credentials are not configured")
 
+    def server_headers(self):
+        # New sb_secret_* keys belong on apikey, not Authorization: Bearer.
+        headers={'apikey':self.secret_key}
+        if not self.secret_key.startswith('sb_secret_'):headers['Authorization']='Bearer '+self.secret_key
+        return headers
+
     def _request(
         self,
         method: str,
@@ -36,11 +42,7 @@ class BriefingRepository:
         json: Any = None,
         prefer: str | None = None,
     ) -> Any:
-        headers = {
-            "apikey": self.secret_key,
-            "Authorization": f"Bearer {self.secret_key}",
-            "Accept": "application/json",
-        }
+        headers = {**self.server_headers(), "Accept": "application/json"}
         if json is not None:
             headers["Content-Type"] = "application/json"
         if prefer:
@@ -136,6 +138,10 @@ class BriefingRepository:
         )
 
     def log_api_usage(self, payload: dict[str, Any]) -> None:
+        from .costs import estimate_cost
+        payload=dict(payload)
+        if not (payload.get('metadata') or {}).get('charge_uncertain'):
+            payload['estimated_cost_usd']=estimate_cost(payload)
         self._request(
             "POST", "/rest/v1/hwarang_briefing_api_usage", json=payload, prefer="return=minimal"
         )
@@ -311,42 +317,78 @@ class BriefingRepository:
             json={"job_status": "failed", "finished_at": datetime.now(timezone.utc).isoformat(),
                   "failure_code": "EXPIRED_LEASE", "failure_message": "Expired execution replaced by one recovery run"})
 
-    def create_share(self, revision_id, sender_user_id, public_packet):
+    def require_manager(self, actor):
+        profile=self._first(self._request('GET','/rest/v1/profiles',params={'id':'eq.'+str(actor),'select':'role,is_active'}))
+        if not profile or not profile.get('is_active'):raise BriefingRepositoryError('활성 관리자 계정이 필요합니다.')
+        if profile.get('role')=='super_admin':return
+        permissions=self._request('POST','/rest/v1/rpc/get_hwarang_effective_permissions',json={'p_user_id':actor}) or []
+        if not any(r.get('permission_code')=='workspace.briefing_manage' for r in permissions):
+            raise BriefingRepositoryError('브리핑 운영 권한이 필요합니다.')
+
+    def public_base_url(self):
+        from urllib.parse import urlparse
+        value=os.getenv('BRIEFING_PUBLIC_BASE_URL','').strip()
+        if not value:raise BriefingRepositoryError('고객 읽기 페이지를 배포하고 BRIEFING_PUBLIC_BASE_URL을 설정해 주세요.')
+        parsed=urlparse(value)
+        if parsed.scheme!='https' or not parsed.netloc or parsed.query or parsed.fragment or parsed.username:
+            raise BriefingRepositoryError('고객 공유 주소는 쿼리 없는 HTTPS 주소로 설정해 주세요.')
+        return value.rstrip('/')
+
+    def public_endpoint_ready(self):
+        try:
+            response=self.http.get(self.public_base_url(),params={'health':'1'},timeout=8,allow_redirects=False)
+            data=response.json()
+            return response.status_code==200 and data.get('schema')=='hwarang-share-v3' and data.get('configured') is True
+        except (requests.RequestException,ValueError,BriefingRepositoryError):return False
+
+    def _upload_share_assets(self, token, packet):
+        from .sharing import packet_assets
+        for filename,(mime,data) in packet_assets(packet).items():
+            if len(data)>4000000:raise BriefingRepositoryError('공유 파일이 허용 크기를 초과했습니다.')
+            try:
+                result=self.http.post(self.url+'/storage/v1/object/briefing-share-assets/'+token+'/'+packet['asset_version']+'/'+filename,
+                    data=data,headers={**self.server_headers(),'Content-Type':mime,'x-upsert':'true'},timeout=20)
+            except requests.RequestException as exc:raise BriefingRepositoryError('공유 파일을 저장하지 못했습니다. 다시 확인해 주세요.') from exc
+            if not 200<=result.status_code<300:raise BriefingRepositoryError('공유 파일 저장 설정을 확인해 주세요.')
+
+    def create_share(self, revision_id, sender_user_id, public_packet=None):
         import secrets
-        token = secrets.token_urlsafe(32)
-        revision = self._first(self._request("GET", "/rest/v1/hwarang_briefing_revisions", params={"id": "eq."+revision_id, "select": "*"}))
-        if not revision or revision.get("publication_status") != "published" or not revision.get("external_share_allowed") or not revision.get("external_qa_passed"):
-            raise BriefingRepositoryError("공개 검수가 끝난 브리핑만 고객에게 공유할 수 있습니다.")
-        existing = self._first(self._request("GET", "/rest/v1/hwarang_briefing_public_shares", params={
-            "revision_id": "eq."+revision_id, "sender_user_id": "eq."+sender_user_id, "revoked_at": "is.null",
-            "expires_at": "gt."+datetime.now(timezone.utc).isoformat(), "select": "token,public_packet", "limit": "1"}))
-        if existing: return existing["token"], existing["public_packet"]
-        # Load the immutable sanitized snapshot on the server; never trust a caller-provided body.
-        snapshot = self._snapshot_for_revision(revision_id)
-        body = (snapshot or {}).get("external_content_payload") or {}
-        from .public_body import customer_body
-        checked = customer_body({**body, "market_metrics": {"items": [dict(r, external_allowed=True) for r in body.get("market_metrics", [])]}})
-        if not checked.get("issues"): raise BriefingRepositoryError("고객 공유 본문을 확인할 수 없습니다.")
-        sender = self._first(self._request("GET", "/rest/v1/profiles", params={"id": "eq."+sender_user_id, "select": "*"}))
-        if not sender or not sender.get("is_active", False) or not str(sender.get("display_name") or "").strip(): raise BriefingRepositoryError("공유자 계정을 확인할 수 없습니다.")
-        briefing = self._first(self._request("GET", "/rest/v1/hwarang_briefings", params={"id": "eq."+str(revision['briefing_id']), "select": "briefing_date"}))
-        position = self._first(self._request("GET", "/rest/v1/positions", params={"code": "eq."+str(sender.get("position_code") or ""), "select": "display_name"}))
-        if not position: raise BriefingRepositoryError("등록 직함을 확인할 수 없습니다.")
-        public_packet = {"body": checked, "briefing_date": (briefing or {}).get("briefing_date"),
-                         "sender": {"name": sender.get("display_name") or "", "position": (position or {}).get("display_name") or ""}}
-        self._request("POST", "/rest/v1/hwarang_briefing_public_shares", json={"token": token, "revision_id": revision_id,
-            "sender_user_id": sender_user_id, "public_packet": public_packet})
-        return token, public_packet
+        from .sharing import build_packet
+        from .runtime import body_quality_ready
+        if not self.operating_policy().get('external_sharing_approved'):
+            raise BriefingRepositoryError('최고관리자의 고객 공유 운영 승인이 필요합니다.')
+        revision=self._first(self._request('GET','/rest/v1/hwarang_briefing_revisions',params={'id':'eq.'+revision_id,'select':'*'}))
+        if not revision or revision.get('publication_status')!='published' or not revision.get('external_share_allowed') or not revision.get('external_qa_passed'):
+            raise BriefingRepositoryError('공개 검수가 끝난 브리핑만 고객에게 공유할 수 있습니다.')
+        briefing=self._first(self._request('GET','/rest/v1/hwarang_briefings',params={'id':'eq.'+str(revision['briefing_id']),'select':'*'}))
+        if not briefing or str(briefing.get('current_published_revision_id'))!=revision_id:
+            raise BriefingRepositoryError('최신 공개본에서 공유 링크를 만들어 주세요.')
+        sender=self._first(self._request('GET','/rest/v1/profiles',params={'id':'eq.'+sender_user_id,'select':'display_name,position_code,is_active'}))
+        if not sender or not sender.get('is_active') or not str(sender.get('display_name') or '').strip():
+            raise BriefingRepositoryError('공유자 계정을 확인할 수 없습니다.')
+        position=self._first(self._request('GET','/rest/v1/positions',params={'code':'eq.'+str(sender.get('position_code') or ''),'select':'display_name'}))
+        if not position or not str(position.get('display_name') or '').strip():raise BriefingRepositoryError('등록 직함을 확인할 수 없습니다.')
+        if not self.public_endpoint_ready():raise BriefingRepositoryError('고객 읽기 페이지를 먼저 배포해 주세요. 적용 안내서의 public_reader 설정을 확인해 주세요.')
+        existing=self._first(self._request('GET','/rest/v1/hwarang_briefing_public_shares',params={
+            'revision_id':'eq.'+revision_id,'sender_user_id':'eq.'+sender_user_id,'revoked_at':'is.null',
+            'expires_at':'gt.'+datetime.now(timezone.utc).isoformat(),'select':'token,public_packet','limit':'1'}))
+        if existing and (existing.get('public_packet') or {}).get('schema')=='hwarang-share-v3':
+            return existing['token'],existing['public_packet']
+        token=existing['token'] if existing else secrets.token_urlsafe(32)
+        identity=(existing or {}).get('public_packet',{}).get('sender') or {'name':sender['display_name'],'position':position['display_name']}
+        packet=build_packet(self._snapshot_for_revision(revision_id) or {},briefing,revision,identity,self.public_base_url(),token)
+        body=packet['body']
+        if not body_quality_ready(body) or body.get('profile_code')=='MARKET' and len(body.get('market_metrics') or [])!=6:
+            raise BriefingRepositoryError('고객 본문 또는 지표 표시 권한을 확인할 수 없습니다.')
+        self._upload_share_assets(token,packet)
+        if existing:self._request('PATCH','/rest/v1/hwarang_briefing_public_shares',params={'token':'eq.'+token},json={'public_packet':packet})
+        else:self._request('POST','/rest/v1/hwarang_briefing_public_shares',json={'token':token,'revision_id':revision_id,'sender_user_id':sender_user_id,'public_packet':packet})
+        return token,packet
 
     def public_share(self, token):
         import re
-        if not re.fullmatch(r"[A-Za-z0-9_-]{32,64}", str(token)): return None
-        row = self._first(self._request("GET", "/rest/v1/hwarang_briefing_public_shares", params={
-            "token": "eq."+token, "revoked_at": "is.null", "expires_at": "gt."+datetime.now(timezone.utc).isoformat(), "select": "revision_id,public_packet"}))
-        if not row: return None
-        revision = self._first(self._request("GET", "/rest/v1/hwarang_briefing_revisions", params={"id": "eq."+row['revision_id'], "select": "publication_status,external_share_allowed,external_qa_passed"}))
-        if not revision or revision.get("publication_status") != "published" or not revision.get("external_share_allowed") or not revision.get("external_qa_passed"): return None
-        return row.get("public_packet")
+        if not re.fullmatch(r'[A-Za-z0-9_-]{32,64}',str(token)):return None
+        return self._request('POST','/rest/v1/rpc/hwarang_read_public_briefing',json={'p_token':token})
 
     def revoke_share(self, token, actor):
         self._request("PATCH", "/rest/v1/hwarang_briefing_public_shares", params={"token": "eq."+token, "sender_user_id": "eq."+actor}, json={"revoked_at": datetime.now(timezone.utc).isoformat()})
@@ -378,6 +420,46 @@ class BriefingRepository:
         clean = [str(value).strip() for value in values if str(value).strip()]
         return f"in.({','.join(clean)})"
 
+    def operating_policy(self):
+        row=self._first(self._request('GET','/rest/v1/hwarang_briefing_operating_policy',params={'policy_key':'eq.WORKSPACE','select':'*'}))
+        if not row:raise BriefingRepositoryError('브리핑 출시 설정이 없습니다. 추가 Migration 21을 먼저 적용해 주세요.')
+        return row
+
+    def set_operating_policy(self, actor, *, automatic, external, scheduled=False):
+        return self._request('POST','/rest/v1/rpc/hwarang_set_briefing_policy',json={
+            'p_actor':actor,'p_automatic':bool(automatic),'p_external':bool(external),'p_scheduled':bool(scheduled)})
+
+    def ai_generation_enabled(self):
+        row=self._first(self._request('GET','/rest/v1/hwarang_ai_runtime_config',params={'config_id':'eq.1','select':'service_enabled'}))
+        return bool(row and row.get('service_enabled'))
+
+    def sync_business_calendar(self, day):
+        from .business_calendar import calendar_rows
+        self._request('POST','/rest/v1/hwarang_briefing_calendar_days',params={'on_conflict':'day'},
+            json=calendar_rows(day),prefer='resolution=merge-duplicates,return=minimal')
+
+    def verified_business_days(self, code):
+        return int(self._request('POST','/rest/v1/rpc/hwarang_verified_briefing_days',json={'p_profile':code}) or 0)
+
+    def operation_status(self, day):
+        from datetime import timedelta
+        runs=self._request('GET','/rest/v1/hwarang_briefing_daily_runs',params={
+            'briefing_date':'gte.'+str(day-timedelta(days=7)),'select':'run_key,briefing_date,group_code,status,attempts,updated_at','order':'updated_at.desc','limit':'40'})
+        jobs=self._request('GET','/rest/v1/hwarang_briefing_jobs',params={
+            'briefing_date':'gte.'+str(day-timedelta(days=7)),'select':'profile_code,briefing_date,job_status,failure_code,started_at,finished_at','order':'created_at.desc','limit':'60'})
+        return {'runs':runs,'jobs':jobs}
+
+    def cost_status(self):
+        from zoneinfo import ZoneInfo
+        from .costs import usage_summary
+        local=datetime.now(ZoneInfo('Asia/Seoul'));start=local.replace(day=1,hour=0,minute=0,second=0,microsecond=0)
+        rows=self._request('GET','/rest/v1/hwarang_briefing_api_usage',params={
+            'created_at':'gte.'+start.astimezone(timezone.utc).isoformat(),
+            'select':'profile_code,model_name,operation,input_tokens,output_tokens,search_actions,estimated_cost_usd,actual_cost_usd,metadata,created_at',
+            'order':'created_at.desc','limit':'1000'})
+        today=[r for r in rows if datetime.fromisoformat(r['created_at'].replace('Z','+00:00')).astimezone(ZoneInfo('Asia/Seoul')).date()==local.date()]
+        return {'today':usage_summary(today),'month':usage_summary(rows),'row_limit_reached':len(rows)==1000}
+
     def latest_summaries(self, profile_codes: Iterable[str], *, include_draft: bool = False) -> dict[str, dict[str, Any] | None]:
         codes = tuple(dict.fromkeys(str(code).strip().upper() for code in profile_codes if str(code).strip()))
         result = {code: None for code in codes}
@@ -387,6 +469,7 @@ class BriefingRepository:
             "select": "id,profile_code,briefing_date,briefing_type,current_published_revision_id,created_at",
             "order": "briefing_date.desc,created_at.desc", "limit": str(max(10,len(codes)*10)),
         })
+
         if not isinstance(rows,list) or not rows: return result
         candidates = {code: [] for code in codes}
         for row in rows:

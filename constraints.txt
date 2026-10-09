@@ -9,6 +9,7 @@ click==8.5.0
 cryptography==46.0.0
 et-xmlfile==2.0.0
 h11==0.16.0
+holidays==0.106
 httptools==0.8.0
 idna==3.19
 itsdangerous==2.2.0

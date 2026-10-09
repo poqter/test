@@ -1443,7 +1443,8 @@ def _render_settings(auth: HwarangAuthService, actor_id: str) -> None:
 
     st.markdown('<div class="hw-section-head">AI 서비스</div>', unsafe_allow_html=True)
     with st.form("hw_ai_runtime_settings_v2"):
-        service_enabled = st.toggle("AI 서비스", value=bool(runtime.get("service_enabled")))
+        service_enabled = st.toggle("전체 AI 서비스 · 학습과 브리핑", value=bool(runtime.get("service_enabled")))
+        st.caption('끄면 학습 AI와 새 브리핑 생성을 모두 중단합니다. 저장된 자료 조회·공유·PDF는 계속 사용할 수 있습니다.')
         c1, c2, c3 = st.columns(3)
         text_enabled = c1.toggle("Text AI", value=bool(runtime.get("text_enabled")))
         voice_enabled = c2.toggle("Voice AI", value=bool(runtime.get("voice_enabled")))

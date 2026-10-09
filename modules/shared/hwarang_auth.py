@@ -25,6 +25,11 @@ _PROFILE_REFRESH_SECONDS = 60
 class HwarangAuthError(RuntimeError):
     """User-safe authentication error."""
 
+    def __init__(self, message: str, *, status: int | None = None, code: str = ""):
+        super().__init__(message)
+        self.status = status
+        self.code = code
+
 
 @dataclass(frozen=True)
 class SupabaseConfig:
@@ -100,7 +105,11 @@ class HwarangAuthService:
         except ValueError:
             payload = {"message": response.text}
         message = ""
+        code = ""
         if isinstance(payload, dict):
+            candidate_code = str(payload.get("error_code") or payload.get("code") or "")
+            if re.fullmatch(r"[a-zA-Z0-9_]{1,80}", candidate_code):
+                code = candidate_code
             message = str(
                 payload.get("msg")
                 or payload.get("message")
@@ -110,18 +119,29 @@ class HwarangAuthService:
             )
         # Keep infrastructure details in server logs, not in the user-facing UI.
         # Never log request headers/body because they can contain credentials.
-        _LOGGER.warning(
-            "Supabase request failed: method=%s path=%s status=%s message=%s",
-            method,
-            path,
-            response.status_code,
-            message[:500],
-        )
-        raise HwarangAuthError(self._friendly_error(response.status_code, message))
+        _LOGGER.warning("Supabase request failed: method=%s path=%s status=%s code=%s",
+                        method, path, response.status_code, code or "unspecified")
+        raise HwarangAuthError(self._friendly_error(response.status_code, message, code),
+                              status=response.status_code, code=code)
 
     @staticmethod
-    def _friendly_error(status: int, message: str) -> str:
+    def _friendly_error(status: int, message: str, code: str = "") -> str:
         low = message.lower()
+        auth_messages = {
+            "email_address_not_authorized": "메일 발송 서비스 설정을 관리자에게 확인해 주세요. 이메일 형식 오류가 아닙니다.",
+            "email_address_invalid": "이메일 주소를 확인해 주세요. 메일 서버에서 사용할 수 없는 주소입니다.",
+            "over_email_send_rate_limit": "재설정 메일 요청 한도에 도달했습니다. 잠시 후 다시 요청해 주세요.",
+            "over_request_rate_limit": "계정 요청 한도에 도달했습니다. 잠시 후 다시 시도해 주세요.",
+            "same_password": "현재와 다른 새 비밀번호를 입력해 주세요.",
+            "weak_password": "새 비밀번호가 계정 서버의 보안 기준을 충족하지 않습니다. 더 길고 복잡하게 입력해 주세요.",
+            "reauthentication_needed": "다시 로그인한 뒤 비밀번호 변경을 요청해 주세요.",
+            "reauthentication_not_valid": "계정 재인증을 확인하지 못했습니다. 다시 로그인해 주세요.",
+            "otp_expired": "이미 사용했거나 만료된 링크입니다. 재설정 메일을 다시 요청해 주세요.",
+        }
+        if code in auth_messages:
+            return auth_messages[code]
+        if "error sending" in low and "email" in low:
+            return "계정 서버가 메일을 발송하지 못했습니다. 관리자가 SMTP 발송 설정과 Auth 로그를 확인해야 합니다."
         if "rule_history_conflict" in low:
             return "다른 접속에서 이 상담 기록이 변경됐습니다. 학습 기록에서 다시 열어 최신 상태를 확인해 주세요."
         if "rule_training_access_denied" in low:

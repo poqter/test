@@ -1,4 +1,4 @@
-"""Shared renderer for staff and customers, from the same public DTO."""
+"""Readable staff/customer cards from allowlisted saved projections."""
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import streamlit as st
@@ -16,21 +16,22 @@ def render_body(body):
         st.subheader('시장 지표')
         items=body.get('market_metrics') or []
         if not items:st.info('출처·기준일·표시 권한이 확인된 시장 지표를 기다리고 있습니다.')
-        for i in range(0,len(items),3):
-            for col,m in zip(st.columns(min(3,len(items)-i)),items[i:i+3]):
+        for i in range(0,len(items),2):
+            for col,m in zip(st.columns(min(2,len(items)-i)),items[i:i+2]):
                 with col,st.container(border=True):
-                    from .public_body import metric_change
+                    from .public_body import metric_change,metric_date
                     delta=metric_change(m)
                     st.metric(str(m['label']),f"{m['value']:,.2f} {m['unit']}",delta=delta,delta_color='off')
-                    st.caption(stamp(m.get('observed_at'))+' · '+str(m.get('observation_kind') or ''))
+                    st.caption(metric_date(m))
+                    st.caption(str(m.get('reference_definition') or '실제 관측값'))
                     if is_safe_url(str(m.get('source_url') or '')):st.link_button(str(m.get('source_name') or '출처'),m['source_url'])
         if body.get('market_flow'):
             st.subheader('오늘의 시장 흐름')
             for text in body['market_flow']:st.write(text)
-    for row in body.get('issues') or []:
+    for index,row in enumerate(body.get('issues') or [],1):
         with st.container(border=True):
             st.caption(str(row.get('category') or '')+(' · 대표 뉴스' if row.get('representative') else ''))
-            st.subheader(str(row.get('title') or '오늘의 소식'))
+            st.markdown('### '+f'{index:02d} · '+str(row.get('title') or '오늘의 소식'))
             st.write(str(row.get('summary') or ''))
             for src in row.get('sources') or []:
                 st.caption(str(src.get('source_name') or '출처')+' · '+stamp(src.get('published_at')))
@@ -40,7 +41,7 @@ def render_body(body):
                     if row.get('why_important'):st.write(row['why_important'])
                     if row.get('impact_summary'):st.write(row['impact_summary'])
     if not body.get('issues'):st.info('이 날짜에 확인된 뉴스가 없습니다. 부족한 내용을 임의로 채우지 않습니다.')
-    if body.get('profile_code')=='MARKET':render_research(body.get('research') or {})
+    if (body.get('research') or {}).get('reports'):render_research(body['research'])
 
 
 def _views(rows):

@@ -12,8 +12,8 @@ on:
         description: Daily operation
         required: true
         type: choice
-        default: prepare
-        options: [prepare, market, daily, publish, recover]
+        default: check
+        options: [check, prepare, market, daily, publish, recover]
 permissions:
   contents: read
 concurrency:
@@ -32,6 +32,15 @@ jobs:
       BRIEFING_DIRECT_SOURCES_JSON: ${{ vars.BRIEFING_DIRECT_SOURCES_JSON }}
       BRIEFING_MARKET_OBSERVATIONS_URL: ${{ secrets.BRIEFING_MARKET_OBSERVATIONS_URL }}
       BRIEFING_MARKET_OBSERVATIONS_JSON: ${{ vars.BRIEFING_MARKET_OBSERVATIONS_JSON }}
+      BRIEFING_MARKET_PROVIDER: ${{ vars.BRIEFING_MARKET_PROVIDER }}
+      FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+      ECOS_API_KEY: ${{ secrets.ECOS_API_KEY }}
+      BRIEFING_MARKET_EXTERNAL_ALLOWED: ${{ vars.BRIEFING_MARKET_EXTERNAL_ALLOWED }}
+      BRIEFING_MARKET_LICENSE_REFERENCE: ${{ vars.BRIEFING_MARKET_LICENSE_REFERENCE }}
+      BRIEFING_PRICE_TABLE_JSON: ${{ vars.BRIEFING_PRICE_TABLE_JSON }}
+      BRIEFING_EXTRA_HOLIDAYS_JSON: ${{ vars.BRIEFING_EXTRA_HOLIDAYS_JSON }}
+      BRIEFING_DEFAULT_NEWS_FEEDS: ${{ vars.BRIEFING_DEFAULT_NEWS_FEEDS }}
+      BRIEFING_ENABLE_RESEARCH: ${{ vars.BRIEFING_ENABLE_RESEARCH }}
       SCHEDULE: ${{ github.event.schedule }}
       MANUAL_ACTION: ${{ inputs.action }}
     steps:
@@ -39,7 +48,7 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-      - run: python -m pip install requests==2.34.2 jsonschema==4.26.0
+      - run: python -m pip install requests==2.34.2 jsonschema==4.26.0 holidays==0.106
       - name: Run daily operation
         shell: bash
         run: |
@@ -52,3 +61,11 @@ jobs:
             *) BRIEFING_ACTION="$MANUAL_ACTION" ;;
           esac
           python .github/scripts/hwarang_daily_briefing.py --action "$BRIEFING_ACTION"
+      - name: Save operation diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: briefing-operation-status-${{ github.run_id }}
+          path: briefing-operation-status.json
+          retention-days: 14
+          if-no-files-found: ignore

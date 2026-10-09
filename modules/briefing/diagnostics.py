@@ -8,8 +8,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-ENGINE_VERSION = "1.9.0-daily"
-DIAGNOSTIC_SCHEMA = "briefing-daily-diagnostics-v3"
+ENGINE_VERSION = "1.10.0-launch"
+DIAGNOSTIC_SCHEMA = "briefing-daily-diagnostics-v4"
 
 
 def release_matches(actual: dict[str, str], manifest: dict[str, Any]) -> tuple[bool, list[str]]:
