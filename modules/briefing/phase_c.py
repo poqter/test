@@ -38,7 +38,7 @@ def _apply_caps(rows: list[ProfileEventAnalysis], profile_code: str) -> None:
         row.selection_tier = "light_digest" if row.importance_score >= rule.light_floor else "excluded"
 
     core_count = sum(1 for x in rows if x.selection_tier == "core")
-    light_limit = light_digest_limit(core_count)
+    light_limit = light_digest_limit(core_count, profile_code)
     light = sorted((x for x in rows if x.selection_tier == "light_digest"), key=lambda x: x.importance_score, reverse=True)
     for row in light[light_limit:]:
         row.selection_tier = "excluded"
@@ -56,6 +56,8 @@ def run_phase_c(
     by_profile: dict[str, list[SharedEventCandidate]] = defaultdict(list)
     for event in phase_b.events:
         for profile_code in sorted(event.routed_profiles):
+            if any(c.metadata.get("lane_code") == "broker_research" for c in event.candidates):
+                continue
             if profile_code in PROFILE_RULES and (profile_codes is None or profile_code in profile_codes):
                 by_profile[profile_code].append(event)
 
@@ -90,8 +92,8 @@ def run_phase_c(
                 validation_status = "required"
 
             selection_tier = _selection_for(score, event, profile_code, evidence_status)
-            if validation_status != "ok" and selection_tier == "core":
-                selection_tier = "light_digest" if score >= PROFILE_RULES[profile_code].light_floor else "excluded"
+            if validation_status != "ok":
+                selection_tier = "excluded"
 
             analyses.append(ProfileEventAnalysis(
                 event_key=event.event_key,

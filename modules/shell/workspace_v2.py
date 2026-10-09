@@ -42,7 +42,7 @@ _EXTERNAL_LAUNCH_CACHE_SECONDS = 45.0
 
 def _external_launch_context(app: AppSpec) -> tuple[str, str, str] | None:
     """Read app configuration and the current permission gate without an RPC."""
-    if not app.external_app_key:
+    if not app.external_app_key or ("ws_allowed_ids" in st.session_state and app.id not in st.session_state["ws_allowed_ids"]):
         return None
     target = external_app_url(app.external_app_key)
     target_app = "academy" if app.id == "academy" else "calculator" if app.id == "quick_calculators" else ""
@@ -95,27 +95,6 @@ def _external_launch_url(app: AppSpec, *, fresh: bool = False, mode: str | None 
     return url
 
 
-@st.dialog("앱 열기")
-def _external_launch_dialog(app_id: str, mode: str | None = None) -> None:
-    app = APP_BY_ID.get(app_id)
-    if app is None or app_id not in set(st.session_state.get("ws_allowed_ids") or ()):
-        st.error("현재 계정에서 이용할 수 없는 도구입니다.")
-        return
-    st.subheader(app.label)
-    st.write("아래 버튼으로 새 탭에서 열어 주세요.")
-    st.button("연결 다시 준비", key="hw_refresh_launch_" + app_id,
-              use_container_width=True)
-    # Each dialog run is an explicit open or refresh, never a sidebar redraw.
-    # Reopening cannot reuse a consumed ticket, even inside the cache TTL.
-    url = _external_launch_url(app, fresh=True, mode=mode)
-    if not url:
-        st.error("앱을 연결하지 못했습니다. 이용 권한과 연결 설정을 확인해 주세요.")
-        return
-    st.link_button(app.label + " 열기 ↗", url, type="primary",
-                   key="hw_open_external_" + app_id, use_container_width=True)
-    st.caption("앱 로딩 중 연결이 만료되거나 다시 열리지 않으면 ‘연결 다시 준비’를 눌러 주세요.")
-
-
 def _navigate_once(navigate: Callable[..., object], page_id: str, mode: str | None = None) -> None:
     """Change route in a widget callback; Streamlit supplies the single rerun."""
     navigate(page_id, mode, state=st.session_state)
@@ -132,16 +111,10 @@ def _launch_widget(
 ) -> bool:
     """Render navigation; prepare a protected-app ticket only when requested."""
     if app.external_app_key:
-        clicked = st.button(
-            label + " ↗",
-            key=key,
-            help=help_text,
-            type="primary" if primary else "secondary",
-            disabled=_external_launch_context(app) is None,
-            use_container_width=True,
-        )
-        if clicked:
-            _external_launch_dialog(app.id, mode)
+        from modules.shared.one_click_launch import launch_button
+        launch_button(label + " ↗", key=key, primary=primary,
+                      disabled=_external_launch_context(app) is None,
+                      issue_url=lambda: _external_launch_url(app, fresh=True, mode=mode))
         return False
     kwargs = {}
     if navigate is not None:

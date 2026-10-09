@@ -10,7 +10,7 @@ def review_html(payload: dict) -> str:
         return escape(str(value if value is not None else ''))
     parts = [f'<h1>화랑 상담 훈련 복기</h1><p>{e(s.get("title"))} · {e(s.get("mode"))} · {e(s.get("session_length"))}</p>',
              '<p>규칙 기반 잠정 평가 · 공식 인증 아님</p>',
-             f'<p>평가 범위: {e(r.get("lower"))}–{e(r.get("upper"))}</p>']
+             f'<p>역량 평가: {"판정 유보 · 아래 항목별 사유 확인" if r.get("unresolved") or r.get("lower") != r.get("upper") else e(r.get("lower")) + "점 · 잠정"}</p>']
     mission = r.get('mission_outcome') or {}
     parts.append(f'<h2>미션 결과</h2><p>{"최종 목표 달성" if mission.get("final_complete") else "미완료"}</p><p>{e(mission.get("followup_schedule"))}</p>')
     for row in r.get('rows', []):

@@ -11,7 +11,7 @@ import requests
 from .config import DiscoveryLaneSpec
 from .discovery_budget import DiscoveryBudget, REQUEST_TOOL_CALL_LIMIT
 from .models import DiscoveryLaneResult, DiscoveryUsage, SourceCandidate
-from .normalize import is_safe_url
+from .normalize import is_safe_url, publisher_domain
 from .publication import parse_publication_date
 from .source_policy import LANE_DOMAINS, source_identity
 
@@ -33,6 +33,7 @@ class OpenAIWebDiscoveryClient:
         self.timeout = timeout
         self.http = requests.Session()
         self.as_of = datetime.now(timezone.utc)
+        self.before_request = None
         if not self.api_key:
             raise BriefingDiscoveryError("OPENAI_API_KEY is not configured")
         if not self.model:
@@ -40,13 +41,12 @@ class OpenAIWebDiscoveryClient:
 
     def _request(self, lane: DiscoveryLaneSpec) -> dict[str, Any]:
         local_now = self.as_of.astimezone(ZoneInfo("Asia/Seoul"))
-        oldest = local_now - timedelta(hours=96)
+        oldest = (local_now - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
         query_dates = f"after:{oldest.date().isoformat()} before:{(local_now+timedelta(days=1)).date().isoformat()}"
         payload = {
             "model": self.model,
             "input": (
-                f"기준시각={self.as_of.isoformat()}. 핵심 후보는 {(self.as_of-timedelta(hours=36)).isoformat()} 이후, "
-                f"참고 후보는 {(self.as_of-timedelta(hours=96)).isoformat()} 이후 게시된 자료만 탐색한다. "
+                f"기준시각={self.as_of.isoformat()}. 전날 00:00 KST부터 기준시각까지 게시된 새 자료만 탐색한다. "
                 f"한국 기준 날짜={local_now.isoformat()}. 검색어에 {query_dates}를 포함한다. "
                 "web_search 도구를 정확히 한 번 사용하고 검색 쿼리도 하나만 작성한다. "
                 "여러 하위 주제별 검색이나 추가 탐색 없이 첫 검색 결과의 새 기사/발표 원문 링크만 반환한다. "
@@ -57,8 +57,10 @@ class OpenAIWebDiscoveryClient:
             "max_tool_calls": REQUEST_TOOL_CALL_LIMIT,
             "parallel_tool_calls": False,
             "max_output_tokens": 2000,
-            "include": ["web_search_call.results", "web_search_call.action.sources"],
+            "include": ["web_search_call.action.sources"],
         }
+        if self.before_request:
+            self.before_request("web")
         try:
             response = self.http.post(
                 "https://api.openai.com/v1/responses",
@@ -209,7 +211,7 @@ class OpenAIWebDiscoveryClient:
                 description=str(source.get("snippet") or source.get("description") or ""),
                 published_at=parse_publication_date(source.get("published_at") or source.get("published") or source.get("datePublished"), url=url),
                 retrieved_at=retrieved_at,
-                source_name=str(source.get("publisher") or source.get("source") or "Web Search"),
+                source_name=str(source.get("publisher") or source.get("source") or publisher_domain(url) or "출처"),
                 publisher_name=str(source.get("publisher") or source.get("source") or "") or None,
                 collector_provider="openai_web_search",
                 source_kind=identity[0],

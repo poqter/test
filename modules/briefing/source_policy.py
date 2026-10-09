@@ -21,11 +21,14 @@ NEWS_MEDIA = (
     "hani.co.kr", "khan.co.kr", "hankyung.com", "mk.co.kr", "edaily.co.kr",
     "sedaily.com", "mt.co.kr", "fnnews.com", "asiae.co.kr", "etoday.co.kr",
 )
+RESEARCH_DOMAINS = ("securities.miraeasset.com", "samsungpop.com", "nhqv.com", "kbsec.com", "shinhansec.com", "hanaw.com", "truefriend.com", "kiwoom.com", "daishin.com", "eugenefn.com", "hi-ib.com", "meritz.co.kr")
 LANE_DOMAINS = {
     "official_industry": OFFICIAL_DOMAINS[:6] + INDUSTRY_DOMAINS,
     "trusted_media": INSURANCE_MEDIA,
     "official_wire_broadcast": OFFICIAL_DOMAINS + NEWS_BROADCAST,
     "general_economic_media": NEWS_MEDIA,
+    "market_news": NEWS_MEDIA + NEWS_BROADCAST + ("bok.or.kr", "federalreserve.gov"),
+    "broker_research": RESEARCH_DOMAINS,
 }
 
 
@@ -35,6 +38,8 @@ def domain_matches(host: str, domains: tuple[str, ...]) -> bool:
 
 def source_identity(url: str) -> tuple[str, str] | None:
     host = publisher_domain(url) or ""
+    if domain_matches(host, RESEARCH_DOMAINS):
+        return "research", "B"
     if domain_matches(host, OFFICIAL_DOMAINS):
         return "official", "A"
     if domain_matches(host, INDUSTRY_DOMAINS):

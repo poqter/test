@@ -33,7 +33,7 @@ PROFILE_RULES: Final[dict[str, ProfileRule]] = {
         core_threshold=50,
         light_floor=20,
         light_ceiling=49,
-        max_core=7,
+        max_core=1,
         categories=(
             "정치·행정", "법·제도", "사회·안전", "생활경제·주거", "노동·고용",
             "보건·복지", "교육", "과학·기술·산업", "국제·안보",
@@ -45,13 +45,13 @@ PROFILE_RULES: Final[dict[str, ProfileRule]] = {
         core_threshold=55,
         light_floor=30,
         light_ceiling=54,
-        max_core=5,
+        max_core=1,
         categories=("국내증시", "해외증시", "금리·채권", "환율", "원자재", "경제지표", "기업·산업", "시장리스크"),
         importance_weights=(("시장 영향 범위", 25), ("한국시장 관련성", 20), ("영향 지속성", 15), ("정책·거시 중요성", 15), ("실제 시장 반응", 15), ("FP·고객 활용성", 10)),
     ),
 }
 
 
-def light_digest_limit(core_count: int = 0) -> int:
+def light_digest_limit(core_count: int = 0, profile_code: str = "INSURANCE") -> int:
     """Display cap is independent of core count; first five are shown in the UI."""
-    return 7
+    return {"NEWS": 10, "MARKET": 8, "INSURANCE": 15}.get(profile_code, 15) - core_count

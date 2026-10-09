@@ -114,3 +114,5 @@ body.mission-open{overflow:hidden}
 .sim-home-button{border:1px solid #9fc4db4d;border-radius:10px;background:#ffffff0d;color:#d9edf8;padding:8px 11px;font-size:11px;font-weight:750;white-space:nowrap}
 .sim-home-button:hover{background:#ffffff18;border-color:#b8d9e9}
 @media(max-width:760px){.sim-brand-group{gap:8px}.sim-home-button{padding:7px 9px}.sim-brand-group .brand small{display:none}}
+
+.score-ring strong{font-size:clamp(24px,4vw,38px)}

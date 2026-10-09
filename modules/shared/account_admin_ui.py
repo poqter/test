@@ -41,6 +41,9 @@ def render(auth: HwarangAuthService) -> None:
         st.error("계정·권한 관리는 최고관리자만 이용할 수 있습니다.")
         return
 
+    from .account_security import admin_recovery_dialog
+    if st.button("비밀번호·이메일 복구", key="hw_admin_account_recovery"):
+        admin_recovery_dialog(auth)
     st.subheader("계정·권한 관리")
     st.caption("사용자 계정, 소속·직책, 앱 접근권한과 주요 기능 권한을 관리합니다. 저장한 내용은 Supabase에 즉시 반영됩니다.")
 

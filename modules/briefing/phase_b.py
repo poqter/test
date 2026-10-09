@@ -71,12 +71,16 @@ def run_phase_b(
     enable_web_discovery: bool = True,
     date_enricher: PublicationDateEnricher | None = None,
     on_discovery_response: Callable[[dict[str, Any]], None] | None = None,
+    profile_codes: tuple[str, ...] | None = None,
+    previous_lanes: list | None = None,
+    on_lane_complete: Callable | None = None,
+    retry_missing_search: bool = True,
 ) -> PhaseBResult:
     as_of = as_of or datetime.now(timezone.utc)
     direct_sources = list(direct_sources)
     direct_details: dict[str, Any] = {}
     direct_candidates, direct_health = collect_direct_sources(direct_sources, diagnostics=direct_details)
-    lanes = []
+    lanes = list(previous_lanes or [])
     web_candidates: list[SourceCandidate] = []
     budget = DiscoveryBudget(on_response=on_discovery_response)
     skipped_lanes: list[dict[str, str]] = []
@@ -87,14 +91,19 @@ def run_phase_b(
             # Finish all primary lanes before spending the two spare requests on
             # no-search retries. A retry may never silently crowd out later lanes.
             for lane in DISCOVERY_LANES:
+                if profile_codes is not None and lane.profile_code not in profile_codes:
+                    continue
+                if any(done.lane_code == lane.lane_code for done in lanes):
+                    continue
                 if not budget.can_request():
                     skipped_lanes.append({"lane_code": lane.lane_code, "reason": "budget_exhausted"})
                     continue
                 result = client.run_lane(lane, budget=budget, allow_retry=False)
                 lanes.append(result)
+                if on_lane_complete: on_lane_complete(lanes)
                 if sum(item.usage.search_actions for item in lanes) > SHARED_DISCOVERY_HARD_LIMIT:
                     raise DiscoveryBudgetError("Shared Discovery hard limit exceeded; further calls stopped")
-            for result in lanes:
+            for result in lanes if retry_missing_search else []:
                 if result.search_performed:
                     continue
                 if not budget.can_request():

@@ -14,46 +14,15 @@ class DiscoveryLaneSpec:
 CORE_FRESHNESS_HOURS: Final[int] = 36
 LIGHT_FRESHNESS_HOURS: Final[int] = 96
 
-SHARED_DISCOVERY_TARGET: Final[int] = 4
-SHARED_DISCOVERY_SOFT_LIMIT: Final[int] = 5
+SHARED_DISCOVERY_TARGET: Final[int] = 6
+SHARED_DISCOVERY_SOFT_LIMIT: Final[int] = 6
 SHARED_DISCOVERY_HARD_LIMIT: Final[int] = 6
 
 DISCOVERY_LANES: Final[tuple[DiscoveryLaneSpec, ...]] = (
-    DiscoveryLaneSpec(
-        "official_industry",
-        "INSURANCE",
-        (
-            "대한민국 민영 보험업계에서 최근 발표되거나 변경된 중요한 공식 자료를 찾아라. "
-            "금융위원회, 금융감독원, 법령, 생명보험협회, 손해보험협회, 보험개발원, 보험연구원, "
-            "보험사 공식 공지·공시를 우선한다. 세제·감독규정·모집규제·보험금 지급기준·판매중지·"
-            "보험료·가입조건처럼 FP와 소비자에게 실제 영향이 있는 변화 중심으로 검색한다."
-        ),
-    ),
-    DiscoveryLaneSpec(
-        "trusted_media",
-        "INSURANCE",
-        (
-            "최근 대한민국 민영 보험업계의 중요한 새 이슈를 보험전문언론과 주요 경제언론에서 찾아라. "
-            "단순 회사 홍보, 인사, 수상, 행사, 사회보험 계산기성 콘텐츠는 제외하고 규제·상품·보험료·"
-            "보험금·세제·영업채널·소비자 영향이 있는 사건을 우선한다."
-        ),
-    ),
-    DiscoveryLaneSpec(
-        "official_wire_broadcast",
-        "NEWS",
-        (
-            "최근 대한민국에서 국민생활·업무·사회에 실질적 영향이 큰 새 사건을 공식기관, 뉴스통신, "
-            "주요 방송 중심으로 찾아라. 정책·법제도·재난안전·생활경제·노동·보건복지·교육·기술산업·"
-            "대한민국에 직접 영향이 큰 국제안보 이슈를 우선한다. 단순 정치공방·연예가십·일반 스포츠 결과는 제외한다."
-        ),
-    ),
-    DiscoveryLaneSpec(
-        "general_economic_media",
-        "NEWS",
-        (
-            "최근 대한민국에서 알아야 할 중요한 새 사건을 주요 종합언론과 경제언론에서 찾아라. "
-            "국민 권리의무, 생활비, 주거, 고용, 의료, 교육, 디지털 규제, 산업, 재난안전에 실제 영향이 있는 사건을 우선하고 "
-            "반복보도·단순 논평·기업 홍보·가십은 제외한다."
-        ),
-    ),
+    DiscoveryLaneSpec("official_industry", "INSURANCE", "보험·GA 업계의 오늘 새 발표·제도·통계·소비자 정보를 수집한다. 공식 자료가 적으면 억지로 채우지 않는다."),
+    DiscoveryLaneSpec("trusted_media", "INSURANCE", "보험·GA 업계의 새 뉴스 5~8개를 찾는다. 상품·보험료·보험금·영업채널·시장 동향 등 알아둘 만한 소식도 포함한다. 광고·행사·수상·반복 기사는 제외한다."),
+    DiscoveryLaneSpec("official_wire_broadcast", "NEWS", "정책·사회·안전·생활·교육·기술·국제 분야의 새 사실을 담은 종합뉴스를 다양하게 찾는다. 매우 큰 사건만 고집하지 않으며 광고·가십·반복 논평은 제외한다."),
+    DiscoveryLaneSpec("general_economic_media", "NEWS", "오늘 알아둘 만한 종합뉴스 5~8개를 다양한 발행사와 분야에서 수집한다. 모든 소식을 보험 상담에 연결하지 않는다. 오래된 재보도와 광고는 제외한다."),
+    DiscoveryLaneSpec("market_news", "MARKET", "경제·금융·국내외 증시·환율·금리·산업의 새 뉴스 6~8개를 수집한다. 실제 발표와 사건 중심으로 찾고 투자 매수·매도 지시를 만들지 않는다."),
+    DiscoveryLaneSpec("broker_research", "MARKET", "증권사·금융기관이 공개한 최신 리서치의 공개 요약·초록·발표 원문 7~8개를 찾는다. 기관명·자료명·발표일·공개 견해가 확인되는 자료만 수집한다. 자료가 없으면 없는 그대로 반환한다. 로그인·유료벽을 우회하지 않는다."),
 )

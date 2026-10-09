@@ -127,7 +127,7 @@ class HwarangAuthService:
         if "rule_training_access_denied" in low:
             return "현재 계정에서 이 상담 기록을 이용할 수 없습니다."
         if "invalid_or_expired_launch_ticket" in low:
-            return "이미 사용했거나 시간이 지난 연결입니다. 원래 화면의 ‘연결 다시 준비’를 누른 뒤 새 링크로 열어 주세요."
+            return "이미 사용했거나 시간이 지난 연결입니다. WORKSPACE에서 앱 열기 버튼을 다시 눌러 주세요."
         if "invalid login credentials" in low or "invalid_credentials" in low:
             return "아이디 또는 비밀번호를 확인해 주세요."
         if "email" in low and ("already" in low or "registered" in low or "exists" in low):
@@ -282,6 +282,17 @@ class HwarangAuthService:
             "feature_permissions": sorted(self.effective_permissions(user_id)),
         }
 
+    def _assert_credential_current(self, identity: dict[str, Any]) -> None:
+        profile = identity.get("profile") or {}
+        uid = str(profile.get("id") or "")
+        issued = float(identity.get("authenticated_at") or identity.get("profile_checked_at") or identity.get("identity_checked_at") or 0)
+        rows = self._request("GET", "/rest/v1/hwarang_account_security", admin=True,
+                             params={"user_id": "eq." + uid, "select": "credentials_changed_at", "limit": "1"})
+        if rows:
+            changed = datetime.fromisoformat(str(rows[0]["credentials_changed_at"]).replace("Z", "+00:00")).timestamp()
+            if issued < changed:
+                raise HwarangAuthError("비밀번호 또는 이메일이 변경되었습니다. WORKSPACE에서 다시 로그인해 주세요.")
+
     def refresh_launch_identity(
         self, identity: dict[str, Any], target_app: str, *, max_age_seconds: int = 60
     ) -> dict[str, Any]:
@@ -293,6 +304,7 @@ class HwarangAuthService:
         now = int(time.time())
         if now - int(updated.get("identity_checked_at") or 0) < max_age_seconds:
             return updated
+        self._assert_credential_current(updated)
         latest = self._profile_by_id(user_id)
         if not latest or not latest.get("is_active"):
             raise HwarangAuthError("사용할 수 없는 계정입니다. WORKSPACE에서 다시 로그인해 주세요.")
@@ -552,6 +564,7 @@ class HwarangAuthService:
             "refresh_token": token.get("refresh_token", ""),
             "expires_at": int(token.get("expires_at") or (time.time() + expires_in)),
             "profile_checked_at": int(time.time()),
+            "authenticated_at": time.time(),
             "profile": self._enrich_profile(profile),
             "login_fast_path": False,
             **authorization,
@@ -650,6 +663,7 @@ class HwarangAuthService:
             "refresh_token": token.get("refresh_token", ""),
             "expires_at": int(token.get("expires_at") or (time.time() + expires_in)),
             "profile_checked_at": now,
+            "authenticated_at": time.time(),
             "login_fast_path": True,
             **context,
         }
@@ -689,6 +703,7 @@ class HwarangAuthService:
         profile = updated.get("profile") if isinstance(updated.get("profile"), dict) else {}
         uid = str(profile.get("id") or "")
         if uid and now - last_check >= _PROFILE_REFRESH_SECONDS:
+            self._assert_credential_current(updated)
             context = self._workspace_context(uid)
             if context is not None:
                 latest_profile = context["profile"]
@@ -885,5 +900,6 @@ class HwarangAuthService:
             "profile": self._enrich_profile(profile),
             "launch_authenticated": True,
             "identity_checked_at": int(time.time()),
+            "authenticated_at": time.time(),
             **authorization,
         }

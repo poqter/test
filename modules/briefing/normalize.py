@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 import hashlib
 import ipaddress
 import re
@@ -111,14 +112,11 @@ def classify_freshness(published_at: datetime | None, as_of: datetime) -> str:
         published_at = published_at.replace(tzinfo=timezone.utc)
     if as_of.tzinfo is None:
         as_of = as_of.replace(tzinfo=timezone.utc)
-    age_hours = (as_of.astimezone(timezone.utc) - published_at.astimezone(timezone.utc)).total_seconds() / 3600
-    if age_hours < -1:
+    local = as_of.astimezone(ZoneInfo("Asia/Seoul"))
+    start = (local - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    if published_at > as_of:
         return "undated"
-    if age_hours <= CORE_FRESHNESS_HOURS:
-        return "core_window"
-    if age_hours <= LIGHT_FRESHNESS_HOURS:
-        return "light_window"
-    return "stale"
+    return "core_window" if published_at >= start else "stale"
 
 
 def normalize_candidate(candidate: SourceCandidate, *, as_of: datetime) -> SourceCandidate:

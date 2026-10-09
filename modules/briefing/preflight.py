@@ -96,13 +96,13 @@ def run_runtime_preflight(*, direct_sources: list[DirectSourceSpec] | None = Non
         ),
         PreflightCheck(
             "discovery_lanes",
-            len(DISCOVERY_LANES) == 4,
+            len(DISCOVERY_LANES) == 6,
             True,
-            f"focused search lanes={len(DISCOVERY_LANES)} (expected 4)",
+            f"focused search lanes={len(DISCOVERY_LANES)} (expected 6)",
         ),
         PreflightCheck(
             "shared_budget",
-            (SHARED_DISCOVERY_TARGET, SHARED_DISCOVERY_SOFT_LIMIT, SHARED_DISCOVERY_HARD_LIMIT) == (4, 5, 6),
+            (SHARED_DISCOVERY_TARGET, SHARED_DISCOVERY_SOFT_LIMIT, SHARED_DISCOVERY_HARD_LIMIT) == (6, 6, 6),
             True,
             f"shared discovery budget={SHARED_DISCOVERY_TARGET}/{SHARED_DISCOVERY_SOFT_LIMIT}/{SHARED_DISCOVERY_HARD_LIMIT}",
         ),

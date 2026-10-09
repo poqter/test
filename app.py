@@ -6,6 +6,7 @@ import streamlit as st
 from modules.shell.app_registry import APP_DEFINITIONS, USER_PERMISSIONS
 from modules.shell.navigation import allowed_ids, dispatch, logout as clear_workspace_session, navigate, normalize_route
 from modules.shared.hwarang_auth import HwarangAuthError, HwarangAuthService, SupabaseConfig
+from modules.shared.account_security import recovery_dialog, account_dialog, render_recovery_entry
 from modules.shared.ui_components import inject_global_styles
 from modules.shared.workbench import render_workbench, restore_page_draft
 from modules.shell.workspace_v2 import render_home, render_sidebar
@@ -23,7 +24,7 @@ NOTICE = {
         "도구별 초기화와 전체 작업 초기화 범위를 구분했습니다.",
         "현재 16개 업무 도구와 원수사 홈 검색을 그대로 제공합니다.",
     ],
-    "important": "비밀번호 또는 이용 권한은 관리자에게 문의해 주세요.",
+    "important": "비밀번호는 내 계정에서 변경하고, 잊었을 때는 로그인 화면에서 이메일로 재설정할 수 있습니다.",
     "contact_url": "https://open.kakao.com/o/sFxdv4Rf",
 }
 
@@ -152,8 +153,10 @@ def render_login(auth: HwarangAuthService) -> bool:
                 login_feedback = st.empty()
                 if st.button("회원가입", key="hw_open_signup", use_container_width=True):
                     render_signup_dialog(auth)
+                if st.button("비밀번호를 잊으셨나요?", key="hw_open_recovery", use_container_width=True):
+                    recovery_dialog(auth)
                 st.markdown(
-                    f'<div class="hw-auth-help"><span>변경된 비밀번호가 필요하신가요?</span>'
+                    f'<div class="hw-auth-help"><span>이메일을 사용할 수 없으신가요?</span>'
                     f'<a href="{NOTICE["contact_url"]}" target="_blank" rel="noopener noreferrer">박병선 팀장에게 문의해 주세요 ↗</a></div>',
                     unsafe_allow_html=True,
                 )
@@ -201,6 +204,21 @@ def main() -> None:
         st.info("Streamlit Secrets에서 SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY / SUPABASE_SECRET_KEY를 확인해 주세요.")
         return
 
+    if st.query_params.get("briefing"):
+        from modules.briefing.repository import BriefingRepository, BriefingRepositoryError
+        from modules.briefing.display import render_public_entry
+        try:
+            if render_public_entry(BriefingRepository(auth.config.url, auth.config.secret_key)):
+                st.stop()
+        except BriefingRepositoryError:
+            st.error("공유 브리핑을 확인하지 못했습니다. 잠시 후 다시 열어 주세요.")
+            st.stop()
+
+    if render_recovery_entry(auth):
+        st.stop()
+    flash = st.session_state.pop("hw_account_flash", "")
+    if flash:
+        st.success(flash)
     state = st.session_state.get("hwarang_auth")
     if state:
         try:
@@ -248,6 +266,8 @@ def main() -> None:
     from modules.shared.build_info import BUILD_ID
 
     with st.sidebar:
+        if st.button("내 계정 · 비밀번호 변경", key="hw_my_account", use_container_width=True):
+            account_dialog(auth)
         st.caption("버전 " + BUILD_ID)
         if is_super_admin:
             st.button("관리자 센터 →", key="hw_open_admin_center", use_container_width=True,

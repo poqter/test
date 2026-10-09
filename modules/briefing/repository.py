@@ -288,34 +288,73 @@ class BriefingRepository:
             )
 
     def publish_revision(self, briefing_id: str, revision_id: str, *, actor_user_id: str | None = None) -> None:
-        revision = self._first(self._request(
-            "GET",
-            "/rest/v1/hwarang_briefing_revisions",
-            params={"id": f"eq.{revision_id}", "select": "*", "limit": "1"},
-        ))
-        if not revision:
-            raise BriefingRepositoryError("Revision not found")
-        if revision.get("validation_status") != "ok":
-            raise BriefingRepositoryError("검증이 완료되지 않은 브리핑은 공개할 수 없습니다")
-        if revision.get("coverage_status") == "insufficient":
-            raise BriefingRepositoryError("탐지 범위가 불충분한 브리핑은 공개할 수 없습니다")
-        published_at = datetime.now(timezone.utc).isoformat()
-        self.update_revision(revision_id, {"publication_status": "published", "published_at": published_at})
-        self._request(
-            "PATCH",
-            "/rest/v1/hwarang_briefings",
-            params={"id": f"eq.{briefing_id}"},
-            json={"current_published_revision_id": revision_id},
-            prefer="return=minimal",
-        )
-        self.audit({
-            "actor_type": "user" if actor_user_id else "system",
-            "actor_user_id": actor_user_id,
-            "action": "BRIEFING_PUBLISHED",
-            "briefing_id": briefing_id,
-            "revision_id": revision_id,
-            "details": {},
-        })
+        self._request("POST", "/rest/v1/rpc/hwarang_publish_briefing", json={
+            "p_briefing": briefing_id, "p_revision": revision_id, "p_actor": actor_user_id})
+
+    def claim_run(self, key, day, group, owner, retry=False):
+        return self._request("POST", "/rest/v1/rpc/hwarang_claim_briefing_run", json={
+            "p_key": key, "p_date": str(day), "p_group": group, "p_owner": owner, "p_retry": retry})
+
+    def save_run(self, key, owner, checkpoint, status="running"):
+        ok = self._request("POST", "/rest/v1/rpc/hwarang_checkpoint_briefing_run", json={
+            "p_key": key, "p_owner": owner, "p_checkpoint": checkpoint, "p_status": status})
+        if ok is not True: raise BriefingRepositoryError("자동 실행 잠금이 만료되었습니다. 중복 호출을 중단합니다.")
+
+    def reserve_request(self, day, kind):
+        if self._request("POST", "/rest/v1/rpc/hwarang_reserve_briefing_request", json={"p_date": str(day), "p_kind": kind}) is not True:
+            raise BriefingRepositoryError("오늘의 API 호출 상한에 도달했습니다. 저장된 결과를 재사용합니다.")
+
+    def finish_stale_jobs(self, day, codes):
+        self._request("PATCH", "/rest/v1/hwarang_briefing_jobs", params={
+            "briefing_date": "eq."+str(day), "profile_code": self._in_filter(codes),
+            "job_status": "in.(scheduled,collecting,normalizing,analyzing,generating,validating)"},
+            json={"job_status": "failed", "finished_at": datetime.now(timezone.utc).isoformat(),
+                  "failure_code": "EXPIRED_LEASE", "failure_message": "Expired execution replaced by one recovery run"})
+
+    def create_share(self, revision_id, sender_user_id, public_packet):
+        import secrets
+        token = secrets.token_urlsafe(32)
+        revision = self._first(self._request("GET", "/rest/v1/hwarang_briefing_revisions", params={"id": "eq."+revision_id, "select": "*"}))
+        if not revision or revision.get("publication_status") != "published" or not revision.get("external_share_allowed") or not revision.get("external_qa_passed"):
+            raise BriefingRepositoryError("공개 검수가 끝난 브리핑만 고객에게 공유할 수 있습니다.")
+        existing = self._first(self._request("GET", "/rest/v1/hwarang_briefing_public_shares", params={
+            "revision_id": "eq."+revision_id, "sender_user_id": "eq."+sender_user_id, "revoked_at": "is.null",
+            "expires_at": "gt."+datetime.now(timezone.utc).isoformat(), "select": "token,public_packet", "limit": "1"}))
+        if existing: return existing["token"], existing["public_packet"]
+        # Load the immutable sanitized snapshot on the server; never trust a caller-provided body.
+        snapshot = self._snapshot_for_revision(revision_id)
+        body = (snapshot or {}).get("external_content_payload") or {}
+        from .public_body import customer_body
+        checked = customer_body({**body, "market_metrics": {"items": [dict(r, external_allowed=True) for r in body.get("market_metrics", [])]}})
+        if not checked.get("issues"): raise BriefingRepositoryError("고객 공유 본문을 확인할 수 없습니다.")
+        sender = self._first(self._request("GET", "/rest/v1/profiles", params={"id": "eq."+sender_user_id, "select": "*"}))
+        if not sender or not sender.get("is_active", False) or not str(sender.get("display_name") or "").strip(): raise BriefingRepositoryError("공유자 계정을 확인할 수 없습니다.")
+        briefing = self._first(self._request("GET", "/rest/v1/hwarang_briefings", params={"id": "eq."+str(revision['briefing_id']), "select": "briefing_date"}))
+        position = self._first(self._request("GET", "/rest/v1/positions", params={"code": "eq."+str(sender.get("position_code") or ""), "select": "display_name"}))
+        if not position: raise BriefingRepositoryError("등록 직함을 확인할 수 없습니다.")
+        public_packet = {"body": checked, "briefing_date": (briefing or {}).get("briefing_date"),
+                         "sender": {"name": sender.get("display_name") or "", "position": (position or {}).get("display_name") or ""}}
+        self._request("POST", "/rest/v1/hwarang_briefing_public_shares", json={"token": token, "revision_id": revision_id,
+            "sender_user_id": sender_user_id, "public_packet": public_packet})
+        return token, public_packet
+
+    def public_share(self, token):
+        import re
+        if not re.fullmatch(r"[A-Za-z0-9_-]{32,64}", str(token)): return None
+        row = self._first(self._request("GET", "/rest/v1/hwarang_briefing_public_shares", params={
+            "token": "eq."+token, "revoked_at": "is.null", "expires_at": "gt."+datetime.now(timezone.utc).isoformat(), "select": "revision_id,public_packet"}))
+        if not row: return None
+        revision = self._first(self._request("GET", "/rest/v1/hwarang_briefing_revisions", params={"id": "eq."+row['revision_id'], "select": "publication_status,external_share_allowed,external_qa_passed"}))
+        if not revision or revision.get("publication_status") != "published" or not revision.get("external_share_allowed") or not revision.get("external_qa_passed"): return None
+        return row.get("public_packet")
+
+    def revoke_share(self, token, actor):
+        self._request("PATCH", "/rest/v1/hwarang_briefing_public_shares", params={"token": "eq."+token, "sender_user_id": "eq."+actor}, json={"revoked_at": datetime.now(timezone.utc).isoformat()})
+
+    def hide_revision(self, briefing_id, revision_id, actor):
+        self.update_revision(revision_id, {"publication_status": "hidden", "external_share_allowed": False})
+        self._request("PATCH", "/rest/v1/hwarang_briefings", params={"id": "eq."+briefing_id, "current_published_revision_id": "eq."+revision_id}, json={"current_published_revision_id": None})
+        self.audit({"actor_type": "user", "actor_user_id": actor, "action": "BRIEFING_HIDDEN", "briefing_id": briefing_id, "revision_id": revision_id, "details": {}})
 
     # ------------------------------------------------------------------
     # UI reads
