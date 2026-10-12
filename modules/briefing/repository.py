@@ -449,6 +449,30 @@ class BriefingRepository:
             'briefing_date':'gte.'+str(day-timedelta(days=7)),'select':'profile_code,briefing_date,job_status,failure_code,started_at,finished_at','order':'created_at.desc','limit':'60'})
         return {'runs':runs,'jobs':jobs}
 
+    def analysis_recovery_response(self, day, code):
+        """Recover only a paid, completed response from this day's failed jobs.
+
+        The analyzer independently checks the exact candidate set and re-runs
+        content validation. This read neither reserves nor logs an API request.
+        """
+        rows=self._request('GET','/rest/v1/hwarang_briefing_jobs',params={
+            'briefing_date':'eq.'+str(day),'profile_code':'eq.'+code,
+            'job_status':'eq.failed','select':'metadata','order':'created_at.desc','limit':'5'}) or []
+        for row in rows:
+            details=(row.get('metadata') or {}).get('failure_diagnostics') or {}
+            record=(details.get('failure_details') or {}).get('analysis_response') or {}
+            if (record.get('profile_code')==code and record.get('status') in {'completed','validation_failed'}
+                    and record.get('provider_status','completed')=='completed'
+                    and record.get('usage_logged') and record.get('usage_available')
+                    and not record.get('charge_uncertain') and not record.get('output_text_truncated')
+                    and record.get('output_text_sample') and record.get('requested_event_keys')):
+                return record
+        return None
+
+    def daily_run_status(self, day, group):
+        return self._first(self._request('GET','/rest/v1/hwarang_briefing_daily_runs',params={
+            'run_key':'eq.'+str(day)+':'+group,'select':'status,attempts','limit':'1'})) or {}
+
     def cost_status(self):
         from zoneinfo import ZoneInfo
         from .costs import usage_summary

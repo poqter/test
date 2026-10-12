@@ -483,7 +483,8 @@ def generate_and_store_briefings(
     date_text = as_of.astimezone(KST).date().isoformat()
     jobs: dict[str, dict[str, Any]] = {}
     progress: dict[str, Any] = {"stage": "creating_jobs", "requested_profiles": list(requested),
-                                "discovery_requests": [], "analysis_requests": [], "build": build_info()}
+                                "discovery_requests": [], "analysis_requests": [],
+                                "reused_analysis_profiles": [], "build": build_info()}
 
     def record_usage(record: dict[str, Any], *, discovery: bool) -> None:
         collection = "discovery_requests" if discovery else "analysis_requests"
@@ -517,6 +518,8 @@ def generate_and_store_briefings(
             saved['charge_uncertain']=True;save()
             raise BriefingRunError('API 사용량 또는 검색 완료 상태가 확인되지 않았습니다. 추가 유료 호출을 중단했습니다.')
         if record.get("usage_available") and not record["charge_uncertain"]:
+            if not discovery and record.get("output_text_sample"):
+                saved.setdefault("analysis_responses", {})[code] = dict(record)
             saved.pop("pending_request", None); save()
         repo.update_job(str(jobs[owner]["id"]), {"metadata": {
             "engine_version": ENGINE_VERSION, "shared_run": True, "partial_diagnostics": progress}})
@@ -594,6 +597,15 @@ def generate_and_store_briefings(
             if code not in completed_c:
                 client = OpenAIAnalysisClient(on_response=lambda record: record_usage(record, discovery=False))
                 client.before_request = before_request
+                cached = saved.get("analysis_responses", {}).get(code)
+                if cached is None and checkpoint is not None:
+                    # Older releases retained the paid output in failed-job
+                    # diagnostics rather than in the daily checkpoint.
+                    cached = repo.analysis_recovery_response(date_text, code)
+                    if not isinstance(cached, dict): cached = None
+                if cached is not None:
+                    client.cached_response = cached
+                    progress["reused_analysis_profiles"].append(code)
                 if code=='MARKET':client.market_metrics=saved.get('market_observations',{}).get('items',[])
                 completed_c[code] = encode(run_phase_c(phase_b, profile_codes=(code,), analyzer=client))
                 if code=='MARKET':saved['market_flow']=client.market_flow
@@ -614,6 +626,7 @@ def generate_and_store_briefings(
                 "market_flow": [r['text'] for r in saved.get('market_flow',[])], "market_flow_facts":saved.get('market_flow',[])}
             saved["market_context"] = market_context; save()
         for code, usage in ({} if progress["analysis_requests"] or save_checkpoint else phase_c.usage_by_profile).items():
+            if code in progress["reused_analysis_profiles"]: continue
             job = jobs.get(code)
             if not job:
                 continue
@@ -673,6 +686,10 @@ def generate_and_store_briefings(
         )
     except Exception as exc:
         details = {**progress, "failure_details": getattr(exc, "diagnostics", {})}
+        paid = details["failure_details"].get("analysis_response") or {}
+        if (paid.get("usage_logged") and paid.get("usage_available") and not paid.get("charge_uncertain")
+                and paid.get("output_text_sample")):
+            saved.setdefault("analysis_responses", {})[paid["profile_code"]] = dict(paid)
         cleanup_failures = []
         for code, job in jobs.items():
             if code in saved.get("stored_profiles", {}): continue

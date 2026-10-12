@@ -156,11 +156,19 @@ def _render_generate_panel(repo):
         st.download_button('배포 진단 · API 호출 없음',json.dumps({'build':build_info(),'settings':[c.to_dict() for c in checks]},ensure_ascii=False,indent=2),file_name='briefing_deployment.json')
         day=datetime.now(KST).date()
         from .scheduler import cutoff
+        run=repo.daily_run_status(day,group)
+        retry=run.get('status')=='failed'
+        retry_exhausted=retry and int(run.get('attempts') or 0)>=2
+        blocked=run.get('status')=='blocked'
+        if retry:st.caption('저장된 수집·분석 응답부터 재사용합니다. 아직 하지 않은 분석에는 API 요금이 발생할 수 있습니다.')
+        if retry_exhausted:st.warning('오늘 허용된 복구 1회를 사용했습니다. 추가 유료 실행을 막았습니다.')
+        if blocked:st.warning('이전 요청의 과금 여부를 확인할 수 없어 추가 호출을 막았습니다.')
         disabled=datetime.now(KST)<cutoff(day,group) or not preflight_ready(checks) or not repo.ai_generation_enabled()
-        if st.button('오늘 브리핑 생성',disabled=disabled,key='hw_briefing_generate_today'):
+        if st.button('중단된 브리핑 이어서 생성' if retry else '오늘 브리핑 생성',disabled=disabled or retry_exhausted or blocked,key='hw_briefing_generate_today'):
             with st.spinner('출처를 수집하고 브리핑을 저장하고 있습니다…'):
                 try:
-                    result=generate_group(repo,day,group,actor=str((st.session_state.get('login_profile') or {}).get('id') or '') or None)
+                    result=generate_group(repo,day,group,retry=retry,actor=str((st.session_state.get('login_profile') or {}).get('id') or '') or None)
+                    st.session_state.pop('hw_briefing_last_diagnostic',None)
                     st.session_state['hw_briefing_flash']='처리 결과: '+str(result.get('status'));_clear_read_caches();st.rerun()
                 except Exception as exc:st.session_state['hw_briefing_last_diagnostic']=failure_diagnostic(exc);st.error('생성을 완료하지 못했습니다. 저장된 이전 브리핑을 이용해 주세요.')
         if st.session_state.get('hw_briefing_last_diagnostic'):

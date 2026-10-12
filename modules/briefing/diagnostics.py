@@ -33,7 +33,8 @@ def build_info() -> dict[str, Any]:
     matches, mismatch = release_matches(actual, manifest)
     return {"engine_version": ENGINE_VERSION, "code_sha256": actual,
             "code_matches_release": matches, "mismatched_files": mismatch,
-            "release_manifest_version": manifest.get("engine_version")}
+            "release_manifest_version": manifest.get("engine_version"),
+            "release_patch_id": manifest.get("patch_id")}
 
 
 def failure_diagnostic(exc: Exception) -> dict[str, Any]:

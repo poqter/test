@@ -27,8 +27,10 @@ jobs:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      BRIEFING_DISCOVERY_MODEL: ${{ vars.BRIEFING_DISCOVERY_MODEL }}
-      BRIEFING_ROUTINE_MODEL: ${{ vars.BRIEFING_ROUTINE_MODEL }}
+      # Same model verified in the existing Streamlit generation request.
+      # Repository variables remain available for an explicit override.
+      BRIEFING_DISCOVERY_MODEL: ${{ vars.BRIEFING_DISCOVERY_MODEL || 'gpt-6-luna' }}
+      BRIEFING_ROUTINE_MODEL: ${{ vars.BRIEFING_ROUTINE_MODEL || vars.BRIEFING_DISCOVERY_MODEL || 'gpt-6-luna' }}
       BRIEFING_DIRECT_SOURCES_JSON: ${{ vars.BRIEFING_DIRECT_SOURCES_JSON }}
       BRIEFING_MARKET_OBSERVATIONS_URL: ${{ secrets.BRIEFING_MARKET_OBSERVATIONS_URL }}
       BRIEFING_MARKET_OBSERVATIONS_JSON: ${{ vars.BRIEFING_MARKET_OBSERVATIONS_JSON }}

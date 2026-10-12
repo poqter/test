@@ -86,6 +86,7 @@ def run_phase_c(
         raw_rows, usage = client.analyze(profile_code, selected_events)
         usage_by_profile[profile_code] = usage
         raw_by_key = {str(row.get("event_key") or ""): row for row in raw_rows}
+        omitted_by_profile[profile_code] += sum(e.event_key not in raw_by_key for e in selected_events)
 
         for event in selected_events:
             raw = raw_by_key.get(event.event_key, {})
@@ -125,7 +126,8 @@ def run_phase_c(
                     "avoid_expression": str(raw.get("avoid_expression") or ""),
                 },
                 workspace_actions=validated_tool_actions(raw.get("workspace_tool_codes")),
-                profile_payload={"next_step": str(raw.get("next_step") or ""), "confidence": confidence},
+                profile_payload={"next_step": str(raw.get("next_step") or ""), "confidence": confidence,
+                                 "analysis_missing": event.event_key not in raw_by_key},
                 escalation_required=(high_risk and validation_status != "ok") or confidence == "low",
             ))
 
