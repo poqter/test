@@ -30,9 +30,12 @@ def render_operations(repo):
         if st.button('언론사 피드 연결 확인',key='launch_feed_probe'):
             from .direct_sources import load_direct_source_specs_from_env,probe_direct_sources
             with st.spinner('언론사 연결과 발행일을 확인합니다…'):
-                try:st.session_state['launch_feed_probe']=probe_direct_sources(load_direct_source_specs_from_env())
-                except Exception:st.error('피드 설정을 확인해 주세요.')
-        probe=st.session_state.get('launch_feed_probe')
+                try:st.session_state['launch_feed_probe_result']=probe_direct_sources(load_direct_source_specs_from_env())
+                except Exception:
+                    st.session_state.pop('launch_feed_probe_result',None)
+                    st.error('피드 설정을 확인해 주세요.')
+        # Button state is a transient bool; keep the report under a separate key.
+        probe=st.session_state.get('launch_feed_probe_result')
         if probe:
             st.caption('이 확인은 현재 시각 기준입니다. 아침 브리핑은 07:00/07:30 이전 기사만 사용합니다.')
             st.dataframe([{'피드':code,**value} for code,value in probe['direct_sources'].items()],hide_index=True)
