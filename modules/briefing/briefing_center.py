@@ -166,6 +166,25 @@ def _internal_actions(bundle):
                     st.write(label+' · '+str(row['conversation_payload'][k]))
             if row.get('audience_segments'):
                 st.caption('관련 대상 · '+' / '.join(row['audience_segments']))
+            state=row.get('communication_state')
+            expression=str((row.get('conversation_payload') or {}).get('recommended_expression') or '').strip()
+            key=str(bundle.get('snapshot',{}).get('id') or '')+'_'+str(row.get('id') or row.get('action_key') or row.get('title'))
+            confirmed=False
+            if state=='consultation_reference' and expression:
+                confirmed=st.checkbox('이 기사에서 먼저 확인할 조건을 확인했습니다.',key='consult_checked_'+key)
+            if expression and (state=='customer_ready' or state=='consultation_reference' and confirmed):
+                st.caption('고객 설명 복사 · 아래 복사 버튼을 사용하세요.')
+                st.code(expression,language=None)
+            elif expression:
+                st.caption('내부 준비용 · 상담 조건 확인 또는 고객 표현 검증 전에는 고객용 복사를 제공하지 않습니다.')
+            from modules.shell.app_registry import APP_BY_ID
+            from modules.shell.navigation import allowed_ids, navigate
+            permitted=set(allowed_ids(st.session_state.get('login_user')))
+            for action in (row.get('workspace_actions') or [])[:2]:
+                tool=action.get('tool_code') if isinstance(action,dict) else None
+                spec=APP_BY_ID.get(tool)
+                if spec and tool in permitted and not spec.external_app_key:
+                    st.button(spec.label+' 열기',key='consult_tool_'+key+'_'+tool,on_click=navigate,args=(tool,))
 
 
 def _publish_actions(repo, bundle):
@@ -211,6 +230,19 @@ def _render_profile_detail(repo, code, bundle, can_manage):
             preview = customer_body(content)
             st.caption(f"고객용 기사 {len(preview['issues'])}개 · 현재 화면은 직원 미리보기이며 외부 공개가 아닙니다.")
             render_body(preview, large=large)
+    from .staff_exports import team_summary, staff_pdf
+    with st.expander('팀 1분 요약 · 직원 PDF'):
+        st.caption('저장된 판본으로 만듭니다. 추가 AI 호출은 없으며 고객 공유용 자료와 구분합니다.')
+        st.code(team_summary(bundle), language=None)
+        if st.button('직원 PDF 준비', key='staff_prepare_'+revision['id']):
+            try:
+                sender = repo.staff_sender(_actor())
+                st.session_state['staff_pdf_'+revision['id']+'_'+str(_actor())] = staff_pdf(bundle, sender)
+            except Exception:
+                st.error('직원 PDF를 만들지 못했습니다. 웹 본문은 계속 읽을 수 있습니다.')
+        if st.session_state.get('staff_pdf_'+revision['id']+'_'+str(_actor())):
+            st.download_button('직원 내부용 PDF 저장', st.session_state['staff_pdf_'+revision['id']+'_'+str(_actor())],
+                file_name=f'hwarang_{code}_{day}_staff.pdf', mime='application/pdf', key='staff_download_'+revision['id'])
     _internal_actions(bundle)
     if can_manage:
         from .operations_ui import render_correction, render_important_update
@@ -245,6 +277,11 @@ def _render_generate_panel(repo):
             st.error(check.message)
     day = datetime.now(KST).date()
     from .scheduler import cutoff
+    from .execution_policy import request_plan
+    plan = request_plan(group)
+    st.caption(f"최초 실행 계획: 검색 요청 최대 {plan['web_requests_max']}회 · 분석 최대 {plan['analysis_requests_max']}회. 저장 결과는 재사용합니다.")
+    st.caption(f"최초 요청의 출력 토큰 설정 합계 상한 {plan['output_tokens_max']:,} · 총 청구액 상한을 의미하지 않습니다.")
+    st.caption(plan['note'])
     run = repo.daily_run_status(day, group)
     retry = run.get('status') == 'failed'
     retry_exhausted = retry and int(run.get('attempts') or 0) >= 2
@@ -280,6 +317,8 @@ def _render_generate_panel(repo):
                 st.session_state['hw_briefing_last_diagnostic'] = failure_diagnostic(exc)
                 st.error('생성을 마치지 못했습니다. 저장된 결과와 실패 이유를 아래에서 확인할 수 있습니다.')
     if st.session_state.get('hw_briefing_last_diagnostic'):
+        advice=(st.session_state['hw_briefing_last_diagnostic'].get('recovery_guidance') or {}).get('action')
+        if advice: st.info(advice)
         st.download_button('실패 내용 저장', json.dumps(st.session_state['hw_briefing_last_diagnostic'], ensure_ascii=False, indent=2), file_name='briefing_failure.json')
     with st.expander('상세 연결 상태'):
         st.dataframe([{'항목':c.code,'상태':'준비됨' if c.ok else '설정 필요','필수':c.required,'안내':c.message} for c in checks], hide_index=True, use_container_width=True)

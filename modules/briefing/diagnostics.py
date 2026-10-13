@@ -8,7 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-ENGINE_VERSION = "1.11.0-release"
+ENGINE_VERSION = "1.12.0-completion"
 DIAGNOSTIC_SCHEMA = "briefing-daily-diagnostics-v4"
 
 
@@ -38,9 +38,14 @@ def build_info() -> dict[str, Any]:
 
 
 def failure_diagnostic(exc: Exception) -> dict[str, Any]:
+    from .api_errors import safe_message
     details = getattr(exc, "diagnostics", {})
-    return {"schema_version": DIAGNOSTIC_SCHEMA, **build_info(), "status": "failed",
+    from .execution_policy import retry_guidance
+    failure = details.get("request_failure", {}) if isinstance(details, dict) else {}
+    from .execution_policy import retry_guidance
+    failure = details.get("request_failure", {}) if isinstance(details, dict) else {}
+    return {"schema_version": DIAGNOSTIC_SCHEMA, **build_info(), "status": "failed", "recovery_guidance": retry_guidance(failure), "recovery_guidance": retry_guidance(failure),
             "failed_at": datetime.now(timezone.utc).isoformat(),
-            "failure_message": str(exc)[:500],
+            "failure_message": safe_message(exc),
             "diagnostics": details if isinstance(details, dict) else {},
             "note": "응답이 없거나 실패한 요청도 과금되었을 수 있습니다. 진단의 관측 사용량은 실제 청구액이 아닙니다. 추가 생성 전 이 결과를 검토합니다."}

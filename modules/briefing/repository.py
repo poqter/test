@@ -534,6 +534,17 @@ class BriefingRepository:
         return self._first(self._request('GET','/rest/v1/hwarang_briefing_daily_runs',params={
             'run_key':'eq.'+str(day)+':'+group,'select':'status,attempts','limit':'1'})) or {}
 
+    def staff_sender(self, user_id):
+        sender = self._first(self._request('GET', '/rest/v1/profiles', params={
+            'id': 'eq.'+str(user_id), 'select': 'display_name,position_code,is_active'}))
+        if not sender or not sender.get('is_active'):
+            raise BriefingRepositoryError('활성 계정의 등록 이름을 확인할 수 없습니다.')
+        position = self._first(self._request('GET', '/rest/v1/positions', params={
+            'code': 'eq.'+str(sender.get('position_code') or ''), 'select': 'display_name'}))
+        if not sender.get('display_name') or not position or not position.get('display_name'):
+            raise BriefingRepositoryError('등록 이름·실제 직책을 확인하세요.')
+        return {'name': sender['display_name'], 'position': position['display_name']}
+
     def cost_status(self):
         from zoneinfo import ZoneInfo
         from .costs import usage_summary

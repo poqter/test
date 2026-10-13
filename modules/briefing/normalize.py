@@ -8,7 +8,6 @@ import re
 from html.parser import HTMLParser
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-from .config import CORE_FRESHNESS_HOURS, LIGHT_FRESHNESS_HOURS
 from .models import SourceCandidate
 
 _TRACKING_PREFIXES = ("utm_",)

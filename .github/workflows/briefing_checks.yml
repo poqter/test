@@ -1,0 +1,22 @@
+name: Briefing offline checks
+on:
+  pull_request:
+    paths: ['modules/briefing/**', 'public_reader/**', 'tests/**', 'requirements.txt', 'constraints.txt', 'STAGE1_CHANGED_FILES.json', '.github/workflows/briefing_checks.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install from clean environment
+        run: python -m pip install -r requirements.txt pytest==8.4.2
+      - name: Offline Python regression
+        run: python -m pytest -q
+      - name: Customer reader HTTP regression
+        run: node --test tests/test_briefing_public.mjs

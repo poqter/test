@@ -10,6 +10,7 @@ from typing import Any, Callable
 import requests
 from jsonschema import Draft202012Validator
 
+from .api_errors import request_diagnostic, request_message
 from .models import AnalysisUsage, SharedEventCandidate
 from .profile_rules import PROFILE_RULES
 from .tool_policy import registered_briefing_tools
@@ -154,11 +155,14 @@ class OpenAIAnalysisClient:
             raise BriefingAnalysisError(f"Unsupported profile: {profile_code}")
         if not events:
             return [], AnalysisUsage()
+        from .execution_policy import analysis_identity
+        input_identity = analysis_identity(profile_code, events, self.model, self._instructions(profile_code), _RESULT_SCHEMA)
         if self.cached_response is not None:
             record = deepcopy(self.cached_response)
             expected = {e.event_key for e in events}
             if (not isinstance(record, dict) or record.get("profile_code") != profile_code
                     or set(record.get("requested_event_keys") or []) != expected
+                    or record.get("input_identity") and record["input_identity"] != input_identity
                     or not record.get("usage_logged") or not record.get("usage_available")
                     or record.get("charge_uncertain") or record.get("output_text_truncated")
                     or record.get("status") not in {"completed", "validation_failed"}
@@ -194,7 +198,7 @@ class OpenAIAnalysisClient:
             },
             "max_output_tokens": 12000,
         }
-        record = {"profile_code": profile_code, "status": "started", "usage": None,
+        record = {"profile_code": profile_code, "input_identity": input_identity, "status": "started", "usage": None,
                   "usage_available": False, "requested_event_keys": [e.event_key for e in events],
                   "requested_max_output_tokens": payload["max_output_tokens"]}
 
@@ -204,7 +208,9 @@ class OpenAIAnalysisClient:
                 record["status"] = "validation_failed"
             return BriefingAnalysisError(message, {"analysis_response": record})
 
-        def unknown_failure(message: str) -> BriefingAnalysisError:
+        def unknown_failure(message: str, details=None) -> BriefingAnalysisError:
+            record.update(details or {})
+            record["failure_message"] = message
             record["status"] = "request_failed"
             if self.on_response:
                 self.on_response(record)
@@ -220,9 +226,11 @@ class OpenAIAnalysisClient:
                 timeout=self.timeout,
             )
         except requests.RequestException as exc:
-            raise unknown_failure("OpenAI analysis request failed") from exc
+            details = request_diagnostic(exc=exc)
+            raise unknown_failure(request_message("analysis", details), details) from exc
         if not 200 <= response.status_code < 300:
-            raise unknown_failure(f"OpenAI analysis HTTP {response.status_code}")
+            details = request_diagnostic(response=response)
+            raise unknown_failure(request_message("analysis", details), details)
         try:
             data = response.json()
         except ValueError as exc:

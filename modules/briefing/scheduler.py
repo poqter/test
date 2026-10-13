@@ -74,13 +74,12 @@ def publish_ready(repo, day, codes):
         profile=profiles.get(code) or {}
         if not policy.get('automatic_publication_enabled'):
             results.append({'profile':code,'status':'organization_approval_required'});continue
-        good_days=repo.verified_business_days(code)
-        if profile.get('run_mode')=='shadow' and good_days>=3:
-            repo._request('PATCH','/rest/v1/hwarang_briefing_profiles',params={'profile_code':'eq.'+code},json={'run_mode':'auto'})
-            profile['run_mode']='auto'
-        if profile.get('run_mode')=='auto':
-            repo.publish_revision(bundle['briefing']['id'],revision['id']);results.append({'profile':code,'status':'published'})
-        else:results.append({'profile':code,'status':'observation','verified_business_days':good_days})
+        # Organization approval authorizes the next quality-approved edition.
+        # Legacy shadow remains a storage mode, not an observation-day gate.
+        if profile.get('run_mode') not in {'shadow', 'auto'}:
+            results.append({'profile':code,'status':'manual_mode'});continue
+        repo.publish_revision(bundle['briefing']['id'],revision['id'])
+        results.append({'profile':code,'status':'published'})
     return results
 
 
@@ -103,7 +102,9 @@ def run_scheduled(action, now=None, repo=None):
         results={}
         for group in GROUPS:
             try:results[group]=generate_group(repo,day,group,retry=True,allow_partial_market=group=='MARKET')
-            except Exception:results[group]={'status':'failed','message':'See protected operation log'}
+            except Exception as exc:
+                from .diagnostics import failure_diagnostic
+                results[group]={'status':'failed','diagnostic':failure_diagnostic(exc)}
         results['publication']=publish_ready(repo,day,('MARKET','NEWS','INSURANCE'))
         return results
     raise ValueError('Unknown scheduled action')

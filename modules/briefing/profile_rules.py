@@ -53,5 +53,7 @@ PROFILE_RULES: Final[dict[str, ProfileRule]] = {
 
 
 def light_digest_limit(core_count: int = 0, profile_code: str = "INSURANCE") -> int:
-    """Display cap is independent of core count; first five are shown in the UI."""
-    return {"NEWS": 10, "MARKET": 8, "INSURANCE": 15}.get(profile_code, 15) - core_count
+    """Total article cap includes core items; it is not a minimum quota."""
+    if profile_code == "INSURANCE":
+        return 7
+    return max(0, {"NEWS": 10, "MARKET": 8}.get(profile_code, 15) - core_count)

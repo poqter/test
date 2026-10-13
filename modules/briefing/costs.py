@@ -29,5 +29,7 @@ def usage_summary(rows):
             'input_tokens':sum(int(r.get('input_tokens') or 0) for r in rows),
             'output_tokens':sum(int(r.get('output_tokens') or 0) for r in rows),
             'actual_known_usd':actual,'estimated_known_usd':estimates,
+            'accounted_known_usd':sum(float(r.get('actual_cost_usd') if r.get('actual_cost_usd') is not None else r.get('estimated_cost_usd') or 0) for r in rows),
+            'purpose_requests':{purpose:sum((r.get('metadata') or {}).get('execution_purpose','legacy')==purpose for r in rows) for purpose in ('operation','validation','recovery','legacy')},
             'unknown_cost_requests':sum(r.get('actual_cost_usd') is None and r.get('estimated_cost_usd') is None for r in rows),
             'charge_uncertain_requests':sum(bool((r.get('metadata') or {}).get('charge_uncertain')) for r in rows)}

@@ -8,6 +8,7 @@ from typing import Any
 
 import requests
 
+from .api_errors import request_diagnostic, request_message
 from .config import DiscoveryLaneSpec
 from .discovery_budget import DiscoveryBudget, REQUEST_TOOL_CALL_LIMIT
 from .models import DiscoveryLaneResult, DiscoveryUsage, SourceCandidate
@@ -17,7 +18,9 @@ from .source_policy import LANE_DOMAINS, source_identity
 
 
 class BriefingDiscoveryError(RuntimeError):
-    pass
+    def __init__(self, message, diagnostics=None):
+        super().__init__(message)
+        self.diagnostics = diagnostics or {}
 
 
 class OpenAIWebDiscoveryClient:
@@ -69,9 +72,11 @@ class OpenAIWebDiscoveryClient:
                 timeout=self.timeout,
             )
         except requests.RequestException as exc:
-            raise BriefingDiscoveryError("OpenAI discovery request failed") from exc
+            details = request_diagnostic(exc=exc)
+            raise BriefingDiscoveryError(request_message("discovery", details), details) from exc
         if not 200 <= response.status_code < 300:
-            raise BriefingDiscoveryError(f"OpenAI discovery HTTP {response.status_code}")
+            details = request_diagnostic(response=response)
+            raise BriefingDiscoveryError(request_message("discovery", details), details)
         try:
             data = response.json()
         except ValueError as exc:
@@ -226,7 +231,7 @@ class OpenAIWebDiscoveryClient:
         try:
             data = self._request(lane)
         except BriefingDiscoveryError as exc:
-            budget.finish(record, {"status": "request_failed", "failure_message": str(exc)[:240]})
+            budget.finish(record, {**exc.diagnostics, "status": "request_failed", "failure_message": str(exc)[:500]})
             raise
         usage = self._usage(data)
         usage.web_tool_calls = len(self._web_items(data))

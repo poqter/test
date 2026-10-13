@@ -95,10 +95,8 @@ def _coverage_status(phase_b: PhaseBResult, profile_code: str, routed_event_coun
              or profile_code in (c.metadata.get("profile_hints") or [])
              or any(c in lane.candidates for lane in lanes)]
     direct = [h for h in phase_b.source_health.values() if profile_code in h.get("profiles", [])]
-    publishers = {c.publisher_domain for c in owned if c.publisher_domain}
     successful = any(l.search_performed for l in lanes) or any(h.get("status") in {"ok", "empty_valid"} for h in direct)
-    successful_paths = sum(l.search_performed for l in lanes) + sum(h.get("status") in {"ok", "empty_valid"} for h in direct)
-    if routed_event_count >= 1 and (successful_paths >= 2 or successful and len(publishers) >= 2):
+    if routed_event_count >= 1 and successful:
         return "healthy"
     return "degraded" if owned else "insufficient"
 
@@ -168,6 +166,12 @@ def _content_payload(profile_code: str, rows: list[ProfileEventAnalysis], phase_
                 "impact_summary": r.impact_summary,
                 "action_state": r.action_state,
                 "communication_state": r.communication_state,
+                "customer_article_eligible": (
+                    profile_code == 'INSURANCE' and r.validation_status == 'ok'
+                    and r.communication_state == 'not_applicable'
+                    and r.category in {'제도·규제','상품·보험료','보험금·보상','세제·재무','소비자·사회이슈'}
+                    and r.profile_payload.get('confidence') in {'high', 'medium'}
+                ),
                 "audience_segments": r.audience_segments,
                 "representative": r.event_key == representative_key,
                 "sources": [{"title": c.title, "source_name": c.source_name, "url": c.canonical_url or c.url, "published_at": _iso(c.published_at)} for c in event_map[r.event_key].candidates if c.published_at],
@@ -495,6 +499,15 @@ def generate_and_store_briefings(
     from .openai_analysis import OpenAIAnalysisClient
     def save():
         if save_checkpoint: save_checkpoint(saved)
+    from .execution_policy import checkpoint_identity, execution_purpose
+    identity = checkpoint_identity(as_of, requested)
+    if saved.get('input_identity') and saved['input_identity'] != identity:
+        raise BriefingRunError('저장본의 수집 마감·영역·모델·설정이 달라 재사용할 수 없습니다. 기존 저장본을 보존했습니다.')
+    if saved.get('phase_b') and saved['phase_b'].get('as_of') != as_of.isoformat():
+        raise BriefingRunError('저장된 수집 결과의 마감 시각이 다릅니다. 추가 호출 없이 중단했습니다.')
+    saved['input_identity'] = identity
+    purpose = execution_purpose(trigger_type, actor_user_id)
+    saved['execution_purpose'] = purpose
     date_text = as_of.astimezone(KST).date().isoformat()
     jobs: dict[str, dict[str, Any]] = {}
     progress: dict[str, Any] = {"stage": "creating_jobs", "requested_profiles": list(requested),
@@ -503,6 +516,9 @@ def generate_and_store_briefings(
 
     def record_usage(record: dict[str, Any], *, discovery: bool) -> None:
         collection = "discovery_requests" if discovery else "analysis_requests"
+        from .execution_policy import retry_guidance
+        if record.get('status') == 'request_failed':
+            record['recovery_guidance'] = retry_guidance(record)
         progress[collection].append(record)
         code = record["profile_code"]
         owner = code if code in jobs else next(iter(jobs))
@@ -517,21 +533,28 @@ def generate_and_store_briefings(
             **{field: usage.get(field) for field in ("model_name", "service_tier")},
             **{field: int(usage.get(field) or 0) for field in ("input_tokens", "cached_input_tokens", "output_tokens",
                 "reasoning_tokens", "web_tool_calls", "search_actions", "search_retry_count", "verification_search_actions")},
-            "metadata": {"engine_version": ENGINE_VERSION, "request_no": record.get("request_no"),
+            "metadata": {"engine_version": ENGINE_VERSION, "execution_purpose": purpose, "request_no": record.get("request_no"),
                          "response_id": record.get("response_id"), "response_status": record.get("status"),
+                         "request_failure": {k:record.get(k) for k in ('failure_message','http_status','error_class','provider_error_code','provider_error_type')},
                          "retry_used": bool(record.get("retry")), "lane_profile_code": code,
                          "usage_available": bool(record.get("usage_available")),
                          "charge_uncertain": not bool(record.get("usage_available")) or uncertain_search,
                          "search_status_counts": search_status if discovery else None,
                          "search_billing_uncertain": uncertain_search,
-                         "requested_max_tool_calls": record.get("requested_max_tool_calls")},
+                         "requested_max_tool_calls": record.get("requested_max_tool_calls"),
+                         "recovery_guidance": record.get("recovery_guidance")},
         })
         if discovery and before_request:
             repo._request("POST", "/rest/v1/rpc/hwarang_observe_briefing_search", json={"p_date":date_text,"p_actions":int(usage.get("search_actions") or 0)})
         record["usage_logged"] = True
         if record['charge_uncertain']:
-            saved['charge_uncertain']=True;save()
-            raise BriefingRunError('API 사용량 또는 검색 완료 상태가 확인되지 않았습니다. 추가 유료 호출을 중단했습니다.')
+            saved['charge_uncertain']=True
+            saved['last_request_failure']={k:record.get(k) for k in ('profile_code','status','failure_message','http_status','error_class','provider_error_code','provider_error_type','response_id')}
+            save()
+            repo.update_job(str(jobs[owner]['id']), {'metadata': {
+                'engine_version': ENGINE_VERSION, 'shared_run': True, 'partial_diagnostics': progress}})
+            message = record.get('failure_message') or 'API 사용량 또는 검색 완료 상태가 확인되지 않았습니다.'
+            raise BriefingRunError(message + ' 추가 유료 호출을 중단했습니다.', {'request_failure': saved['last_request_failure']})
         if record.get("usage_available") and not record["charge_uncertain"]:
             if not discovery and record.get("output_text_sample"):
                 saved.setdefault("analysis_responses", {})[code] = dict(record)
@@ -569,7 +592,8 @@ def generate_and_store_briefings(
                 previous_lanes=previous, on_lane_complete=lane_done if save_checkpoint else None,
                 retry_missing_search=False, supplement_only=True,
                 include_research=os.getenv("BRIEFING_ENABLE_RESEARCH", "false").lower()=="true",
-                on_discovery_response=lambda record: record_usage(record, discovery=True))
+                on_discovery_response=lambda record: record_usage(record, discovery=True),
+                direct_checkpoint=saved, on_direct_complete=save)
             saved["phase_b"] = encode(phase_b); save()
         progress["phase_b"] = {"collection": phase_b.diagnostics, "source_health": phase_b.source_health,
                                "excluded_counts": phase_b.excluded_counts,
@@ -603,7 +627,7 @@ def generate_and_store_briefings(
                 "search_actions": usage.search_actions,
                 "search_retry_count": usage.search_retry_count,
                 "verification_search_actions": usage.verification_search_actions,
-                "metadata": {"retry_used": lane.retry_used, "response_id": lane.raw_response_id},
+                "metadata": {"execution_purpose": purpose, "retry_used": lane.retry_used, "response_id": lane.raw_response_id},
             })
 
         progress["stage"] = "analysis"
@@ -681,7 +705,7 @@ def generate_and_store_briefings(
                 "search_actions": 0,
                 "search_retry_count": 0,
                 "verification_search_actions": 0,
-                "metadata": {},
+                "metadata": {"execution_purpose": purpose},
             })
 
         results: list[GeneratedProfileResult] = []

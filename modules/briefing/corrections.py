@@ -14,7 +14,7 @@ def corrected_content(content, event_key, changes, reason):
     result=deepcopy(content)
     if not str(reason).strip():raise ValueError('정정 사유를 입력해 주세요.')
     if set(changes)-set(EDIT_FIELDS):raise ValueError('검증된 출처·날짜·지표는 문구 정정에서 변경할 수 없습니다.')
-    issue=next((r for r in result.get('issues',[]) if r.get('event_key')==event_key),None)
+    issue=next((r for r in result.get('issues',[])+result.get('important_updates',[]) if r.get('event_key')==event_key),None)
     if not issue:raise ValueError('정정할 기사를 확인할 수 없습니다.')
     for field,value in changes.items():
         value=str(value).strip()

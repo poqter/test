@@ -23,6 +23,13 @@ def render_operations(repo):
                 st.write(f"요청 {c['requests']}회 · 검색 {c['search_actions']}회 · 입력 {c['input_tokens']:,} / 출력 {c['output_tokens']:,} 토큰")
                 st.caption(f"확인된 추정 비용 ${c['estimated_known_usd']:.4f} · 비용 미확인 요청 {c['unknown_cost_requests']}회 · 응답 미확인 {c['charge_uncertain_requests']}회")
                 if c['actual_known_usd']:st.caption(f"확인된 청구 비용 ${c['actual_known_usd']:.4f}")
+                purpose = c.get('purpose_requests') or {}
+                st.caption('실행 목적 · 운영 '+str(purpose.get('operation',0))+' / 검증 '+str(purpose.get('validation',0))+' / 복구 '+str(purpose.get('recovery',0))+' / 이전 기록 '+str(purpose.get('legacy',0)))
+                from .execution_policy import budget_notice
+                notice = budget_notice(c, 'day' if key == 'today' else 'month')
+                if notice['state'] in {'near','exceeded'}:
+                    st.warning('설정한 비용 알림 예산에 가까워졌거나 도달했습니다. 보강 검색·검증 범위를 먼저 점검하세요. '+notice['message'])
+                else: st.caption(notice['message'])
             st.caption('브리핑 비용은 학습 AI 크레딧과 별도입니다. 단가표가 없으면 비용을 0원으로 표시하지 않습니다. 최종 청구액은 공급사에서 확인합니다. 뉴스 피드·지표 서비스의 계약 비용은 API 토큰 비용에 포함되지 않습니다.')
             if costs.get('row_limit_reached'):st.warning('이달 조회 한도 1,000건에 도달했습니다. 합계는 조회된 기록 기준입니다.')
         except BriefingRepositoryError as exc:st.warning(str(exc))
@@ -47,14 +54,13 @@ def render_operations(repo):
     with st.expander('게시·고객 공유 설정', expanded=True):
         try:
             policy=repo.operating_policy()
-            for code in ('MARKET','NEWS','INSURANCE'):
-                st.caption(PROFILE_LABELS[code]+f' · 검증된 영업일 {repo.verified_business_days(code)}일 / 자동 공개 기준 3일')
+            st.caption('최초 조직 승인 후 품질 검증을 통과한 다음 판본부터 예약 공개합니다.')
             if (st.session_state.get('login_profile') or {}).get('role')!='super_admin':
                 st.caption('최고관리자가 직원 자동 게시와 고객 공유 사용 여부를 설정합니다.');return
             with st.form('launch_policy'):
                 scheduled=st.checkbox('매일 자동 생성 · API 요금 발생',value=bool(policy.get('scheduled_generation_enabled')))
                 st.caption('켜면 예약 시간에 생성합니다. 생성 결과를 직원 화면에 게시하는 설정은 아래에서 별도로 선택합니다.')
-                automatic=st.checkbox('관찰 3영업일 이후 영역별 자동 공개',value=bool(policy.get('automatic_publication_enabled')))
+                automatic=st.checkbox('품질 검증을 통과한 영역별 예약 자동 공개',value=bool(policy.get('automatic_publication_enabled')))
                 external=st.checkbox('검증된 고객용 본문 공유 허용',value=bool(policy.get('external_sharing_approved')))
                 st.caption('고객 공유를 허용하면 검증된 게시 본문에서 공유 버튼을 사용할 수 있습니다. 이 설정은 조직에 한 번 적용하며, 이후 매일 승인할 필요는 없습니다.')
                 if st.form_submit_button('운영 정책 저장'):
@@ -63,7 +69,7 @@ def render_operations(repo):
 
 
 def render_correction(repo,bundle):
-    content=(bundle['snapshot'].get('content_payload') or {});issues=content.get('issues') or []
+    content=(bundle['snapshot'].get('content_payload') or {});issues=(content.get('issues') or [])+(content.get('important_updates') or [])
     if bundle['revision'].get('publication_status')!='published' or not issues:return
     with st.expander('공개 문구 정정 · AI 호출 없음'):
         st.caption('정정은 새 판으로 저장됩니다. 원래 출처·지표·수집 기준은 유지하며 기존 공유 링크의 본문과 PDF를 함께 갱신합니다. 카카오톡에 이미 저장된 미리보기 이미지는 즉시 바뀌지 않을 수 있습니다.')

@@ -26,7 +26,11 @@ def _project(content,external):
     issues=[]
     update_keys={r.get('event_key') for r in content.get('important_updates',[])}
     for row in content.get('important_updates',[])+content.get('issues',[]):
-        if external and content.get('profile_code')=='INSURANCE' and (row.get('communication_state')!='customer_ready' or row.get('category') in {'영업·채널','보험사·시장'}):continue
+        if external and content.get('profile_code')=='INSURANCE':
+            state=row.get('communication_state')
+            neutral=(state=='not_applicable' and row.get('customer_article_eligible') is True
+                     and row.get('category') in {'제도·규제','상품·보험료','보험금·보상','세제·재무','소비자·사회이슈'})
+            if (state!='customer_ready' and not neutral) or row.get('category') in {'영업·채널','보험사·시장'}:continue
         sources=[{k:r.get(k) for k in ('title','source_name','url','published_at')} for r in row.get('sources',[]) if is_safe_url(str(r.get('url') or '')) and r.get('published_at')][:4]
         if sources:issues.append({k:row.get(k) for k in ('event_key','title','summary','category','why_important','impact_summary','representative')}|{'sources':sources, 'important_update':row.get('event_key') in update_keys,
             'added_at':row.get('added_at') if row.get('event_key') in update_keys else None})
@@ -152,6 +156,13 @@ def _cached_pdf(serialized):
             story.append(Paragraph(e(group.get('theme'))+' · '+e(group.get('timeframe')),heading))
             for v in group.get('views') or []:story.append(Paragraph(e(v.get('firm'))+' · '+e(v.get('summary'))+'<br/>'+e(v.get('conditions')),base))
         for r in research['reports']:story.append(Paragraph(f'<a href="{e(r["url"])}" color="#155e8b">{e(r["firm"])} · {e(r["title"])}</a>',meta))
+    if body.get('schema') == 'hwarang-staff-export-v1':
+        story.append(Paragraph('상담 준비 · 직원 내부용 / 고객 공유 금지', heading))
+        for row in body.get('consultations') or []:
+            story.append(Paragraph(e(row['title']), heading))
+            story.append(Paragraph('상담 상태: '+e(row['state']), meta))
+            for field in row['fields']:
+                story.append(Paragraph(e(field['label'])+' · '+e(field['text']), base))
     output=BytesIO()
     def decoration(canvas,doc):
         canvas.setTitle(str(body.get('profile_label') or '오늘의 브리핑'));canvas.setAuthor(identity);canvas.setStrokeColor(brand);canvas.setLineWidth(2);canvas.line(38,812,556,812)

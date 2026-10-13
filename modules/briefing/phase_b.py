@@ -77,11 +77,30 @@ def run_phase_b(
     retry_missing_search: bool = True,
     supplement_only: bool = False,
     include_research: bool = True,
+    direct_checkpoint: dict | None = None,
+    on_direct_complete: Callable | None = None,
 ) -> PhaseBResult:
     as_of = as_of or datetime.now(timezone.utc)
     direct_sources = list(direct_sources)
     direct_details: dict[str, Any] = {}
-    direct_candidates, direct_health = collect_direct_sources(direct_sources, diagnostics=direct_details)
+    from dataclasses import asdict
+    from .execution_policy import digest
+    direct_identity = digest([asdict(spec) for spec in direct_sources])
+    cached_direct = (direct_checkpoint or {}).get('direct_collection')
+    if cached_direct and cached_direct.get('as_of') == as_of.isoformat() and cached_direct.get('source_identity') == direct_identity:
+        from .checkpoints import source
+        direct_candidates = [source(row) for row in cached_direct['candidates']]
+        direct_health = cached_direct['health']
+        direct_details = cached_direct['diagnostics']
+    else:
+        direct_candidates, direct_health = collect_direct_sources(direct_sources, diagnostics=direct_details)
+        if direct_checkpoint is not None:
+            from dataclasses import asdict
+            from .checkpoints import json_value
+            direct_checkpoint['direct_collection'] = {'as_of': as_of.isoformat(), 'source_identity': direct_identity,
+                'candidates': [json_value(asdict(row)) for row in direct_candidates],
+                'health': direct_health, 'diagnostics': direct_details}
+            if on_direct_complete: on_direct_complete()
     lanes = list(previous_lanes or [])
     web_candidates: list[SourceCandidate] = []
     budget = DiscoveryBudget(on_response=on_discovery_response)
@@ -147,7 +166,7 @@ def run_phase_b(
                        "candidate_sample_limit": 80}
             if isinstance(exc, DiscoveryBudgetError):
                 raise PhaseBBudgetError(str(exc), details) from exc
-            exc.diagnostics = details
+            exc.diagnostics = {**getattr(exc, "diagnostics", {}), **details}
             raise
         web_candidates = [c for lane in lanes for c in lane.candidates]
 
