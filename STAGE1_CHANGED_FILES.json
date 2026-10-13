@@ -1,5 +1,5 @@
 {
-  "engine_version": "1.12.1-ux",
+  "engine_version": "1.12.3-readable",
   "baseline_zip_sha256": "82c496835c5763f5a691580270e87bd5562d97dcecab6f20b716e1df4aac814c",
   "briefing_code_sha256": {
     "__init__.py": "66c4884dd2d46a2e672f3dc686c8c53e1cbfc0ff7af3a3ee7917ef0b6e90ad47",
@@ -11,10 +11,10 @@
     "config.py": "3ec3639a5f676907a73a1e8c78421f5974c20b9e0dfce5018808fed52b9ab62e",
     "corrections.py": "0c91a437c475bd7f269e2270d5de03b760a38bd23498a8bbebb4d7afea9b3a68",
     "costs.py": "3ebd1b204e7d430f4c3eb8c7b6648440d90d3a4322cd7136df19155826ed94ff",
-    "diagnostics.py": "feed0127777d5e16c0913c9446831230a24a1634bd6d9460db1011fe78f76845",
+    "diagnostics.py": "8e53e86438409bb86c9eceb56bba13130e8ad0301fcce1ea612eff0d70f68231",
     "direct_sources.py": "bfb68b32e84a8f407bbe126ef632ed1d9fe470e972e87efd901fc82731474d4a",
     "discovery_budget.py": "cdc061db8d2ad846f31817963189fdcddd828095ada99abfa35901d326dc0373",
-    "display.py": "578f60a09f66e14417a7f6bf45998a55fbc265487f62efc0cc0f6df823e01e9a",
+    "display.py": "70ec3f30a58a4e76e2741741a53710dfadd7f36d112e1118dc4fe3f124284921",
     "evidence.py": "434c16d525e20014e6f661e6b2c2bb38ef3d1bd7413b3ae2e1461e4b746dd7ab",
     "execution_policy.py": "841f27c73da633b78838467bd9f466eae0658637c8c2b93faf30a482324fdc8d",
     "experience.py": "77ef18fb62c5d139fa4ffa73647dbaa28523279c2ff006ed298551d3b601b862",
@@ -31,7 +31,7 @@
     "phase_c.py": "00e131fbc4e002894f758505f10dda9b5bf9313816ef42ca573062b03d5e4c0b",
     "preflight.py": "d13d780bb60e8f1726230a01d87ae535bf5c02bda9f2545fd373ede6b06d4273",
     "profile_rules.py": "54557c558acff80f0983f85f7474ed5486e88cbedc6d75d1cb6194142209f731",
-    "public_body.py": "fd7cb4cddf2779ebe1cc2cc43d855b3892d7e9ba81ff40e96764fec3e533f839",
+    "public_body.py": "8c86e0b4d5fbf5fee3e3c9cbc1aad1153a0595b70dcc15430b05d18ff63eedcc",
     "publication.py": "486bfcda3a55ee450adecdb82256cbc3ffba6740de817f1fe6f7079b22dded9c",
     "repository.py": "4dad5b0d9f2e87c418a9a0eafd555a159ade83c412cefa9658c3726c15318a72",
     "research.py": "093fb3d8f5d0316ba714fa3c7cd41466e6964cee83897330c93b8813ca931125",
@@ -343,5 +343,6 @@
     "ui_navigation_tests": 4,
     "baseline_manifest_sha256": "34062812f3c77692e2fde3fee2b8205fefb803e08f0d7e98067d13f317eb0609",
     "generation_policy_changed": false
-  }
+  },
+  "release_patch_id": "BRIEFING_READABILITY_20261014"
 }

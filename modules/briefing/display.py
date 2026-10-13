@@ -19,17 +19,18 @@ def render_style():
     .hw-edition{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:18px 0 12px;color:var(--hw-muted,#62728a);font-size:13px}
     .hw-edition strong{font-size:20px;color:var(--hw-ink,#172b46)}
     .hw-edition-state{font-size:12px;background:var(--hw-soft,#edf3fb);color:var(--hw-brand,#173d6a);padding:4px 10px;border-radius:30px}
-    .hw-news,.hw-digest{background:var(--hw-surface,#fff);border:1px solid var(--hw-line,#dce4ee);border-radius:12px;padding:23px 25px;margin:12px 0 16px;color:var(--hw-ink,#172b46)}
+    .hw-news,.hw-digest{max-width:860px;font-family:Pretendard,'Malgun Gothic',sans-serif;background:var(--hw-surface,#fff);border:1px solid var(--hw-line,#dce4ee);border-radius:12px;padding:23px 25px;margin:12px 0 16px;color:var(--hw-ink,#172b46)}
     .hw-digest{border-top:3px solid var(--hw-brand,#173d6a)}
     .hw-news.lead{border-top:3px solid var(--hw-brand,#173d6a)}
-    .hw-news .tag,.hw-digest .tag{color:var(--hw-brand,#173d6a);font-size:12px;font-weight:600;margin-bottom:9px}
-    .hw-news h3{font-size:21px;line-height:1.5;letter-spacing:-.4px;margin:0 0 12px;color:var(--hw-ink,#172b46)}
-    .hw-news p,.hw-digest p{font-size:16px!important;line-height:1.85;margin:8px 0 14px;color:var(--hw-ink,#172b46);overflow-wrap:anywhere}
+    .hw-news .tag,.hw-digest .tag{color:var(--hw-muted,#62728a);font-size:13px;font-weight:600;margin-bottom:9px}
+    .hw-news h3{font-size:24px;line-height:1.5;letter-spacing:-.6px;margin:0 0 12px;color:var(--hw-ink,#172b46)}
+    .hw-news p,.hw-digest p{font-size:17px!important;line-height:1.95;margin:8px 0 14px;color:var(--hw-ink,#172b46);overflow-wrap:anywhere}
     .hw-news .source{font-size:13px;line-height:1.7;color:var(--hw-muted,#62728a);overflow-wrap:anywhere}
     .hw-news a{color:var(--hw-brand,#173d6a);text-underline-offset:3px}.hw-news h3 a{color:inherit;text-decoration:none}
     .hw-news .hw-context{background:var(--hw-soft,#edf3fb);border-radius:8px;padding:14px 17px;margin:15px 0}
     .hw-news .hw-context h4{font-size:13px;color:var(--hw-brand,#173d6a);margin:0 0 6px}
-    .hw-news .hw-context p{font-size:15px!important;margin-bottom:10px}
+    .hw-news .hw-context p{font-size:16px!important;line-height:1.9;margin-bottom:14px}
+    .hw-briefing-section{max-width:860px;font-size:23px;font-weight:700;color:var(--hw-ink,#172b46);padding:16px 0;margin:30px 0 12px;border-top:2px solid var(--hw-line,#dce4ee)}
     .hw-news.big h3{font-size:25px}.hw-news.big p,.hw-digest.big p{font-size:20px!important;line-height:1.85}
     .st-key-hw_briefing_center button{min-height:42px}.st-key-hw_briefing_center [data-testid="stExpander"]{border-color:var(--hw-line)}
     .st-key-hw_briefing_center [data-testid="stRadio"]{margin:5px 0 15px}
@@ -56,7 +57,7 @@ def render_body(body, *, large=False):
     for index, row in enumerate(ordered, 1):
         if row.get("section_label") and row["section_label"] != last_section:
             last_section = row["section_label"]
-            st.markdown("### "+e(last_section))
+            st.markdown('<h2 class="hw-briefing-section">'+e(last_section)+'</h2>', unsafe_allow_html=True)
         sources = [s for s in row.get('sources') or [] if is_safe_url(str(s.get('url') or ''))]
         primary = sources[0] if sources else None
         title = e(row.get('title') or '오늘의 소식')
@@ -69,7 +70,7 @@ def render_body(body, *, large=False):
         if row.get('why_important'):
             explanation += f'<h4>배경</h4><p>{e(row["why_important"])}</p>'
         if row.get('impact_summary'):
-            explanation += f'<h4>생활·금융에 미치는 영향</h4><p>{e(row["impact_summary"])}</p>'
+            explanation += f'<h4>영향과 의미</h4><p>{e(row["impact_summary"])}</p>'
         if explanation:
             explanation = '<div class="hw-context">'+explanation+'</div>'
         st.markdown(f'<article class="{classes}"><div class="tag">{e(tag)}</div><h3>{title}</h3><p>{e(row.get("summary"))}</p>'+explanation+f'<div class="source">{e(source)}'+(f' · <a href="{e(primary["url"])}" target="_blank" rel="noopener noreferrer">원문 읽기 ↗</a>' if primary else '')+'</div></article>', unsafe_allow_html=True)
@@ -132,6 +133,4 @@ def render_public_entry(repo):
     st.title(body.get('profile_label') or '오늘의 브리핑')
     st.caption(str(packet.get('briefing_date') or '')+' · '+str(sender.get('name') or '')+' '+str(sender.get('position') or ''))
     render_body(body)
-    from .public_body import public_pdf
-    st.download_button('PDF로 저장',public_pdf(packet),file_name='hwarang_briefing.pdf',mime='application/pdf')
     return True
