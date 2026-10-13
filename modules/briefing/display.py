@@ -12,17 +12,31 @@ def stamp(value):
 
 def render_style():
     st.markdown("""<style>
-    .hw-briefing-hero{background:linear-gradient(125deg,#102b48,#214b72);border-radius:20px;padding:25px 28px;margin:0 0 20px;color:#fff}
-    .hw-briefing-hero>span{font-size:11px;letter-spacing:2px;color:#b8d1e7}.hw-briefing-hero h1{color:#fff;font-size:30px;font-weight:750;margin:8px 0;line-height:1.25}.hw-briefing-hero p{font-size:15px!important;color:#dce8f4;margin:0}
-    .hw-edition{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:24px 0 14px;color:#536579;font-size:13px}.hw-edition strong{font-size:21px;color:#172d45}.hw-edition-state{font-size:12px;background:#eaf0f7;color:#345579;padding:5px 10px;border-radius:30px}
-    .hw-news{background:#fff;border:1px solid #dbe3ec;border-radius:16px;padding:22px 24px;margin:14px 0;color:#23384e;box-shadow:0 3px 14px rgba(20,40,70,.025)}.hw-news.lead{border-left:5px solid #284f77;background:#f8fbff}
-    .hw-news .tag{color:#52708e;font-size:12px;font-weight:650;margin-bottom:10px}.hw-news h3{font-size:21px;line-height:1.48;margin:0 0 10px;color:#132c46}.hw-news.lead h3{font-size:24px}.hw-news p{font-size:17px!important;line-height:1.8;margin:0 0 14px;color:#34495f}.hw-news .source{font-size:12px;line-height:1.7;color:#64758a}.hw-news a{color:#235b8d;text-decoration:none}.hw-news h3 a{color:inherit}.hw-news a:hover{text-decoration:underline;text-underline-offset:3px}
-    .hw-news .hw-context{border-top:1px solid #e4eaf0;padding-top:14px;margin-top:12px}.hw-news .hw-context h4{font-size:14px;color:#355774;margin:0 0 6px}.hw-news .hw-context p{font-size:16px!important;margin-bottom:12px}
-    .hw-news.big h3{font-size:25px}.hw-news.big p{font-size:20px!important;line-height:1.85}
-    .hw-market-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:14px 0 22px}.hw-market-metric{background:#fff;border:1px solid #dbe3ec;border-radius:14px;padding:17px}.hw-market-metric .name{font-size:13px;color:#52677d}.hw-market-metric .value{font-size:26px;font-weight:750;color:#172d45;margin:8px 0}.hw-market-metric .delta{font-size:14px;font-weight:650}.hw-market-metric .date{font-size:11px;color:#64758a;margin-top:8px}.hw-market-metric a{font-size:11px;color:#456988}.hw-market-metric .up{color:#ba3447}.hw-market-metric .down{color:#2864ad}.hw-market-metric .flat{color:#60738b}
-    .st-key-hw_briefing_center button{min-height:42px}.st-key-hw_briefing_center [data-testid="stExpander"]{border-color:#dce4ee}.st-key-hw_briefing_center [data-testid="stRadio"]{margin:4px 0 10px}
-    @media(max-width:640px){.hw-briefing-hero{padding:21px 20px}.hw-briefing-hero h1{font-size:27px}.hw-market-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hw-news{padding:18px}.hw-news h3{font-size:20px}.hw-news.lead h3{font-size:22px}.hw-market-metric .value{font-size:22px}}
-    @media(max-width:340px){.hw-market-grid{grid-template-columns:1fr}}
+    .st-key-hw_briefing_center{--hw-ink:#172b46;--hw-muted:#62728a;--hw-line:#dce4ee;--hw-soft:#edf3fb;--hw-surface:#fff;--hw-brand:#173d6a}
+    .hw-briefing-hero{padding:7px 0 18px;margin:0 0 10px;border-bottom:1px solid var(--hw-line,#dce4ee)}
+    .hw-briefing-hero>span{font-size:12px;letter-spacing:1px;color:var(--hw-muted,#62728a)}
+    .hw-briefing-hero h1{font-size:29px;font-weight:650;letter-spacing:-1px;margin:8px 0 0;color:var(--hw-ink,#172b46);line-height:1.35}
+    .hw-edition{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:18px 0 12px;color:var(--hw-muted,#62728a);font-size:13px}
+    .hw-edition strong{font-size:20px;color:var(--hw-ink,#172b46)}
+    .hw-edition-state{font-size:12px;background:var(--hw-soft,#edf3fb);color:var(--hw-brand,#173d6a);padding:4px 10px;border-radius:30px}
+    .hw-news,.hw-digest{background:var(--hw-surface,#fff);border:1px solid var(--hw-line,#dce4ee);border-radius:12px;padding:23px 25px;margin:12px 0 16px;color:var(--hw-ink,#172b46)}
+    .hw-digest{border-top:3px solid var(--hw-brand,#173d6a)}
+    .hw-news.lead{border-top:3px solid var(--hw-brand,#173d6a)}
+    .hw-news .tag,.hw-digest .tag{color:var(--hw-brand,#173d6a);font-size:12px;font-weight:600;margin-bottom:9px}
+    .hw-news h3{font-size:21px;line-height:1.5;letter-spacing:-.4px;margin:0 0 12px;color:var(--hw-ink,#172b46)}
+    .hw-news p,.hw-digest p{font-size:16px!important;line-height:1.85;margin:8px 0 14px;color:var(--hw-ink,#172b46);overflow-wrap:anywhere}
+    .hw-news .source{font-size:13px;line-height:1.7;color:var(--hw-muted,#62728a);overflow-wrap:anywhere}
+    .hw-news a{color:var(--hw-brand,#173d6a);text-underline-offset:3px}.hw-news h3 a{color:inherit;text-decoration:none}
+    .hw-news .hw-context{background:var(--hw-soft,#edf3fb);border-radius:8px;padding:14px 17px;margin:15px 0}
+    .hw-news .hw-context h4{font-size:13px;color:var(--hw-brand,#173d6a);margin:0 0 6px}
+    .hw-news .hw-context p{font-size:15px!important;margin-bottom:10px}
+    .hw-news.big h3{font-size:25px}.hw-news.big p,.hw-digest.big p{font-size:20px!important;line-height:1.85}
+    .st-key-hw_briefing_center button{min-height:42px}.st-key-hw_briefing_center [data-testid="stExpander"]{border-color:var(--hw-line)}
+    .st-key-hw_briefing_center [data-testid="stRadio"]{margin:5px 0 15px}
+    .st-key-hw_briefing_center [data-testid="stRadio"] label{padding:6px 10px;border-radius:8px}
+    .st-key-hw_briefing_center [data-testid="stVerticalBlockBorderWrapper"]{border-radius:12px}
+    @media(prefers-color-scheme:dark){.st-key-hw_briefing_center{--hw-ink:#edf2fa;--hw-muted:#b0bfd1;--hw-line:#344357;--hw-soft:#273a53;--hw-surface:#1b2637;--hw-brand:#bed6f5}}
+    @media(max-width:640px){.hw-news,.hw-digest{padding:18px}.hw-briefing-hero h1{font-size:25px}.hw-news h3{font-size:20px}.st-key-hw_briefing_center [data-testid="stHorizontalBlock"]{flex-wrap:wrap}.st-key-hw_briefing_center [data-testid="stColumn"]{min-width:min(100%,240px)}}
     </style>""", unsafe_allow_html=True)
 
 
@@ -30,16 +44,19 @@ def render_body(body, *, large=False):
     import html
     e = lambda value: html.escape(str(value or ''), quote=True)
     render_style()
-    if body.get('profile_code') == 'MARKET':
-        if body.get('market_flow'):
-            with st.container(border=True):
-                st.markdown('#### 오늘의 경제 흐름')
-                for text in body['market_flow']:
-                    st.write(text)
     issues = body.get('issues') or []
     representative = next((row for row in issues if row.get('representative')), None)
     ordered = ([representative] if representative else []) + [row for row in issues if row is not representative]
+    flow = body.get('market_flow') or []
+    digest = flow if flow else [str(row.get('title') or '') for row in ordered[:3]]
+    if digest:
+        label = '오늘의 경제·금융 흐름' if flow else '오늘의 핵심'
+        st.markdown('<section class="hw-digest'+(' big' if large else '')+'"><div class="tag">'+label+'</div>'+''.join('<p>'+e(text)+'</p>' for text in digest)+'</section>', unsafe_allow_html=True)
+    last_section = None
     for index, row in enumerate(ordered, 1):
+        if row.get("section_label") and row["section_label"] != last_section:
+            last_section = row["section_label"]
+            st.markdown("### "+e(last_section))
         sources = [s for s in row.get('sources') or [] if is_safe_url(str(s.get('url') or ''))]
         primary = sources[0] if sources else None
         title = e(row.get('title') or '오늘의 소식')

@@ -10,7 +10,8 @@ from .runtime import PROFILE_LABELS
 def render_operations(repo):
     actor=str((st.session_state.get('login_profile') or {}).get('id') or '')
     day=datetime.now(ZoneInfo('Asia/Seoul')).date()
-    with st.expander('운영 상태 · 예약 실행 · 비용'):
+    _render_policy(repo, actor)
+    with st.expander('실행 이력 · 상세 오류 · 비용'):
         try:
             enabled=repo.ai_generation_enabled();st.info('전체 AI: '+('켜짐' if enabled else '꺼짐 · 유료 브리핑 생성 중단'))
             status=repo.operation_status(day)
@@ -51,7 +52,12 @@ def render_operations(repo):
         if st.button('고객 공유 페이지 연결 확인',key='launch_reader_probe'):
             if repo.public_endpoint_ready():st.success('고객 읽기 페이지가 연결됐습니다.')
             else:st.warning('public_reader 고객 읽기 페이지를 먼저 배포해 주세요.')
-    with st.expander('게시·고객 공유 설정', expanded=True):
+
+
+def _render_policy(repo, actor):
+    with st.container(border=True):
+        st.subheader('자동 운영')
+        st.caption('경제·금융 07:00 생성 / 07:30 게시 · 뉴스·보험 07:30 생성 / 08:00 게시')
         try:
             policy=repo.operating_policy()
             st.caption('최초 조직 승인 후 품질 검증을 통과한 다음 판본부터 예약 공개합니다.')

@@ -1,20 +1,20 @@
 {
-  "engine_version": "1.12.0-completion",
+  "engine_version": "1.12.1-ux",
   "baseline_zip_sha256": "82c496835c5763f5a691580270e87bd5562d97dcecab6f20b716e1df4aac814c",
   "briefing_code_sha256": {
     "__init__.py": "66c4884dd2d46a2e672f3dc686c8c53e1cbfc0ff7af3a3ee7917ef0b6e90ad47",
     "api_errors.py": "20ca68aa829159e97f59d18b429b36fb588dfde1ae3d78f35ef5d5d6b108b7dd",
-    "briefing_center.py": "5b88d187477771432b8c1f68e24c2dd10f8cf432ed3c1eee154d8d42ce73a47e",
+    "briefing_center.py": "86c0a5d0d59804673481e62f914e6dcb8f7d7fa16aac0e39d457bdd6dfb72303",
     "business_calendar.py": "d65fbee6e2102e2d4cd60c11979b3cfba4255971d8c0e4d291f41112731b8dd9",
     "checkpoints.py": "9b644a671d0ab5e4e412f20ec718f84545b41d97a220d1ee723a81e5e962af48",
     "clustering.py": "fdf10bad85f75fc35c91248c3ee0990f554759e61799ecd5136420bb11287b8f",
     "config.py": "3ec3639a5f676907a73a1e8c78421f5974c20b9e0dfce5018808fed52b9ab62e",
     "corrections.py": "0c91a437c475bd7f269e2270d5de03b760a38bd23498a8bbebb4d7afea9b3a68",
     "costs.py": "3ebd1b204e7d430f4c3eb8c7b6648440d90d3a4322cd7136df19155826ed94ff",
-    "diagnostics.py": "bdaddfb34cbb03e97e13d039396bab824bb6cb5c3136adabd55fc699b82e4467",
+    "diagnostics.py": "feed0127777d5e16c0913c9446831230a24a1634bd6d9460db1011fe78f76845",
     "direct_sources.py": "bfb68b32e84a8f407bbe126ef632ed1d9fe470e972e87efd901fc82731474d4a",
     "discovery_budget.py": "cdc061db8d2ad846f31817963189fdcddd828095ada99abfa35901d326dc0373",
-    "display.py": "5f008eca42664599a9cbf8c6c5c2629f045dfdc1ebe693b3ff2d9856d4dd1674",
+    "display.py": "578f60a09f66e14417a7f6bf45998a55fbc265487f62efc0cc0f6df823e01e9a",
     "evidence.py": "434c16d525e20014e6f661e6b2c2bb38ef3d1bd7413b3ae2e1461e4b746dd7ab",
     "execution_policy.py": "841f27c73da633b78838467bd9f466eae0658637c8c2b93faf30a482324fdc8d",
     "experience.py": "77ef18fb62c5d139fa4ffa73647dbaa28523279c2ff006ed298551d3b601b862",
@@ -26,7 +26,7 @@
     "normalize.py": "cbdaad8c226ad621342ec7c336ac8d62266cfa151e645e57abcab01430d6a1a6",
     "openai_analysis.py": "70af3763552cb56a030ccad921561b41a7f2566861423fc16d238f3646031622",
     "openai_discovery.py": "5d78ae54fe4427342692d0a4a995fb947dafae64a44d6d0e9c41fe5872a13197",
-    "operations_ui.py": "8becbc9ccd1ab26ca2b84e140c770fc792bad3ddcbaed48023f1f7c52d78f5a5",
+    "operations_ui.py": "174db74151f4d570d334cb86fd1491923169f696f9ce50f5e02a90b9e480406a",
     "phase_b.py": "780f9e1fd55c715dbf7bd3fe73b7888c9f8aef3d618655b3fac9a82be1bad4e1",
     "phase_c.py": "00e131fbc4e002894f758505f10dda9b5bf9313816ef42ca573062b03d5e4c0b",
     "preflight.py": "d13d780bb60e8f1726230a01d87ae535bf5c02bda9f2545fd373ede6b06d4273",
@@ -281,7 +281,7 @@
     "production_deployed": false,
     "scope": "account diagnostics, displayed-article coverage, one representative, missing market feed preflight"
   },
-  "patch_id": "BRIEFING_COMPLETION_20261013",
+  "patch_id": "BRIEFING_UX_20261014",
   "automation_recovery": {
     "database_changes": false,
     "new_paid_test_calls": 0,
@@ -332,5 +332,16 @@
       "tests/test_briefing_completion.py"
     ],
     "clean_install_ci_executed": false
+  },
+  "ux_release": {
+    "baseline": "1.12.0-completion",
+    "new_sql": false,
+    "production_deployed": false,
+    "scope": "approved reading/sharing/management UI",
+    "python_tests_passed": 182,
+    "customer_http_assertions": 39,
+    "ui_navigation_tests": 4,
+    "baseline_manifest_sha256": "34062812f3c77692e2fde3fee2b8205fefb803e08f0d7e98067d13f317eb0609",
+    "generation_policy_changed": false
   }
 }

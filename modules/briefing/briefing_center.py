@@ -13,9 +13,9 @@ from .diagnostics import build_info, failure_diagnostic
 from .scheduler import generate_group
 from .experience import publication_blockers, sharing_blockers, selection_summary
 
-PROFILE_ORDER = ('NEWS', 'INSURANCE', 'MARKET')
+PROFILE_ORDER = ('MARKET', 'NEWS', 'INSURANCE')
 KST = ZoneInfo('Asia/Seoul')
-PAGES = ('오늘 브리핑', '지난 브리핑', '운영 설정')
+PAGES = ('오늘 브리핑', '지난 브리핑', '고객에게 공유', '운영 관리')
 
 
 def _can_manage():
@@ -64,6 +64,11 @@ def _navigate(page):
     st.session_state['hw_briefing_page'] = page
 
 
+def _open_share(day):
+    st.session_state['hw_briefing_share_day'] = str(day)
+    _navigate('고객에게 공유')
+
+
 def _actor():
     return str((st.session_state.get('login_profile') or {}).get('id') or '')
 
@@ -96,62 +101,82 @@ def _body(snapshot):
 def _combined_sharing(repo, selected_day=None, *, use_cache=False):
     profile = st.session_state.get('login_profile') or {}
     uid = str(profile.get('id') or '')
-    with st.container(border=True):
-        st.markdown('#### 고객에게 공유하기')
-        day = str(selected_day) if selected_day else (_customer_date_cached() if use_cache else repo.latest_complete_customer_date())
-        if not day:
-            st.info('세 영역의 같은 날짜 게시본이 준비되면 통합 공유가 열립니다.')
-            st.button('통합 공유 링크 만들기', disabled=True, key='combined_not_ready')
-            return
-        if day != datetime.now(KST).date().isoformat():
-            st.info(f'오늘 통합본이 아직 준비되지 않아 최근 정상 통합본({day})을 제공합니다.')
-        st.caption(f'{day} · 경제·금융, 종합뉴스, 고객에게 적합한 보험 소식을 한 링크로 공유합니다.')
-        available = []
-        blocked_reasons = []
-        policy = repo.operating_policy()
-        try:
-            reader_configured = bool(repo.public_base_url())
-        except BriefingRepositoryError:
-            reader_configured = False
-        for code in ('MARKET', 'NEWS', 'INSURANCE'):
-            bundle = repo.bundle_for_date(code, day)
-            if bundle:
-                reasons = sharing_blockers(bundle, policy, profile,
-                                           reader_configured=reader_configured)
-                if not reasons:
-                    available.append(code)
+    day = str(selected_day) if selected_day else (_customer_date_cached() if use_cache else repo.latest_complete_customer_date())
+    if not day:
+        st.info('같은 날짜의 정상 게시본이 준비되면 고객 공유를 사용할 수 있습니다.')
+        st.button('통합 공유 링크 만들기', disabled=True, key='combined_not_ready')
+        return
+    if day != datetime.now(KST).date().isoformat():
+        st.info(f'선택한 공유 자료는 {day}입니다. 오늘 자료와 섞지 않습니다.')
+    policy = repo.operating_policy()
+    try: reader_configured = bool(repo.public_base_url())
+    except BriefingRepositoryError: reader_configured = False
+    available = []; bundles = {}; reasons_by_code = {}
+    for code in PROFILE_ORDER:
+        bundle = repo.bundle_for_date(code, day)
+        if bundle:
+            reasons = sharing_blockers(bundle, policy, profile, reader_configured=reader_configured)
+            if not reasons: available.append(code); bundles[code] = bundle
+            else: reasons_by_code[code] = reasons[0]
+        else: reasons_by_code[code] = '이 날짜에 공유 가능한 게시본이 없습니다.'
+    approved = bool(policy.get('external_sharing_approved'))
+    left, right = st.columns([1,1], gap='large')
+    with left:
+        with st.container(border=True):
+            st.subheader('공유할 내용 선택')
+            st.caption(day+' · 같은 날짜의 고객용 본문')
+            codes = []
+            for code in PROFILE_ORDER:
+                label = '보험 생활정보' if code == 'INSURANCE' else PROFILE_LABELS[code]
+                chosen = st.checkbox(label, value=code in available, disabled=code not in available,
+                                     key='share_section_'+uid+'_'+day+'_'+code)
+                if chosen and code in available: codes.append(code)
+                if code not in available: st.caption(reasons_by_code.get(code,'고객 적격 기사 없음'))
+            st.caption('보험업계의 내부 정보와 상담 문구는 고객 본문에 포함되지 않습니다.')
+            if not approved: st.info('최고관리자가 운영 관리에서 고객 공유를 허용하면 사용할 수 있습니다.')
+            preview = st.toggle('고객 화면 미리보기', key='share_preview_'+uid+'_'+day, disabled=not codes)
+    key = 'combined_share_'+day+'_'+uid+'_'+'_'.join(codes)
+    with right:
+        with st.container(border=True):
+            st.subheader('보낼 문구와 링크')
+            if st.button('통합 공유 링크 만들기', disabled=not codes or not approved, type='primary',
+                         key=key+'_make', use_container_width=True):
+                try:
+                    token, packet = repo.create_combined_share(day, codes, uid)
+                    st.session_state[key] = {'token':token, 'packet':packet}
+                except BriefingRepositoryError as exc: st.error(str(exc))
+            shared = st.session_state.get(key)
+            if shared and codes and approved and all(code in available for code in codes):
+                from .sharing import share_url
+                url = share_url(repo.public_base_url(), shared['token'])
+                packet = shared['packet']; sender = packet['sender']
+                st.caption('아래 문구의 복사 버튼으로 링크까지 복사한 뒤 카카오톡·문자에 붙여넣으세요.')
+                st.code(f"{sender['name']} {sender['position']}의 통합 브리핑\n{day} · 소식 {len(packet['body']['issues'])}개\n{url}", language=None)
+                a,b = st.columns(2)
+                a.link_button('고객 화면 열기', url, use_container_width=True)
+                try:
+                    pdf = public_pdf(packet)
+                except Exception:
+                    st.warning('PDF 생성이 지연됐습니다. 공유 링크는 사용할 수 있습니다.')
                 else:
-                    blocked_reasons.extend(reasons)
-        if not available and blocked_reasons:
-            st.info(' / '.join(dict.fromkeys(blocked_reasons)))
-        codes = st.multiselect('공유할 영역', available, default=available,
-            format_func=lambda code: PROFILE_LABELS[code], key='combined_sections_' + day)
-        if 'INSURANCE' not in available:
-            st.caption('보험업계의 직원용 정보는 제외하며, 고객용 적격 기사가 있는 판본만 포함합니다.')
-        approved = policy.get('external_sharing_approved')
-        if not approved:
-            st.info('관리자가 운영 설정에서 최초 고객 공유 승인을 켜면 사용할 수 있습니다.')
-        key = 'combined_share_' + day + '_' + uid + '_' + '_'.join(codes)
-        if st.button('통합 공유 링크 만들기', disabled=not codes or not approved,
-                     type='primary', key=key + '_make', use_container_width=True):
+                    b.download_button('고객 PDF 저장', pdf, mime='application/pdf',
+                        file_name=f'hwarang_briefing_{day}.pdf', key=key+'_pdf', use_container_width=True)
+                if st.button('이 공유 링크 취소', key=key+'_revoke'):
+                    try:
+                        repo.revoke_share(shared['token'],uid)
+                        st.session_state.pop(key,None);st.rerun()
+                    except BriefingRepositoryError as exc: st.error(str(exc))
+            else:
+                st.info('영역을 선택하고 링크를 만들면 발신자 이름·직책이 포함된 문구가 표시됩니다.')
+    if preview and codes:
+        from .sharing import combine_bodies
+        with st.container(border=True):
+            st.subheader('고객에게 보이는 본문')
             try:
-                token, packet = repo.create_combined_share(day, codes, uid)
-                st.session_state[key] = {'token': token, 'packet': packet}
-            except BriefingRepositoryError as exc:
-                st.error(str(exc))
-        shared = st.session_state.get(key)
-        if shared and codes and approved and all(code in available for code in codes):
-            from .sharing import share_url
-            url = share_url(repo.public_base_url(), shared['token'])
-            packet = shared['packet']; sender = packet['sender']
-            st.success('링크가 준비됐습니다. 아래 문구를 복사해 카카오톡이나 문자로 보내세요.')
-            st.code(f"{sender['name']} {sender['position']}의 통합 브리핑\n{day} · 소식 {len(packet['body']['issues'])}개\n{url}", language=None)
-            a, b = st.columns(2)
-            a.link_button('고객 화면 열기', url, use_container_width=True)
-            b.download_button('고객용 PDF 저장', public_pdf(packet), mime='application/pdf',
-                file_name=f'hwarang_briefing_{day}.pdf', key=key + '_pdf', use_container_width=True)
-            if st.button('이 공유 링크 취소', key=key + '_revoke'):
-                repo.revoke_share(shared['token'], uid); st.session_state.pop(key, None); st.rerun()
+                sender = repo.staff_sender(uid)
+                st.caption(day+' · '+sender['name']+' '+sender['position'])
+                render_body(combine_bodies([bundles[code] for code in codes]))
+            except BriefingRepositoryError as exc: st.warning(str(exc))
 
 
 def _internal_actions(bundle):
@@ -215,7 +240,7 @@ def _render_profile_detail(repo, code, bundle, can_manage):
     status = '게시됨' if published else '게시 전 초안'
     st.markdown(f'<div class="hw-edition"><span class="hw-edition-state">{html.escape(status)}</span><strong>{html.escape(PROFILE_LABELS[code])}</strong><span>{html.escape(day)} · 수집 마감 {html.escape(stamp(content.get("as_of")))}</span></div>', unsafe_allow_html=True)
     if day != datetime.now(KST).date().isoformat():
-        st.info(f'가장 최근에 저장된 {day} 브리핑입니다. 오늘 자료가 준비되면 새 판이 표시됩니다.')
+        st.info(f'오늘 브리핑은 아직 준비되지 않았습니다. 최근 정상본({day})을 보여드립니다.')
     body = _body(snapshot)
     c1, c2 = st.columns([2, 1])
     with c1:
@@ -231,18 +256,26 @@ def _render_profile_detail(repo, code, bundle, can_manage):
             st.caption(f"고객용 기사 {len(preview['issues'])}개 · 현재 화면은 직원 미리보기이며 외부 공개가 아닙니다.")
             render_body(preview, large=large)
     from .staff_exports import team_summary, staff_pdf
-    with st.expander('팀 1분 요약 · 직원 PDF'):
-        st.caption('저장된 판본으로 만듭니다. 추가 AI 호출은 없으며 고객 공유용 자료와 구분합니다.')
-        st.code(team_summary(bundle), language=None)
-        if st.button('직원 PDF 준비', key='staff_prepare_'+revision['id']):
-            try:
-                sender = repo.staff_sender(_actor())
-                st.session_state['staff_pdf_'+revision['id']+'_'+str(_actor())] = staff_pdf(bundle, sender)
-            except Exception:
-                st.error('직원 PDF를 만들지 못했습니다. 웹 본문은 계속 읽을 수 있습니다.')
-        if st.session_state.get('staff_pdf_'+revision['id']+'_'+str(_actor())):
-            st.download_button('직원 내부용 PDF 저장', st.session_state['staff_pdf_'+revision['id']+'_'+str(_actor())],
-                file_name=f'hwarang_{code}_{day}_staff.pdf', mime='application/pdf', key='staff_download_'+revision['id'])
+    tools, export, share = st.columns([2, 2, 2])
+    with tools:
+        with st.popover('팀 1분 요약', use_container_width=True):
+            st.caption('직원 내부용 · 저장된 판본')
+            st.code(team_summary(bundle), language=None)
+    with export:
+        with st.popover('직원 PDF', use_container_width=True):
+            st.caption('상담 준비를 포함한 내부용 자료입니다.')
+            if st.button('PDF 준비', key='staff_prepare_'+revision['id']):
+                try:
+                    sender = repo.staff_sender(_actor())
+                    st.session_state['staff_pdf_'+revision['id']+'_'+str(_actor())] = staff_pdf(bundle, sender)
+                except Exception:
+                    st.error('직원 PDF를 만들지 못했습니다. 본문은 계속 읽을 수 있습니다.')
+            if st.session_state.get('staff_pdf_'+revision['id']+'_'+str(_actor())):
+                st.download_button('직원 내부용 PDF 저장', st.session_state['staff_pdf_'+revision['id']+'_'+str(_actor())],
+                    file_name=f'hwarang_{code}_{day}_staff.pdf', mime='application/pdf', key='staff_download_'+revision['id'])
+    with share:
+        st.button('고객에게 공유', key='share_from_'+revision['id'], type='primary',
+                  on_click=_open_share, args=(day,), use_container_width=True)
     _internal_actions(bundle)
     if can_manage:
         from .operations_ui import render_correction, render_important_update
@@ -326,20 +359,19 @@ def _render_generate_panel(repo):
 
 
 def _render_today(repo, can_manage):
-    _combined_sharing(repo, use_cache=True)
     summaries = _latest_summaries(False)
     selected = st.radio('브리핑 영역', PROFILE_ORDER, format_func=lambda x:PROFILE_LABELS[x], horizontal=True, key='hw_briefing_profile')
     item = summaries.get(selected)
     if not item:
         st.info('아직 '+PROFILE_LABELS[selected]+' 브리핑이 '+('저장되지 않았습니다.' if can_manage else '게시되지 않았습니다.'))
         if can_manage:
-            st.button('브리핑 생성하러 가기', on_click=_navigate, args=('운영 설정',), key='empty_generate')
+            st.button('브리핑 생성하러 가기', on_click=_navigate, args=('운영 관리',), key='empty_generate')
         return
     snapshot = repo._snapshot_for_revision(str(item['revision']['id']))
     if not snapshot:
         st.warning('저장된 본문을 불러오지 못했습니다.')
         return
-    _render_profile_detail(repo, selected, repo.bundle_from_parts(item['briefing'], item['revision'], snapshot), can_manage)
+    _render_profile_detail(repo, selected, repo.bundle_from_parts(item['briefing'], item['revision'], snapshot), False)
 
 
 def _render_history(repo, can_manage):
@@ -348,30 +380,41 @@ def _render_history(repo, can_manage):
     day = st.date_input('읽을 날짜', value=now, min_value=now-timedelta(days=29), max_value=now)
     bundle = repo.bundle_for_date(code, day, include_draft=False)
     if bundle:
-        _combined_sharing(repo, day)
-        _render_profile_detail(repo, code, bundle, can_manage)
+        _render_profile_detail(repo, code, bundle, False)
     else:
         st.info('선택한 날짜에 저장된 브리핑이 없습니다.' if can_manage else '선택한 날짜에 게시된 브리핑이 없습니다.')
 
 
 def _render_manager_editions(repo):
-    st.subheader('저장된 브리핑 · 게시와 공유')
+    st.subheader('생성·게시 관리')
+    code = st.selectbox('관리할 영역', PROFILE_ORDER, format_func=lambda x:PROFILE_LABELS[x], key='manager_edition_profile')
     summaries = _latest_summaries(True)
-    for code in PROFILE_ORDER:
-        item = summaries.get(code)
-        with st.container(border=True):
-            st.markdown('**'+PROFILE_LABELS[code]+'**')
-            if not item:
-                st.caption('아직 저장된 자료가 없습니다.')
-                continue
-            snapshot = repo._snapshot_for_revision(str(item['revision']['id']))
-            if not snapshot:
-                continue
-            bundle = repo.bundle_from_parts(item['briefing'], item['revision'], snapshot)
-            count = len((snapshot.get('content_payload') or {}).get('issues') or [])
-            st.caption(str(item['briefing'].get('briefing_date'))+f' · 기사 {count}개 · '+('게시됨' if item['revision'].get('publication_status')=='published' else '게시 대기'))
-            _publish_actions(repo, bundle)
-            st.button('본문 읽기', key='read_'+code, on_click=_open_profile, args=(code,), use_container_width=True)
+    item = summaries.get(code)
+    if not item:
+        st.info('이 영역에 저장된 자료가 없습니다.')
+        return
+    snapshot = repo._snapshot_for_revision(str(item['revision']['id']))
+    if not snapshot:
+        st.warning('저장된 판본을 불러오지 못했습니다.')
+        return
+    bundle = repo.bundle_from_parts(item['briefing'], item['revision'], snapshot)
+    revision = bundle['revision']; briefing = bundle['briefing']
+    st.caption(str(briefing.get('briefing_date'))+' · '+('게시됨' if revision.get('publication_status')=='published' else '게시 전 초안'))
+    _publish_actions(repo, bundle)
+    with st.expander('저장된 본문 확인'):
+        render_body(_body(snapshot))
+    from .operations_ui import render_correction, render_important_update
+    render_correction(repo, bundle)
+    render_important_update(repo, bundle)
+    if revision.get('publication_status') == 'published':
+        if st.button('공개 중단·공유 링크 차단', key='hide_'+revision['id']):
+            repo.hide_revision(briefing['id'], revision['id'], _actor())
+            _clear_read_caches(); st.rerun()
+    with st.expander('판본 품질·상세 진단'):
+        qa = snapshot.get('qa_payload') or {}
+        st.write(' · '.join(f'{label} {value}개' for label,value in selection_summary(snapshot).items()))
+        st.download_button('상세 진단 저장', json.dumps({'build':build_info(),'qa':qa}, ensure_ascii=False, indent=2),
+                           file_name='hwarang_briefing_diagnostics.json', key='diag_'+snapshot['id'])
 
 
 def _open_profile(code):
@@ -383,31 +426,42 @@ def run():
     with st.container(key='hw_briefing_center'):
         from .display import render_style
         render_style()
-        st.markdown('<div class="hw-briefing-hero"><span>HWARANG BRIEFING</span><h1>오늘의 흐름, 한눈에</h1><p>뉴스를 읽고, 필요한 소식을 고객과 나누세요.</p></div>', unsafe_allow_html=True)
         try:
             repo = _repo()
             can_manage = _can_manage()
-            flash = st.session_state.pop('hw_briefing_flash', '')
-            if flash:
-                st.success(flash)
-            pages = PAGES if can_manage else PAGES[:2]
-            if can_manage:
-                st.button('운영 설정', on_click=_navigate, args=('운영 설정',), key='briefing_manager_settings')
+            pages = PAGES if can_manage else PAGES[:3]
+            # Migrate navigation only; existing authentication and content stay intact.
+            if st.session_state.get('hw_briefing_page') == '운영 설정':
+                st.session_state['hw_briefing_page'] = '운영 관리'
             if st.session_state.get('hw_briefing_page') not in pages:
                 st.session_state['hw_briefing_page'] = pages[0]
-            if st.session_state['hw_briefing_page'] == '운영 설정':
-                mode = '운영 설정'
-                st.button('오늘 브리핑으로 돌아가기', on_click=_navigate, args=('오늘 브리핑',), key='back_reading')
-            else:
-                mode = st.radio('브리핑 메뉴', PAGES[:2], horizontal=True, label_visibility='collapsed', key='hw_briefing_page')
+            current = st.session_state['hw_briefing_page']
+            title = {'오늘 브리핑':'오늘의 브리핑','지난 브리핑':'지난 브리핑','고객에게 공유':'고객에게 공유','운영 관리':'운영 관리'}[current]
+            st.markdown('<div class="hw-briefing-hero"><span>화랑 WORKSPACE / BRIEFING CENTER</span><h1>'+html.escape(title)+'</h1></div>', unsafe_allow_html=True)
+            mode = st.radio('브리핑 메뉴', pages, horizontal=True, label_visibility='collapsed', key='hw_briefing_page')
+            flash = st.session_state.pop('hw_briefing_flash', '')
+            if flash: st.success(flash)
             if mode == '오늘 브리핑':
                 _render_today(repo, can_manage)
             elif mode == '지난 브리핑':
                 _render_history(repo, can_manage)
+            elif mode == '고객에게 공유':
+                day = st.session_state.get('hw_briefing_share_day')
+                a,b = st.columns([3,1])
+                with a:
+                    st.caption('같은 날짜의 고객용 기사만 선택해 공유합니다. 직원 상담·운영 정보는 제외됩니다.')
+                with b:
+                    if st.button('최근 통합본 선택', key='share_latest'):
+                        st.session_state.pop('hw_briefing_share_day',None);st.rerun()
+                _combined_sharing(repo, day, use_cache=not bool(day))
             elif can_manage:
-                _render_generate_panel(repo)
-                _render_manager_editions(repo)
                 from .operations_ui import render_operations
-                render_operations(repo)
+                settings, editions = st.columns([1,1], gap='large')
+                with settings:
+                    render_operations(repo)
+                with editions:
+                    _render_manager_editions(repo)
+                with st.expander('수동 생성 · 실패 작업 복구'):
+                    _render_generate_panel(repo)
         except BriefingRepositoryError as exc:
             st.error(str(exc))
