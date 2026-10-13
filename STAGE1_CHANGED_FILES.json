@@ -1,17 +1,17 @@
 {
-  "engine_version": "1.12.4-audit",
+  "engine_version": "1.12.5-home",
   "baseline_zip_sha256": "4e5eb26b344e061f4261cb2c2213981ff9dcb65a301c00bbd635b143c7c70384",
   "briefing_code_sha256": {
     "__init__.py": "66c4884dd2d46a2e672f3dc686c8c53e1cbfc0ff7af3a3ee7917ef0b6e90ad47",
     "api_errors.py": "20ca68aa829159e97f59d18b429b36fb588dfde1ae3d78f35ef5d5d6b108b7dd",
-    "briefing_center.py": "86c0a5d0d59804673481e62f914e6dcb8f7d7fa16aac0e39d457bdd6dfb72303",
+    "briefing_center.py": "dc352914f31dd40701f65f694ef63f5a9830068334ef117de352577b9c4431ed",
     "business_calendar.py": "d65fbee6e2102e2d4cd60c11979b3cfba4255971d8c0e4d291f41112731b8dd9",
     "checkpoints.py": "9b644a671d0ab5e4e412f20ec718f84545b41d97a220d1ee723a81e5e962af48",
     "clustering.py": "fdf10bad85f75fc35c91248c3ee0990f554759e61799ecd5136420bb11287b8f",
     "config.py": "3ec3639a5f676907a73a1e8c78421f5974c20b9e0dfce5018808fed52b9ab62e",
     "corrections.py": "0c91a437c475bd7f269e2270d5de03b760a38bd23498a8bbebb4d7afea9b3a68",
     "costs.py": "3ebd1b204e7d430f4c3eb8c7b6648440d90d3a4322cd7136df19155826ed94ff",
-    "diagnostics.py": "c0103f9c7c7ce5f38d7c94f3c34c893a1216b3079cad814fe97017cd8360f31b",
+    "diagnostics.py": "ac3371b333da43f2f1377d13160dc242825afdebbd8b31d512add21345201501",
     "direct_sources.py": "bfb68b32e84a8f407bbe126ef632ed1d9fe470e972e87efd901fc82731474d4a",
     "discovery_budget.py": "cdc061db8d2ad846f31817963189fdcddd828095ada99abfa35901d326dc0373",
     "display.py": "70ec3f30a58a4e76e2741741a53710dfadd7f36d112e1118dc4fe3f124284921",
@@ -281,7 +281,7 @@
     "production_deployed": false,
     "scope": "account diagnostics, displayed-article coverage, one representative, missing market feed preflight"
   },
-  "patch_id": "prepublication-audit-20261014",
+  "patch_id": "home-compact-20261014",
   "automation_recovery": {
     "database_changes": false,
     "new_paid_test_calls": 0,
@@ -344,7 +344,7 @@
     "baseline_manifest_sha256": "34062812f3c77692e2fde3fee2b8205fefb803e08f0d7e98067d13f317eb0609",
     "generation_policy_changed": false
   },
-  "release_patch_id": "prepublication-audit-20261014",
+  "release_patch_id": "home-compact-20261014",
   "prepublication_audit": {
     "engine_version": "1.12.4-audit",
     "baseline": "1.12.3-readable",
@@ -366,5 +366,14 @@
     "generation_contract_changed": false,
     "schedule_changed": false,
     "notes": "Prior release sections are historical records, not current release evidence."
+  },
+  "home_compact": {
+    "baseline": "1.12.4-audit",
+    "generation_changed": false,
+    "production_deployed": false,
+    "engine_version": "1.12.5-home",
+    "date_grouping_checked": true,
+    "streamlit_render_and_navigation_checked": true,
+    "browser_visual_check": false
   }
 }

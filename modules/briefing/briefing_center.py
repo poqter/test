@@ -73,21 +73,59 @@ def _actor():
     return str((st.session_state.get('login_profile') or {}).get('id') or '')
 
 
+def home_briefing_summary(items):
+    """Only published dates and labels; no article content or counts on home."""
+    labels = {'MARKET': '경제·금융', 'NEWS': '종합뉴스', 'INSURANCE': '보험업계'}
+    available = [(code, str(items[code]['briefing'].get('briefing_date') or ''))
+                 for code in PROFILE_ORDER if items.get(code)]
+    if not available:
+        return ''
+    def short_date(value):
+        from datetime import date
+        try:
+            return date.fromisoformat(value).strftime('%m.%d')
+        except ValueError:
+            return value or '날짜 확인 중'
+    dates = {value for _, value in available}
+    if len(dates) == 1:
+        return ' · '.join(labels[code] for code, _ in available) + ' / 최신 ' + short_date(available[0][1])
+    return ' · '.join(labels[code] + ' ' + short_date(value) for code, value in available)
+
+
 def render_home_summary(navigate: Callable):
     try:
-        items = _published_summaries_cached()
+        summary = home_briefing_summary(_published_summaries_cached())
     except Exception:
         return
-    if not any(items.values()):
+    if not summary:
         return
-    st.markdown('### 오늘의 브리핑')
-    for code in PROFILE_ORDER:
-        item = items.get(code)
-        if item:
-            a, b = _counts(item)
-            st.write(f"{PROFILE_LABELS[code]} · {item['briefing']['briefing_date']} · 소식 {a+b}개")
-    if st.button('브리핑 센터 열기', key='hw_home_briefing_open'):
-        navigate('briefing')
+    st.markdown("""<style>
+    .st-key-hw_home_briefing_compact{padding:14px 18px;border:1px solid #e1e7ef;
+      border-radius:12px;background:#f7f9fc;margin:0 0 8px;}
+    .st-key-hw_home_briefing_compact [data-testid="stVerticalBlock"]{gap:0;}
+    .st-key-hw_home_briefing_compact [data-testid="stHorizontalBlock"]{align-items:center;gap:16px;}
+    .hw-home-briefing-info{display:flex;align-items:center;gap:20px;min-height:48px;flex-wrap:wrap;}
+    .hw-home-briefing-title{font-size:17px;font-weight:700;color:#182c46;white-space:nowrap;}
+    .hw-home-briefing-meta{font-size:14px;line-height:1.6;color:#52657d;overflow-wrap:anywhere;}
+    .st-key-hw_home_briefing_compact button{min-height:44px;white-space:nowrap;}
+    @media(max-width:640px){
+      .st-key-hw_home_briefing_compact{padding:12px 14px;}
+      .st-key-hw_home_briefing_compact [data-testid="stHorizontalBlock"]{flex-direction:column;gap:8px;}
+      .st-key-hw_home_briefing_compact [data-testid="stColumn"]{width:100%!important;flex:1 1 auto!important;min-width:0!important;}
+      .hw-home-briefing-info{min-height:24px;gap:8px;}
+      .hw-home-briefing-title{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+        overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+      .hw-home-briefing-meta{font-size:13px;}
+    }
+    </style>""", unsafe_allow_html=True)
+    with st.container(key='hw_home_briefing_compact'):
+        info, action = st.columns([5, 1.5], gap='small', vertical_alignment='center')
+        with info:
+            st.markdown('<div class="hw-home-briefing-info"><span class="hw-home-briefing-title">오늘의 브리핑</span>'
+                        '<span class="hw-home-briefing-meta">' + html.escape(summary) + '</span></div>', unsafe_allow_html=True)
+        with action:
+            if st.button('브리핑센터 열기 →', key='hw_home_briefing_open', use_container_width=True):
+                navigate('briefing')
 
 
 def _body(snapshot):
