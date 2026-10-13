@@ -24,12 +24,13 @@ def metric_change(row):
 
 def _project(content,external):
     issues=[]
-    for row in content.get('issues',[]):
+    update_keys={r.get('event_key') for r in content.get('important_updates',[])}
+    for row in content.get('important_updates',[])+content.get('issues',[]):
         if external and content.get('profile_code')=='INSURANCE' and (row.get('communication_state')!='customer_ready' or row.get('category') in {'영업·채널','보험사·시장'}):continue
         sources=[{k:r.get(k) for k in ('title','source_name','url','published_at')} for r in row.get('sources',[]) if is_safe_url(str(r.get('url') or '')) and r.get('published_at')][:4]
-        if sources:issues.append({k:row.get(k) for k in ('event_key','title','summary','category','why_important','impact_summary','representative')}|{'sources':sources})
-    metrics=content.get('market_metrics') or {};rows=metrics.get('items',[]) if isinstance(metrics,dict) else metrics
-    metrics=[{k:r.get(k) for k in METRIC_FIELDS} for r in rows if r.get('value') is not None and is_safe_url(str(r.get('source_url') or '')) and (not external or r.get('external_allowed'))]
+        if sources:issues.append({k:row.get(k) for k in ('event_key','title','summary','category','why_important','impact_summary','representative')}|{'sources':sources, 'important_update':row.get('event_key') in update_keys,
+            'added_at':row.get('added_at') if row.get('event_key') in update_keys else None})
+    metrics=[]
     research=content.get('research') or {}
     def views(rows):return [{k:v.get(k) for k in ('firm','url','stance','summary','conditions')} for v in rows if isinstance(v,dict) and is_safe_url(str(v.get('url') or ''))]
     safe={k:research.get(k) for k in ('status','report_count','institution_count','note')}
@@ -40,7 +41,12 @@ def _project(content,external):
     return {'schema':'hwarang-public-v2','profile_code':content.get('profile_code'),'profile_label':content.get('profile_label'),'as_of':content.get('as_of'),'issues':issues,'market_flow':[str(x) for x in content.get('market_flow',[])],'market_metrics':metrics,'research':safe}
 
 def customer_body(content):return _project(content,True)
-def staff_body(content):return _project(content,False)
+def staff_body(content):
+    body = _project(content, False)
+    body['source_links'] = [{k:row.get(k) for k in ('title','url','source_name','published_at')}
+                            for row in content.get('source_links') or []
+                            if is_safe_url(str(row.get('url') or '')) and row.get('published_at')]
+    return body
 
 READER_CSS='''
 :root{--ink:#183346;--muted:#435a6d;--brand:#165e70;--line:#d8e3eb}*{box-sizing:border-box}body{font-family:system-ui,'Malgun Gothic',sans-serif;margin:0;background:#f1f5f8;color:var(--ink);font-size:17px;line-height:1.85;overflow-wrap:anywhere}.wrap{max-width:780px;margin:auto;padding:24px 20px 56px}header{padding:12px 2px 24px}.brand{font-size:12px;letter-spacing:1.5px;color:var(--muted)}h1{font-size:30px;line-height:1.35;margin:12px 0}h2{font-size:21px;line-height:1.5;margin:0 0 10px}h3{font-size:18px;line-height:1.5;margin:0 0 8px}.meta,.source{font-size:14px;color:var(--muted)}.controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}button,.button{border:1px solid #b8cbd8;border-radius:9px;background:white;color:var(--ink);padding:10px 14px;font:inherit;text-decoration:none;cursor:pointer}article,.panel{background:white;border:1px solid var(--line);border-radius:15px;padding:22px;margin-bottom:14px}.lead{border-top:4px solid var(--brand)}p{margin:8px 0 14px}.tag{font-size:13px;color:var(--brand);font-weight:650;display:block;margin-bottom:9px}a{color:#155e8b;text-underline-offset:3px}summary{cursor:pointer;color:var(--brand);font-weight:600;padding:8px 0}.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.metric{padding:16px;background:white;border:1px solid var(--line);border-radius:12px}.value{font-size:24px;font-weight:750;margin:8px 0}.delta{font-size:16px;font-weight:650}.up{color:#b52638}.down{color:#145eb0}.flat{color:var(--muted)}.section-title{margin:28px 0 16px}.big{font-size:20px}.big h2{font-size:24px}@media(max-width:600px){.wrap{padding:18px 14px 40px}h1{font-size:27px}article,.panel{padding:18px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.value{font-size:22px}}@media(max-width:350px){.metrics{grid-template-columns:1fr}}@media print{body{background:white}.controls{display:none}.wrap{max-width:none;padding:0}article,.panel{break-inside:avoid}details{display:block}}
@@ -66,11 +72,15 @@ def public_html(packet,*,canonical_url='',image_url='',pdf_url=''):
             state='up' if (m.get('change') or 0)>0 else 'down' if (m.get('change') or 0)<0 else 'flat'
             parts.append(f'<div class="metric"><b>{e(m["label"])}</b><div class="value">{float(m["value"]):,.2f} <small>{e(m["unit"])}</small></div><div class="delta {state}">{e(metric_change(m))}</div><p class="meta">{e(metric_date(m))}<br>{e(m.get("reference_definition") or m.get("observation_kind"))}<br><a href="{e(m["source_url"])}" target="_blank" rel="noopener noreferrer">{e(m["source_name"])}</a></p></div>')
         parts.append('</div>')
-    if body.get('market_flow'):parts.append('<section class="panel" style="margin-top:18px"><h2>오늘의 시장 흐름</h2>'+''.join(f'<p>{e(x)}</p>' for x in body['market_flow'])+'</section>')
+    if body.get('market_flow'):parts.append('<section class="panel" style="margin-top:18px"><h2>오늘의 경제·금융 흐름</h2>'+''.join(f'<p>{e(x)}</p>' for x in body['market_flow'])+'</section>')
     parts.append(f'<h2 class="section-title">오늘의 소식 <span class="meta">{len(body.get("issues") or [])}개</span></h2>')
+    last_section = None
     for i,row in enumerate(body.get('issues') or [],1):
-        parts.append(f'<article class="{"lead" if row.get("representative") else ""}"><span class="tag">{e(row.get("category"))}{" · 핵심 이슈" if row.get("representative") else ""}</span><h2>{i:02d} · {e(row["title"])}</h2><p>{e(row.get("summary"))}</p>')
-        if row.get('why_important') or row.get('impact_summary'):parts.append(f'<details><summary>해설과 영향</summary><p>{e(row.get("why_important"))}</p><p>{e(row.get("impact_summary"))}</p></details>')
+        if row.get('section_label') and row['section_label'] != last_section:
+            last_section = row['section_label']
+            parts.append(f'<h2 class="section-title">{e(last_section)}</h2>')
+        parts.append(f'<article class="{"lead" if row.get("representative") else ""}"><span class="tag">{"중요 발표 추가 · " if row.get("important_update") else ""}{e(row.get("category"))}{" · 핵심 이슈" if row.get("representative") else ""}</span><h2>{i:02d} · {e(row["title"])}</h2><p>{e(row.get("summary"))}</p>')
+        if row.get('why_important') or row.get('impact_summary'):parts.append(f'<div class="explanation"><h3>배경과 영향</h3><p>{e(row.get("why_important"))}</p><p>{e(row.get("impact_summary"))}</p></div>')
         for src in row['sources']:parts.append(f'<p class="source"><a href="{e(src["url"])}" target="_blank" rel="noopener noreferrer">{e(src["source_name"])} · 원문 읽기 ↗</a><br>{e(display_date(src["published_at"]))}</p>')
         parts.append('</article>')
     research=body.get('research') or {}
@@ -116,10 +126,15 @@ def _cached_pdf(serialized):
         table=Table(rows,colWidths=[253.5,253.5],hAlign='LEFT');table.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP'),('BACKGROUND',(0,0),(-1,-1),colors.HexColor('#f1f5f8')),('BOX',(0,0),(-1,-1),0.6,colors.HexColor('#d8e3eb')),('INNERGRID',(0,0),(-1,-1),0.5,colors.HexColor('#d8e3eb')),('LEFTPADDING',(0,0),(-1,-1),12),('RIGHTPADDING',(0,0),(-1,-1),12),('TOPPADDING',(0,0),(-1,-1),12),('BOTTOMPADDING',(0,0),(-1,-1),12)]))
         story.extend([table,Spacer(1,12)])
     if body.get('market_flow'):
-        story.append(Paragraph('오늘의 시장 흐름',heading))
+        story.append(Paragraph('오늘의 경제·금융 흐름',heading))
         for text in body['market_flow']:story.append(Paragraph(e(text),base))
+    last_section = None
     for i,row in enumerate(body.get('issues') or [],1):
+        if row.get('section_label') and row['section_label'] != last_section:
+            last_section = row['section_label']
+            story.append(Paragraph(e(last_section), heading))
         article=[Paragraph('오늘의 소식',heading)] if i==1 else []
+        if row.get('important_update'):article.append(Paragraph('중요 발표 추가 · '+e(display_date(row.get('added_at'))),meta))
         if row.get('representative'):article.append(Paragraph('핵심 이슈 · '+e(row.get('category')),meta))
         article.append(Paragraph(f'{i:02d} · '+e(row['title']),heading));article.append(Paragraph(e(row.get('summary')),base))
         for key in ('why_important','impact_summary'):
@@ -129,7 +144,7 @@ def _cached_pdf(serialized):
         card=Table([[article]],colWidths=[507],hAlign='LEFT')
         card.setStyle(TableStyle([('LEFTPADDING',(0,0),(-1,-1),0),('RIGHTPADDING',(0,0),(-1,-1),0),('TOPPADDING',(0,0),(-1,-1),0),('BOTTOMPADDING',(0,0),(-1,-1),0)]))
         _,height=card.wrap(507,10000)
-        story.append(card if height<730 else KeepTogether(article))
+        story.append(card) if height < 650 else story.extend(article)
     research=body.get('research') or {}
     if research.get('reports'):
         story.append(Paragraph('공개 리서치에서 확인한 견해',heading))

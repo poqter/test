@@ -37,7 +37,7 @@ def test_conflicting_same_observation_is_not_arbitrarily_chosen():
 
 def test_license_missing_keeps_internal_values_and_closes_customer():
     result=validated_metrics(observations(False),AS_OF);assert result['complete'] and not result['external_complete']
-    source=content('MARKET',8,False);assert len(staff_body(source)['market_metrics'])==6
+    source=content('MARKET',8,False);assert staff_body(source)['market_metrics']==[]
     assert customer_body(source)['market_metrics']==[]
 
 def test_change_units_and_daily_date_precision():
@@ -108,8 +108,11 @@ def test_global_ai_off_stops_before_lock_or_source_call(monkeypatch):
 def test_market_missing_rechecked_without_spending_api(monkeypatch):
     monkeypatch.setenv('BRIEFING_MARKET_OBSERVATIONS_JSON','[]');repo=Mock();repo.ai_generation_enabled.return_value=True
     repo.claim_run.return_value={'claimed':True,'checkpoint':{'market_observations':{'complete':False,'missing':['KOSPI']}}}
+    generate = Mock(return_value=Mock(profiles=[]))
+    monkeypatch.setattr('modules.briefing.scheduler.generate_and_store_briefings', generate)
     result=generate_group(repo,date(2026,10,9),'MARKET',retry=True)
-    assert result['reason']=='market_observations_incomplete';repo.reserve_request.assert_not_called()
+    assert result['status']=='completed'
+    generate.assert_called_once()
 
 def test_uncertain_request_blocks_recovery(monkeypatch):
     repo=Mock();repo.ai_generation_enabled.return_value=True;repo.claim_run.return_value={'claimed':True,'checkpoint':{'pending_request':{'kind':'analysis'}}}
@@ -250,9 +253,9 @@ def test_full_three_profile_pipeline_saves_same_facts_and_resumes_without_ai(mon
     assert len(result.profiles)==3 and sorted(calls)==['INSURANCE','MARKET','NEWS']
     bycode={s['content_payload']['profile_code']:s for s in snaps}
     assert len(bycode['NEWS']['content_payload']['issues'])==10 and len(bycode['MARKET']['content_payload']['issues'])==8
-    assert all(s['qa_payload']['internal_body_ready'] for s in snaps) and not bycode['MARKET']['qa_payload']['public_body_ready']
+    assert all(s['qa_payload']['internal_body_ready'] for s in snaps) and bycode['MARKET']['qa_payload']['public_body_ready']
     assert len(bycode['MARKET']['content_payload']['market_flow'])==3
-    assert len(bycode['MARKET']['content_payload']['market_metrics']['items'])==6
+    assert bycode['MARKET']['content_payload']['market_metrics']['items']==[]
     calls.clear();snaps.clear();rt.generate_and_store_briefings(repository=repo,profile_codes=('NEWS','MARKET','INSURANCE'),as_of=AS_OF,checkpoint=saved,save_checkpoint=lambda state:None)
     assert not calls and not snaps;repo.publish_revision.assert_not_called()
 
@@ -271,7 +274,7 @@ def test_correction_new_revision_same_token_and_original_sender():
     assert src==old and repo.create_revision.call_args.args[0]['revision_type']=='correction'
     token,p=repo._upload_share_assets.call_args.args;assert token=='z'*43 and p['sender']['name']=='최초 등록 이름'
     assert p['body']['issues'][0]['summary']=='정정된 요약' and p['edition']['number']==2 and '정정 ' in p['rendered_html']
-    assert any(call.args[0]=='PATCH' and call.kwargs['json'].get('revision_id')=='new' for call in repo._request.call_args_list)
+    assert any(call.args[0]=='POST' and call.kwargs.get('json',{}).get('p_new')=='new' for call in repo._request.call_args_list)
 
 
 def test_correction_form_can_submit_a_new_reason():

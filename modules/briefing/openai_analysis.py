@@ -145,6 +145,8 @@ class OpenAIAnalysisClient:
             " For MARKET, market_flow must contain 3-5 short Korean sentences synthesizing the supplied observations and several events, not copying the first article. "
             "Describe observed changes, attributed reported background, conditional effects, and the next thing to watch. Each sentence needs supplied event:<event_key> or metric:<code> fact_refs. "
             "Do not invent causal links or values. If evidence is insufficient, use fewer factual sentences. For other profiles, market_flow must be []."
+            " MARKET is a complete article-based economic briefing without a metric dashboard. Synthesize supplied article facts. Numerical claims require supplied article evidence and dates; never invent index movements, exchange rates or yields. "
+            "Prefer concise fields so every supplied event fits in the response; leave irrelevant consultation fields empty rather than selecting fewer events."
         )
 
     def analyze(self, profile_code: str, events: list[SharedEventCandidate]) -> tuple[list[dict[str, Any]], AnalysisUsage]:
@@ -178,6 +180,7 @@ class OpenAIAnalysisClient:
                 {
                     "role": "user",
                     "content": json.dumps({"profile_code": profile_code, "registered_tools": registered_briefing_tools(), "events": [self._event_payload(e) for e in events],
+                        "expected_event_count": len(events), "expected_event_keys": [e.event_key for e in events],
                         "market_observations":self.market_metrics if profile_code=="MARKET" else []}, ensure_ascii=False),
                 },
             ],

@@ -378,12 +378,73 @@ class BriefingRepository:
         identity=(existing or {}).get('public_packet',{}).get('sender') or {'name':sender['display_name'],'position':position['display_name']}
         packet=build_packet(self._snapshot_for_revision(revision_id) or {},briefing,revision,identity,self.public_base_url(),token)
         body=packet['body']
-        if not body_quality_ready(body) or body.get('profile_code')=='MARKET' and len(body.get('market_metrics') or [])!=6:
-            raise BriefingRepositoryError('고객 본문 또는 지표 표시 권한을 확인할 수 없습니다.')
+        if not body_quality_ready(body):
+            raise BriefingRepositoryError('고객 본문의 출처와 내용을 확인할 수 없습니다.')
         self._upload_share_assets(token,packet)
         if existing:self._request('PATCH','/rest/v1/hwarang_briefing_public_shares',params={'token':'eq.'+token},json={'public_packet':packet})
         else:self._request('POST','/rest/v1/hwarang_briefing_public_shares',json={'token':token,'revision_id':revision_id,'sender_user_id':sender_user_id,'public_packet':packet})
         return token,packet
+
+    def latest_complete_customer_date(self):
+        """Never silently combine today's section with yesterday's section."""
+        pools = []
+        for code in ('MARKET', 'NEWS', 'INSURANCE'):
+            pools.append({str(r['briefing']['briefing_date']) for r in self.history(code, limit=30)
+                          if r['revision'].get('validation_status') == 'ok'
+                          and r['revision'].get('coverage_status') == 'healthy'
+                          and (r['snapshot'].get('qa_payload') or {}).get('internal_body_ready')
+                          and (code == 'INSURANCE' or (r['snapshot'].get('qa_payload') or {}).get('public_body_ready'))})
+        return max(set.intersection(*pools), default=None)
+
+    def create_combined_share(self, day, codes, sender_user_id):
+        import secrets
+        from .sharing import build_combined_packet, PROFILE_ORDER
+        from .runtime import body_quality_ready
+        codes = tuple(code for code in PROFILE_ORDER if code in set(codes))
+        if not codes:
+            raise BriefingRepositoryError('공유할 영역을 하나 이상 선택해 주세요.')
+        if not self.operating_policy().get('external_sharing_approved'):
+            raise BriefingRepositoryError('조직의 최초 고객 공유 설정을 켜 주세요.')
+        bundles = []
+        for code in codes:
+            bundle = self.bundle_for_date(code, day)
+            if not bundle:
+                raise BriefingRepositoryError('선택한 날짜의 게시본이 준비되지 않았습니다.')
+            rev, qa = bundle['revision'], bundle['snapshot'].get('qa_payload') or {}
+            if not (rev.get('publication_status') == 'published' and rev.get('external_share_allowed')
+                    and rev.get('external_qa_passed') and qa.get('public_body_ready')):
+                raise BriefingRepositoryError('선택한 영역의 고객용 본문이 준비되지 않았습니다.')
+            bundles.append(bundle)
+        sender = self._first(self._request('GET', '/rest/v1/profiles', params={
+            'id': 'eq.' + str(sender_user_id), 'select': 'display_name,position_code,is_active'}))
+        if not sender or not sender.get('is_active') or not str(sender.get('display_name') or '').strip():
+            raise BriefingRepositoryError('활성 계정의 이름을 확인해 주세요.')
+        position = self._first(self._request('GET', '/rest/v1/positions', params={
+            'code': 'eq.' + str(sender.get('position_code') or ''), 'select': 'display_name'}))
+        if not position or not str(position.get('display_name') or '').strip():
+            raise BriefingRepositoryError('계정에 실제 직책을 등록해 주세요.')
+        if not self.public_endpoint_ready():
+            raise BriefingRepositoryError('고객 읽기 페이지 연결을 확인해 주세요.')
+        revisions = [str(b['revision']['id']) for b in bundles]
+        fingerprint = '|'.join(sorted(revisions))
+        existing = self._request('GET', '/rest/v1/hwarang_briefing_public_shares', params={
+            'sender_user_id': 'eq.' + str(sender_user_id), 'revoked_at': 'is.null',
+            'expires_at': 'gt.' + datetime.now(timezone.utc).isoformat(),
+            'select': 'token,public_packet', 'order': 'created_at.desc', 'limit': '60'}) or []
+        for row in existing:
+            packet = row.get('public_packet') or {}
+            if (packet.get('schema') == 'hwarang-share-v3' and packet.get('components')
+                and '|'.join(sorted(c['revision_id'] for c in packet['components'])) == fingerprint):
+                return row['token'], packet
+        token = secrets.token_urlsafe(32)
+        packet = build_combined_packet(bundles, {'name': sender['display_name'], 'position': position['display_name']},
+                                       self.public_base_url(), token)
+        if not body_quality_ready(packet['body']):
+            raise BriefingRepositoryError('고객에게 제공할 기사가 없습니다.')
+        self._upload_share_assets(token, packet)
+        self._request('POST', '/rest/v1/rpc/hwarang_register_combined_share', json={
+            'p_token': token, 'p_sender': sender_user_id, 'p_revisions': revisions, 'p_packet': packet})
+        return token, packet
 
     def public_share(self, token):
         import re

@@ -27,10 +27,10 @@ def sample(code='NEWS', hosts=('www.mois.go.kr', 'www.yna.co.kr'), tiers=None):
     return rows, PhaseBResult(AS_OF,candidates,events,[],{})
 
 @pytest.mark.parametrize('hosts,tiers,expected', [
-    (('www.mois.go.kr',), ['core'], 'degraded'),
-    (('www.mois.go.kr','www.yna.co.kr'), ['core','excluded'], 'degraded'),
-    (('www.mois.go.kr','www.mois.go.kr'), ['core','light_digest'], 'degraded'),
-    (('www.donga.com','sports.donga.com'), ['core','light_digest'], 'degraded'),
+    (('www.mois.go.kr',), ['core'], 'healthy'),
+    (('www.mois.go.kr','www.yna.co.kr'), ['core','excluded'], 'healthy'),
+    (('www.mois.go.kr','www.mois.go.kr'), ['core','light_digest'], 'healthy'),
+    (('www.donga.com','sports.donga.com'), ['core','light_digest'], 'healthy'),
     (('www.mois.go.kr','www.yna.co.kr'), ['core','light_digest'], 'healthy'),
     (('www.mois.go.kr',), ['excluded'], 'insufficient'),
 ])
@@ -58,14 +58,17 @@ def test_missing_market_feed_blocks_market_but_preserves_daily(monkeypatch):
     daily=run_runtime_preflight(direct_sources=[],require_direct_sources=False)
     market=run_runtime_preflight(direct_sources=[],require_direct_sources=False,require_market_observations=True)
     assert preflight_ready(daily)
-    assert not preflight_ready(market)
-    assert next(c for c in market if c.code=='market_observations').required
+    assert preflight_ready(market)
+    assert not next(c for c in market if c.code=='market_observations').required
 
 def test_market_without_feed_stops_before_db_or_paid_request(monkeypatch):
     configure_base(monkeypatch); repo=Mock()
+    repo.claim_run.return_value={'claimed':True,'checkpoint':{}}
+    generate=Mock(return_value=Mock(profiles=[]))
+    monkeypatch.setattr('modules.briefing.scheduler.generate_and_store_briefings',generate)
     result=generate_group(repo,date(2026,10,9),'MARKET')
-    assert result=={'status':'configuration_required','reason':'market_observations_not_configured'}
-    assert not repo.mock_calls
+    assert result['status']=='completed'
+    generate.assert_called_once()
 
 def test_old_one_article_healthy_snapshot_is_still_held():
     rows,phase=sample(hosts=('www.mois.go.kr',))
@@ -82,10 +85,11 @@ def test_old_one_article_manual_publish_button_is_disabled():
 import streamlit as st
 from modules.briefing.briefing_center import _render_profile_detail
 from unittest.mock import Mock
+st.session_state['login_profile']={'role':'super_admin'}
 body={'schema':'hwarang-public-v2','profile_code':'NEWS','profile_label':'종합뉴스 브리핑','issues':[{'title':'가상 뉴스','summary':'가상 요약','sources':[{'title':'가상 기사','source_name':'가상 발행사','url':'https://www.mois.go.kr/article/1','published_at':'2026-10-08T03:00:00+00:00'}]}]}
 bundle={'briefing':{'id':'brief','briefing_date':'2026-10-09'},'revision':{'id':'rev','publication_status':'draft','validation_status':'ok','coverage_status':'healthy'},'snapshot':{'id':'snap','external_content_payload':body,'content_payload':{'as_of':'2026-10-08T22:30:00+00:00'},'qa_payload':{'public_body_ready':True}}}
 _render_profile_detail(Mock(),'NEWS',bundle,True)
 '''
     at=AppTest.from_string(script).run()
     assert not at.exception
-    assert next(b for b in at.button if b.label=='검수 완료 브리핑 공개').disabled
+    assert next(b for b in at.button if b.label=='이 브리핑 게시하기').disabled

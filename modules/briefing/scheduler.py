@@ -13,12 +13,8 @@ def cutoff(day, group):
     return datetime.combine(day,time(7,0) if group=='MARKET' else time(7,30),KST).astimezone(timezone.utc)
 
 
-def generate_group(repo, day, group, retry=False, actor=None):
+def generate_group(repo, day, group, retry=False, actor=None, allow_partial_market=False):
     if group not in GROUPS:raise ValueError('Unknown briefing group')
-    if group == 'MARKET':
-        from .market_metrics import market_observations_configured
-        if not market_observations_configured():
-            return {'status':'configuration_required','reason':'market_observations_not_configured'}
     if actor is None and not repo.operating_policy().get('scheduled_generation_enabled'):
         return {'status':'skipped','reason':'scheduled_generation_paused'}
     if actor is not None:repo.require_manager(actor)
@@ -31,13 +27,6 @@ def generate_group(repo, day, group, retry=False, actor=None):
     def save(state):repo.save_run(key,owner,state)
     if saved.get('pending_request') or saved.get('charge_uncertain'):
         repo.save_run(key,owner,saved,'blocked'); return {'status':'blocked','reason':'unconfirmed_api_request'}
-    if group=='MARKET' and not (saved.get('market_observations') or {}).get('complete'):
-        from .market_metrics import collect_metrics
-        saved['market_observations']=collect_metrics(cutoff(day,group));save(saved)
-        if not saved['market_observations'].get('complete'):
-            repo.save_run(key,owner,saved,'failed')
-            return {'status':'configuration_required','reason':'market_observations_incomplete',
-                    'missing':saved['market_observations'].get('missing',[])}
     def before(kind):
         if saved.get('pending_request') or saved.get('charge_uncertain'):
             raise RuntimeError('이전 유료 요청 상태를 확인할 수 없어 추가 호출을 중단합니다.')
@@ -49,9 +38,11 @@ def generate_group(repo, day, group, retry=False, actor=None):
         repo.finish_stale_jobs(day,GROUPS[group])
         result=generate_and_store_briefings(repository=repo,profile_codes=GROUPS[group],force_shadow=True,
             as_of=cutoff(day,group),checkpoint=saved,save_checkpoint=save,before_request=before,
-            trigger_type='retry' if retry else 'scheduled',actor_user_id=actor)
+            trigger_type='retry' if retry else 'scheduled',actor_user_id=actor,
+            allow_partial_market=allow_partial_market)
         repo.save_run(key,owner,saved,'completed')
-        return {'status':'completed','profiles':[r.profile_code for r in result.profiles]}
+        return {'status':'completed','profiles':[r.profile_code for r in result.profiles],
+                'market_news_only':bool(saved.get('market_news_only'))}
     except Exception:
         repo.save_run(key,owner,saved,'blocked' if saved.get('pending_request') or saved.get('charge_uncertain') else 'failed')
         raise
@@ -102,7 +93,7 @@ def run_scheduled(action, now=None, repo=None):
                 'enabled':[r['profile_code'] for r in repo.profiles() if r.get('is_enabled')]}
     if action=='market':
         if now<cutoff(day,'MARKET'):raise ValueError('MARKET cutoff not reached')
-        return generate_group(repo,day,'MARKET')
+        return generate_group(repo,day,'MARKET',allow_partial_market=True)
     if action=='daily':
         if now<cutoff(day,'DAILY'):raise ValueError('DAILY cutoff not reached')
         published=publish_ready(repo,day,('MARKET',))
@@ -111,7 +102,7 @@ def run_scheduled(action, now=None, repo=None):
     if action=='recover':
         results={}
         for group in GROUPS:
-            try:results[group]=generate_group(repo,day,group,retry=True)
+            try:results[group]=generate_group(repo,day,group,retry=True,allow_partial_market=group=='MARKET')
             except Exception:results[group]={'status':'failed','message':'See protected operation log'}
         results['publication']=publish_ready(repo,day,('MARKET','NEWS','INSURANCE'))
         return results

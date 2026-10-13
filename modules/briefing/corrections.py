@@ -1,6 +1,7 @@
 """A correction creates a new immutable edition, with the original evidence."""
 from copy import deepcopy
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from hashlib import sha256
 import json
 from .public_body import customer_body
@@ -24,26 +25,32 @@ def corrected_content(content, event_key, changes, reason):
     return result
 
 
-def apply_correction(repo, bundle, event_key, changes, reason, actor):
+def apply_correction(repo, bundle, event_key, changes, reason, actor, *, important_update=None):
     from .runtime import body_quality_ready
-    from .sharing import build_packet
+    from .sharing import build_packet, build_combined_packet
     # This permission is checked again on the server, independently of the UI.
     repo.require_manager(actor)
     old=bundle['revision'];briefing=bundle['briefing'];snap=bundle['snapshot']
     if old.get('publication_status')!='published':raise BriefingRepositoryError('현재 공개본만 정정할 수 있습니다.')
     latest=repo._first(repo._request('GET','/rest/v1/hwarang_briefings',params={'id':'eq.'+briefing['id'],'select':'current_published_revision_id'}))
     if not latest or latest.get('current_published_revision_id')!=old['id']:raise BriefingRepositoryError('현재 공개본을 다시 열어 주세요.')
-    content=corrected_content(snap['content_payload'],event_key,changes,reason);external=customer_body(content)
+    if important_update:
+        if str(briefing['briefing_date']) != datetime.now(ZoneInfo('Asia/Seoul')).date().isoformat():
+            raise ValueError('오늘 게시본에만 중요 발표를 추가할 수 있습니다. 과거 판본의 날짜와 섞지 않습니다.')
+        content=updated_content(snap['content_payload'], important_update, reason)
+    else:
+        content=corrected_content(snap['content_payload'],event_key,changes,reason)
+    external=customer_body(content)
     if not body_quality_ready(content):raise BriefingRepositoryError('정정본의 출처 또는 본문을 확인할 수 없습니다.')
     public_ready=body_quality_ready(external)
-    if content.get('profile_code')=='MARKET':public_ready=public_ready and len(external['market_metrics'])==6 and 3<=len(external['market_flow'])<=5
+    if content.get('profile_code')=='MARKET':public_ready=public_ready and bool(external['market_flow'])
     rev=repo.create_revision({'briefing_id':briefing['id'],'revision_no':repo.next_revision_no(briefing['id']),
         'revision_type':'correction','validation_status':'ok','coverage_status':old['coverage_status'],
         'generated_at':datetime.now(timezone.utc).isoformat(),'data_as_of':old.get('data_as_of'),
         'created_by':actor,'change_summary':reason[:1000],'version_trace':old.get('version_trace') or {}})
     qa={**(snap.get('qa_payload') or {}),'internal_body_ready':True,'public_body_ready':public_ready,'correction_of':old['id']}
     fast=deepcopy(snap.get('fast_brief_payload') or {})
-    before=next(r for r in snap['content_payload']['issues'] if r['event_key']==event_key)
+    before=next((r for r in snap['content_payload']['issues'] if r['event_key']==event_key), {})
     for item in fast.get('items',[]):
         if item.get('title')==before.get('title'):item.update({k:v for k,v in changes.items() if k in ('title','summary')})
     today=deepcopy(snap.get('today_action_payload') or {})
@@ -76,20 +83,92 @@ def apply_correction(repo, bundle, event_key, changes, reason, actor):
             item.update({k:v for k,v in changes.items() if k in ('title','summary')})
         actions.append(item)
     repo.insert_actions(actions)
+    if important_update:
+        source=content['important_updates'][-1]['sources'][0]
+        from .source_policy import source_identity
+        kind,tier=source_identity(source['url'])
+        if any(r.get('url')==source['url'] or r.get('canonical_url')==source['url'] for r in new_sources):
+            raise ValueError('이미 수집된 원문입니다. 기존 기사에서 정정해 주세요.')
+        repo.insert_sources([{'snapshot_id':new_snap['id'], 'source_name':source['source_name'],
+            'title':source['title'], 'url':source['url'], 'canonical_url':source['url'],
+            'source_kind':kind, 'source_tier':tier, 'published_at':source['published_at'],
+            'retrieved_at':datetime.now(timezone.utc).isoformat(),
+            'last_verified_at':datetime.now(timezone.utc).isoformat(), 'access_status':'ok',
+            'untrusted_external':True}])
     # Private assets are prepared before changing the current published pointer.
-    shares=repo._request('GET','/rest/v1/hwarang_briefing_public_shares',params={'revision_id':'eq.'+old['id'],
-        'revoked_at':'is.null','expires_at':'gt.'+datetime.now(timezone.utc).isoformat(),'select':'token,public_packet'}) or []
+    # Combined links can depend on this section even when it is not the anchor.
+    dependents = repo._request('GET','/rest/v1/hwarang_briefing_share_components', params={
+        'revision_id':'eq.'+old['id'], 'select':'token'}) or []
+    direct = repo._request('GET','/rest/v1/hwarang_briefing_public_shares',params={
+        'revision_id':'eq.'+old['id'], 'revoked_at':'is.null',
+        'expires_at':'gt.'+datetime.now(timezone.utc).isoformat(), 'select':'token,public_packet'}) or []
+    shares = {r['token']:r for r in direct}
+    if dependents:
+        additional = repo._request('GET','/rest/v1/hwarang_briefing_public_shares',params={
+            'token':repo._in_filter(r['token'] for r in dependents), 'revoked_at':'is.null',
+            'expires_at':'gt.'+datetime.now(timezone.utc).isoformat(), 'select':'token,public_packet'}) or []
+        shares.update({r['token']:r for r in additional})
     refreshed=[]
     if public_ready:
-        for row in shares:
-            identity=(row.get('public_packet') or {}).get('sender')
+        for row in shares.values():
+            existing = row.get('public_packet') or {}
+            identity=existing.get('sender')
             if not identity:continue
-            packet=build_packet(new_snap,briefing,rev,identity,repo.public_base_url(),row['token'])
+            if existing.get('components'):
+                bundles=[]
+                for component in existing['components']:
+                    if component['revision_id']==old['id']:
+                        bundles.append({'briefing':briefing,'revision':rev,'snapshot':new_snap})
+                    else:
+                        other=repo.bundle_for_date(component['profile_code'],briefing['briefing_date'])
+                        if not other or str(other['revision']['id'])!=component['revision_id']:
+                            bundles=[];break
+                        bundles.append(other)
+                if not bundles:continue
+                packet=build_combined_packet(bundles,identity,repo.public_base_url(),row['token'])
+            else:
+                packet=build_packet(new_snap,briefing,rev,identity,repo.public_base_url(),row['token'])
             repo._upload_share_assets(row['token'],packet);refreshed.append((row['token'],packet))
     repo.publish_revision(briefing['id'],rev['id'],actor_user_id=actor)
     for token,packet in refreshed:
-        repo._request('PATCH','/rest/v1/hwarang_briefing_public_shares',params={'token':'eq.'+token,'revision_id':'eq.'+old['id']},
-            json={'revision_id':rev['id'],'public_packet':packet})
+        repo._request('POST','/rest/v1/rpc/hwarang_refresh_briefing_share',json={
+            'p_token':token,'p_old':old['id'],'p_new':rev['id'],'p_packet':packet})
     repo.audit({'actor_type':'user','actor_user_id':actor,'action':'BRIEFING_CORRECTED','briefing_id':briefing['id'],
-        'revision_id':rev['id'],'details':{'previous_revision':old['id'],'event_key':event_key,'reason':reason[:1000]}})
+        'revision_id':rev['id'],'details':{'previous_revision':old['id'],'event_key':event_key,'reason':reason[:1000], 'important_update':bool(important_update)}})
     return rev
+
+
+def updated_content(content, update, reason):
+    """Manager-authored exceptional official announcement, separate from daily quotas."""
+    from .source_policy import source_identity
+    from .normalize import is_safe_url
+    from .profile_rules import PROFILE_RULES
+    from uuid import uuid4
+    result=deepcopy(content)
+    url=str(update.get('url') or '').strip()
+    identity=source_identity(url)
+    if not is_safe_url(url) or not identity or identity[0] not in {'official','industry_official'}:
+        raise ValueError('확인 가능한 공공기관·보험협회 공식 원문 주소를 입력해 주세요.')
+    if not str(reason).strip() or not all(str(update.get(k) or '').strip() for k in ('title','summary','source_name')):
+        raise ValueError('제목·요약·출처명·추가 사유를 입력해 주세요.')
+    observed=datetime.fromisoformat(str(update.get('published_at') or '').replace('Z','+00:00'))
+    if observed.tzinfo is None or observed>datetime.now(timezone.utc):
+        raise ValueError('시간대가 있는 실제 발표 시각을 입력해 주세요. 미래 시각은 사용할 수 없습니다.')
+    edition_day=datetime.fromisoformat(str(content['as_of']).replace('Z','+00:00')).astimezone(ZoneInfo('Asia/Seoul')).date()
+    if observed.astimezone(ZoneInfo('Asia/Seoul')).date()!=edition_day:
+        raise ValueError('해당 브리핑 날짜에 발표된 공식 자료만 추가할 수 있습니다.')
+    code=content['profile_code']
+    if update.get('category') not in PROFILE_RULES[code].categories:
+        raise ValueError('해당 영역의 분류를 선택해 주세요.')
+    row={k:str(update.get(k) or '').strip()[:4000] for k in ('title','summary','why_important','impact_summary','category')}
+    row.update({'event_key':'official-update-'+uuid4().hex,'communication_state':'customer_ready',
+        'sources':[{'title':row['title'],'source_name':str(update['source_name']).strip()[:200],
+            'url':url,'published_at':observed.isoformat()}], 'representative':False,
+        'added_at':datetime.now(timezone.utc).isoformat()})
+    if any(url==src.get('url') for issue in result.get('issues',[])+result.get('important_updates',[])
+           for src in issue.get('sources',[])):
+        raise ValueError('이미 포함된 공식 원문입니다. 기존 기사의 정정 기능을 이용해 주세요.')
+    result.setdefault('important_updates',[]).append(row)
+    result.setdefault('corrections',[]).append({'event_key':row['event_key'],'reason':str(reason).strip()[:1000],
+        'corrected_at':row['added_at']})
+    return result

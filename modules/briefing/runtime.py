@@ -154,6 +154,7 @@ def _content_payload(profile_code: str, rows: list[ProfileEventAnalysis], phase_
         "coverage_status": coverage_status,
         "core_count": sum(r.selection_tier == "core" for r in rows),
         "light_count": sum(r.selection_tier == "light_digest" for r in rows),
+        "source_links": _extra_source_links(profile_code, {r.event_key for r in selected}, phase_b),
         "issues": [
             {
                 "event_key": r.event_key,
@@ -176,6 +177,27 @@ def _content_payload(profile_code: str, rows: list[ProfileEventAnalysis], phase_
     }
 
 
+def _extra_source_links(profile_code, selected_keys, phase_b):
+    """Internal original-reading links; these are never counted as AI summaries."""
+    links = []
+    seen = set()
+    for event in sorted(phase_b.events, key=lambda e: e.last_seen_at or phase_b.as_of, reverse=True):
+        if profile_code not in event.routed_profiles or event.event_key in selected_keys:
+            continue
+        for source in event.candidates:
+            from .normalize import is_safe_url
+            url = source.canonical_url or source.url
+            if source.source_kind != 'news' or not source.published_at or not source.title or not is_safe_url(url) or url in seen:
+                continue
+            seen.add(url)
+            links.append({'title': source.title, 'url': url, 'source_name': source.publisher_name or source.source_name,
+                          'published_at': _iso(source.published_at), 'event_key': event.event_key})
+            break
+        if len(links) >= 8:
+            break
+    return links
+
+
 def _event_lookup(events: Iterable[SharedEventCandidate]) -> dict[str, SharedEventCandidate]:
     return {event.event_key: event for event in events}
 
@@ -192,24 +214,14 @@ def _overall_validation(rows: list[ProfileEventAnalysis], coverage_status: str) 
 def body_quality_ready(body: dict[str, Any]) -> bool:
     """Apply the same minimum to new and previously saved publication candidates."""
     issues = body.get("issues") or []
-    # Two articles are a minimum sanity check, not the desired edition size.
-    if len(issues) < 2:
+    if not issues:
         return False
-    if body.get("profile_code") in {"NEWS", "MARKET"}:
-        from .normalize import publisher_domain
-        from .source_policy import LANE_DOMAINS
-        domains = {d for lane in LANE_DOMAINS.values() for d in lane}
-        publishers = set()
-        for issue in issues:
-            for source in issue.get("sources") or []:
-                if not source.get("published_at"):
-                    continue
-                host = publisher_domain(str(source.get("url") or "")) or ""
-                family = next((d for d in sorted(domains, key=len, reverse=True)
-                               if host == d or host.endswith("." + d)), host)
-                if family:
-                    publishers.add(family)
-        if len(publishers) < 2:
+    from .normalize import is_safe_url
+    for issue in issues:
+        if not str(issue.get("title") or "").strip() or not str(issue.get("summary") or "").strip():
+            return False
+        if not any(source.get("published_at") and is_safe_url(str(source.get("url") or ""))
+                   for source in issue.get("sources") or []):
             return False
     return True
 
@@ -251,8 +263,6 @@ def _persist_profile(
     coverage_status = _coverage_status(phase_b, profile_code, len(routed_events))
     coverage_status = _display_coverage_status(profile_code, rows, phase_b, coverage_status)
     validation_status = _overall_validation(rows, coverage_status)
-    if profile_code == "MARKET" and not (market_context or {}).get("market_metrics", {}).get("complete"):
-        validation_status = "required"
 
     briefing = repo.get_or_create_briefing(profile_code, kst_date, briefing_type)
     revision_no = repo.next_revision_no(str(briefing["id"]))
@@ -287,8 +297,8 @@ def _persist_profile(
     if profile_code != "INSURANCE": public_ready = public_ready and len(external["issues"]) == len(content["issues"])
     internal_ready = body_quality_ready(content)
     if profile_code == "MARKET":
-        public_ready = public_ready and len(external["market_metrics"]) == 6 and 3 <= len(content.get('market_flow') or []) <= 5
-        internal_ready = internal_ready and bool(content.get('market_metrics',{}).get('complete'))
+        public_ready = public_ready and bool(content.get('market_flow'))
+        internal_ready = internal_ready and bool(content.get('market_flow'))
     if not internal_ready: validation_status = "required"
     if validation_status != revision.get("validation_status"):
         repo.update_revision(str(revision["id"]), {"validation_status": validation_status})
@@ -310,6 +320,14 @@ def _persist_profile(
             "excluded_counts": phase_b.excluded_counts,
             "collection_diagnostics": phase_b.diagnostics,
             "source_health": phase_b.source_health,
+            "selection_diagnostics": {
+                "routed_events": len(routed_events),
+                "analyzed_events": sum(not r.profile_payload.get('analysis_missing') for r in rows),
+                "analysis_missing": sum(bool(r.profile_payload.get('analysis_missing')) for r in rows),
+                "eligible_events": sum(r.profile_code == profile_code for r in phase_c.eligible_analyses),
+                "displayed_events": len(content['issues']),
+                "original_links": len(content.get('source_links') or []),
+            },
         },
     })
     repo.checkpoint(job_id, "snapshot_created", {"snapshot_id": snapshot["id"]})
@@ -454,6 +472,7 @@ def generate_and_store_briefings(
     save_checkpoint=None,
     before_request=None,
     trigger_type: str = "manual",
+    allow_partial_market: bool = False,
 ) -> BriefingGenerationResult:
     """Run one shared Phase B discovery, one Phase C batch per routed profile,
     then persist immutable V1.6 snapshots for the requested profiles.
@@ -471,10 +490,6 @@ def generate_and_store_briefings(
 
     as_of = as_of or datetime.now(timezone.utc)
     saved = checkpoint if checkpoint is not None else {}
-    if 'MARKET' in requested and not (saved.get('market_observations') or {}).get('complete'):
-        saved['market_observations']=collect_metrics(as_of)
-        if not saved['market_observations'].get('complete'):
-            raise BriefingRunError('6개 경제 지표의 실제 관측값 확인을 완료하지 못했습니다. 유료 API는 시작하지 않았습니다.')
     from .checkpoints import encode, phase_b as restore_b, phase_c as restore_c
     from .openai_discovery import OpenAIWebDiscoveryClient
     from .openai_analysis import OpenAIAnalysisClient
@@ -606,7 +621,7 @@ def generate_and_store_briefings(
                 if cached is not None:
                     client.cached_response = cached
                     progress["reused_analysis_profiles"].append(code)
-                if code=='MARKET':client.market_metrics=saved.get('market_observations',{}).get('items',[])
+                if code=='MARKET':client.market_metrics=[]
                 completed_c[code] = encode(run_phase_c(phase_b, profile_codes=(code,), analyzer=client))
                 if code=='MARKET':saved['market_flow']=client.market_flow
                 save()
@@ -622,9 +637,30 @@ def generate_and_store_briefings(
             research, _ = build_research(phase_b.candidates if client else [], client=client,
                 on_response=lambda record: record_usage(record, discovery=False))
             market_rows = sorted([r for r in phase_c.profile_rows("MARKET") if r.selection_tier != "excluded"], key=lambda r:-r.importance_score)
-            market_context = {"market_metrics": saved.get('market_observations') or collect_metrics(as_of), "research": research,
+            market_context = {"market_metrics": {"items": [], "not_required": True}, "research": research,
+                "market_news_only": False, "market_mode": "article_briefing",
                 "market_flow": [r['text'] for r in saved.get('market_flow',[])], "market_flow_facts":saved.get('market_flow',[])}
             saved["market_context"] = market_context; save()
+        if "MARKET" in requested:
+            market_context["market_metrics"] = {"items": [], "not_required": True}
+            market_context["market_news_only"] = False
+            market_context["market_mode"] = "article_briefing"
+            visible_market = [r for r in phase_c.profile_rows("MARKET")
+                              if r.selection_tier != "excluded" and r.validation_status == "ok"]
+            allowed_refs = {"event:" + r.event_key for r in visible_market}
+            flow_facts = [r for r in market_context.get("market_flow_facts", [])
+                          if r.get("fact_refs") and set(r["fact_refs"]) <= allowed_refs]
+            market_context["market_flow_facts"] = flow_facts
+            market_context["market_flow"] = [r["text"] for r in flow_facts]
+            # Missing/old metric-backed synthesis must not demand another paid call.
+            # Only already-validated article summaries may supply a factual fallback.
+            if not market_context["market_flow"]:
+                market_context["market_flow"] = [r.summary for r in sorted(visible_market,
+                    key=lambda row: -row.importance_score)[:3] if r.summary.strip()]
+                market_context["market_flow_mode"] = "verified_article_summaries"
+            else:
+                market_context["market_flow_mode"] = "event_synthesis"
+            saved["market_context"] = market_context
         for code, usage in ({} if progress["analysis_requests"] or save_checkpoint else phase_c.usage_by_profile).items():
             if code in progress["reused_analysis_profiles"]: continue
             job = jobs.get(code)

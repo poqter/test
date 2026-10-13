@@ -11,7 +11,16 @@ from modules.briefing.preflight import run_runtime_preflight
 from modules.briefing.diagnostics import build_info,failure_diagnostic
 
 
-def configuration_failure(result):
+def configuration_failure(result, *, action=None):
+    if action == 'check':
+        # Historical failures are evidence, not failures of this readiness check.
+        if not isinstance(result, dict):
+            return True
+        return (
+            result.get('status') in ('configuration_required', 'failed', 'blocked')
+            or any(check.get('required') and not check.get('ok')
+                   for check in result.get('settings', []))
+        )
     if isinstance(result,dict):
         if result.get('status') in ('configuration_required','failed','blocked'):return True
         return any(configuration_failure(value) for value in result.values())
@@ -28,11 +37,13 @@ if __name__=='__main__':
             from modules.briefing.direct_sources import probe_direct_sources,load_direct_source_specs_from_env
             probe=probe_direct_sources(load_direct_source_specs_from_env())
             source_ok=any(r.get('status')=='ok' and r.get('dated_candidates',0)>0 for r in probe['direct_sources'].values())
-            result={'status':'checked' if source_ok else 'configuration_required','feed_probe':probe,'project_openai_api_calls':0,'ai_enabled':repo.ai_generation_enabled(),
+            checks=[c.to_dict() for c in run_runtime_preflight()]
+            required_ready=all(c['ok'] for c in checks if c['required'])
+            result={'status':'checked' if source_ok and required_ready else 'configuration_required','feed_probe':probe,'project_openai_api_calls':0,'ai_enabled':repo.ai_generation_enabled(),
                 'policy':{k:repo.operating_policy().get(k) for k in ('scheduled_generation_enabled','automatic_publication_enabled','external_sharing_approved')},
-                'settings':[c.to_dict() for c in run_runtime_preflight()], 'operations':repo.operation_status(day)}
+                'settings':checks, 'operations':repo.operation_status(day)}
         else:result=run_scheduled(args.action)
-        if configuration_failure(result):code=2
+        if configuration_failure(result, action=args.action):code=2
         report={'build':build_info(),'action':args.action,'checked_at':datetime.now(timezone.utc).isoformat(),'result':result}
         print(json.dumps(report,ensure_ascii=False))
     except Exception as exc:

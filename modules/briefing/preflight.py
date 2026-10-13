@@ -124,11 +124,8 @@ def run_runtime_preflight(*, direct_sources: list[DirectSourceSpec] | None = Non
             ),
         ),
     ]
-    from .market_metrics import market_observations_configured
-    configured = market_observations_configured()
-    checks.append(PreflightCheck("market_observations", configured, require_market_observations,
-        "시장 지표 공급원 설정이 있습니다. 실제 값·기준일·표시 권한은 별도 확인이 필요합니다."
-        if configured else "시장 지표 공급원이 설정되지 않았습니다. 경제·금융 유료 생성 전에 BRIEFING_MARKET_PROVIDER 또는 BRIEFING_MARKET_OBSERVATIONS_JSON/FILE/URL을 연결해 주세요."))
+    checks.append(PreflightCheck("market_observations", True, False,
+        "경제·금융은 기사 중심 브리핑입니다. 시장 지표 공급원 설정은 필요하지 않습니다."))
     return checks
 
 

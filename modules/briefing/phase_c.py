@@ -15,6 +15,24 @@ class Analyzer(Protocol):
     def analyze(self, profile_code: str, events: list[SharedEventCandidate]) -> tuple[list[dict], AnalysisUsage]: ...
 
 
+def _balanced_events(events: list[SharedEventCandidate]) -> list[SharedEventCandidate]:
+    """Balance sections within each publisher, then publishers within the batch."""
+    from .normalize import publisher_domain
+    publishers = {}
+    for event in events:
+        source = next((c for c in event.candidates if c.source_kind == 'news'), None)
+        host = publisher_domain(source.url) if source else 'official'
+        section = (source.source_code or source.metadata.get('lane_code') or host) if source else 'official'
+        publishers.setdefault(host, {}).setdefault(section, []).append(event)
+    pools = []
+    for sections in publishers.values():
+        groups = list(sections.values())
+        pools.append([group[i] for i in range(max(map(len, groups), default=0))
+                      for group in groups if i < len(group)])
+    return [pool[i] for i in range(max(map(len, pools), default=0))
+            for pool in pools if i < len(pool)]
+
+
 def _freshness_allows_core(event: SharedEventCandidate) -> bool:
     return any(row.freshness_tier == "core_window" for row in event.candidates)
 
@@ -75,12 +93,7 @@ def run_phase_c(
         )
         # Round-robin by publisher before analysis so a busy single feed cannot
         # occupy the entire paid input pool. Importance is still scored by facts.
-        from .normalize import publisher_domain
-        buckets={}
-        for event in prioritized:
-            host=next((publisher_domain(c.url) for c in event.candidates if c.source_kind=='news'),None) or 'official'
-            buckets.setdefault(host,[]).append(event)
-        balanced=[group[i] for i in range(max(map(len,buckets.values()),default=0)) for group in buckets.values() if i<len(group)]
+        balanced = _balanced_events(prioritized)
         selected_events = balanced[:max_events_per_profile]
         omitted_by_profile[profile_code] = max(0, len(prioritized) - len(selected_events))
         raw_rows, usage = client.analyze(profile_code, selected_events)

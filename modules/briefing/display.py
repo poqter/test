@@ -10,38 +10,68 @@ def stamp(value):
     except (ValueError,TypeError):return str(value or '기준일 미확인')
 
 
-def render_body(body):
-    st.markdown('<style>[data-testid="stMarkdownContainer"] p{font-size:17px;line-height:1.8}[data-testid="stVerticalBlockBorderWrapper"]{border-radius:14px} @media(max-width:640px){[data-testid="stMarkdownContainer"] p{font-size:17px}}</style>',unsafe_allow_html=True)
-    if body.get('profile_code')=='MARKET':
-        st.subheader('시장 지표')
-        items=body.get('market_metrics') or []
-        if not items:st.info('출처·기준일·표시 권한이 확인된 시장 지표를 기다리고 있습니다.')
-        for i in range(0,len(items),2):
-            for col,m in zip(st.columns(min(2,len(items)-i)),items[i:i+2]):
-                with col,st.container(border=True):
-                    from .public_body import metric_change,metric_date
-                    delta=metric_change(m)
-                    st.metric(str(m['label']),f"{m['value']:,.2f} {m['unit']}",delta=delta,delta_color='off')
-                    st.caption(metric_date(m))
-                    st.caption(str(m.get('reference_definition') or '실제 관측값'))
-                    if is_safe_url(str(m.get('source_url') or '')):st.link_button(str(m.get('source_name') or '출처'),m['source_url'])
+def render_style():
+    st.markdown("""<style>
+    .hw-briefing-hero{background:linear-gradient(125deg,#102b48,#214b72);border-radius:20px;padding:25px 28px;margin:0 0 20px;color:#fff}
+    .hw-briefing-hero>span{font-size:11px;letter-spacing:2px;color:#b8d1e7}.hw-briefing-hero h1{color:#fff;font-size:30px;font-weight:750;margin:8px 0;line-height:1.25}.hw-briefing-hero p{font-size:15px!important;color:#dce8f4;margin:0}
+    .hw-edition{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:24px 0 14px;color:#536579;font-size:13px}.hw-edition strong{font-size:21px;color:#172d45}.hw-edition-state{font-size:12px;background:#eaf0f7;color:#345579;padding:5px 10px;border-radius:30px}
+    .hw-news{background:#fff;border:1px solid #dbe3ec;border-radius:16px;padding:22px 24px;margin:14px 0;color:#23384e;box-shadow:0 3px 14px rgba(20,40,70,.025)}.hw-news.lead{border-left:5px solid #284f77;background:#f8fbff}
+    .hw-news .tag{color:#52708e;font-size:12px;font-weight:650;margin-bottom:10px}.hw-news h3{font-size:21px;line-height:1.48;margin:0 0 10px;color:#132c46}.hw-news.lead h3{font-size:24px}.hw-news p{font-size:17px!important;line-height:1.8;margin:0 0 14px;color:#34495f}.hw-news .source{font-size:12px;line-height:1.7;color:#64758a}.hw-news a{color:#235b8d;text-decoration:none}.hw-news h3 a{color:inherit}.hw-news a:hover{text-decoration:underline;text-underline-offset:3px}
+    .hw-news .hw-context{border-top:1px solid #e4eaf0;padding-top:14px;margin-top:12px}.hw-news .hw-context h4{font-size:14px;color:#355774;margin:0 0 6px}.hw-news .hw-context p{font-size:16px!important;margin-bottom:12px}
+    .hw-news.big h3{font-size:25px}.hw-news.big p{font-size:20px!important;line-height:1.85}
+    .hw-market-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:14px 0 22px}.hw-market-metric{background:#fff;border:1px solid #dbe3ec;border-radius:14px;padding:17px}.hw-market-metric .name{font-size:13px;color:#52677d}.hw-market-metric .value{font-size:26px;font-weight:750;color:#172d45;margin:8px 0}.hw-market-metric .delta{font-size:14px;font-weight:650}.hw-market-metric .date{font-size:11px;color:#64758a;margin-top:8px}.hw-market-metric a{font-size:11px;color:#456988}.hw-market-metric .up{color:#ba3447}.hw-market-metric .down{color:#2864ad}.hw-market-metric .flat{color:#60738b}
+    .st-key-hw_briefing_center button{min-height:42px}.st-key-hw_briefing_center [data-testid="stExpander"]{border-color:#dce4ee}.st-key-hw_briefing_center [data-testid="stRadio"]{margin:4px 0 10px}
+    @media(max-width:640px){.hw-briefing-hero{padding:21px 20px}.hw-briefing-hero h1{font-size:27px}.hw-market-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hw-news{padding:18px}.hw-news h3{font-size:20px}.hw-news.lead h3{font-size:22px}.hw-market-metric .value{font-size:22px}}
+    @media(max-width:340px){.hw-market-grid{grid-template-columns:1fr}}
+    </style>""", unsafe_allow_html=True)
+
+
+def render_body(body, *, large=False):
+    import html
+    e = lambda value: html.escape(str(value or ''), quote=True)
+    render_style()
+    if body.get('profile_code') == 'MARKET':
         if body.get('market_flow'):
-            st.subheader('오늘의 시장 흐름')
-            for text in body['market_flow']:st.write(text)
-    for index,row in enumerate(body.get('issues') or [],1):
-        with st.container(border=True):
-            st.caption(str(row.get('category') or '')+(' · 대표 뉴스' if row.get('representative') else ''))
-            st.markdown('### '+f'{index:02d} · '+str(row.get('title') or '오늘의 소식'))
-            st.write(str(row.get('summary') or ''))
-            for src in row.get('sources') or []:
-                st.caption(str(src.get('source_name') or '출처')+' · '+stamp(src.get('published_at')))
-                if is_safe_url(str(src.get('url') or '')):st.link_button('원문 · '+str(src.get('title') or src.get('source_name') or '기사'),src['url'])
-            if row.get('why_important') or row.get('impact_summary'):
-                with st.expander('의미와 영향 더 보기'):
-                    if row.get('why_important'):st.write(row['why_important'])
-                    if row.get('impact_summary'):st.write(row['impact_summary'])
-    if not body.get('issues'):st.info('이 날짜에 확인된 뉴스가 없습니다. 부족한 내용을 임의로 채우지 않습니다.')
-    if (body.get('research') or {}).get('reports'):render_research(body['research'])
+            with st.container(border=True):
+                st.markdown('#### 오늘의 경제 흐름')
+                for text in body['market_flow']:
+                    st.write(text)
+    issues = body.get('issues') or []
+    representative = next((row for row in issues if row.get('representative')), None)
+    ordered = ([representative] if representative else []) + [row for row in issues if row is not representative]
+    for index, row in enumerate(ordered, 1):
+        sources = [s for s in row.get('sources') or [] if is_safe_url(str(s.get('url') or ''))]
+        primary = sources[0] if sources else None
+        title = e(row.get('title') or '오늘의 소식')
+        if primary:
+            title = f'<a href="{e(primary["url"])}" target="_blank" rel="noopener noreferrer">{title}</a>'
+        tag = ('중요 발표 추가 · ' if row.get('important_update') else '오늘의 주요 뉴스 · ' if row is representative else f'{index:02d} · ') + str(row.get('category') or '뉴스')
+        source = ' · '.join([str(primary.get('source_name') or '원문'), stamp(primary.get('published_at'))]) if primary else ''
+        classes = 'hw-news'+(' lead' if row is representative else '')+(' big' if large else '')
+        explanation = ''
+        if row.get('why_important'):
+            explanation += f'<h4>배경</h4><p>{e(row["why_important"])}</p>'
+        if row.get('impact_summary'):
+            explanation += f'<h4>생활·금융에 미치는 영향</h4><p>{e(row["impact_summary"])}</p>'
+        if explanation:
+            explanation = '<div class="hw-context">'+explanation+'</div>'
+        st.markdown(f'<article class="{classes}"><div class="tag">{e(tag)}</div><h3>{title}</h3><p>{e(row.get("summary"))}</p>'+explanation+f'<div class="source">{e(source)}'+(f' · <a href="{e(primary["url"])}" target="_blank" rel="noopener noreferrer">원문 읽기 ↗</a>' if primary else '')+'</div></article>', unsafe_allow_html=True)
+        if len(sources) > 1:
+            with st.expander('추가 출처 보기'):
+                for src in sources[1:]:
+                    st.link_button(str(src.get('source_name') or '추가 원문'), src['url'])
+    if not issues:
+        st.info('이 판본에 저장된 요약 기사가 없습니다.')
+    links = body.get('source_links') or []
+    if links:
+        with st.expander(f'더 읽을 기사 · 원문 {len(links)}개'):
+            st.caption('수집된 원문 목록입니다. 요약·검증이 끝난 기사 수와 별도로 표시합니다.')
+            for source in links:
+                if is_safe_url(str(source.get('url') or '')):
+                    st.link_button(str(source.get('title') or '원문'), source['url'], use_container_width=True)
+                    st.caption(str(source.get('source_name') or '')+' · '+stamp(source.get('published_at')))
+    if (body.get('research') or {}).get('reports'):
+        render_research(body['research'])
 
 
 def _views(rows):
