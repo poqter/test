@@ -8,7 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-ENGINE_VERSION = "1.12.3-readable"
+ENGINE_VERSION = "1.12.4-audit"
 DIAGNOSTIC_SCHEMA = "briefing-daily-diagnostics-v4"
 
 
@@ -42,9 +42,9 @@ def failure_diagnostic(exc: Exception) -> dict[str, Any]:
     details = getattr(exc, "diagnostics", {})
     from .execution_policy import retry_guidance
     failure = details.get("request_failure", {}) if isinstance(details, dict) else {}
-    from .execution_policy import retry_guidance
-    failure = details.get("request_failure", {}) if isinstance(details, dict) else {}
-    return {"schema_version": DIAGNOSTIC_SCHEMA, **build_info(), "status": "failed", "recovery_guidance": retry_guidance(failure), "recovery_guidance": retry_guidance(failure),
+    if not isinstance(failure, dict):
+        failure = {}
+    return {"schema_version": DIAGNOSTIC_SCHEMA, **build_info(), "status": "failed", "recovery_guidance": retry_guidance(failure),
             "failed_at": datetime.now(timezone.utc).isoformat(),
             "failure_message": safe_message(exc),
             "diagnostics": details if isinstance(details, dict) else {},

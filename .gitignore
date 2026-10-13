@@ -23,3 +23,7 @@ venv/
 artifacts/
 tests/*_results.json
 *.log
+
+# Local QA previews and render outputs.
+/tmp/
+/ui_work/

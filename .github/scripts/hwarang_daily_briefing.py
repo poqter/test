@@ -22,7 +22,8 @@ def configuration_failure(result, *, action=None):
                    for check in result.get('settings', []))
         )
     if isinstance(result,dict):
-        if result.get('status') in ('configuration_required','failed','blocked'):return True
+        # Missing editions and QA holds are not successful publication.
+        if result.get('status') in ('configuration_required','failed','blocked','no_snapshot','quality_hold','organization_approval_required'):return True
         return any(configuration_failure(value) for value in result.values())
     if isinstance(result,list):return any(configuration_failure(value) for value in result)
     return False
@@ -39,8 +40,9 @@ if __name__=='__main__':
             source_ok=any(r.get('status')=='ok' and r.get('dated_candidates',0)>0 for r in probe['direct_sources'].values())
             checks=[c.to_dict() for c in run_runtime_preflight()]
             required_ready=all(c['ok'] for c in checks if c['required'])
+            policy = repo.operating_policy()
             result={'status':'checked' if source_ok and required_ready else 'configuration_required','feed_probe':probe,'project_openai_api_calls':0,'ai_enabled':repo.ai_generation_enabled(),
-                'policy':{k:repo.operating_policy().get(k) for k in ('scheduled_generation_enabled','automatic_publication_enabled','external_sharing_approved')},
+                'policy':{k:policy.get(k) for k in ('scheduled_generation_enabled','automatic_publication_enabled','external_sharing_approved')},
                 'settings':checks, 'operations':repo.operation_status(day)}
         else:result=run_scheduled(args.action)
         if configuration_failure(result, action=args.action):code=2

@@ -1,7 +1,7 @@
 name: Briefing offline checks
 on:
   pull_request:
-    paths: ['modules/briefing/**', 'public_reader/**', 'tests/**', 'requirements.txt', 'constraints.txt', 'STAGE1_CHANGED_FILES.json', '.github/workflows/briefing_checks.yml']
+    paths: ['.github/scripts/**', 'app.py', 'modules/briefing/**', 'public_reader/**', 'tests/**', 'requirements.txt', 'constraints.txt', 'STAGE1_CHANGED_FILES.json', '.github/workflows/briefing_checks.yml']
   workflow_dispatch:
 permissions:
   contents: read

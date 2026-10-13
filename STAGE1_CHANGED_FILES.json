@@ -1,6 +1,6 @@
 {
-  "engine_version": "1.12.3-readable",
-  "baseline_zip_sha256": "82c496835c5763f5a691580270e87bd5562d97dcecab6f20b716e1df4aac814c",
+  "engine_version": "1.12.4-audit",
+  "baseline_zip_sha256": "4e5eb26b344e061f4261cb2c2213981ff9dcb65a301c00bbd635b143c7c70384",
   "briefing_code_sha256": {
     "__init__.py": "66c4884dd2d46a2e672f3dc686c8c53e1cbfc0ff7af3a3ee7917ef0b6e90ad47",
     "api_errors.py": "20ca68aa829159e97f59d18b429b36fb588dfde1ae3d78f35ef5d5d6b108b7dd",
@@ -11,7 +11,7 @@
     "config.py": "3ec3639a5f676907a73a1e8c78421f5974c20b9e0dfce5018808fed52b9ab62e",
     "corrections.py": "0c91a437c475bd7f269e2270d5de03b760a38bd23498a8bbebb4d7afea9b3a68",
     "costs.py": "3ebd1b204e7d430f4c3eb8c7b6648440d90d3a4322cd7136df19155826ed94ff",
-    "diagnostics.py": "8e53e86438409bb86c9eceb56bba13130e8ad0301fcce1ea612eff0d70f68231",
+    "diagnostics.py": "c0103f9c7c7ce5f38d7c94f3c34c893a1216b3079cad814fe97017cd8360f31b",
     "direct_sources.py": "bfb68b32e84a8f407bbe126ef632ed1d9fe470e972e87efd901fc82731474d4a",
     "discovery_budget.py": "cdc061db8d2ad846f31817963189fdcddd828095ada99abfa35901d326dc0373",
     "display.py": "70ec3f30a58a4e76e2741741a53710dfadd7f36d112e1118dc4fe3f124284921",
@@ -36,7 +36,7 @@
     "repository.py": "4dad5b0d9f2e87c418a9a0eafd555a159ade83c412cefa9658c3726c15318a72",
     "research.py": "093fb3d8f5d0316ba714fa3c7cd41466e6964cee83897330c93b8813ca931125",
     "runtime.py": "3abd196099a23a7a5c740eea92a1b87b7a746a1b00eac01296e5ff3351c5a3f6",
-    "scheduler.py": "477ab066fbcc84b21c6481146213ff8ac11b7a3c864624bf7b717a5321c9d33d",
+    "scheduler.py": "208ff77c17dbbd134dbdf3c9f70f3bb6957861cf5162e7b5bed25dbd06e6a17f",
     "sharing.py": "75e51cd6048b367ee3bdaa207ac5050754c5096820aa0072b8dd7cba17ddc8e1",
     "source_policy.py": "f29b127896197a08a2222dad1008f0c7c3b77421b822030ff66a41913a548703",
     "staff_exports.py": "d7044d7dab64080f2d6663ee0cad9c4dc333cfffed76e46927d6d77f867ef19d",
@@ -281,7 +281,7 @@
     "production_deployed": false,
     "scope": "account diagnostics, displayed-article coverage, one representative, missing market feed preflight"
   },
-  "patch_id": "BRIEFING_UX_20261014",
+  "patch_id": "prepublication-audit-20261014",
   "automation_recovery": {
     "database_changes": false,
     "new_paid_test_calls": 0,
@@ -344,5 +344,27 @@
     "baseline_manifest_sha256": "34062812f3c77692e2fde3fee2b8205fefb803e08f0d7e98067d13f317eb0609",
     "generation_policy_changed": false
   },
-  "release_patch_id": "BRIEFING_READABILITY_20261014"
+  "release_patch_id": "prepublication-audit-20261014",
+  "prepublication_audit": {
+    "engine_version": "1.12.4-audit",
+    "baseline": "1.12.3-readable",
+    "production_deployed": false,
+    "new_migration_required": false,
+    "paid_api_calls": 0,
+    "python_tests_passed": 195,
+    "customer_http_assertions": 39,
+    "changed_files": [
+      ".github/scripts/hwarang_daily_briefing.py",
+      ".github/workflows/briefing_checks.yml",
+      ".gitignore",
+      "app.py",
+      "modules/briefing/diagnostics.py",
+      "modules/briefing/scheduler.py",
+      "tests/test_briefing_prepublication_audit.py",
+      "STAGE1_CHANGED_FILES.json"
+    ],
+    "generation_contract_changed": false,
+    "schedule_changed": false,
+    "notes": "Prior release sections are historical records, not current release evidence."
+  }
 }

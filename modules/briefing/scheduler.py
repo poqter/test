@@ -87,8 +87,9 @@ def run_scheduled(action, now=None, repo=None):
     repo=repo or BriefingRepository(); now=now or datetime.now(timezone.utc); local=now.astimezone(KST); day=local.date()
     if action=='prepare':
         repo.sync_business_calendar(day)
+        policy = repo.operating_policy()
         return {'status':'prepared','ai_generation_enabled':repo.ai_generation_enabled(),
-                'policy':{k:repo.operating_policy().get(k) for k in ('scheduled_generation_enabled','automatic_publication_enabled','external_sharing_approved')},
+                'policy':{k:policy.get(k) for k in ('scheduled_generation_enabled','automatic_publication_enabled','external_sharing_approved')},
                 'enabled':[r['profile_code'] for r in repo.profiles() if r.get('is_enabled')]}
     if action=='market':
         if now<cutoff(day,'MARKET'):raise ValueError('MARKET cutoff not reached')
