@@ -201,7 +201,7 @@ def _materials(s):
 
 def render(auth,owner,permissions,credit_status=None):
     st.markdown('''<style>
-    [data-testid="stMainBlockContainer"]{max-width:1000px!important;padding:22px 28px 36px!important}
+    [data-testid="stMainBlockContainer"]{max-width:1580px!important;padding:22px 28px 36px!important}
     .stApp,[data-testid="stAppViewContainer"],[data-testid="stMain"]{background:#f3f5f9!important;color:#192d45}
     [data-testid="stHeader"],[data-testid="stToolbar"],#MainMenu,footer{display:none!important}
     .studio-flow{display:flex;gap:8px;margin:8px 0 18px}.studio-flow span{font-size:11px;padding:6px 10px;border-radius:99px;color:#91a0af;background:#e9edf3}.studio-flow .active{background:#203e60;color:#fff}.studio-flow .done{background:#e6f0ed;color:#427564}
@@ -285,24 +285,10 @@ def render(auth,owner,permissions,credit_status=None):
             else:_setup(repo,config,permissions)
             return
         st.caption(('자유 연습' if s['mode']=='PRACTICE' else '공식 평가')+' / '+STAGES[s['stage']]+' / '+DIFFICULTIES[s['difficulty']])
-        _customer_card(s)
+        if s['ended']:_customer_card(s)
         if s['journey']:
             labels=[('✓ ' if k in s['completed_stages'] else '● ' if k==s['stage'] else '')+v for k,v in STAGES.items()]
             st.caption(' → '.join(labels))
-        if not s['ended']:
-            with st.container(key='studio_controls'):
-                a,b,c=st.columns([2,1,1])
-                with a:
-                    with st.popover('고객 · 목표'):
-                        st.write(GOALS[s['stage']]);_materials(s)
-                with b:
-                    with st.popover('이용 내역'):
-                        st.caption(f"이번 상담 {sum(x.get('credits',0) for x in s['usage'])} 크레딧 · 음성 {sum(x.get('seconds',0) for x in s['usage'])}초")
-                        if st.button('저장 상태 다시 불러오기',key='studio_reload'):
-                            st.session_state['_studio_state']=repo.load(s['id']);st.rerun()
-                with c:
-                    if st.button('상담 마치기',key='studio_finish'):
-                        out=deepcopy(s);end_session(out,'user');_put(repo,out)
         if s['ended']:
             last=next((m['text'] for m in reversed(s['messages']) if m['role']=='customer'),'')
             voice=st.session_state.get('studio_voice_'+s['id'],'alloy')
@@ -353,48 +339,74 @@ def render(auth,owner,permissions,credit_status=None):
                 if st.button('이 장면에서 다시 답하기'):
                     out=practice_from(s,n);_put(repo,out)
             return
-        if s['warning']:st.warning('상담 맥락과 관련 없는 응답이 연속 확인되었습니다. 한 번 더 반복되면 이번 평가는 종료됩니다.')
-        count=sum(t['stage']==s['stage'] for t in s['turns']);remain=LIMITS[s['stage']]-count
-        if remain<=3:st.caption(f'이번 장면의 답변 기회가 {remain}회 남았습니다. 마무리하거나 종료 후 다시 연습할 수 있습니다.')
-        show_signals=False
-        if s['mode']=='PRACTICE':
-            show_signals=st.toggle('대화 변화 안내 보기',value=False,key='studio_signals_'+s['id'],help='대사에서 확인된 변화만 표시합니다. 신뢰 점수나 숨은 고객 설정은 표시하지 않습니다.')
-        signals=immersion.visible_signals(s,show_signals)
-        with st.container(height=440,border=False,key='studio_chat_log'):
-            for index,m in enumerate(s['messages']):
-                with st.chat_message('user' if m['role']=='advisor' else 'assistant',avatar=None if m['role']=='advisor' else ':material/person:'):
-                    st.write(m['text'])
-                    if m.get('attachment')=='insurance':_attachment(s,'studio_document_'+str(index))
-                if m['role']=='customer':
-                    for signal in signals:
-                        if signal['turn']==m.get('turn'):st.caption('관찰 · '+signal['label']+' / “'+signal['quote']+'”')
-        _comparison(s)
-        if s['stage_complete']:
-            if s.get('appointment'):st.success('다음 상담 약속 · '+s['appointment']['label'])
-            else:st.success('이번 상담 장면을 마쳤습니다.')
-            st.caption('다음 장면은 같은 고객의 이후 상담입니다. 지금까지 나눈 대화를 기억합니다.')
-            if st.button('다음 상담 단계로',type='primary'):
-                out=deepcopy(s);next_stage(out);_put(repo,out)
-        if s['mode']=='PRACTICE':
-            with st.expander('막힐 때 도움받기'):
-                key=f"{s['branch']}:{len(s['turns'])}:{s['stage']}"
-                hint=s['hint_cache'].get(key)
-                if not hint:
-                    if st.button(f'힌트 준비 · {config.coach_credits} Credit'):
-                        with st.spinner('현재 대화에 맞는 힌트를 준비합니다…'):st.session_state['_studio_state']=runtime.hint(s)
-                        st.rerun()
-                else:
-                    st.write('방향: '+hint['direction'])
-                    with st.expander('질문의 의도 보기'):st.write(hint['intention'])
-                    with st.expander('예시 문장 보기'):st.write(hint['example'])
-                if any('before' in t for t in s['turns']):
-                    n=st.selectbox('되돌릴 답변',[t['number'] for t in s['turns'] if 'before' in t],format_func=lambda n:f'{n}번째 답변 직전')
-                    st.caption('고객 상태도 복원합니다. 이미 처리된 Credit·Voice 사용량은 되돌리지 않습니다.')
-                    if st.button('선택 장면으로 돌아가기'):
-                        out=deepcopy(s);rewind(out,n);_put(repo,out)
-        if not s['stage_complete']:_conversation(repo,runtime,s,config,permissions)
+        _active_room(repo,runtime,s,config,permissions)
     except Exception as exc:st.error(_safe_error(exc))
 
+
+def _active_room(repo,runtime,s,config,permissions):
+    st.markdown("""<style>
+    .st-key-studio_room{margin-top:10px}.st-key-studio_room [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .st-key-studio_customer_panel){gap:20px!important;align-items:flex-start}
+    .st-key-studio_customer_panel,.st-key-studio_help_panel{background:#fff;border:1px solid #dce5ee;border-radius:16px;padding:18px!important;min-width:0}
+    .st-key-studio_room .studio-customer{display:block;padding:0;border:0;margin:0 0 20px}.st-key-studio_room .studio-avatar{width:58px;height:58px;margin-bottom:12px;font-size:25px;border-radius:20px}.st-key-studio_room .studio-live{display:inline-block;margin-top:12px}
+    .st-key-studio_customer_panel p,.st-key-studio_help_panel p{font-size:13px!important}.st-key-studio_room h3{font-size:18px!important}.st-key-studio_help_panel button{width:100%;font-size:12px!important}.st-key-studio_room [data-testid="stColumn"]{min-width:0!important}
+    .st-key-studio_room iframe{border:0;display:block}.st-key-studio_center [data-testid="stVerticalBlock"]{gap:10px}
+    @media(max-width:1050px){.st-key-studio_room [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .st-key-studio_customer_panel){flex-wrap:wrap!important}.st-key-studio_room [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .st-key-studio_customer_panel)>[data-testid="stColumn"]:nth-child(1){flex:1 1 23%!important;min-width:190px!important}.st-key-studio_room [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .st-key-studio_customer_panel)>[data-testid="stColumn"]:nth-child(2){flex:3 1 65%!important;min-width:350px!important}.st-key-studio_room [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .st-key-studio_customer_panel)>[data-testid="stColumn"]:nth-child(3){flex:1 1 100%!important}}
+    @media(max-width:650px){.st-key-studio_room [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .st-key-studio_customer_panel)>[data-testid="stColumn"]{flex:1 1 100%!important;min-width:100%!important}.st-key-studio_customer_panel{padding:14px!important}.st-key-studio_room .studio-customer{display:flex;margin-bottom:8px}.st-key-studio_room .studio-avatar{width:42px;height:42px;margin:0}.st-key-studio_room .studio-live{margin:0 0 0 auto}}
+    </style>""",unsafe_allow_html=True)
+    with st.container(key='studio_room'):
+        left,center,right=st.columns([1.05,2.65,1.12],gap='medium')
+        with left,st.container(key='studio_customer_panel'):
+            st.caption('CUSTOMER PROFILE')
+            _customer_card(s)
+            with st.expander('고객 자료',expanded=s.get('documents_shared',False)):_materials(s)
+            st.markdown('**오늘의 상담 목표**');st.write(GOALS[s['stage']])
+            st.caption(f"진행한 대화 {len(s['turns'])}회")
+        with right,st.container(key='studio_help_panel'):
+            st.markdown('### 상담 도우미')
+            if s['mode']=='ASSESSMENT':st.caption('공식 평가에서는 힌트와 되돌리기를 제공하지 않습니다.')
+            _room_help(repo,runtime,s,config)
+            st.divider()
+            st.caption(f"이번 상담 {sum(x.get('credits',0) for x in s['usage'])} 크레딧 · 음성 {sum(x.get('seconds',0) for x in s['usage'])}초")
+            if st.button('저장 상태 다시 불러오기',key='studio_reload'):
+                st.session_state['_studio_state']=repo.load(s['id']);st.session_state.pop('_studio_chat_error',None);st.rerun()
+            if st.button('상담 마치기',key='studio_finish'):
+                out=deepcopy(s);end_session(out,'user');_put(repo,out)
+            error=st.session_state.get('_studio_chat_error') or {}
+            if error.get('blocked') and error.get('session_id')==s['id'] and error.get('branch')==s['branch']:
+                st.warning('응답 처리 여부를 확인 중입니다. 이 문장은 평가하지 않습니다. 홈으로 돌아가거나 관리자에게 요청 상태 확인을 요청할 수 있습니다.')
+                st.caption('관리자 센터 → AI 상담 요청 확인 · 비용 미확인에서 공급자 기록과 대조 후 보류를 해제할 수 있습니다.')
+        with center,st.container(key='studio_center'):
+            if s['warning']:st.warning('상담과 무관한 응답이 반복되었습니다. 한 번 더 반복되면 평가가 종료됩니다.')
+            count=sum(t['stage']==s['stage'] for t in s['turns']);remain=LIMITS[s['stage']]-count
+            if remain<=3:st.caption(f'이번 장면의 답변 기회가 {remain}회 남았습니다.')
+            if s['stage_complete']:
+                from .chat_component import render as chat
+                chat(s)
+                st.success('이번 장면을 마쳤습니다.'+(' 다음 약속 · '+s['appointment']['label'] if s.get('appointment') else ''))
+                if st.button('다음 상담 단계로',type='primary'):
+                    out=deepcopy(s);next_stage(out);_put(repo,out)
+            else:_conversation(repo,runtime,s,config,permissions)
+            _comparison(s)
+
+
+def _room_help(repo,runtime,s,config):
+    if s['mode']=='PRACTICE':
+        with st.expander('막힐 때 도움받기'):
+            key=f"{s['branch']}:{len(s['turns'])}:{s['stage']}"
+            hint=s['hint_cache'].get(key)
+            if not hint:
+                if st.button(f'힌트 준비 · {config.coach_credits} Credit'):
+                    with st.spinner('현재 대화에 맞는 힌트를 준비합니다…'):st.session_state['_studio_state']=runtime.hint(s)
+                    st.rerun()
+            else:
+                st.write('방향: '+hint['direction'])
+                with st.expander('질문의 의도 보기'):st.write(hint['intention'])
+                with st.expander('예시 문장 보기'):st.write(hint['example'])
+            if any('before' in t for t in s['turns']):
+                n=st.selectbox('되돌릴 답변',[t['number'] for t in s['turns'] if 'before' in t],format_func=lambda n:f'{n}번째 답변 직전')
+                st.caption('고객 상태도 복원합니다. 이미 처리된 Credit·Voice 사용량은 되돌리지 않습니다.')
+                if st.button('선택 장면으로 돌아가기'):
+                    out=deepcopy(s);rewind(out,n);_put(repo,out)
 
 def _conversation(repo,runtime,s,config,permissions):
     options=['텍스트','음성','혼합'] if 'academy.voice_simulator' in permissions else ['텍스트']
@@ -443,12 +455,36 @@ def _conversation(repo,runtime,s,config,permissions):
             edited=st.text_area('보낼 문장',value=draft,max_chars=2400,key='studio_review_'+widget)
             voice_submit=st.button('확인한 문장 보내기',type='primary')
     else:edited='';voice_submit=False
-    text=st.chat_input('고객에게 메시지 보내기…',max_chars=2400,key='studio_chat_'+widget)
-    submit=bool(text) or voice_submit
-    if voice_submit:text=edited
+    from .chat_component import render as render_chat
+    show_signals=st.session_state.get('studio_signals_'+s['id'],False)
+    if s['mode']=='PRACTICE':
+        with st.expander('대화 표시 설정'):
+            show_signals=st.toggle('대화 변화 안내 보기',value=False,key='studio_signals_'+s['id'])
+    error=st.session_state.get('_studio_chat_error')
+    if error and (error.get('session_id')!=s['id'] or error.get('branch')!=s['branch']):error=None
+    ack=st.session_state.get('_studio_chat_ack','')
+    event=render_chat(s,signals=immersion.visible_signals(s,show_signals),ack=ack,error=error)
+    text='';submit=False
+    if isinstance(event,dict) and event.get('kind')=='send' and event.get('event_id')!=ack:
+        st.session_state['_studio_chat_ack']=str(event.get('event_id',''))
+        if event.get('version')!=s['version']:
+            st.session_state['_studio_chat_error']={'session_id':s['id'],'branch':s['branch'],'text':str(event.get('text',''))[:2400],
+                'message':'저장 기록이 변경됐습니다. 내용을 확인하고 다시 보내 주세요.','blocked':False}
+            st.rerun()
+        text=str(event.get('text','')).strip();submit=bool(text)
+    if voice_submit:text=edited;submit=True
     if submit:
-        with st.chat_message('user'):st.write(text)
-        with st.spinner('고객이 답변하고 있습니다…'):st.session_state['_studio_state']=runtime.send(s,text)
+        try:
+            st.session_state['_studio_state']=runtime.send(s,text)
+            st.session_state.pop('_studio_chat_error',None)
+        except Exception as exc:
+            from .provider import ProviderError
+            from .runtime import PendingRequest
+            blocked=isinstance(exc,PendingRequest) or isinstance(exc,ProviderError) and exc.uncertain or 'STUDIO_REQUEST_PENDING' in str(exc)
+            st.session_state['_studio_chat_error']={'session_id':s['id'],'branch':s['branch'],'text':text,'message':_safe_error(exc),'blocked':blocked}
+            try:st.session_state['_studio_state']=repo.load(s['id'])
+            except Exception:pass
+            st.rerun()
         if auto_speak and not st.session_state['_studio_state']['ended']:
             updated=st.session_state['_studio_state']
             last=next((m['text'] for m in reversed(updated['messages']) if m['role']=='customer'),'')

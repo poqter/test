@@ -6,8 +6,8 @@ from jsonschema import validate
 from .contracts import CUSTOMER, COACH, EVALUATOR, INSTRUCTIONS
 
 class ProviderError(RuntimeError):
-    def __init__(self,message,*,uncertain=True):
-        super().__init__(message);self.uncertain=uncertain
+    def __init__(self,message,*,uncertain=True,response=None):
+        super().__init__(message);self.uncertain=uncertain;self.response=response
 
 @dataclass
 class Config:
@@ -73,13 +73,31 @@ class OpenAIProvider:
             'text':{'format':{'type':'json_schema','name':'hwarang_'+role.lower(),'strict':True,'schema':schema}}})
         try:
             data=response.json()
-            if data.get('status')!='completed':raise ValueError('incomplete')
+        except (ValueError, TypeError) as exc:
+            raise ProviderError('응답 내용을 읽지 못했습니다. 요청 상태 확인이 필요합니다.') from exc
+        if not isinstance(data,dict):
+            raise ProviderError('응답 처리 상태를 확인하지 못했습니다.')
+        status=data.get('status')
+        if status not in ('completed','incomplete','failed','cancelled'):
+            raise ProviderError('AI 응답이 아직 완료되지 않았습니다. 요청 상태를 확인해 주세요.')
+        # A terminal provider response is evidence of completed processing, even
+        # when its content is unusable. Do not turn this into an indefinite lock.
+        meta={'usage':data.get('usage') if isinstance(data.get('usage'),dict) else {},
+              'provider_id':data.get('id'),'model':data.get('model',self.config.model(role)),
+              'provider_status':status,'cost_usd':None}
+        try:
+            if status!='completed':raise ValueError('incomplete_output')
+            if any(c.get('type')=='refusal' for o in data.get('output',[]) for c in o.get('content',[])):
+                raise ValueError('refusal')
             raw=''.join(c.get('text','') for o in data.get('output',[]) for c in o.get('content',[]) if c.get('type')=='output_text')
             result=json.loads(raw);validate(result,schema)
             if role=='CUSTOMER' and (not result['reply'].strip() or len(result['reply'])>2000):raise ValueError('reply')
-            return {'result':result,'usage':data.get('usage',{}),'provider_id':data.get('id'), 'model':data.get('model',self.config.model(role))}
+            return {'result':result,**meta}
         except Exception as exc:
-            raise ProviderError('AI 응답 형식을 검증하지 못했습니다. 재호출 없이 확인 대기 상태로 보관합니다.') from exc
+            reason='incomplete_output' if status!='completed' else 'unusable_output'
+            meta['result']={'_rejected':True,'reason':reason}
+            raise ProviderError('고객 응답을 대화에 사용할 수 없어 이번 답변은 반영하지 않았습니다. 문장을 수정하거나 다시 보내 주세요.',
+                                uncertain=False,response=meta) from exc
     def transcribe(self,audio):
         seconds=wav_seconds(audio)
         response=self._post('audio/transcriptions',data={'model':self.config.transcription_model,'language':'ko','response_format':'json'},

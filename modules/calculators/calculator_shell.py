@@ -24,7 +24,7 @@ def _show_catalog(group: str = "전체") -> None:
 
 
 def render_sidebar() -> None:
-    """Compatibility name; independent calculator navigation now lives at the top."""
+    """Full calculator app sidebar; independent single-calculator windows omit it."""
     from modules.shared.premium_homes import apply, identity_header
     apply('calculator')
     identity = st.session_state.get('_hwarang_calculator_identity') or {}
@@ -42,7 +42,9 @@ def render_sidebar() -> None:
         current = '전체'
     if not st.session_state.get('hwcalc_open'):
         st.markdown('<section class="hp-calculator-intro"><span class="hp-kicker">FINANCIAL TOOLS, CLEAR ANSWERS</span><h1>필요한 계산을, 명확하게.</h1><p>계산기를 찾고 조건을 입력해 상담의 근거를 준비하세요.</p></section>', unsafe_allow_html=True)
-    with st.container(key='hp_calc_navigation', horizontal=True):
+    with st.sidebar:
+        st.markdown('### 🧮 계산기 센터')
+        st.caption('필요한 분류를 선택하세요.')
         st.button('🗂️ 전체 계산기', key='calc_sidebar_home', type='primary' if current=='전체' and not st.session_state.get('hwcalc_open') else 'secondary', on_click=_show_catalog)
         for index, group in enumerate(allowed_groups):
             st.button(category_label(group, GROUP_COUNTS.get(group)), key=f'calc_sidebar_group_{index}', type='primary' if current==group and not st.session_state.get('hwcalc_open') else 'secondary', on_click=_show_catalog, args=(group,))

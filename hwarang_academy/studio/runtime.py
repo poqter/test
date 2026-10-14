@@ -29,8 +29,11 @@ class Runtime:
             if claim['status'] in ('received','completed'):
                 envelope=claim['result']
                 if claim['status']=='received':
-                    self._finalize(request,role,envelope)
+                    self._finalize(request,role,envelope,failed=bool(envelope.get('result',{}).get('_rejected')))
                     self.repo.update(key,'completed',request,envelope)
+                if envelope.get('result',{}).get('_rejected'):
+                    self.repo.save(s,key)
+                    raise ProviderError('사용할 수 없는 응답의 정산을 확인했습니다. 다시 보내 주세요.',uncertain=False)
                 return key,envelope
             if claim['status']=='failed':
                 # No automatic external retry even for safe failures. Advance checkpoint before another attempt.
@@ -66,6 +69,15 @@ class Runtime:
             elif role=='SPEECH':envelope=self.provider.speak(payload['text'],payload['voice'],payload.get('style','calm'))
             else:envelope=self.provider.generate(role,payload)
         except ProviderError as exc:
+            if exc.response is not None:
+                envelope={**exc.response,'credits':0,'purpose':role,'cost_usd':None,'request_id':request}
+                # Preserve provider usage and unknown monetary cost; no usable
+                # training reply means the learner's reserved credits are released.
+                self.repo.update(key,'received',request,envelope)
+                self._finalize(request,role,envelope,failed=True)
+                self.repo.update(key,'completed',request,envelope)
+                self.repo.save(s,key)
+                raise
             if exc.uncertain:
                 self.repo.update(key,'uncertain',request)
             else:

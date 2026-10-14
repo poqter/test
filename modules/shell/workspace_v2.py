@@ -175,7 +175,7 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
                         "🛡️ 보장 분석 시작", key="hw_sidebar_analyzer", use_container_width=True,
                         on_click=_navigate_once, args=(navigate, "analyzer", None),
                     )
-            query = "" if st.session_state.get("active_app") == "home" else st.text_input("기능 빠른 검색", placeholder="상령일, 문자, 실손…", key="sig_nav_search").strip().lower()
+            query = st.text_input("기능 빠른 검색", placeholder="상령일, 문자, 실손…", key="sig_nav_search").strip().lower()
         matched_ids = {app.id for app, _mode in _matches(query, allowed)} if query else allowed
         any_match = False
         for topic in _HOME_TOPICS:
@@ -260,6 +260,10 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
     profile = st.session_state.get('login_profile') or {}
     identity_header('WORKSPACE', profile)
     name = html.escape(str(profile.get('display_name') or profile.get('login_id') or '사용자'))
+    if 'insurer_portal' in allowed:
+        with st.container(key='hp_top_portal'):
+            st.markdown('**📂 원수사 포털 빠른 검색**')
+            render_home_quick_search()
     st.markdown(f'<section class="hp-welcome"><span class="hp-kicker">YOUR WORK, SIMPLIFIED</span><h1>{name}님, 오늘도 좋은 상담 되세요.</h1><p>필요한 도구를 찾고, 준비된 상담을 시작하세요.</p></section>', unsafe_allow_html=True)
     if 'analyzer' in allowed:
         with st.container(key='hp_workspace_hero'):
@@ -268,10 +272,8 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
                 st.markdown('<div class="hp-hero-copy"><span class="hp-kicker">CONSULTATION DESK</span><h2>고객의 보장을 읽고,<br>상담의 방향을 찾다.</h2><p>가입한 보장과 보험료를 정리하고<br>고객에게 필요한 질문을 준비하세요.</p></div>', unsafe_allow_html=True)
                 _launch_widget(APP_BY_ID['analyzer'], '보장분석 시작 ↗', key='hw_feature_launch', primary=True, navigate=navigate)
             art.markdown('<div class="hp-art" aria-hidden="true"><div class="hp-paper"><strong>🔎 보장분석 노트</strong><span>가입 현황<i></i></span><span>보장 구성<i></i></span><span>보험료 확인<i></i></span><small>HWARANG CONSULTATION</small></div></div>', unsafe_allow_html=True)
-    title, search = st.columns([1, 1.4], vertical_alignment='center')
-    title.subheader('업무 도구')
-    with search, st.container(key='hp_workspace_search'):
-        query = st.text_input('업무 도구 검색', key='v2_global_search', placeholder='보장, 실손, 자료, 실적…', label_visibility='collapsed').strip().lower()
+    st.subheader('업무 도구')
+    query = ''
     labels = ['전체'] + [t[0] for t in _HOME_TOPICS if any(i in allowed for i in t[4])]
     if st.session_state.get('hw_home_topic') not in labels:
         st.session_state['hw_home_topic'] = '전체'
@@ -301,7 +303,4 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
             render_home_summary(navigate)
         except Exception:
             _launch_widget(APP_BY_ID['briefing'], '브리핑 센터 열기 →', key='hp_briefing_fallback', navigate=navigate)
-    if 'insurer_portal' in allowed:
-        with st.expander('📂 원수사 포털 빠른 검색'):
-            render_home_quick_search()
     footer('WORKSPACE')

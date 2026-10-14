@@ -82,7 +82,7 @@ def test_timeout():
 def test_incomplete():
  http=Mock();http.post.return_value.status_code=200;http.post.return_value.json.return_value={'status':'incomplete'}
  with pytest.raises(ProviderError) as e:OpenAIProvider(Config(api_key='x'),http).generate('CUSTOMER',{})
- assert e.value.uncertain
+ assert not e.value.uncertain and e.value.response['result']['_rejected']
 def test_wav():
  f=io.BytesIO()
  with wave.open(f,'wb') as w:w.setnchannels(1);w.setsampwidth(2);w.setframerate(8000);w.writeframes(b'\0'*16000)
@@ -147,3 +147,20 @@ def test_formal_retraining_is_new_private_session():
  d.end_session(s,'user');out=d.practice_from(s,2)
  assert out['mode']=='PRACTICE' and out['id']!=s['id'] and out['case']==s['case'] and s['ended']
  assert out['baseline_turns']==1 and out['usage']==[]
+
+
+def test_terminal_rejection_releases_credit_without_recording_turn(runtime):
+ rt,calls=runtime;s=session()
+ envelope={'result':{'_rejected':True,'reason':'incomplete'},'usage':{'output_tokens':120},'provider_id':'resp_known','model':'test','status':'incomplete'}
+ rt.provider.generate.side_effect=ProviderError('unusable',uncertain=False,response=envelope)
+ with pytest.raises(ProviderError):rt.send(s,'보험료가 얼마인가요?')
+ op=next(iter(rt.repo.ops.values()))
+ assert op['status']=='completed' and op['result']['credits']==0
+ assert op['result']['usage']['output_tokens']==120 and op['result']['cost_usd'] is None
+ assert calls[-1]['result_status']=='failed' and calls[-1]['actual_credits']==0
+ saved=rt.repo.saved[-1];assert saved['turns']==s['turns'] and saved['version']==s['version']+1
+ with pytest.raises(ProviderError):rt.send(s,'보험료가 얼마인가요?')
+ assert rt.provider.generate.call_count==1
+ rt.provider.generate.side_effect=None
+ out=rt.send(saved,'보험료가 얼마인가요?')
+ assert len(out['turns'])==1 and rt.provider.generate.call_count==2

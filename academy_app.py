@@ -29,7 +29,7 @@ st.set_page_config(
 
 @lru_cache(maxsize=1)
 def component():
-    return components.declare_component("hwarang_academy_v117", path=str(ROOT / "frontend"))
+    return components.declare_component("hwarang_academy_v118", path=str(ROOT / "frontend"))
 
 
 @lru_cache(maxsize=1)
@@ -279,7 +279,7 @@ def main() -> None:
 
     if "academy.simulator" in feature_permissions:
         if app.independent:render_training_credit_strip(credit_status)
-        if app.session and app.session.ended:
+        if payload.get('phase') == 'result' and app.session and app.session.ended:
             export_payload = present(AppState(session=app.session, independent=True))
             st.download_button('복기 HTML 저장 ↓', review_html(export_payload).encode('utf-8'),
                                file_name=f'화랑_상담복기_{app.session.scenario_id}.html',
@@ -300,7 +300,7 @@ def main() -> None:
     if payload.get('phase') == 'home':
         payload['portal_surface'] = st.session_state.get('_academy_surface', 'academy')
 
-    event = component()(model=payload, key="academy_engine_component_v117", default=None)
+    event = component()(model=payload, key="academy_engine_component_v118", default=None)
     if isinstance(event, dict) and event.get("event_id") != app.ack:
         try:
             if event.get("kind") != "academy_home" and "academy.simulator" not in feature_permissions:
