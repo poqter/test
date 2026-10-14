@@ -1,3 +1,9 @@
+# 1.15.0 추가 검증
+
+`python -m pytest -q`: 전체 325개.
+`python tests/studio_ui/check.py`: API/DB를 테스트 대역으로 바꾼 UI 흐름 검증.
+실제 공급자 응답 품질이나 운영 DB 권한 검증으로 해석하지 않습니다.
+
 # 로컬 검증
 
 - Python: `python -m pytest -q`

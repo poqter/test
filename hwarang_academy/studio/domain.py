@@ -2,6 +2,8 @@
 from copy import deepcopy
 from uuid import uuid4
 import random
+import re
+from . import immersion
 from ..pre_api.case_engine import create_case
 
 STAGES = {'TA': '전화로 약속 잡기', 'FIRST': '첫 상담', 'COVERAGE': '보장분석 설명',
@@ -22,13 +24,22 @@ CRITERIA = {'discovery': '요구 파악', 'listening': '경청·반응', 'clarit
 PRIORITIES = {'TA': ['listening', 'clarity', 'agreement'], 'FIRST': ['discovery', 'listening', 'agreement'],
               'COVERAGE': ['clarity', 'discovery', 'listening'],
               'PROPOSAL': ['discovery', 'clarity', 'agreement'], 'OBJECTION': ['listening', 'objection', 'agreement']}
-END_LABELS = {'goal': '목표 달성', 'customer_exit': '고객 종료', 'offtrack': '진행 불가 종료 · 재응시 필요',
+END_LABELS = {'goal': '상담 장면 완료', 'customer_exit': '고객 종료', 'offtrack': '진행 불가 종료 · 재응시 필요',
               'limit': '대화 한도 도달', 'user': '사용자 종료', 'technical': '기술적 중단'}
 OPENINGS = {'TA': '네, 소개받았다고 들었어요. 어떤 일로 전화하셨나요?',
             'FIRST': '보험을 한번 점검하고 싶긴 한데, 어디부터 이야기하면 될까요?',
             'COVERAGE': '보장내역을 드렸는데, 지금 제 보험이 어떤 상태인가요?',
             'PROPOSAL': '제 상황에서 어떤 선택이 괜찮을지 설명해 주세요.',
             'OBJECTION': '또 보험료만 늘어나는 건 아닐까요? 당장 바꾸기는 망설여져요.'}
+
+
+COMPLETION_RULES = {
+    'TA': '날짜+시간 또는 시간대와 만남/통화 방법의 합의. 교육 질문을 모두 수행할 필요는 없다.',
+    'FIRST': '후속 보장분석/상담의 날짜+시간 또는 시간대에 서로 합의하면 종료. 요구·가족·예산 질문 누락은 복기에 남긴다.',
+    'COVERAGE': '설명한 핵심 보장과 공백을 고객이 이해하고 다음 행동에 동의하면 종료.',
+    'PROPOSAL': '제안에 대해 고객이 선택 또는 보류/거절 의사를 정하고 설계사가 다음 행동을 확인하면 종료. 가입 강요 금지.',
+    'OBJECTION': '실제 우려에 답하고 고객의 수락/보류/거절 결정을 존중하며 다음 행동을 정하면 종료.',
+}
 
 
 def new_session(owner, *, stage='TA', mode='PRACTICE', difficulty='standard', journey=False,
@@ -43,23 +54,30 @@ def new_session(owner, *, stage='TA', mode='PRACTICE', difficulty='standard', jo
                        forced_archetype=archetype).to_dict()
     rng = random.Random(seed)
     tone = rng.choice(list(PERSONALITIES)[1:]) if personality=='random' else personality
-    return {'schema': 2, 'id': str(uuid4()), 'owner': owner, 'version': 0, 'mode': mode,
+    session = {'schema': 2, 'id': str(uuid4()), 'owner': owner, 'version': 0, 'mode': mode,
             'difficulty': difficulty, 'journey': bool(journey), 'stage': stage, 'initial_stage': stage,
             'personality': tone, 'case': case, 'messages': [{'role':'customer','text':OPENINGS[stage], 'stage':stage}],
             'turns': [], 'branch': 0, 'attempts': [], 'hints': [], 'hint_cache': {},
             'customer_state': {'trust': {'easy':65,'standard':45,'hard':25}[difficulty],
                                'concern':'', 'disclosed':[]},
             'offtrack_count':0, 'warning':False, 'ended':False, 'end_reason':None,
-            'stage_complete':False, 'completed_stages':[], 'report':None,
+            'stage_complete':False, 'appointment':None, 'documents_shared':False, 'completed_stages':[], 'report':None,
             'review_requested':False, 'usage':[], 'pending':None, 'technical_notice':''}
+    session['immersion']=immersion.initial(session)
+    if stage in ('COVERAGE','PROPOSAL'):session['messages'][0]['attachment']='insurance'
+    return session
 
 
-def prompt_context(s):
+def prompt_context(s, text=""):
     # This is sent only to the provider, never to the presentation transport.
-    return {'stage':s['stage'], 'goal':GOALS[s['stage']], 'difficulty':s['difficulty'],
-            'personality':s['personality'], 'immutable_case':{k:s['case'][k] for k in ('customer_state','insurance_state')},
-            'customer_state':s['customer_state'], 'disclosure_catalog':disclosure_catalog(s), 'conversation':s['messages'],
-            'offtrack_streak':s['offtrack_count'], 'warning_given':s['warning']}
+    insurance_visible=s['stage'] in ('COVERAGE','PROPOSAL') or s.get('documents_shared',False)
+    case={'customer_state':s['case']['customer_state']}
+    if insurance_visible:case['insurance_state']=s['case']['insurance_state']
+    else:case['insurance_note']='증권 미확인. customer_beliefs에 기억하는 금액/개수가 없으면 정확한 숫자를 답하지 말 것.'
+    return {'stage':s['stage'], 'goal':GOALS[s['stage']], 'completion_rule':COMPLETION_RULES[s['stage']], 'difficulty':s['difficulty'],
+            'personality':s['personality'], 'immutable_case':case, 'documents_shared':insurance_visible,
+            'customer_identity':s['case']['public_state'], 'customer_state':s['customer_state'], 'disclosure_catalog':disclosure_catalog(s), 'conversation':s['messages'],
+            'interaction_context':immersion.context(s,text), 'offtrack_streak':s['offtrack_count'], 'warning_given':s['warning']}
 
 
 def current_turns(s):
@@ -67,8 +85,8 @@ def current_turns(s):
 
 
 def snapshot(s):
-    keys = ('messages','turns','customer_state','offtrack_count','warning','stage_complete','completed_stages','stage')
-    return {k:deepcopy(s[k]) for k in keys}
+    keys = ('messages','turns','customer_state','offtrack_count','warning','stage_complete','completed_stages','stage','appointment','documents_shared','immersion')
+    return {k:deepcopy(s.get(k)) for k in keys}
 
 
 def apply_turn(s, text, result):
@@ -78,6 +96,7 @@ def apply_turn(s, text, result):
     if not text or len(text)>2400:
         raise ValueError('답변은 1~2,400자로 입력해 주세요.')
     before = snapshot(s)
+    if result.get('_schedule'):s['appointment']=deepcopy(result['_schedule'])
     # Only a high-confidence, contextual finding counts; poor skills are never strikes.
     offtrack = result['relevance']=='offtrack' and result['confidence']>=0.9 and bool(result['reason'].strip())
     s['offtrack_count'] = s['offtrack_count']+1 if offtrack else 0
@@ -90,20 +109,25 @@ def apply_turn(s, text, result):
                       {'role':'customer','text':reply,'turn':n,'stage':s['stage']}]
     s['turns'].append({'number':n,'text':text,'reply':reply,'stage':s['stage'], 'before':before,
                        'relevance':result['relevance'], 'reason':result['reason'], 'confidence':result['confidence'],
-                       'assisted':any(h['turn']==n for h in s['hints'])})
+                       'customer_guarded':bool(result.get('_guarded')), 'assisted':any(h['turn']==n for h in s['hints'])})
+    if re.search(r'(증권|보험\s*내역|보장\s*내역).*(보여|보내|공유|같이\s*확인|함께\s*확인)',text) and re.match(r'^(네|예|좋아요|알겠습니다)',reply) and not re.search(r'없|못|어렵|나중',reply):
+        s['documents_shared']=True
     # Case facts are immutable. The model may update only bounded affect and explicitly disclosed facts.
     s['customer_state']['trust'] = max(0,min(100,s['customer_state']['trust']+max(-10,min(10,result['trust_delta']))))
     s['customer_state']['concern'] = result['concern'][:500]
     allowed = disclosure_catalog(s)
     s['customer_state']['disclosed'] = list(dict.fromkeys(s['customer_state']['disclosed'] +
                                         [x for x in result['disclosed_keys'] if x in allowed]))
+    immersion.record(s,text,result,docs_before=bool(before.get('documents_shared')))
     if offtrack and s['offtrack_count']>=3 and s['warning'] and result['confirm_streak']:
         end_session(s,'offtrack')
     elif offtrack and s['offtrack_count']>=2:
         s['warning']=True
+    elif not offtrack and result['outcome']=='advisor_exit':
+        end_session(s,'user')
     elif not offtrack and result['outcome']=='customer_exit':
         end_session(s,'customer_exit')
-    elif not offtrack and result['outcome']=='goal' and len(current_turns(s))>=2:
+    elif not offtrack and result['outcome']=='goal' and (len(current_turns(s))>=2 or result.get('_schedule')):
         if s['stage'] not in s['completed_stages']:s['completed_stages'].append(s['stage'])
         later=list(STAGES).index(s['stage'])<len(STAGES)-1
         if s['journey'] and later:s['stage_complete']=True
@@ -133,8 +157,10 @@ def end_session(s, reason):
 def next_stage(s):
     if not s['stage_complete'] or s['ended']:raise ValueError('현재 상담 단계를 먼저 마쳐 주세요.')
     s['stage']=list(STAGES)[list(STAGES).index(s['stage'])+1]
-    s['stage_complete']=False;s['offtrack_count']=0;s['warning']=False
-    s['messages'].append({'role':'customer','text':OPENINGS[s['stage']], 'stage':s['stage']})
+    s['stage_complete']=False;s['offtrack_count']=0;s['warning']=False;s['appointment']=None
+    opening={'role':'customer','text':OPENINGS[s['stage']], 'stage':s['stage']}
+    if s['stage'] in ('COVERAGE','PROPOSAL'):opening['attachment']='insurance'
+    s['messages'].append(opening)
 
 
 def rewind(s, number):
@@ -196,4 +222,5 @@ def practice_from(s, number):
     for k,v in targets[0]['before'].items():out[k]=deepcopy(v)
     out['baseline_turns']=number-1
     out['retraining_source']=s['id']
+    out['retry_reference']={'turn':number,'advisor':targets[0]['text'],'customer':targets[0]['reply']}
     return out

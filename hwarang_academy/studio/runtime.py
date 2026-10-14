@@ -3,6 +3,7 @@ from copy import deepcopy
 from hashlib import sha256
 import json
 from . import domain as d
+from .conversation import explicit_close, closing_result, guard_response
 from .provider import ProviderError, wav_seconds
 from modules.shared.ai_guardrails import (reserve_ai_request, start_ai_request, finalize_ai_request,
     reserve_voice_request, finalize_voice_request, release_ai_session)
@@ -90,9 +91,14 @@ class Runtime:
         if s['ended'] or s['stage_complete']:raise ValueError('현재 상담 단계에서 입력할 수 없습니다.')
         text=str(text).strip()
         if not text or len(text)>2400:raise ValueError('답변은 1~2,400자로 입력해 주세요.')
-        ctx=d.prompt_context(s);ctx['conversation']=ctx['conversation']+[{'role':'advisor','text':text,'turn':len(s['turns'])+1,'stage':s['stage']}]
+        if explicit_close(text):
+            out=deepcopy(s);d.apply_turn(out,text,closing_result())
+            saved=self.repo.save(out)
+            release_ai_session(self.auth,user_id=saved['owner'],academy_session_id=saved['id'])
+            return saved
+        ctx=d.prompt_context(s,text);ctx['conversation']=ctx['conversation']+[{'role':'advisor','text':text,'turn':len(s['turns'])+1,'stage':s['stage']}]
         key,env=self.invoke(s,'CUSTOMER',ctx)
-        out=deepcopy(s);d.apply_turn(out,text,env['result'])
+        out=deepcopy(s);d.apply_turn(out,text,guard_response(s,text,env['result']))
         return self._save(out,key,env)
     def hint(self,s):
         if s['mode']!='PRACTICE' or s['ended']:raise ValueError('자유 연습에서만 힌트를 사용할 수 있습니다.')

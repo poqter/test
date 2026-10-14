@@ -8,7 +8,7 @@ from hwarang_academy.studio.runtime import Runtime,PendingRequest
 from hwarang_academy.studio.contracts import EVALUATOR
 OWNER='00000000-0000-0000-0000-000000000001'
 def response(**kw):
- r=dict(reply='조금 더 설명해 주실래요?',relevance='ontrack',confidence=.95,reason='상담 관련',confirm_streak=False,trust_delta=2,concern='보험료',disclosed_keys=[],outcome='continue');r.update(kw);return r
+ r=dict(reply='조금 더 설명해 주실래요?',relevance='ontrack',confidence=.95,reason='상담 관련',confirm_streak=False,trust_delta=2,concern='보험료',disclosed_keys=[],outcome='continue',reaction={'kind':'none','openness':'neutral','pressure':'none','advisor_quote':'','customer_quote':''});r.update(kw);return r
 def session(**kw):return d.new_session(OWNER,seed=12,**kw)
 @pytest.mark.parametrize('stage',d.STAGES)
 @pytest.mark.parametrize('mode',['PRACTICE','ASSESSMENT'])

@@ -29,7 +29,7 @@ st.set_page_config(
 
 @lru_cache(maxsize=1)
 def component():
-    return components.declare_component("hwarang_academy_v61", path=str(ROOT / "frontend"))
+    return components.declare_component("hwarang_academy_v115", path=str(ROOT / "frontend"))
 
 
 @lru_cache(maxsize=1)
@@ -192,14 +192,8 @@ def main() -> None:
             st.session_state['_studio_open'] = bool(independent)
         if st.session_state.get('_studio_open'):
             from hwarang_academy.studio.ui import render as render_ai_studio
-            render_training_credit_strip(credit_status)
-            render_ai_studio(auth, viewer_user_id, feature_permissions)
+            render_ai_studio(auth, viewer_user_id, feature_permissions, credit_status)
             return
-        if st.button('AI 상담 Studio 시작', type='primary', key='open_ai_studio'):
-            st.session_state['_studio_open'] = True
-            st.rerun()
-        st.caption('아래 기존 규칙 기반 훈련과 이전 학습 기록은 그대로 이용할 수 있습니다.')
-
     prior_history = st.session_state.get('_academy_history_state') or {}
     prior_model = st.session_state.get('_academy_model')
     prior_owner = (st.session_state.get('_academy_model_owner')
@@ -275,7 +269,7 @@ def main() -> None:
         }
 
     if "academy.simulator" in feature_permissions:
-        render_training_credit_strip(credit_status)
+        if app.independent:render_training_credit_strip(credit_status)
         if app.session and app.session.ended:
             export_payload = present(AppState(session=app.session, independent=True))
             st.download_button('복기 HTML 저장 ↓', review_html(export_payload).encode('utf-8'),
@@ -283,12 +277,35 @@ def main() -> None:
                                mime='text/html; charset=utf-8', on_click='ignore', key='academy_review_download')
             st.caption('대화·평가 근거·미션 결과를 저장합니다. 파일을 열어 인쇄할 수도 있습니다.')
 
-    event = component()(model=payload, key="academy_engine_component_v61", default=None)
+    if payload.get('phase')=='home' and 'academy.simulator' in feature_permissions:
+        from hwarang_academy.studio.repository import Repository
+        try:
+            studio_rows=Repository(auth,viewer_user_id).rows() or []
+            active=next((r for r in studio_rows if str(r.get('ended')).lower() not in ('true','1')),None)
+            payload['studio_summary']={'total':len(studio_rows),'finished':sum(str(r.get('ended')).lower() in ('true','1') for r in studio_rows),'active':bool(active)}
+            st.session_state['_studio_resume_id']=active['id'] if active else None
+        except Exception:payload['studio_summary']={}
+
+    event = component()(model=payload, key="academy_engine_component_v115", default=None)
     if isinstance(event, dict) and event.get("event_id") != app.ack:
         try:
             if event.get("kind") != "academy_home" and "academy.simulator" not in feature_permissions:
                 raise ValueError("AI 상담 시뮬레이터 이용 권한이 없습니다.")
-            if event.get('kind') == 'history_open':
+            if event.get('kind') in ('open_studio','resume_studio','studio_history'):
+                from hwarang_academy.studio.repository import Repository
+                if event['kind']=='resume_studio' and st.session_state.get('_studio_resume_id'):
+                    st.session_state['_studio_state']=Repository(auth,viewer_user_id).load(st.session_state['_studio_resume_id'])
+                elif event['kind']=='open_studio':
+                    st.session_state.pop('_studio_preview',None)
+                    st.session_state.pop('_studio_state',None)
+                    st.session_state['studio_stage_pick']=event.get('stage') if event.get('stage') in ('TA','FIRST','COVERAGE','PROPOSAL','OBJECTION') else 'FIRST'
+                else:
+                    st.session_state.pop('_studio_state',None);st.session_state.pop('_studio_preview',None)
+                st.session_state['_studio_history_open']=event['kind']=='studio_history'
+                st.session_state['_studio_owner']=viewer_user_id
+                st.session_state['_studio_open']=True
+                app.ack=event.get('event_id')
+            elif event.get('kind') == 'history_open':
                 session, version = history_client.load(str(event.get('session_id') or ''))
                 app.session, app.independent = session, True
                 app.selection, app.mode, app.session_length = session.scenario_id, session.mode, session.session_length

@@ -61,8 +61,14 @@ class OpenAIProvider:
     def generate(self,role,context):
         schema_role='EVALUATOR' if role=='COACH' and context.get('_practice_report') else role
         schema={'CUSTOMER':CUSTOMER,'COACH':COACH,'EVALUATOR':EVALUATOR}[schema_role]
+        provider_input=json.dumps(context,ensure_ascii=False)
+        if schema_role=='CUSTOMER':
+            # Provider role separation makes the customer perspective explicit on every turn.
+            metadata={k:v for k,v in context.items() if k!='conversation'}
+            provider_input=[{'role':'developer','content':json.dumps(metadata,ensure_ascii=False)}]
+            provider_input += [{'role':'assistant' if m['role']=='customer' else 'user','content':m['text']} for m in context.get('conversation',[])]
         response=self._post('responses',json={'model':self.config.model(role),'store':False,
-            'instructions':INSTRUCTIONS[schema_role], 'input':json.dumps(context,ensure_ascii=False),
+            'instructions':INSTRUCTIONS[schema_role], 'input':provider_input,
             'max_output_tokens':{'CUSTOMER':1200,'COACH':1200,'EVALUATOR':5000}[schema_role],
             'text':{'format':{'type':'json_schema','name':'hwarang_'+role.lower(),'strict':True,'schema':schema}}})
         try:

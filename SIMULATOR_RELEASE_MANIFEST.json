@@ -1,102 +1,113 @@
 {
-  "version": "1.13.0",
-  "baseline": "10-HWARANG_SERVER_FULL_20261014_1.12.7_CATCHUP.zip",
-  "baseline_sha256": "ade138c1504888500a4556f07708ee9707b6d4e435bd501c3d07433b3e361d11",
+  "version": "1.15.0",
+  "compatible_bases": [
+    "1.13.0",
+    "1.14.0"
+  ],
+  "baseline": "HWARANG_SERVER_FULL_20261014_1.13.0_SIMULATOR.zip",
+  "baseline_sha256": "a4f47036a4623dee28bb5ccc88beae4ef0bff61ee436d273b25b6467492b184e",
   "changed_files": [
     {
       "path": "academy_app.py",
-      "sha256": "898278780b22ae26aeb664dab1897451157cf0cc057840bfbd99ae2119cf3b66"
+      "sha256": "2fefe283027e32f51e21ed96c62e4fca13fee4c790a9e3cd450cf8f351c772a7"
     },
     {
       "path": "docs/AI_SIMULATOR_APPLY_GUIDE.md",
-      "sha256": "078a466647524e8ab36fd89aafbc8c33b91533d6dc08908d4ff2962c94d9a327"
+      "sha256": "c06d87a7a8912f6c56290be0f4a98494758710fed516f3b393e9eb49e5d1ac49"
     },
     {
       "path": "docs/AI_SIMULATOR_SPEC.md",
-      "sha256": "a88fb9c005fa5d7631ef5581134a4771a0a7d2be0b20671036b6dfa5beb7dbed"
+      "sha256": "d5756fc571df3457212a8a54309da3325b7d14fffe78c1e2f9c6ef39992040dd"
     },
     {
       "path": "docs/HWARANG_MASTER_ROADMAP.md",
-      "sha256": "a180e7237196616c29cbfd9d445f9d04b7a701825ad72eadbd05c82b22fb7d8d"
+      "sha256": "ce2c0896ea51c8ce9cc3d5493e41eb0ad22fef795e13ecea9f971a43eba06dda"
     },
     {
       "path": "docs/HWARANG_PROJECT_CHECKPOINT.md",
-      "sha256": "98c9ab8c1ee0faa0613b233c78e659f932ec29906bba2522f7d54d682c29f5f9"
+      "sha256": "e8e89d0bb9ff1fbe4c06af3362e578320e822325a339e054292aebb9bdb4807d"
+    },
+    {
+      "path": "hwarang_academy/frontend/app.js",
+      "sha256": "a96e9f89ae6702a1c1ecf2f74c027424be7f50c55d195d2b039c9bb2ec6636e7"
+    },
+    {
+      "path": "hwarang_academy/frontend/index.html",
+      "sha256": "9566f1635df492842e84935a123744415e9c40bc245b1d834d4f2e6d7277efc9"
+    },
+    {
+      "path": "hwarang_academy/frontend/styles.css",
+      "sha256": "55e98e942066bd798b8dea819ba54be6a9dfbd63afb4029b77c14e6afc8691e0"
     },
     {
       "path": "hwarang_academy/studio/__init__.py",
-      "sha256": "2fc79c0e10675bd7dd734a400607d15c07d194d4d5877f81399cb2b79719fae7"
+      "sha256": "610e04f7bfd5ec33975241af8d8bde9b8fe12094257127d2e25fabac50ea6baa"
     },
     {
       "path": "hwarang_academy/studio/contracts.py",
-      "sha256": "36c75dddd943bdb868f585619bd4c62401e0859c4b54d16f039f7a210c1d58bb"
+      "sha256": "b1ced0cfa5ea6db7bf5a7753bc971fdb91ce0a4f44821ae2ece219e305ad4238"
+    },
+    {
+      "path": "hwarang_academy/studio/conversation.py",
+      "sha256": "2227e5b9ba0416ba18df4aed9a36bb8e62cd513ba13eaafa1e7149f9e1d6f373"
     },
     {
       "path": "hwarang_academy/studio/domain.py",
-      "sha256": "16f823717d98e3b906f94084f44aa0ea009ff426136b53d35096e30214a10b49"
+      "sha256": "cec2a4ba56b9fcb41de4f6dec56f8256ec32e23f2ef08f31f148319454700419"
+    },
+    {
+      "path": "hwarang_academy/studio/immersion.py",
+      "sha256": "f2dca47e903be0cceb0151cd237bf9982e833081d1641b0b2cbc6d90b25fc574"
     },
     {
       "path": "hwarang_academy/studio/provider.py",
-      "sha256": "5575701520a02bbdeebef17be7527b9ecbeb0e382c9f113fa1f1a4980d858999"
-    },
-    {
-      "path": "hwarang_academy/studio/repository.py",
-      "sha256": "dcdbd775dffd2e6a1b3d8c53ffa596cebc25596705ed04498dcecd3210b1e48d"
+      "sha256": "a64bb54b15b01716f616959c941cb164d1e2b0d481e8d3dd5014d27151408e6d"
     },
     {
       "path": "hwarang_academy/studio/runtime.py",
-      "sha256": "228f33c6ab3b2bb560f4e237b0a5e6f70b46f76a9160398ff80300ffde39bc97"
+      "sha256": "32ff503025a64576617ccd4466619aca60009bdc0a2e8ab337e949b700d06267"
     },
     {
       "path": "hwarang_academy/studio/ui.py",
-      "sha256": "bf11cec393daaea23f2746137a982295d7b70116d89cdf90b81c08fb0e5b6230"
-    },
-    {
-      "path": "modules/shared/admin_center_ui.py",
-      "sha256": "bb3a232392db9770265dc6bf24d6150b1346b5eba7a3442831f3afdedd462239"
+      "sha256": "1135ae16a25219d09d223bbf978ce26e93463f449dd987b27b425468ebb5363f"
     },
     {
       "path": "modules/shared/build_info.py",
-      "sha256": "95d085fb4f10d24b6fe01b4b0ca6f78f12f01a3d885fa009a2c8740142a9d9d4"
-    },
-    {
-      "path": "supabase/migrations/23_AI_Simulator_Studio.sql",
-      "sha256": "17d232e10fa4860f23599f84aa99698eb19ca641d40181094d5245b9ed0761c3"
-    },
-    {
-      "path": "supabase/migrations/24_Voice_Request_Settlement_Fix.sql",
-      "sha256": "6cfaa10baea6523ea10eb8e3d0589390dd3e8f6595152d7fa7935d175c39d26d"
+      "sha256": "51e98c0b72ec3762a6be733e21b5f44be3d74f34d2f8d3ee3f8d2d103b630254"
     },
     {
       "path": "tests/STUDIO_VALIDATION.md",
-      "sha256": "1bedbd92fe09e41bcbb8c5459f5f2a7dfd50b7f9a7dff771c4fa5d40b9d307f7"
+      "sha256": "f8234f1496d4d528399df3ff410a08c9940e2cc2f65554b4f0e39ad52ed1f678"
     },
     {
-      "path": "tests/studio_db/check.mjs",
-      "sha256": "80e2e19f2478b2ca20b7f27039cc788daac3e9ed89bc4bad3d51c155218eb003"
+      "path": "tests/studio_ui/check.py",
+      "sha256": "22539d22235d3e516b66dbb1159dedfab5b5481ee060c1ed7b85d1e241037cde"
     },
     {
-      "path": "tests/studio_db/package-lock.json",
-      "sha256": "20decf8c1851855bd9e43db725fac9136b907c90f618e7618479ee77d18c5e6b"
-    },
-    {
-      "path": "tests/studio_db/package.json",
-      "sha256": "564b3d640c6629a6d18258ad450122a26f61fcd9ab053e1230da596725736228"
-    },
-    {
-      "path": "tests/studio_db/session.json",
-      "sha256": "af3b249e7e03cffb271a9efcba78e8e88433a06a53c6eb475b92aa2aa3c454f3"
+      "path": "tests/studio_ui/harness.py",
+      "sha256": "008a053de9ce47ac798109f497fe6110b565b7aeecada7b1c1a40c50a5d00d9f"
     },
     {
       "path": "tests/test_studio.py",
-      "sha256": "8a293a508f0bb4d22786b91e0418ca261a78b0c1b9162ebd675e0ff73eba4d3c"
+      "sha256": "c06a4e0a3d4bef26b5724ee1dbdbbc75cf7eecb7a403384684d6f929146df47e"
+    },
+    {
+      "path": "tests/test_studio_conversation.py",
+      "sha256": "cbbe19770dfe8c2e19d50a749e9125e7009170d66c4a45c0d9e23a70b2a6eda0"
+    },
+    {
+      "path": "tests/test_studio_immersion.py",
+      "sha256": "e3328bc9db2a254d6fe8efb858a2531178d0655839f4fba4d73736a6fcf31a78"
     }
   ],
   "deleted_files": [],
+  "additional_sql": false,
   "validation": {
-    "pytest": 273,
-    "database_checks": 29,
-    "public_reader_tests": 39
+    "pytest": 325,
+    "new_immersion_tests": 21,
+    "ui_flow": "passed with deterministic mock customer and repository",
+    "chromium_desktop_mobile": "passed"
   },
-  "deployment": "Not deployed; no live paid API call performed"
+  "live_api_test": false,
+  "production_deployed": false
 }
