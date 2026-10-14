@@ -159,20 +159,20 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
         with st.container(key="hw_sidebar_header"):
             st.markdown('<div class="sig-brand"><span class="sig-mark">H</span><div><strong>화랑</strong><small>WORKSPACE</small></div></div>', unsafe_allow_html=True)
             st.button(
-                "홈", icon=":material/home:", key="v2_nav_home", use_container_width=True,
+                "🏠 홈", key="v2_nav_home", use_container_width=True,
                 type="primary" if st.session_state.get("active_app") == "home" else "secondary",
                 on_click=_navigate_once, args=(navigate, "home", None),
             )
             if "briefing" in allowed:
                 st.button(
-                    "브리핑 센터", icon=":material/newspaper:", key="hw_sidebar_briefing", use_container_width=True,
+                    "📰 브리핑 센터", key="hw_sidebar_briefing", use_container_width=True,
                     type="primary" if st.session_state.get("active_app") == "briefing" else "secondary",
                     on_click=_navigate_once, args=(navigate, "briefing", None),
                 )
             if "analyzer" in allowed:
                 with st.container(key="hw_sidebar_quick"):
                     st.button(
-                        "보장 분석 시작", icon=":material/shield:", key="hw_sidebar_analyzer", use_container_width=True,
+                        "🛡️ 보장 분석 시작", key="hw_sidebar_analyzer", use_container_width=True,
                         on_click=_navigate_once, args=(navigate, "analyzer", None),
                     )
             query = "" if st.session_state.get("active_app") == "home" else st.text_input("기능 빠른 검색", placeholder="상령일, 문자, 실손…", key="sig_nav_search").strip().lower()
@@ -183,7 +183,7 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
             if not apps:
                 continue
             any_match = True
-            with st.expander(topic[0], expanded=bool(query) or st.session_state.get("active_app") in {app.id for app in apps}):
+            with st.expander({"고객 상담":"💬 고객 상담", "보험 비교 · 계산":"🧮 보험 비교 · 계산", "실적 관리":"📈 실적 관리", "자료 · 교육":"📚 자료 · 교육"}.get(topic[0], topic[0]), expanded=bool(query) or st.session_state.get("active_app") in {app.id for app in apps}):
                 for app in apps:
                     _launch_widget(
                         app, app.label, key="v2_nav_" + app.id,
@@ -244,68 +244,64 @@ _HOME_ICON_STYLES = {
 }
 
 
+_PREMIUM_EMOJI = {
+    "analyzer": "🛡️", "remodeling": "🔄", "consultation_helper": "💬",
+    "comparison_builder": "📊", "insurance_claim_guide": "📋", "silson_generation_comparison": "🔍",
+    "quick_calculators": "🧮", "deposit_vs_shortpay": "🌱", "renewal_vs_nonrenewal": "⚖️",
+    "inheritance_tax": "🏛️", "convention": "🏆", "summer": "☀️", "manager_results": "📈",
+    "commission_calculator": "💼", "insurer_portal": "📂", "academy": "🎓", "briefing": "📰",
+}
+
+
 def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice: dict[str, object]) -> None:
+    from modules.shared.premium_homes import apply, identity_header, footer, emoji_markup
+    apply('workspace')
     allowed = set(allowed_ids)
-    with st.container(key="hw_dashboard"):
-        st.markdown('<div class="hw-dashboard-marker"></div>', unsafe_allow_html=True)
-        with st.container(key="hw_home_welcome"):
-            welcome, portal = st.columns([1.1, 1], gap="large", vertical_alignment="center")
-            with welcome:
-                st.markdown('<div class="hw-welcome-copy"><span>HWARANG WORKSPACE</span><h1>오늘의 업무를 시작해 볼까요?</h1><p>상담부터 관리까지, 필요한 도구를 한곳에서.</p></div>', unsafe_allow_html=True)
-            if "insurer_portal" in allowed:
-                with portal:
-                    st.markdown('<div class="hw-dash-search-label">원수사 포털 검색</div>', unsafe_allow_html=True)
-                    render_home_quick_search()
-        if "briefing" in allowed:
-            try:
-                from modules.briefing.briefing_center import render_home_summary
-                render_home_summary(navigate)
-            except Exception:
-                pass
-        if "analyzer" in allowed:
-            with st.container(key="hw_mobile_quick"):
-                st.button(
-                    "보장 분석 시작", icon=":material/shield:", key="hw_feature_launch", use_container_width=True,
-                    on_click=_navigate_once, args=(navigate, "analyzer", None),
-                )
-        work_title, work_search = st.columns([1, 1.3], gap="large", vertical_alignment="center")
-        with work_title:
-            st.subheader("어떤 도구가 필요하세요?")
-        with work_search:
-            query = st.text_input("기능 찾기", key="v2_global_search", placeholder="보장, 연금, 실적 등 업무 검색", label_visibility="collapsed").strip().lower()
-        labels = [topic[0] for topic in _HOME_TOPICS if any(item in allowed for item in topic[4])]
-        if not labels:
-            st.info("이용할 수 있는 도구가 없습니다.")
-            return
-        if st.session_state.get("hw_home_topic") not in labels:
-            st.session_state["hw_home_topic"] = labels[0]
-        with st.container(key="hw_category_navigation"):
-            for column, label in zip(st.columns(len(labels), gap="small"), labels):
-                with column:
-                    st.button(
-                        label, key="hw_category_" + label,
-                        type="primary" if st.session_state["hw_home_topic"] == label else "secondary",
-                        use_container_width=True, on_click=_set_home_topic, args=(label,),
-                    )
-        choice = st.session_state["hw_home_topic"]
-        selected = next(topic for topic in _HOME_TOPICS if topic[0] == choice)
-        if query:
-            items = _matches(query, allowed)
-            st.caption(f"전체 도구 검색 결과 · {len(items)}개")
-        else:
-            items = [(APP_BY_ID[item], None) for item in selected[4] if item in allowed]
-            st.caption(selected[2])
-        if not items:
-            st.info("검색 결과가 없습니다. 다른 업무명으로 검색해 보세요.")
-        with st.container(key="hw_tool_grid"):
-            for start in range(0, len(items), 3):
-                for column, (app, mode) in zip(st.columns(3, gap="medium"), items[start:start + 3]):
-                    with column, st.container(key=f"hw_dash_tool_{app.id}"):
-                        icon_key, tone = _HOME_ICON_STYLES.get(app.id, (app.icon_key, "blue"))
-                        icon = _ICONS.get(icon_key, _ICONS["materials"])
-                        st.markdown(f'<div class="hw-tool-heading"><span class="hw-tool-symbol hw-icon-{tone}" aria-hidden="true">{icon}</span><h3>{html.escape(app.label)}</h3></div><p class="hw-dash-tool-desc">{html.escape(app.description)}</p>', unsafe_allow_html=True)
-                        _launch_widget(
-                            app, app.label + (" 열기" if app.external_app_key else " 열기 →"), key="hw_home_launch_" + app.id,
-                            help_text=None if app.external_app_key else f"{app.label} 열기", navigate=navigate, mode=mode,
-                        )
-        st.markdown('<div class="hw-dash-footer">Planned &amp; Built by 박병선 팀장 · 보험 업무의 복잡함, 더 간단하게.</div>', unsafe_allow_html=True)
+    profile = st.session_state.get('login_profile') or {}
+    identity_header('WORKSPACE', profile)
+    name = html.escape(str(profile.get('display_name') or profile.get('login_id') or '사용자'))
+    st.markdown(f'<section class="hp-welcome"><span class="hp-kicker">YOUR WORK, SIMPLIFIED</span><h1>{name}님, 오늘도 좋은 상담 되세요.</h1><p>필요한 도구를 찾고, 준비된 상담을 시작하세요.</p></section>', unsafe_allow_html=True)
+    if 'analyzer' in allowed:
+        with st.container(key='hp_workspace_hero'):
+            copy, art = st.columns([1.15, 1], gap='large', vertical_alignment='center')
+            with copy:
+                st.markdown('<div class="hp-hero-copy"><span class="hp-kicker">CONSULTATION DESK</span><h2>고객의 보장을 읽고,<br>상담의 방향을 찾다.</h2><p>가입한 보장과 보험료를 정리하고<br>고객에게 필요한 질문을 준비하세요.</p></div>', unsafe_allow_html=True)
+                _launch_widget(APP_BY_ID['analyzer'], '보장분석 시작 ↗', key='hw_feature_launch', primary=True, navigate=navigate)
+            art.markdown('<div class="hp-art" aria-hidden="true"><div class="hp-paper"><strong>🔎 보장분석 노트</strong><span>가입 현황<i></i></span><span>보장 구성<i></i></span><span>보험료 확인<i></i></span><small>HWARANG CONSULTATION</small></div></div>', unsafe_allow_html=True)
+    title, search = st.columns([1, 1.4], vertical_alignment='center')
+    title.subheader('업무 도구')
+    with search, st.container(key='hp_workspace_search'):
+        query = st.text_input('업무 도구 검색', key='v2_global_search', placeholder='보장, 실손, 자료, 실적…', label_visibility='collapsed').strip().lower()
+    labels = ['전체'] + [t[0] for t in _HOME_TOPICS if any(i in allowed for i in t[4])]
+    if st.session_state.get('hw_home_topic') not in labels:
+        st.session_state['hw_home_topic'] = '전체'
+    with st.container(key='hp_workspace_categories', horizontal=True):
+        for label in labels:
+            st.button(label, key='hw_category_'+label, type='primary' if st.session_state['hw_home_topic']==label else 'secondary', on_click=_set_home_topic, args=(label,))
+    if query:
+        items = _matches(query, allowed)
+        st.caption(f'전체 도구 검색 결과 · {len(items)}개')
+    else:
+        choice = st.session_state['hw_home_topic']
+        selected = next((t[4] for t in _HOME_TOPICS if t[0]==choice), tuple(i for t in _HOME_TOPICS for i in t[4]))
+        items = [(APP_BY_ID[i], None) for i in selected if i in allowed]
+    if not items:
+        st.info('이용 가능한 도구가 없거나 검색 결과가 없습니다.')
+    with st.container(key='hp_workspace_tools'):
+        for start in range(0, len(items), 2):
+            for col, (app, mode) in zip(st.columns(2, gap='large'), items[start:start+2]):
+                with col, st.container(key='hp_tool_'+app.id):
+                    icon = emoji_markup(_PREMIUM_EMOJI.get(app.id, '📁'))
+                    st.markdown(f'<div class="hp-tool-copy"><span class="hp-emoji" aria-hidden="true">{icon}</span><div><h3>{html.escape(app.label)}</h3><p>{html.escape(app.description)}</p></div></div>', unsafe_allow_html=True)
+                    _launch_widget(app, app.label+' 열기 →', key='hw_home_launch_'+app.id, navigate=navigate, mode=mode)
+    if 'briefing' in allowed:
+        st.subheader('📰 브리핑 센터')
+        try:
+            from modules.briefing.briefing_center import render_home_summary
+            render_home_summary(navigate)
+        except Exception:
+            _launch_widget(APP_BY_ID['briefing'], '브리핑 센터 열기 →', key='hp_briefing_fallback', navigate=navigate)
+    if 'insurer_portal' in allowed:
+        with st.expander('📂 원수사 포털 빠른 검색'):
+            render_home_quick_search()
+    footer('WORKSPACE')

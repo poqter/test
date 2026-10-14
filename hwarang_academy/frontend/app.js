@@ -81,11 +81,7 @@
     const c=model.training_credit,v=model.voice_usage;if(!c?.service_enabled)return '<p class="muted">이용량은 서비스 연결 후 표시됩니다.</p>';
     return `<div class="wallet-line"><span>훈련 크레딧</span><strong>${Number(c.available||0).toLocaleString()}<small> 남음</small></strong></div><div class="wallet-meter"><i style="width:${Math.max(0,Math.min(100,Number(c.remaining_percent)||0))}%"></i></div><p class="wallet-detail">이번 달 ${Number(c.monthly_available||0).toLocaleString()} · 구매 ${Number(c.purchased_available||0).toLocaleString()}</p>${v?.voice_enabled?`<div class="wallet-line voice"><span>음성 대화</span><strong>${Math.floor(Number(v.available_seconds||0)/60)}<small>분 ${Number(v.available_seconds||0)%60}초</small></strong></div>`:''}${c.low?'<p class="wallet-low">남은 크레딧을 확인해 주세요.</p>':''}`;
   }
-  function home(){
-    const v=model.viewer||{},canSim=hasPerm('academy.simulator'),ai=model.studio_summary||{};
-    const scenes=[['TA','01','전화로 약속 잡기','첫 통화에서 다음 만남까지'],['FIRST','02','첫 상담','질문하고 듣고, 고객을 이해하기'],['COVERAGE','03','보장분석 설명','복잡한 보장을 쉽게 설명하기'],['PROPOSAL','04','가입 제안','고객에게 맞는 선택을 돕기'],['OBJECTION','05','거절 대응','망설이는 이유를 함께 풀기']];
-    return `${header()}<main class="academy-redesign"><section class="welcome"><span class="eyebrow">YOUR PRACTICE, YOUR GROWTH</span><h1>${esc(v.display_name||v.login_id||'사용자')}님,<br>오늘의 상담을 연습해 볼까요?</h1><p>한 명의 고객, 하나의 대화.<br class="mobile-only"> 실전처럼 만나고, 나만의 속도로 성장하세요.</p></section><div class="home-primary"><section class="practice-hero"><div class="hero-orbit" aria-hidden="true"><span>H</span></div><span class="eyebrow">CONSULTATION STUDIO</span><h2>대화가 쌓이면,<br>상담이 달라집니다.</h2><p>고객의 반응에 귀 기울이고<br>다음 질문을 직접 선택해 보세요.</p>${button('고객 만나러 가기 →','open-studio','action launch',canSim?'':'disabled')}<small>자유 연습 · 공식 평가 / 텍스트 · 음성</small></section><aside class="home-aside"><section class="home-wallet"><div class="section-head"><h3>내 이용량</h3><span class="muted">남은 이용량</span></div>${allowance()}</section><section class="home-resume"><span class="eyebrow">MY PRACTICE</span><h3>${ai.active?'이어갈 상담이 있어요':'작은 연습부터 시작하세요'}</h3><p>${ai.active?'진행 중인 고객과의 대화를 이어갈 수 있습니다.':'오늘은 한 장면만 연습해도 좋습니다.'}</p>${canSim?button(ai.active?'상담 이어하기 →':'내 상담 기록 →',ai.active?'resume-studio':'studio-history','text-link-button'):''}<small>${ai.total!=null?`최근 상담 ${Number(ai.total)}회 · 종료 ${Number(ai.finished||0)}회`:''}</small></section></aside></div><div class="section-head scene-heading"><h2>장면별로 연습하기</h2><span class="muted">순서에 관계없이 선택하세요</span></div><section class="studio-scenes">${scenes.map(([id,n,title,copy])=>`<button class="scene-tile" data-action="open-studio" data-stage="${id}" ${canSim?'':'disabled'}><span>${n}</span><h3>${title}</h3><p>${copy}</p><b>시작하기 ↗</b></button>`).join('')}</section><details class="other-learning"><summary>다른 교육과 이전 학습 기록</summary><div class="other-grid"><div><h3>기존 상담 훈련</h3><p>이전 규칙 기반 훈련과 저장한 기록을 확인합니다.</p>${canSim?button('이전 훈련 열기','open-simulator','action secondary'):'이용 권한 없음'}</div><div><h3>교육 프로그램</h3><p>신입교육 · 상담교육 · 보험실무 · 시험 · 교육자료실</p><small>준비 중</small></div></div>${canSim?learningHistory():''}</details><footer class="academy-signature">Planned &amp; Built by 박병선 팀장</footer></main>`;
-  }
+  function home(){return window.HwarangPortal.render(model,{esc,button,viewerBlock,allowance,learningHistory,hasPerm})}
   function simHeader(){return `<div class="sim-top"><div class="sim-brand-group">${button('← ACADEMY 홈','academy-home','sim-home-button')}${brand('ACADEMY / AI 상담 시뮬레이터')}</div><span class="tagline">연습이, 실력을 만듭니다.</span>${viewerBlock(true)}</div>`}
   function selectedScenario(){return model.scenarios.find(s=>s.id===selected)||model.scenarios[0]}
   function missionModal(sc,brief){
@@ -144,7 +140,9 @@
   function bind(){
     root.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',()=>{
       const k=b.dataset.action;
-      if(k==='open-studio')action('open_studio',{stage:b.dataset.stage||'FIRST'})
+      if(k==='studio-home')action('studio_home')
+      else if(k==='portal-scroll')document.getElementById(b.dataset.target)?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'})
+      else if(k==='open-studio')action('open_studio',{stage:b.dataset.stage||'FIRST'})
       else if(k==='resume-studio')action('resume_studio')
       else if(k==='studio-history')action('studio_history')
       else if(k==='open-simulator')action('open_simulator',{scenario_id:b.dataset.id||selected})

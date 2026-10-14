@@ -24,43 +24,25 @@ def _show_catalog(group: str = "전체") -> None:
 
 
 def render_sidebar() -> None:
-    with st.sidebar:
-        st.markdown(
-            '<div class="sig-brand"><span class="sig-mark">H</span><div><strong>화랑</strong><small>CALCULATOR</small></div></div>',
-            unsafe_allow_html=True,
-        )
-        current = st.session_state.get("hwcalc_catalog_group", "전체")
-        permissions = set(st.session_state.get("hw_feature_permissions") or ())
-        allowed_groups = [group for group in GROUPS if CALCULATOR_GROUP_PERMISSION.get(group) in permissions]
-        accessible_count = sum(GROUP_COUNTS.get(group, 0) for group in allowed_groups)
-        if st.button(
-            f"종합 계산기 센터 ({accessible_count}개)",
-            icon=":material/calculate:",
-            key="calc_sidebar_home",
-            type="primary" if not st.session_state.get("hwcalc_open") and current == "전체" else "secondary",
-            use_container_width=True,
-        ):
-            _show_catalog()
-            st.rerun()
-        st.caption("🗂️ 업무 분류")
-        if current not in {"전체", *allowed_groups}:
-            _show_catalog()
-            current = "전체"
+    """Compatibility name; independent calculator navigation now lives at the top."""
+    from modules.shared.premium_homes import apply, identity_header
+    apply('calculator')
+    identity = st.session_state.get('_hwarang_calculator_identity') or {}
+    owner = str((identity.get('profile') or {}).get('id') or '')
+    if st.session_state.get('hp_quick_owner') != owner:
+        for key in ('hp_quick_values', 'hp_quick_transfer', 'hp_quick_premium', 'hp_quick_years'):
+            st.session_state.pop(key, None)
+        st.session_state['hp_quick_owner'] = owner
+    identity_header('CALCULATOR', identity.get('profile') or {})
+    permissions = set(st.session_state.get('hw_feature_permissions') or ())
+    allowed_groups = [g for g in GROUPS if CALCULATOR_GROUP_PERMISSION.get(g) in permissions]
+    current = st.session_state.get('hwcalc_catalog_group', '전체')
+    if current not in {'전체', *allowed_groups}:
+        _show_catalog()
+        current = '전체'
+    if not st.session_state.get('hwcalc_open'):
+        st.markdown('<section class="hp-calculator-intro"><span class="hp-kicker">FINANCIAL TOOLS, CLEAR ANSWERS</span><h1>필요한 계산을, 명확하게.</h1><p>계산기를 찾고 조건을 입력해 상담의 근거를 준비하세요.</p></section>', unsafe_allow_html=True)
+    with st.container(key='hp_calc_navigation', horizontal=True):
+        st.button('🗂️ 전체 계산기', key='calc_sidebar_home', type='primary' if current=='전체' and not st.session_state.get('hwcalc_open') else 'secondary', on_click=_show_catalog)
         for index, group in enumerate(allowed_groups):
-            label = category_label(group, GROUP_COUNTS.get(group))
-            if st.button(
-                label,
-                key=f"calc_sidebar_group_{index}",
-                type="primary" if not st.session_state.get("hwcalc_open") and current == group else "secondary",
-                use_container_width=True,
-            ):
-                _show_catalog(group)
-                st.rerun()
-        st.divider()
-        st.markdown(
-            '<div class="hw-calc-sidebar-note">새 탭 계산기는 인증용 링크를 준비한 뒤 열립니다.<br>기존 WORKSPACE와 계산기 센터 탭은 그대로 유지됩니다.</div>',
-            unsafe_allow_html=True,
-        )
-        st.caption("Planned & Built by 박병선 팀장")
-        from modules.shared.build_info import BUILD_ID
-        st.caption("버전 " + BUILD_ID)
+            st.button(category_label(group, GROUP_COUNTS.get(group)), key=f'calc_sidebar_group_{index}', type='primary' if current==group and not st.session_state.get('hwcalc_open') else 'secondary', on_click=_show_catalog, args=(group,))

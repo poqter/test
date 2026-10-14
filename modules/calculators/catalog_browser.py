@@ -191,15 +191,16 @@ def render_catalog(items, groups, implemented, *, tags=None, ids=None):
             args=('',),
             use_container_width=True,
         )
-        with st.container(key='hwcalc_purposes', horizontal=True):
-            for i, (label, purpose_query) in enumerate(PURPOSES):
-                st.button(
-                    purpose_label(label),
-                    key=f'hwcalc_purpose_{i}',
-                    on_click=set_query,
-                    args=(purpose_query,),
-                    type='tertiary',
-                )
+        with st.expander('💡 상담 목적별로 찾기'):
+            with st.container(key='hwcalc_purposes', horizontal=True):
+                for i, (label, purpose_query) in enumerate(PURPOSES):
+                    st.button(
+                        purpose_label(label),
+                        key=f'hwcalc_purpose_{i}',
+                        on_click=set_query,
+                        args=(purpose_query,),
+                        type='tertiary',
+                    )
         query = st.session_state['hwcalc_catalog_query'].strip()
     else:
         # 업무 분류 화면은 탐색 결과에 집중합니다. 숨겨진 검색 상태를 적용하지 않습니다.
@@ -310,31 +311,8 @@ def render_catalog(items, groups, implemented, *, tags=None, ids=None):
         # A second identical subheading only adds vertical space.
         sections = [(None, found)]
 
-    for category, section_items in sections:
-        subset = [(n, d) for n, g, d in section_items]
-        if not subset:
-            continue
-        if category is not None:
-            st.markdown('##### ' + (category if category in ('이름 일치', '관련 계산기') else category_label(category)))
-        for start in range(0, len(subset), 2):
-            cols = st.columns(2)
-            for col, (name, description) in zip(cols, subset[start:start + 2]):
-                summary = description.replace('계산 결과: ', '').split(' 적용 조건')[0]
-                meta = profile(name)
-                with col.container(key=card_key(name)):
-                    copy, actions = st.columns([2.15, 1], gap='small', vertical_alignment='center')
-                    icon = category_emoji(items[name][0])
-                    copy.markdown(
-                        f'<div class="hw-calc-card-copy"><span class="hw-calc-card-icon" aria-hidden="true">{icon}</span>'
-                        f'<div><div class="hw-calc-card-title">{escape(name.removesuffix("계산기"))}</div>'
-                        f'<div class="hw-calc-card-summary">{escape(summary)}</div>'
-                        f'<div class="hw-calc-card-core">먼저 입력 · {escape(meta.get("core", "핵심 조건"))}</div></div></div>',
-                        unsafe_allow_html=True,
-                    )
-                    with actions.container(key="hwcalc_actions_"+card_key(name)):
-                        st.button('현재 화면에서 열기',key=card_key(name)+'_open_here',on_click=open_calculator,args=(name,),use_container_width=True)
-                        if st.button('새 탭으로 열기 ↗', key=card_key(name)+'_prepare_tab', use_container_width=True):
-                            open_new_tab(name, ids)
+    from modules.calculators.premium_catalog import render_sections
+    render_sections(sections, items, ids, query=query, group=group)
     if not found:
         st.info('일치하는 계산기가 없습니다. 다른 키워드를 입력해보세요.')
     last = st.session_state.get('hwcalc_catalog_last')

@@ -29,7 +29,7 @@ st.set_page_config(
 
 @lru_cache(maxsize=1)
 def component():
-    return components.declare_component("hwarang_academy_v115", path=str(ROOT / "frontend"))
+    return components.declare_component("hwarang_academy_v117", path=str(ROOT / "frontend"))
 
 
 @lru_cache(maxsize=1)
@@ -186,13 +186,22 @@ def main() -> None:
     if mode not in MODES:
         mode = "GUIDE"
 
+    # Parent portal and simulator landing are separate authenticated surfaces.
+    if st.session_state.get('_academy_model_owner') not in (None, viewer_user_id):
+        for key in list(st.session_state):
+            if key.startswith(('_academy_', '_studio_', 'studio_')):
+                del st.session_state[key]
+    st.session_state['_academy_model_owner'] = viewer_user_id
+    if '_academy_surface' not in st.session_state:
+        st.session_state['_academy_surface'] = 'simulator' if independent else 'academy'
+
     # AI Studio reuses the authenticated identity and leaves the legacy engine/history intact.
     if 'academy.simulator' in feature_permissions:
         if '_studio_open' not in st.session_state:
-            st.session_state['_studio_open'] = bool(independent)
+            st.session_state['_studio_open'] = False
         if st.session_state.get('_studio_open'):
             from hwarang_academy.studio.ui import render as render_ai_studio
-            render_ai_studio(auth, viewer_user_id, feature_permissions, credit_status)
+            render_ai_studio(auth=auth, owner=viewer_user_id, permissions=feature_permissions, credit_status=credit_status)
             return
     prior_history = st.session_state.get('_academy_history_state') or {}
     prior_model = st.session_state.get('_academy_model')
@@ -207,7 +216,7 @@ def main() -> None:
     route_key = (independent, sid)
     if st.session_state.get("_academy_route") != route_key:
         st.session_state["_academy_route"] = route_key
-        st.session_state["_academy_model"] = AppState(independent=independent, selection=sid, mode=mode)
+        st.session_state["_academy_model"] = AppState(independent=False, selection=sid, mode=mode)
     app = st.session_state["_academy_model"]
 
     history_client = TrainingHistory(auth, viewer_user_id)
@@ -227,7 +236,7 @@ def main() -> None:
                 st.session_state['_academy_history_state'] = history_state
             st.rerun()
 
-    _inject_shell_css(gate=False, independent=independent)
+    _inject_shell_css(gate=False, independent=app.independent)
     payload = present(app)
     payload['learning_history'] = public_history(history_state)
     payload['platform_build'] = PLATFORM_BUILD_ID
@@ -284,14 +293,25 @@ def main() -> None:
             active=next((r for r in studio_rows if str(r.get('ended')).lower() not in ('true','1')),None)
             payload['studio_summary']={'total':len(studio_rows),'finished':sum(str(r.get('ended')).lower() in ('true','1') for r in studio_rows),'active':bool(active)}
             st.session_state['_studio_resume_id']=active['id'] if active else None
-        except Exception:payload['studio_summary']={}
+        except Exception:
+            payload['studio_summary']={'unavailable': True}
+            st.session_state['_studio_resume_id']=None
 
-    event = component()(model=payload, key="academy_engine_component_v115", default=None)
+    if payload.get('phase') == 'home':
+        payload['portal_surface'] = st.session_state.get('_academy_surface', 'academy')
+
+    event = component()(model=payload, key="academy_engine_component_v117", default=None)
     if isinstance(event, dict) and event.get("event_id") != app.ack:
         try:
             if event.get("kind") != "academy_home" and "academy.simulator" not in feature_permissions:
                 raise ValueError("AI 상담 시뮬레이터 이용 권한이 없습니다.")
-            if event.get('kind') in ('open_studio','resume_studio','studio_history'):
+            if event.get('kind') in ('studio_home', 'academy_home'):
+                st.session_state['_academy_surface'] = 'simulator' if event['kind'] == 'studio_home' else 'academy'
+                st.session_state['_studio_open'] = False
+                app.independent = False
+                app.error = ''
+                app.ack = event.get('event_id')
+            elif event.get('kind') in ('open_studio','resume_studio','studio_history'):
                 from hwarang_academy.studio.repository import Repository
                 if event['kind']=='resume_studio' and st.session_state.get('_studio_resume_id'):
                     st.session_state['_studio_state']=Repository(auth,viewer_user_id).load(st.session_state['_studio_resume_id'])

@@ -95,8 +95,8 @@ def _sharing(repo,s):
 
 def _setup(repo,config,permissions):
     st.markdown('<div class="studio-kicker">PRACTICE ROOM</div>',unsafe_allow_html=True)
-    st.title('오늘은 어떤 상담을 해볼까요?')
-    st.write('장면을 고르면 한 명의 고객과 대화가 시작됩니다.')
+    st.title('나에게 맞는 훈련 준비')
+    st.write('고객과 대화하기 전에 난이도와 대화 방식을 선택하세요.')
     stage=st.radio('훈련 장면',list(STAGES),format_func=STAGES.get,horizontal=True,key='studio_stage_pick')
     st.markdown(f'<div class="studio-mission"><span>오늘의 연습</span><h3>{escape(STAGES[stage])}</h3><p>{escape(GOALS[stage])}</p></div>',unsafe_allow_html=True)
     if not config.api_key:st.warning('관리자에게 상담 서비스 연결을 요청해 주세요. API 키는 대화창에 입력하지 마세요.')
@@ -231,14 +231,8 @@ def render(auth,owner,permissions,credit_status=None):
         for k in list(st.session_state):
             if k.startswith('_studio_'):del st.session_state[k]
         st.session_state['_studio_owner']=owner
-    config=Config.from_mapping(st.secrets)
-    try:
-        for k,v in (repo.rpc('settings') or {}).items():setattr(config,k,v)
-    except Exception:
-        st.error('AI 상담 설정을 읽지 못했습니다. Migration 23과 계정 권한을 확인해 주세요.');return
-    runtime=Runtime(repo,OpenAIProvider(config))
     with st.container(key='studio_toolbar'):
-        top=st.columns([3,1,1])
+        top=st.columns([3,1,1.5,1.3])
         with top[0]:st.caption('HWARANG ACADEMY · AI 상담 Studio')
         with top[1]:
             with st.popover('이용량'):
@@ -247,10 +241,26 @@ def render(auth,owner,permissions,credit_status=None):
                     st.caption(f'음성 {credit_status.voice_available_seconds//60}분 {credit_status.voice_available_seconds%60}초 남음')
                 else:st.caption('이용량을 불러오지 못했습니다.')
         with top[2]:
+            if st.button('시뮬레이터 홈',key='studio_landing_back'):
+                st.session_state['_studio_open']=False
+                st.session_state['_academy_surface']='simulator'
+                if st.session_state.get('_academy_model'):
+                    st.session_state['_academy_model'].independent=False
+                st.rerun()
+        with top[3]:
             if st.button('ACADEMY 홈',key='studio_back'):
                 st.session_state['_studio_open']=False
+                st.session_state['_academy_surface']='academy'
+                if st.session_state.get('_academy_model'):
+                    st.session_state['_academy_model'].independent=False
                 if 'view' in st.query_params:del st.query_params['view']
                 st.rerun()
+    config=Config.from_mapping(st.secrets)
+    try:
+        for k,v in (repo.rpc('settings') or {}).items():setattr(config,k,v)
+    except Exception:
+        st.error('AI 상담 설정을 읽지 못했습니다. Migration 23과 계정 권한을 확인해 주세요.');return
+    runtime=Runtime(repo,OpenAIProvider(config))
     if st.session_state.get('_studio_manager'):
         render_manager(auth,owner);return
     try:
