@@ -48,7 +48,7 @@ def generate_group(repo, day, group, retry=False, actor=None, allow_partial_mark
         raise
 
 
-def publish_ready(repo, day, codes):
+def publish_ready(repo, day, codes, *, now=None):
     results=[]
     profiles={r['profile_code']:r for r in repo.profiles()}
     policy=repo.operating_policy()
@@ -59,9 +59,11 @@ def publish_ready(repo, day, codes):
         if not bundle:results.append({'profile':code,'status':'no_snapshot'});continue
         revision=bundle['revision']; qa=bundle['snapshot'].get('qa_payload') or {}
         publish_at=datetime.combine(day,time(7,30) if code=='MARKET' else time(8),KST)
-        if datetime.now(timezone.utc)<publish_at:results.append({'profile':code,'status':'before_publication_time'});continue
-        if revision.get('publication_status')=='published':continue
-        if revision.get('publication_status')=='hidden':continue
+        if (now or datetime.now(timezone.utc))<publish_at:results.append({'profile':code,'status':'before_publication_time'});continue
+        if revision.get('publication_status')=='published':
+            results.append({'profile':code,'status':'already_published'});continue
+        if revision.get('publication_status')=='hidden':
+            results.append({'profile':code,'status':'hidden'});continue
         from .public_body import customer_body
         body=bundle['snapshot'].get('external_content_payload') or {}
         content=bundle['snapshot'].get('content_payload') or {}
@@ -83,8 +85,86 @@ def publish_ready(repo, day, codes):
     return results
 
 
+def catch_up(repo, now=None):
+    """Reconcile only today's due work; repeated ticks never reset paid state.
+
+    The database claim remains the atomic authority across UI/Actions callers.
+    One retry is permitted after 08:10, with the existing two-attempt cap.
+    Unknown paid responses and hidden/quality-held editions are never bypassed.
+    """
+    instant = now or datetime.now(timezone.utc)
+    if instant.tzinfo is None:
+        raise ValueError('Scheduler time must include a timezone')
+    day = instant.astimezone(KST).date()
+    profiles = {p['profile_code']: p for p in repo.profiles()}
+    def clock():
+        return now or datetime.now(timezone.utc)
+
+    def due_profiles():
+        return [code for code in ('MARKET', 'NEWS', 'INSURANCE')
+                if profiles.get(code, {}).get('is_enabled') is not False
+                and clock() >= datetime.combine(day, time(7,30) if code == 'MARKET' else time(8), KST)]
+    from .diagnostics import failure_diagnostic
+
+    def publish_independently():
+        outcomes = []
+        for code in due_profiles():
+            try:
+                outcomes.extend(publish_ready(repo, day, (code,), now=now))
+            except Exception as exc:
+                outcomes.append({'profile': code, 'status': 'failed', 'diagnostic': failure_diagnostic(exc)})
+        return outcomes
+
+    # Publish saved editions first: a slow/failed MARKET cannot hold NEWS hostage.
+    publish_independently()
+    generation = {}
+    for group in ('DAILY', 'MARKET'):
+        if clock().astimezone(KST).date() != day:
+            generation[group] = {'status': 'blocked', 'reason': 'business_day_changed'}
+            continue
+        if clock() < cutoff(day, group):
+            generation[group] = {'status': 'not_due'}
+            continue
+        codes = [c for c in GROUPS[group] if profiles.get(c, {}).get('is_enabled') is not False]
+        if not codes:
+            generation[group] = {'status': 'disabled'}
+            continue
+        try:
+            existing = [repo.bundle_for_date(c, day, include_draft=True) for c in codes]
+            if all(existing):
+                generation[group] = {'status': 'reused', 'reason': 'stored_editions'}
+                continue
+            # Do not reconstruct a partially saved group by paying for it again.
+            if any(existing):
+                generation[group] = {'status': 'blocked', 'reason': 'partial_saved_editions'}
+                continue
+            state = repo.daily_run_status(day, group)
+            status = state.get('status')
+            if status in ('completed', 'blocked') or int(state.get('attempts') or 0) >= 2:
+                generation[group] = {'status': 'blocked', 'reason': 'stored_run_' + str(status)}
+                continue
+            retry = bool(state.get('attempts'))
+            if retry and clock() < datetime.combine(day, time(8,10), KST):
+                generation[group] = {'status': 'retry_wait'}
+                continue
+            generation[group] = generate_group(repo, day, group, retry=retry,
+                                                allow_partial_market=group == 'MARKET')
+        except Exception as exc:
+            generation[group] = {'status': 'failed', 'diagnostic': failure_diagnostic(exc)}
+        # Commit each available edition without waiting for another group.
+        publish_independently()
+    publication = publish_independently()
+    due = due_profiles()
+    complete = bool(due) and all(r['status'] in ('published', 'already_published') for r in publication)
+    return {'status': 'published' if complete else ('incomplete' if due else 'before_publication_time'),
+            'briefing_date': str(day), 'checked_at': (now or datetime.now(timezone.utc)).isoformat(),
+            'due_profiles': due, 'generation': generation, 'publication': publication}
+
+
 def run_scheduled(action, now=None, repo=None):
-    repo=repo or BriefingRepository(); now=now or datetime.now(timezone.utc); local=now.astimezone(KST); day=local.date()
+    repo=repo or BriefingRepository()
+    if action=='catch_up':return catch_up(repo, now)
+    now=now or datetime.now(timezone.utc); local=now.astimezone(KST); day=local.date()
     if action=='prepare':
         repo.sync_business_calendar(day)
         policy = repo.operating_policy()

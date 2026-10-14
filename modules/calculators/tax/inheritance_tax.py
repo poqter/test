@@ -1,3 +1,4 @@
+from modules.shared.local_time import now_kst
 import streamlit as st
 from dataclasses import dataclass
 from datetime import datetime
@@ -1382,7 +1383,7 @@ def legacy_run():
         else:
             try:
                 excel_bytes = build_excel_report(result, input_data, available_cash, death_benefit, other_liquidity)
-                file_name = f"상속세_예상계산_상담보고서_{datetime.now():%Y%m%d_%H%M%S}.xlsx"
+                file_name = f"상속세_예상계산_상담보고서_{now_kst():%Y%m%d_%H%M%S}.xlsx"
                 st.download_button(
                     "📥 서식 적용 엑셀 보고서 다운로드",
                     data=excel_bytes,

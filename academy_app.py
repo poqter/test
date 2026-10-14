@@ -186,6 +186,20 @@ def main() -> None:
     if mode not in MODES:
         mode = "GUIDE"
 
+    # AI Studio reuses the authenticated identity and leaves the legacy engine/history intact.
+    if 'academy.simulator' in feature_permissions:
+        if '_studio_open' not in st.session_state:
+            st.session_state['_studio_open'] = bool(independent)
+        if st.session_state.get('_studio_open'):
+            from hwarang_academy.studio.ui import render as render_ai_studio
+            render_training_credit_strip(credit_status)
+            render_ai_studio(auth, viewer_user_id, feature_permissions)
+            return
+        if st.button('AI 상담 Studio 시작', type='primary', key='open_ai_studio'):
+            st.session_state['_studio_open'] = True
+            st.rerun()
+        st.caption('아래 기존 규칙 기반 훈련과 이전 학습 기록은 그대로 이용할 수 있습니다.')
+
     prior_history = st.session_state.get('_academy_history_state') or {}
     prior_model = st.session_state.get('_academy_model')
     prior_owner = (st.session_state.get('_academy_model_owner')

@@ -12,6 +12,9 @@ from modules.briefing.diagnostics import build_info,failure_diagnostic
 
 
 def configuration_failure(result, *, action=None):
+    if action == 'catch_up':
+        # Delivery is authoritative; a transient earlier exception may have recovered.
+        return not isinstance(result, dict) or result.get('status') not in ('published', 'before_publication_time')
     if action == 'check':
         # Historical failures are evidence, not failures of this readiness check.
         if not isinstance(result, dict):
@@ -29,7 +32,7 @@ def configuration_failure(result, *, action=None):
     return False
 
 if __name__=='__main__':
-    parser=argparse.ArgumentParser();parser.add_argument('--action',choices=['check','prepare','market','daily','publish','recover'],required=True)
+    parser=argparse.ArgumentParser();parser.add_argument('--action',choices=['check','prepare','market','daily','publish','recover','catch_up'],required=True)
     args=parser.parse_args();path=Path('briefing-operation-status.json')
     code=0
     try:
@@ -55,4 +58,9 @@ if __name__=='__main__':
     if os.getenv('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'],'a',encoding='utf-8') as f:
             f.write(f"### 화랑 브리핑 {args.action}\n\n종료 코드: {code} · 엔진 {build_info()['engine_version']}\n\n상세 결과: briefing-operation-status.json 아티팩트. 조회·공유·PDF는 AI 요청 없음.\n")
+            if args.action == 'catch_up' and isinstance(report.get('result'), dict):
+                delivery = report['result']
+                f.write('\n오늘 게시 상태: '+str(delivery.get('status'))+'\n\n')
+                for row in delivery.get('publication', []):
+                    f.write('- '+str(row.get('profile'))+': '+str(row.get('status'))+'\n')
     sys.exit(code)

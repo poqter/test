@@ -1,4 +1,5 @@
 from __future__ import annotations
+from modules.shared.local_time import today_kst
 
 import hashlib
 import html
@@ -816,7 +817,7 @@ def build_guide_pdf(selected_claims: list[str], docs: list[DocumentRule], accide
 
     story = [
         Paragraph("보험금 청구 준비 안내", title_style),
-        Paragraph(f"청구 항목: {' · '.join(html.escape(x) for x in selected_claims)}<br/>안내서 작성일: {date.today():%Y년 %m월 %d일}", subtitle_style),
+        Paragraph(f"청구 항목: {' · '.join(html.escape(x) for x in selected_claims)}<br/>안내서 작성일: {today_kst():%Y년 %m월 %d일}", subtitle_style),
     ]
 
     def add_doc_table(group: str, heading: str):
@@ -1253,7 +1254,7 @@ def run_legacy() -> None:
             c4.metric("추출 담보", f"{len(coverages)}개")
             try:
                 report_dt = datetime.strptime(parsed.get("report_date", ""), "%Y.%m.%d").date()
-                if (date.today() - report_dt).days >= 180:
+                if (today_kst() - report_dt).days >= 180:
                     st.warning("보장분석 작성일로부터 6개월 이상 지났습니다. 사고일 당시 계약 유지 여부를 확인해 주세요.")
             except ValueError:
                 pass
@@ -1295,7 +1296,7 @@ def run_legacy() -> None:
             st.download_button(
                 "안내문 PDF 다운로드",
                 data=pdf_bytes,
-                file_name=f"보험금_청구_준비_안내서_{date.today():%Y%m%d}.pdf",
+                file_name=f"보험금_청구_준비_안내서_{today_kst():%Y%m%d}.pdf",
                 mime="application/pdf",
                 type="primary",
                 use_container_width=True,

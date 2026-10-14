@@ -5,6 +5,7 @@ calculation engines receive won and decimal rates; this module only manages the
 shared Streamlit input, result, and export experience.
 """
 from __future__ import annotations
+from modules.shared.local_time import today_kst
 
 from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_UP
@@ -97,9 +98,9 @@ def _normalize_numeric_widget_state(widget_key: str, *, decimals: bool) -> None:
 def _set_mode_inputs(kind: str, fields: list[tuple], *, example: bool) -> None:
     page = _scope(kind)
     if kind in ("age", "change"):
-        birth = date(1990, 1, 1) if example else date.today()
+        birth = date(1990, 1, 1) if example else today_kst()
         _set_widget_value(page, f"a_{kind}_birth", birth)
-        _set_widget_value(page, f"a_{kind}_reference", date.today())
+        _set_widget_value(page, f"a_{kind}_reference", today_kst())
     else:
         for key, _label, field_type, default, _low, _high in fields:
             decimal_value = field_type == "rate" or (
@@ -284,7 +285,7 @@ def render_quick_calculator(calculator_name: str) -> None:
                         "date_input",
                         reference_label,
                         reference_key,
-                        date.today(),
+                        today_kst(),
                         page=page,
                         min_value=date(1900, 1, 1),
                         max_value=date(2100, 12, 31),
@@ -361,7 +362,7 @@ def render_quick_calculator(calculator_name: str) -> None:
                         "inputs": inputs,
                         "formula": formula,
                         "assumptions": assumptions,
-                        "prepared_on": date.today().isoformat(),
+                        "prepared_on": today_kst().isoformat(),
                         "prepared_at": stamp,
                         "token": token,
                     }

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from modules.shared.local_time import today_kst
 
 from datetime import date
 from io import BytesIO
@@ -525,7 +526,7 @@ def run() -> None:
             "total_medical": total_medical, "excluded": excluded, "premium_basis": premium_basis, "current_premium_basis": current_premium_basis,
         }
         pdf = build_pdf(data)
-        filename = f"{safe_filename(data['customer'])}님_실손보험_세대비교_{date.today():%Y%m%d}.pdf"
+        filename = f"{safe_filename(data['customer'])}님_실손보험_세대비교_{today_kst():%Y%m%d}.pdf"
         st.download_button("고객용 비교안 PDF 다운로드", pdf, filename, "application/pdf", type="primary", use_container_width=True)
         st.caption("본 자료는 간단 비교용이며 실제 보험금은 가입 상품의 약관, 공제금액, 보상한도 및 보험회사 심사에 따라 달라질 수 있습니다.")
 

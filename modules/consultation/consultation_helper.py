@@ -1,4 +1,5 @@
 """Session-only consultation studio. No customer persistence or paid APIs."""
+from modules.shared.local_time import today_kst
 from datetime import date
 
 import streamlit as st
@@ -66,7 +67,7 @@ def export_document(kind, title, body, *, valid=True, pdf=True):
     """Review tokens bind the exact text, source validity and export options."""
     include_alias = field("checkbox", "상담 구분명을 결과물에 포함", "b_" + kind + "_include_alias", False)
     alias = st.session_state.get("b_alias", "") if include_alias else ""
-    prepared = date.today().isoformat()
+    prepared = today_kst().isoformat()
     token = fingerprint([kind, body, valid, alias, prepared])
     ready = valid and bool(body.strip()) and not unresolved(body)
     if unresolved(body):

@@ -6,6 +6,7 @@ historical uploads and downloads. With no Streamlit context the producer runs
 normally, keeping pure CLI generation and unit tests independent of Streamlit.
 """
 from __future__ import annotations
+from modules.shared.local_time import today_kst
 
 import dataclasses
 import hashlib
@@ -143,7 +144,7 @@ def session_export(version: str, *, name_arg: bool = True):
             # Deployment configuration affects branding, and belongs in the key.
             from modules.shared.organization import current_brand_fingerprint
             scope = "export:" + function.__module__ + "." + function.__name__ + ":" + name
-            key = fingerprint(version, args, kwargs, date.today().isoformat(), current_brand_fingerprint())
+            key = fingerprint(version, args, kwargs, today_kst().isoformat(), current_brand_fingerprint())
             value = cached(scope, key, lambda: function(*args, **kwargs))
             # Never expose the cached cursor of a mutable in-memory file.
             if isinstance(value, BytesIO):

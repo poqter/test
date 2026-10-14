@@ -33,3 +33,20 @@ def usage_summary(rows):
             'purpose_requests':{purpose:sum((r.get('metadata') or {}).get('execution_purpose','legacy')==purpose for r in rows) for purpose in ('operation','validation','recovery','legacy')},
             'unknown_cost_requests':sum(r.get('actual_cost_usd') is None and r.get('estimated_cost_usd') is None for r in rows),
             'charge_uncertain_requests':sum(bool((r.get('metadata') or {}).get('charge_uncertain')) for r in rows)}
+
+
+def cost_summary_label(summary):
+    """Do not present the empty known subtotal as a zero total bill."""
+    requests = int(summary.get('requests') or 0)
+    unknown = int(summary.get('unknown_cost_requests') or 0)
+    uncertain = int(summary.get('charge_uncertain_requests') or 0)
+    known = float(summary.get('accounted_known_usd') or 0)
+    if not requests:
+        text = 'API 요청 없음 · 집계 비용 $0.0000'
+    elif unknown >= requests:
+        text = f'총비용 확인 필요 · 비용 미확인 요청 {unknown}회'
+    elif unknown:
+        text = f'총비용 확인 필요 · 확인된 비용 합계 ${known:.4f} (일부 기록) · 비용 미확인 요청 {unknown}회'
+    else:
+        text = f'기록 기준 비용 합계 ${known:.4f} · 추정 비용 포함'
+    return text + (f' · 응답 미확인 {uncertain}회' if uncertain else '')

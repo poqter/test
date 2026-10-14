@@ -396,6 +396,23 @@ class BriefingRepository:
                           and (code == 'INSURANCE' or (r['snapshot'].get('qa_payload') or {}).get('public_body_ready'))})
         return max(set.intersection(*pools), default=None)
 
+    def latest_available_customer_date(self):
+        """Fallback only: one day's eligible sections, or a day to explain blockers.
+
+        Full same-day editions retain priority at the caller. Never combine dates
+        or grant sharing permission here; the UI and creation path recheck each
+        selected revision. An all-blocked published day is returned for diagnosis.
+        """
+        published = []
+        for code in ('MARKET', 'NEWS', 'INSURANCE'):
+            published.extend(row for row in self.history(code, limit=30)
+                             if row['revision'].get('publication_status') == 'published')
+        eligible = [row for row in published
+                    if row['revision'].get('external_share_allowed')
+                    and row['revision'].get('external_qa_passed')
+                    and (row['snapshot'].get('qa_payload') or {}).get('public_body_ready')]
+        return max((str(row['briefing']['briefing_date']) for row in eligible or published), default=None)
+
     def create_combined_share(self, day, codes, sender_user_id):
         import secrets
         from .sharing import build_combined_packet, PROFILE_ORDER
@@ -693,14 +710,14 @@ class BriefingRepository:
         if not isinstance(rows,list) or not rows: return []
         briefing_ids=[str(r.get("id")) for r in rows if r.get("id")]; byb={}; byid={}
         if include_draft and briefing_ids:
-            revisions=self._request("GET","/rest/v1/hwarang_briefing_revisions",params={"briefing_id":self._in_filter(briefing_ids),"select":"id,briefing_id,revision_no,revision_type,publication_status,validation_status,coverage_status,generated_at","order":"revision_no.desc"})
+            revisions=self._request("GET","/rest/v1/hwarang_briefing_revisions",params={"briefing_id":self._in_filter(briefing_ids),"select":"id,briefing_id,revision_no,revision_type,publication_status,validation_status,coverage_status,external_share_allowed,external_qa_passed,generated_at","order":"revision_no.desc"})
             for rev in revisions if isinstance(revisions,list) else []:
                 bid=str(rev.get("briefing_id") or "")
                 if bid and bid not in byb: byb[bid]=rev
         else:
             ids=[str(r.get("current_published_revision_id")) for r in rows if r.get("current_published_revision_id")]
             if ids:
-                revisions=self._request("GET","/rest/v1/hwarang_briefing_revisions",params={"id":self._in_filter(ids),"select":"id,briefing_id,revision_no,revision_type,publication_status,validation_status,coverage_status,generated_at"})
+                revisions=self._request("GET","/rest/v1/hwarang_briefing_revisions",params={"id":self._in_filter(ids),"select":"id,briefing_id,revision_no,revision_type,publication_status,validation_status,coverage_status,external_share_allowed,external_qa_passed,generated_at"})
                 byid={str(r.get("id")):r for r in (revisions if isinstance(revisions,list) else []) if r.get("id")}
         selected=[]
         for briefing in rows:

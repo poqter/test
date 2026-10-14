@@ -6,6 +6,7 @@ on:
     - cron: '30 22 * * *' # 07:30 KST
     - cron: '0 23 * * *'  # 08:00 KST
     - cron: '10 23 * * *' # 08:10 KST, at most one recovery
+    - cron: '7,27,47 22,23,0,1,2 * * *' # 07:07-11:47 KST catch-up checks
   workflow_dispatch:
     inputs:
       action:
@@ -13,7 +14,7 @@ on:
         required: true
         type: choice
         default: check
-        options: [check, prepare, market, daily, publish, recover]
+        options: [check, prepare, market, daily, publish, recover, catch_up]
 permissions:
   contents: read
 concurrency:
@@ -49,14 +50,11 @@ jobs:
       - name: Run daily operation
         shell: bash
         run: |
-          case "$SCHEDULE" in
-            '30 21 * * *') BRIEFING_ACTION=prepare ;;
-            '0 22 * * *') BRIEFING_ACTION=market ;;
-            '30 22 * * *') BRIEFING_ACTION=daily ;;
-            '0 23 * * *') BRIEFING_ACTION=publish ;;
-            '10 23 * * *') BRIEFING_ACTION=recover ;;
-            *) BRIEFING_ACTION="$MANUAL_ACTION" ;;
-          esac
+          if [[ -n "$SCHEDULE" ]]; then
+            BRIEFING_ACTION=catch_up
+          else
+            BRIEFING_ACTION="$MANUAL_ACTION"
+          fi
           python .github/scripts/hwarang_daily_briefing.py --action "$BRIEFING_ACTION"
       - name: Save operation diagnostics
         if: always()

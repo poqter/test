@@ -22,7 +22,8 @@ def render_operations(repo):
             for key,label in [('today','오늘'),('month','이번 달')]:
                 c=costs[key];st.markdown('**'+label+' 브리핑 API 사용량**')
                 st.write(f"요청 {c['requests']}회 · 검색 {c['search_actions']}회 · 입력 {c['input_tokens']:,} / 출력 {c['output_tokens']:,} 토큰")
-                st.caption(f"확인된 추정 비용 ${c['estimated_known_usd']:.4f} · 비용 미확인 요청 {c['unknown_cost_requests']}회 · 응답 미확인 {c['charge_uncertain_requests']}회")
+                from .costs import cost_summary_label
+                st.caption(cost_summary_label(c))
                 if c['actual_known_usd']:st.caption(f"확인된 청구 비용 ${c['actual_known_usd']:.4f}")
                 purpose = c.get('purpose_requests') or {}
                 st.caption('실행 목적 · 운영 '+str(purpose.get('operation',0))+' / 검증 '+str(purpose.get('validation',0))+' / 복구 '+str(purpose.get('recovery',0))+' / 이전 기록 '+str(purpose.get('legacy',0)))

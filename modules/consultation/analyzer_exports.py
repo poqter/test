@@ -2,6 +2,7 @@
 
 Extracted from the existing implementation; public facade names are preserved.
 """
+from modules.shared.local_time import now_kst
 from modules.shared.runtime_cache import session_export
 import base64
 import re
@@ -589,7 +590,7 @@ def build_analysis_file(
     workbook.calculation.fullCalcOnLoad = True
     workbook.calculation.forceFullCalc = True
 
-    today = datetime.today().strftime("%Y%m%d")
+    today = now_kst().strftime("%Y%m%d")
     filename_name = re.sub(r"님$", "", str(data["customer_name"] or "OOO").strip())
     filename_name = re.sub(r'[\\/:*?"<>|]+', "_", filename_name).strip() or "OOO"
     filename = f"{filename_name}님_보장분석엑셀_{today}.xlsx"

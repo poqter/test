@@ -82,8 +82,9 @@ def render_training_credit_strip(status: TrainingCreditStatus | None) -> None:
             f'{html.escape(status.contact_label)} →</a>'
         )
 
-    st.markdown(
-        f"""
+    # Markdown treats indented HTML after a blank line as a code block.
+    # A single HTML string preserves the cards without changing entitlement logic.
+    markup = f"""
         <style>
         .hw-credit-shell{{margin:0 0 12px;padding:10px 14px;border:1px solid #e0e8f1;border-radius:15px;background:#fff;box-shadow:0 5px 18px rgba(35,73,105,.05);color:#183750}}
         .hw-credit-row{{display:grid;grid-template-columns:minmax(180px,1.4fr) minmax(140px,1fr) 86px 88px;gap:14px;align-items:center;padding:5px 0}}
@@ -103,9 +104,8 @@ def render_training_credit_strip(status: TrainingCreditStatus | None) -> None:
           {''.join(rows)}
           {contact}
         </div>
-        """,
-        unsafe_allow_html=True,
-    )
+        """
+    st.markdown("".join(line.strip() for line in markup.splitlines()), unsafe_allow_html=True)
 
     if show_training and status.available_credits <= 0:
         st.info(

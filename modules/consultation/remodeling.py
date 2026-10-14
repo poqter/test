@@ -1,4 +1,5 @@
 from __future__ import annotations
+from modules.shared.local_time import today_kst
 
 # Stable facade: UI only; engines/parsers/exports are independently testable.
 from modules.consultation.remodeling_model import (
@@ -634,7 +635,7 @@ def run() -> None:
                     shared = st.text_area("공통 핵심 보장", key="rm_shared_coverage_text")
                     for person in people: person.coverage = clean(shared)
                 with st.expander("상담일 · 담당자"):
-                    consultation_date = st.date_input("상담일", value=date.today(), key="rm_date")
+                    consultation_date = st.date_input("상담일", value=today_kst(), key="rm_date")
                     consultant = st.text_input("담당자", key="rm_consultant", placeholder="예: 박병선 팀장")
             with second:
                 include_detail = st.checkbox("기존 계약 정리표를 출력에 포함", key="rm_include_detail")
@@ -673,7 +674,7 @@ def run() -> None:
                 _show_download_requirements(count)
             st.caption(f"출력 구성: {len(sheetnames)}개 시트 · 첫 번째 비교안 A4 가로 한 장")
             filename_people = '_'.join(f"{safe_filename(n)}님" for n in display_names)
-            st.download_button("엑셀 다운로드", excel, f"{filename_people}_보험리모델링_비교안_{date.today():%Y%m%d}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", type="primary", use_container_width=True, disabled=not ready or bool(overflow))
+            st.download_button("엑셀 다운로드", excel, f"{filename_people}_보험리모델링_비교안_{today_kst():%Y%m%d}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", type="primary", use_container_width=True, disabled=not ready or bool(overflow))
     page_footer("보험 리모델링", APP_VERSION)
 
 

@@ -1,4 +1,5 @@
 """Customer-facing output for the reviewed claim model, independent of the UI."""
+from modules.shared.local_time import today_kst
 from datetime import date
 from html import escape
 from io import BytesIO
@@ -32,7 +33,7 @@ def build_customer_pdf(claims, documents, *, name='', note='', accident='', cove
             ('LEFTPADDING',(0,0),(-1,-1),6),('RIGHTPADDING',(0,0),(-1,-1),6),
             ('TOPPADDING',(0,0),(-1,-1),7),('BOTTOMPADDING',(0,0),(-1,-1),7)]))
         return t
-    story = [p('보험금 청구 안내',title),p((name+'님 · ' if name else '')+date.today().isoformat()),
+    story = [p('보험금 청구 안내',title),p((name+'님 · ' if name else '')+today_kst().isoformat()),
              p('청구 내용: '+' · '.join(claims)),Spacer(1,10)]
     selected = [d for d in documents if d['include']]
     if selected:

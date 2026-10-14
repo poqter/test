@@ -42,7 +42,8 @@ def _published_history_cached(code):
 
 @st.cache_data(ttl=30, show_spinner=False)
 def _customer_date_cached():
-    return _repo().latest_complete_customer_date()
+    repo = _repo()
+    return repo.latest_complete_customer_date() or repo.latest_available_customer_date()
 
 
 def _latest_summaries(include_draft):
@@ -139,9 +140,10 @@ def _body(snapshot):
 def _combined_sharing(repo, selected_day=None, *, use_cache=False):
     profile = st.session_state.get('login_profile') or {}
     uid = str(profile.get('id') or '')
-    day = str(selected_day) if selected_day else (_customer_date_cached() if use_cache else repo.latest_complete_customer_date())
+    day = str(selected_day) if selected_day else (_customer_date_cached() if use_cache else
+        (repo.latest_complete_customer_date() or repo.latest_available_customer_date()))
     if not day:
-        st.info('같은 날짜의 정상 게시본이 준비되면 고객 공유를 사용할 수 있습니다.')
+        st.info('공개된 브리핑이 아직 없습니다. 게시본이 준비되면 영역별 고객 공유 가능 여부를 표시합니다.')
         st.button('통합 공유 링크 만들기', disabled=True, key='combined_not_ready')
         return
     if day != datetime.now(KST).date().isoformat():
@@ -155,8 +157,12 @@ def _combined_sharing(repo, selected_day=None, *, use_cache=False):
         if bundle:
             reasons = sharing_blockers(bundle, policy, profile, reader_configured=reader_configured)
             if not reasons: available.append(code); bundles[code] = bundle
-            else: reasons_by_code[code] = reasons[0]
+            else: reasons_by_code[code] = ' / '.join(reasons)
         else: reasons_by_code[code] = '이 날짜에 공유 가능한 게시본이 없습니다.'
+    if not available:
+        st.warning('선택한 날짜에 고객 공유 조건을 충족한 영역이 없습니다. 아래에서 영역별 사유를 확인해 주세요.')
+    elif len(available) < len(PROFILE_ORDER):
+        st.info(f'{day} · 공유 가능한 {len(available)}개 영역을 표시합니다. 준비되지 않은 영역은 제외하며 다른 날짜와 합치지 않습니다.')
     approved = bool(policy.get('external_sharing_approved'))
     left, right = st.columns([1,1], gap='large')
     with left:
@@ -401,7 +407,7 @@ def _render_today(repo, can_manage):
     selected = st.radio('브리핑 영역', PROFILE_ORDER, format_func=lambda x:PROFILE_LABELS[x], horizontal=True, key='hw_briefing_profile')
     item = summaries.get(selected)
     if not item:
-        st.info('아직 '+PROFILE_LABELS[selected]+' 브리핑이 '+('저장되지 않았습니다.' if can_manage else '게시되지 않았습니다.'))
+        st.info('아직 '+PROFILE_LABELS[selected]+'이 게시되지 않았습니다.')
         if can_manage:
             st.button('브리핑 생성하러 가기', on_click=_navigate, args=('운영 관리',), key='empty_generate')
         return
@@ -489,7 +495,8 @@ def run():
                 with a:
                     st.caption('같은 날짜의 고객용 기사만 선택해 공유합니다. 직원 상담·운영 정보는 제외됩니다.')
                 with b:
-                    if st.button('최근 통합본 선택', key='share_latest'):
+                    if st.button('최근 공유 가능본 선택', key='share_latest'):
+                        _customer_date_cached.clear()
                         st.session_state.pop('hw_briefing_share_day',None);st.rerun()
                 _combined_sharing(repo, day, use_cache=not bool(day))
             elif can_manage:
