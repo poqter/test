@@ -150,7 +150,16 @@ def notice_dialog(notice: dict[str, object]) -> None:
 
 @st.dialog("작업자료와 이용 안내")
 def usage_dialog() -> None:
-    st.write("도구를 선택하고 입력한 뒤 결과를 확인하세요. 필요한 자료는 내려받을 수 있습니다.")
+    st.write("사이드바에서 업무를 찾고 입력 → 결과 확인 → 저장 순서로 진행하세요.")
+    for title, body in [
+        ('🔎 메뉴와 원수사 찾기','홈 맨 위는 원수사 검색입니다. 업무 메뉴는 사이드바 검색에서 찾습니다. ACADEMY와 CALCULATOR는 별도 앱이며 같은 계정 권한을 사용합니다.'),
+        ('📎 파일을 사용하는 업무','보장분석·컨벤션·썸머·매니저·수수료는 화면에 안내된 원본 양식을 사용하세요. 먼저 개인 정보를 제거한 사본으로 검사하고, 처리 결과의 누락·중복·미매칭 건을 확인한 뒤 내보내세요.'),
+        ('🧮 계산 결과 확인','계산기의 입력 단위, 적용 기준일, 가정을 확인하세요. 조건을 바꿨다면 다시 계산해야 출력물에도 반영됩니다. 현재 탭과 새 탭 중 편한 방식으로 열 수 있습니다.'),
+        ('🎓 교육과 상담 연습','아카데미에서 과정 학습·자료 다운로드·개인 진도를 확인합니다. 시뮬레이터는 그 안의 상담 훈련 기능입니다. 자유 연습의 대화·점수는 직접 선택 공유하기 전에는 관리자에게 공개되지 않습니다.'),
+        ('💬 대화가 멈췄을 때','입력 문장은 실패 상태로 보존됩니다. 확정 실패라면 수정·재전송할 수 있습니다. 처리 여부 미확인은 자동 재호출하지 않습니다. 관리자는 학습 AI의 요청 확인 메뉴에서 해당 건을 확인하고 복구할 수 있습니다.'),
+        ('📰 브리핑과 고객 공유','게시 날짜와 출처를 먼저 확인하세요. 고객 공유는 검수된 공개용 내용의 미리보기를 확인한 뒤 진행합니다. 생성 실패 시 운영 관리에서 원인과 미확인 비용을 확인합니다.'),
+        ('🔐 계정과 권한','내 계정에서 비밀번호를 변경할 수 있습니다. 메뉴가 보이지 않으면 관리자에게 앱 접근과 기능 권한을 확인해 달라고 요청하세요.')]:
+        with st.expander(title):st.write(body)
 
 
 def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logout: Callable[..., object], notice: dict[str, object]) -> None:
@@ -272,6 +281,18 @@ def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice:
                 st.markdown('<div class="hp-hero-copy"><span class="hp-kicker">CONSULTATION DESK</span><h2>고객의 보장을 읽고,<br>상담의 방향을 찾다.</h2><p>가입한 보장과 보험료를 정리하고<br>고객에게 필요한 질문을 준비하세요.</p></div>', unsafe_allow_html=True)
                 _launch_widget(APP_BY_ID['analyzer'], '보장분석 시작 ↗', key='hw_feature_launch', primary=True, navigate=navigate)
             art.markdown('<div class="hp-art" aria-hidden="true"><div class="hp-paper"><strong>🔎 보장분석 노트</strong><span>가입 현황<i></i></span><span>보장 구성<i></i></span><span>보험료 확인<i></i></span><small>HWARANG CONSULTATION</small></div></div>', unsafe_allow_html=True)
+    recent=[key for key in st.session_state.get('hw.ui.recent',[]) if key in allowed and key in APP_BY_ID][:4]
+    with st.popover('⭐ 자주 쓰는 도구 설정'):
+        favorites=st.multiselect('홈에 고정할 도구', [key for key in allowed_ids if key in APP_BY_ID],
+            default=[key for key in st.session_state.get('hw.home.favorites',[]) if key in allowed],
+            format_func=lambda key:APP_BY_ID[key].label,max_selections=4,key='hw.home.favorite_picker')
+        st.session_state['hw.home.favorites']=favorites
+        st.caption('이 로그인 세션에서 유지됩니다. 최근 사용은 실제로 연 도구만 표시합니다.')
+    for heading, keys, prefix in [('⭐ 자주 쓰는 도구',favorites,'favorite'),('🕒 최근 사용',recent,'recent')]:
+        if keys:
+            st.markdown('**'+heading+'**')
+            for col,key in zip(st.columns(len(keys)),keys):
+                with col:_launch_widget(APP_BY_ID[key],APP_BY_ID[key].label+' →',key='hp_'+prefix+'_'+key,navigate=navigate)
     st.subheader('업무 도구')
     query = ''
     labels = ['전체'] + [t[0] for t in _HOME_TOPICS if any(i in allowed for i in t[4])]

@@ -440,6 +440,13 @@ def _render_dashboard(auth: HwarangAuthService, actor_id: str) -> None:
     ai_today = [r for r in ai_month if _logged_in_today(r.get("usage_day"))]
     requests_24h=_cached_admin_read("dashboard:requests_24h",15,lambda:_safe_rows(auth,"/rest/v1/hwarang_ai_request_registry",params={"select":"user_id,status,block_reason,purpose,created_at","created_at":"gte."+_last_24h_utc_iso(),"order":"created_at.desc","limit":"500"}))
 
+    studio_ops = None
+    try:
+        from hwarang_academy.studio.repository import Repository
+        studio_ops = Repository(auth, actor_id).rpc('operations') or {}
+    except Exception:
+        st.warning('AI 상담 보류·비용 상태를 확인하지 못했습니다. SQL 25 적용과 운영 권한을 확인해 주세요.')
+    unknown_count = sum(int((studio_ops or {}).get(k) or 0) for k in ('unknown_cost','recovered_unknown','pending'))
     total_users = len(users)
     today_logins = sum(1 for u in users if _logged_in_today(u.get("last_login_at")))
     in_progress = [s for s in sessions if s.get("status") == "in_progress"]
@@ -456,7 +463,7 @@ def _render_dashboard(auth: HwarangAuthService, actor_id: str) -> None:
         voice_now = int(operations["academy"]["voice_in_progress"]) if operations else voice_now
         _metric_card("진행 중 ACADEMY", f"{active_count:,}", f"Voice {voice_now:,}")
     with cols[3]:
-        _metric_card("오늘 학습 AI 예상비용", f"${today_cost:,.2f}", "상담 훈련·평가·Voice 사용 기록")
+        _metric_card("오늘 기록된 학습 AI 비용", f"${today_cost:,.2f}", "미확인 비용 별도 · 총액 확정 불가" if unknown_count or studio_ops is None else "현재 사용 원장에 기록된 금액")
 
     st.write("")
     left, right = st.columns([1.08, .92], gap="large")
@@ -490,6 +497,9 @@ def _render_dashboard(auth: HwarangAuthService, actor_id: str) -> None:
                 pass
 
         alerts = [
+            ("high", "AI 상담 처리 보류", int((studio_ops or {}).get('pending') or 0), "건 · 학습 AI에서 복구", "ai"),
+            ("high", "AI 상담 실패", int((studio_ops or {}).get('failed_24h') or 0), "건 / 최근 24시간", "ai"),
+            ("medium", "비용 미확인 기록", unknown_count, "건 · 중복 포함 가능", "ai"),
             ("high", "AI 요청 실패·차단", len(failed), "최근 24시간", "ai"),
             ("medium", f"훈련 크레딧 잔여 {remaining_warning}% 이하", len(low_training), "사용자", "accounts"),
             ("medium", f"Voice 잔여 {remaining_warning}% 이하", len(low_voice), "사용자", "accounts"),
@@ -497,7 +507,7 @@ def _render_dashboard(auth: HwarangAuthService, actor_id: str) -> None:
             ("low", "비활성 계정", len(inactive), "계정", "accounts"),
         ]
         visible = [x for x in alerts if x[2] > 0]
-        if not visible:
+        if not visible and studio_ops is not None:
             st.success("현재 확인이 필요한 운영 이슈가 없습니다.")
         else:
             for idx, (priority, title, count, unit, target) in enumerate(visible):
@@ -557,7 +567,9 @@ def _render_dashboard(auth: HwarangAuthService, actor_id: str) -> None:
         if budget > 0:
             ratio = month_cost / budget * 100
             st.progress(min(1.0, max(0.0, ratio / 100)))
-            st.caption(f"USD {month_cost:,.2f} / USD {budget:,.2f} · {ratio:.1f}% 사용")
+            st.caption(f"기록된 비용 USD {month_cost:,.2f} / 예산 USD {budget:,.2f} · 확인된 비율 {ratio:.1f}%")
+            if unknown_count or studio_ops is None:
+                st.warning("미확인 비용이 있어 실제 예산 사용률은 확정할 수 없습니다.")
             if ratio >= budget_warning:
                 st.warning(f"월 AI 예산의 {budget_warning}% 이상을 사용했습니다.")
         else:
@@ -1391,7 +1403,7 @@ def _render_ai(auth: HwarangAuthService) -> None:
 # System settings
 # ---------------------------------------------------------------------------
 def _render_pre_api_self_test() -> None:
-    if st.button("PRE-API 자가진단 실행", type="secondary", use_container_width=True, key="hw_pre_api_self_test_v2"):
+    if st.button("구조 자가진단 실행 · 외부 AI 미호출", type="secondary", use_container_width=True, key="hw_pre_api_self_test_v2"):
         try:
             from hwarang_academy.pre_api.case_engine import create_case
             from hwarang_academy.pre_api.mock_ai import MockAIAdapter
@@ -1562,13 +1574,13 @@ def _render_settings(auth: HwarangAuthService, actor_id: str) -> None:
     if policies:
         display = [{
             "역할": r.get("display_name"),
-            "모델": r.get("provider_model") or "API 연결 시 확정",
+            "모델": r.get("provider_model") or "기존 정책 미지정",
             "이용량": "Voice 이용량" if r.get("billing_bucket") == "VOICE" else "훈련 크레딧",
             "최대 출력": r.get("max_output_tokens") or "-",
             "정책 버전": r.get("policy_version"),
         } for r in policies]
         st.dataframe(display, hide_index=True, use_container_width=True)
-        st.caption("Voice V1은 GPT-Live-1입니다. Customer / Coach / Evaluator 모델 ID는 실제 API 연결 시점에 최종 확정합니다.")
+        st.caption("위 표는 기존 학습 엔진 정책입니다. 현재 AI 상담의 실제 모델은 학습 AI → AI 상담 모델·차감 설정에서 확인합니다.")
 
     st.markdown('<div class="hw-section-head">Guardrail</div>', unsafe_allow_html=True)
     limits = _safe_rows(

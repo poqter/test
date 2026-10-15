@@ -89,6 +89,33 @@ def calculate_required_monthly_payment(
     return target_gain_manwon / denominator
 
 
+def compare_equal_cashflows(monthly, annual_rate, pay_years, refund_rate, reinvest=True, deposit_tax=15.4, refund_tax=15.4):
+    """Ten-year illustrative cash flows; annual settlement, beginning-month payments.
+
+    Each year's 12 monthly deposits earn weights 12..1. Previous maturity funds
+    earn a full year only when reinvest is selected. Tax is applied to positive
+    annual deposit interest and to positive insurance gain, as user assumptions.
+    Units are unchanged (UI: ten-thousand KRW). No implied tax qualification.
+    """
+    if monthly < 0 or not 0 <= annual_rate <= 100 or pay_years not in range(1,11):
+        raise ValueError('납입금액·금리·납입기간을 확인해 주세요.')
+    if not 0 <= deposit_tax <= 100 or not 0 <= refund_tax <= 100 or refund_rate < 0:
+        raise ValueError('세율과 환급률을 확인해 주세요.')
+    balance=0.0; cash=0.0; total_tax=0.0; rows=[]
+    rate=annual_rate/100
+    for year in range(1,11):
+        contribution=monthly*12 if year<=pay_years else 0
+        interest=(balance*rate if reinvest else 0)+(monthly*rate*78/12 if year<=pay_years else 0)
+        tax=max(0,interest)*deposit_tax/100; total_tax+=tax
+        if reinvest: balance+=contribution+interest-tax
+        else: cash+=contribution+interest-tax
+        rows.append({'연도':year,'연간 납입':contribution,'세전 이자':interest,'가정 세금':tax,'보유자산':balance+cash})
+    principal=monthly*12*pay_years
+    refund=principal*refund_rate/100
+    insurance_tax=max(0,refund-principal)*refund_tax/100
+    return {'principal':principal,'deposit_assets':balance+cash,'deposit_tax':total_tax,
+            'insurance_assets':refund-insurance_tax,'insurance_tax':insurance_tax,'rows':rows}
+
 def render_styles() -> None:
     st.markdown(
         """
@@ -651,7 +678,7 @@ def run():
         [("조건 입력", "월납입금액·적금 금리·단기납 기간·환급률을 입력합니다."),
          ("비교 실행", "입력한 조건으로 두 방식의 예상 수령액과 이익을 계산합니다."),
          ("결과 활용", "비교 결과를 확인하고 필요하면 브라우저에서 인쇄합니다.")],
-        criteria="- 적금은 1년 만기 상품을 같은 조건으로 10회 반복한 단리 계산입니다.\n- 재예치와 복리 효과는 반영하지 않으며 이자소득세 15.4%를 적용합니다.\n- 단기납은 입력한 10년 시점 예상 해지환급률을 적용합니다.",
+        criteria="- 양쪽의 납입 기간을 동일하게 맞춘 10년 자금 흐름입니다.\n- 만기 원금 재운용과 세율을 결과 화면에서 조정할 수 있습니다.\n- 단기납은 입력한 10년 시점 예상 해지환급률을 적용합니다.",
         caution="인쇄 시 Ctrl+P에서 배율 78을 우선 적용하고 머리글·바닥글과 배경 그래픽을 해제해 주세요.",
     )
 
@@ -699,7 +726,7 @@ def run():
                     help="해당 상품의 가입설계서에 기재된 10년 시점 환급률을 입력하세요.",
                 )
 
-            submitted = st.form_submit_button("10년 예상 이익 비교", use_container_width=True)
+            submitted = st.form_submit_button("10년 보유자산 비교", use_container_width=True)
 
         if submitted:
             st.session_state["hwarang_ds_result"] = {
@@ -713,7 +740,7 @@ def run():
         st.caption("02 · 비교 결과")
         values = st.session_state.get("hwarang_ds_result")
         if not values:
-            st.info("네 가지 상담 조건을 확인한 뒤 ‘10년 예상 이익 비교’를 눌러주세요.")
+            st.info("네 가지 상담 조건을 확인한 뒤 ‘10년 보유자산 비교’를 눌러주세요.")
             return
 
         monthly = values["monthly"]
@@ -721,82 +748,27 @@ def run():
         pay_years = values["pay_years"]
         refund_rate = values["refund_rate"]
 
-        deposit = calculate_deposit(monthly, annual_rate)
-        with st.expander('현재 결과에 반영된 조건', expanded=True):
-            st.write(f'월 {monthly:,.0f}만원 · 적금 연 {annual_rate:.1f}% · 단기납 {pay_years}년납 · 10년 환급률 {refund_rate:.1f}%')
-            st.caption('표시 결과는 마지막으로 비교 버튼을 누른 조건입니다. 입력을 변경한 뒤에는 다시 비교해 주세요. 두 방식의 총 납입기간은 다를 수 있습니다.')
-        shortpay = calculate_shortpay(monthly, pay_years, refund_rate)
-        advantage = shortpay["refund_gain"] - deposit["ten_year_interest"]
-
-        if advantage >= 0:
-            headline = f"단기납의 예상 환급차익이 <strong>{format_currency(advantage)} 더 큽니다</strong>"
-        else:
-            headline = f"현재 조건에서는 적금 누적 세후이자가 <strong>{format_currency(abs(advantage))} 더 큽니다</strong>"
-
-        st.markdown(
-            '''<div class="hw-print-head">
-              <div class="hw-print-title">적금 vs 단기납 10년 예상 이익 비교</div>
-              <div class="hw-print-brand"><span class="hw-print-mark">H</span><span class="hw-print-divider"></span><span>화랑 WORKSPACE</span></div>
-            </div>''',
-            unsafe_allow_html=True,
-        )
-        section_intro("분석 결과", "10년 예상 이익 비교", "같은 월납입금액을 활용했을 때의 예상 결과입니다.")
-        st.markdown(
-            f"""
-            <div class="hw-result-hero">
-                <div class="hw-result-context">같은 월 {format_currency(monthly)}을 활용했을 때</div>
-                <div class="hw-result-title">{headline}</div>
-                <div class="hw-result-basis">적금 1년 만기 10회 반복 · 단기납 {pay_years}년납 후 10년 시점</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        render_bar_chart(
-            monthly,
-            pay_years,
-            deposit["ten_year_interest"],
-            shortpay["refund_gain"],
-            advantage,
-        )
-        render_timeline(pay_years)
-        render_calculation_details(deposit, shortpay, pay_years, refund_rate)
-
-        required_rate = calculate_required_deposit_rate(
-            monthly,
-            shortpay["refund_gain"],
-            deposit["interest_weight"],
-        )
-        required_monthly = calculate_required_monthly_payment(
-            annual_rate,
-            shortpay["refund_gain"],
-            deposit["interest_weight"],
-        )
-
-        st.markdown(
-            f"""
-            <div class="hw-rate-box">
-                <div class="hw-rate-panel">
-                    <div class="hw-rate-label">단기납과 같은 예상 이익을 내려면</div>
-                    <div class="hw-rate-main">적금금리가 연 <span class="hw-rate-percent">{required_rate:,.2f}%</span> 필요합니다.</div>
-                </div>
-                <div class="hw-rate-panel">
-                    <div class="hw-rate-label">현재 금리 연 <span class="hw-current-rate">{annual_rate:,.1f}%</span>를 유지한다면</div>
-                    <div class="hw-rate-main">월납입액은 약 <span class="hw-required-amount">{format_currency(required_monthly)}</span>이 필요합니다.</div>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        st.markdown(
-            """
-            <div class="hw-note">
-                적금은 1년 만기 상품을 동일 조건으로 10회 반복한 단리 계산입니다.
-                단기납은 10년에 반드시 해지해야 하는 상품이 아니며, 계속 유지하는 경우 상품의 해지환급금 예시표에 따라 환급금이 추가로 증가할 수 있습니다.
-                실제 해지환급금과 비과세 적용 여부는 해당 상품의 설계서, 계약조건 및 관련 요건에 따라 달라질 수 있습니다.
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        st.subheader('같은 납입 일정으로 비교')
+        st.caption(f'양쪽 모두 월 {monthly:,.0f}만원을 {pay_years}년 납입하고, 최초 납입부터 10년 시점의 자산을 비교합니다.')
+        reinvest=st.checkbox('적금 만기 원금과 세후이자를 같은 금리로 재운용',value=True,key='ds_reinvest')
+        a,b=st.columns(2)
+        deposit_tax=a.number_input('적금 이자 적용 세율 가정 (%)',0.0,100.0,15.4,0.1)
+        refund_tax=b.number_input('환급차익 적용 세율 가정 (%)',0.0,100.0,15.4,0.1)
+        result=compare_equal_cashflows(monthly,annual_rate,pay_years,refund_rate,reinvest,deposit_tax,refund_tax)
+        st.info('아래 세금은 입력한 세율을 이익에 단순 적용한 비교 가정입니다. 실제 과세표준·비과세 요건을 판정하지 않습니다. 보장 가치, 중도해지 불이익, 유동성은 금액 비교에 포함되지 않습니다.')
+        st.metric('양쪽의 총 납입액',format_currency(result['principal']))
+        a,b=st.columns(2)
+        a.metric('적금 · 10년 보유자산',format_currency(result['deposit_assets']))
+        b.metric('단기납 · 10년 예상 환급자산',format_currency(result['insurance_assets']))
+        st.dataframe([
+            {'비교 항목':'총 납입액','적금':format_currency(result['principal']),'단기납':format_currency(result['principal'])},
+            {'비교 항목':'가정 세금','적금':format_currency(result['deposit_tax']),'단기납':format_currency(result['insurance_tax'])},
+            {'비교 항목':'납입액 대비 세후 손익','적금':format_currency(result['deposit_assets']-result['principal']),'단기납':format_currency(result['insurance_assets']-result['principal'])},
+        ],hide_index=True,use_container_width=True)
+        st.caption('적금은 월초 납입·연말 만기 및 정산, 금리 일정 가정입니다. 재운용 해제 시 만기 자금은 이후 이자가 없는 현금으로 보유합니다. 단기납 환급률은 입력한 10년 시점 예시이며 보장된 수익률을 뜻하지 않습니다.')
+        with st.expander('연도별 적금 자금 흐름 · 만원'):
+            st.dataframe(result['rows'],hide_index=True,use_container_width=True)
+        with st.expander('결과에 적용된 입력'):
+            st.write(f'월 {monthly:,.0f}만원 / 금리 {annual_rate}% / 납입 {pay_years}년 / 환급률 {refund_rate}%')
+            st.caption('납입 조건을 바꾸면 비교 버튼을 다시 눌러 반영합니다. 재운용과 세율은 위 결과에 즉시 반영됩니다.')
     page_footer("적금 vs 단기납", APP_VERSION)

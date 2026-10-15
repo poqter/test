@@ -9,12 +9,13 @@ create function extensions.digest(text,text) returns bytea language sql as $$sel
 create function extensions.gen_random_bytes(integer) returns bytea language sql as $$select decode(repeat('00',$1),'hex')$$;
 `);
 const root=new URL('../../supabase/migrations',import.meta.url).pathname;
-for(const n of [1,3,4,5,6,7,8,9,10,11,12,13,14,15,17,18,23,24]){
+for(const n of [1,3,4,5,6,7,8,9,10,11,12,13,14,15,17,18,23,24,25,26]){
  const name=fs.readdirSync(root).find(x=>x.startsWith(String(n).padStart(2,'0')+'_'));
  let sql=fs.readFileSync(root+'/'+name,'utf8').replace(/create extension if not exists pgcrypto with schema extensions;/gi,'');
  try{await db.exec(sql);console.log('Applied',name)}catch(e){console.log('FAILED',name,e.message);process.exit(1)}
 }
-console.log('MIGRATION PASS');
+for(const n of [25,26]){const name=fs.readdirSync(root).find(x=>x.startsWith(String(n)+'_'));await db.exec(fs.readFileSync(root+'/'+name,'utf8'));}
+console.log('MIGRATION PASS; 25/26 repeat-safe');
 const owner='00000000-0000-0000-0000-000000000001', manager='00000000-0000-0000-0000-000000000002', outsider='00000000-0000-0000-0000-000000000003';
 await db.exec(`alter table auth.users disable trigger user;
 insert into auth.users(id,email) values('${owner}','owner@test.invalid'),('${manager}','manager@test.invalid'),('${outsider}','other@test.invalid');
@@ -87,5 +88,56 @@ const official={...state,id:'00000000-0000-0000-0000-000000000012',mode:'ASSESSM
 await rpc('store',{p_actor:owner,p_data:official,p_version:0});
 ok((await rpc('manager',{p_actor:manager,p_id:official.id})).transcript!==undefined,'formal scoped transcript');
 await denied(()=>rpc('manager',{p_actor:outsider,p_id:official.id}),'formal out-of-scope');
+
+// 1.19 operational recovery and education authorization checks.
+ok((await rpc('operations',{p_actor:manager})).pending===1,'dashboard includes uncertain request');
+await denied(()=>rpc('operations',{p_actor:owner}),'operations admin only');
+ok((await rpc('my_pending',{p_actor:owner})).length===1,'own pending visible');
+ok((await rpc('my_pending',{p_actor:outsider})).length===0,'pending scoped by user');
+const otherState={...state,owner:outsider,id:'00000000-0000-0000-0000-000000000013'};
+await rpc('store',{p_actor:outsider,p_data:otherState,p_version:0});
+ok((await rpc('claim',{p_actor:outsider,p_id:otherState.id,p_version:1,p_op:'other-user-op',p_purpose:'CUSTOMER'})).fresh,'A pending does not block B');
+await denied(()=>rpc('release_unknown',{p_actor:owner,p_op:'other-user-op',p_note:'Unauthorized recovery attempted'}),'nonadmin recovery');
+await denied(()=>rpc('release_unknown',{p_actor:manager,p_op:'other-user-op',p_note:'Too young request recovery'}),'recent request recovery blocked');
+await db.exec("update public.hwarang_studio_requests set updated_at=now()-interval '20 minutes' where op_key='other-user-op'");
+await rpc('release_unknown',{p_actor:manager,p_op:'other-user-op',p_note:'Abandoned pre-reservation claim confirmed'});
+await rpc('release_unknown',{p_actor:manager,p_op:'other-user-op',p_note:'Repeat same recovery must be idempotent'});
+const recovered=await rpc('get',{p_actor:outsider,p_id:otherState.id});
+ok(recovered.version===2,'recovery advances checkpoint exactly once');
+ok((await rpc('operations',{p_actor:manager})).recovered_unknown===1,'recovered cost remains unknown');
+ok((await rpc('claim',{p_actor:outsider,p_id:otherState.id,p_version:2,p_op:'new-other-op',p_purpose:'CUSTOMER'})).fresh,'new request permitted after recovery');
+await rpc('request_update',{p_actor:outsider,p_op:'new-other-op',p_status:'failed',p_request:null,p_result:null});
+await rpc('store',{p_actor:outsider,p_data:recovered,p_version:2,p_op:'new-other-op'});
+// Recover a real learner-credit reservation; no provider call is made.
+await db.query("select public.release_hwarang_ai_session($1,$2)",[owner,voiceState.id]);
+const rr=(await db.query("select * from public.reserve_hwarang_ai_request($1,$2,2,'CUSTOMER','TEXT','unknown-op',1)",[owner,voiceState.id])).rows[0];
+ok(rr.request_status==='reserved','recovery test reserves credits');
+await db.query("update public.hwarang_studio_requests set request_id=$1,updated_at=now()-interval '20 minutes' where op_key='unknown-op'",[rr.request_id]);
+await rpc('release_unknown',{p_actor:manager,p_op:'unknown-op',p_note:'Provider status unknown, release learner reservation only'});
+const settled=(await db.query('select status,metadata from public.hwarang_ai_request_registry where request_id=$1',[rr.request_id])).rows[0];
+ok(settled.status==='failed'&&settled.metadata.provider_cost_status==='unknown','credit reservation released with unknown cost');
+await denied(()=>rpc('request_update',{p_actor:owner,p_op:'unknown-op',p_status:'received',p_request:rr.request_id,p_result:env}),'late response cannot revive released request');
+async function learning(name,args){const keys=Object.keys(args);return (await db.query(`select public.hwarang_learning_${name}(${keys.map((k,i)=>k+' => $'+(i+1)).join(',')}) result`,Object.values(args))).rows[0].result;}
+await db.exec(`insert into public.hwarang_user_permissions(user_id,permission_code,is_allowed) values('${owner}','academy.new_hire',true),('${owner}','academy.library',true),('${outsider}','academy.library',false) on conflict(user_id,permission_code) do update set is_allowed=excluded.is_allowed;`);
+let catalog=await learning('catalog',{p_actor:owner});
+ok(catalog.some(c=>c.id==='foundation-new_hire'),'published permitted course visible');
+await learning('complete',{p_actor:owner,p_id:'foundation-new_hire',p_revision:1,p_lesson:'1'});
+await learning('complete',{p_actor:owner,p_id:'foundation-new_hire',p_revision:1,p_lesson:'1'});
+catalog=await learning('catalog',{p_actor:owner});
+ok(catalog.find(c=>c.id==='foundation-new_hire').progress.completed_lessons.length===1,'lesson completion idempotent');
+ok(!(await learning('catalog',{p_actor:manager})).some(c=>c.progress),'admin cannot read learner progress through catalog');
+await denied(()=>learning('complete',{p_actor:owner,p_id:'foundation-new_hire',p_revision:1,p_lesson:'made-up'}),'unknown lesson rejected');
+await denied(()=>learning('complete',{p_actor:owner,p_id:'foundation-new_hire',p_revision:2,p_lesson:'2'}),'stale content revision rejected');
+const resource={id:'test-resource',kind:'resource',category:'상담',permission:'academy.library',title:'Test resource',summary:'Test',body:'Training document',lessons:[],revision:0,published:false,updated_on:'2026-10-15'};
+await denied(()=>learning('publish',{p_actor:owner,p_data:resource}),'resource admin only');
+await learning('publish',{p_actor:manager,p_data:resource});
+ok(!(await learning('catalog',{p_actor:owner})).some(c=>c.id===resource.id),'draft hidden from learners');
+await learning('publish',{p_actor:manager,p_data:{...resource,revision:1,published:true}});
+ok((await learning('catalog',{p_actor:owner})).some(c=>c.id===resource.id),'published resource visible');
+ok(!(await learning('catalog',{p_actor:outsider})).some(c=>c.kind==='resource'),'library permission enforced');
+await denied(()=>learning('publish',{p_actor:manager,p_data:{...resource,revision:1}}),'stale admin update rejected');
+await db.exec('set role authenticated');
+await denied(()=>learning('catalog',{p_actor:owner}),'browser cannot spoof education actor');
+await db.exec('reset role');
 console.log('DB CHECKS',checks);
 await db.close();

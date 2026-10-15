@@ -267,12 +267,31 @@ def render(auth,owner,permissions,credit_status=None):
         rows=repo.rows()
     except Exception:
         st.error('AI 상담 저장소를 연결하지 못했습니다. Migration 23 적용 및 ACADEMY 접근 설정을 확인해 주세요. 기존 규칙 기반 훈련은 유지됩니다.');return
-    with st.expander('나의 AI 상담 기록 · 최근 50회',expanded=st.session_state.get('_studio_history_open',False)):
+    history_context = st.container(border=True) if st.session_state.get('_studio_history_open') and not st.session_state.get('_studio_state') else st.popover('🕒 나의 AI 상담 기록 · 최근 50회', use_container_width=False)
+    with history_context:
         if rows:
             chosen=st.selectbox('저장된 상담',rows,format_func=lambda r:f"{STAGES.get(r['stage'],r['stage'])} · {'자유 연습' if r['mode']=='PRACTICE' else '공식 평가'} · {r['updated_at'][:16]}")
             if st.button('선택 기록 열기'):
-                st.session_state['_studio_state']=repo.load(chosen['id']);st.rerun()
+                st.session_state['_studio_state']=repo.load(chosen['id'])
+                st.session_state['_studio_history_open']=False
+                st.session_state.pop('_studio_chat_error',None)
+                st.rerun()
         else:st.caption('첫 상담을 시작해 보세요.')
+    try:
+        pending_own = repo.rpc('my_pending') or []
+        if pending_own:
+            with st.expander('처리 대기 상태 확인', expanded=True):
+                st.warning('이 계정의 이전 요청이 대기 중입니다. 다른 사용자에게는 이 계정의 잠금이 적용되지 않습니다.')
+                for item in pending_own:
+                    st.caption(f"요청 {item['op_key'][:12]} · {item['status']} · 마지막 변경 {item['updated_at']}")
+                st.caption('오래된 미확인 요청은 관리자 → 학습 AI에서 복구할 수 있습니다. 페이지 새로고침만으로 재호출하지 않습니다.')
+        if st.session_state.get('_studio_state') and st.button('저장된 상담 상태 새로고침', key='studio_refresh_saved'):
+            st.session_state['_studio_state'] = repo.load(st.session_state['_studio_state']['id'])
+            st.session_state.pop('_studio_chat_error', None)
+            st.session_state.pop('_studio_client_ack', None)
+            st.rerun()
+    except Exception:
+        st.caption('요청 상태 조회 기능은 SQL 25 적용 후 사용할 수 있습니다.')
     if st.session_state.get('_studio_notice'):st.warning(st.session_state.pop('_studio_notice'))
     s=st.session_state.get('_studio_state')
     try:
@@ -367,6 +386,13 @@ def _active_room(repo,runtime,s,config,permissions):
             _room_help(repo,runtime,s,config)
             st.divider()
             st.caption(f"이번 상담 {sum(x.get('credits',0) for x in s['usage'])} 크레딧 · 음성 {sum(x.get('seconds',0) for x in s['usage'])}초")
+            timings=[x for x in s['usage'] if x.get('provider_elapsed_ms') is not None]
+            if timings:
+                with st.expander('최근 응답 시간'):
+                    for x in timings[-5:]:
+                        label={'CUSTOMER':'고객 답변','COACH':'코칭','EVALUATOR':'평가','TRANSCRIBE':'음성 인식','SPEECH':'음성 생성'}.get(x.get('purpose'),'AI')
+                        st.caption(f"{label} · {x['provider_elapsed_ms']/1000:.1f}초")
+                    st.caption('공급자 요청부터 응답까지의 시간입니다. 화면 렌더링·저장 시간은 제외합니다.')
             if st.button('저장 상태 다시 불러오기',key='studio_reload'):
                 st.session_state['_studio_state']=repo.load(s['id']);st.session_state.pop('_studio_chat_error',None);st.rerun()
             if st.button('상담 마치기',key='studio_finish'):
@@ -516,7 +542,7 @@ def render_operations(auth,actor):
                     repo.rpc('configure',p_settings=changes);st.success('설정을 저장했습니다. 다음 요청부터 화면에 표시된 단위가 적용됩니다.')
         except Exception as exc:st.warning(_safe_error(exc))
     st.caption('학습 AI 비용은 확인된 금액만 집계합니다. API 비용 미확인 요청이 있으면 실제 총비용은 더 클 수 있습니다.')
-    with st.expander('AI 상담 요청 확인 · 비용 미확인'):
+    with st.expander('AI 상담 요청 확인 · 비용 미확인', expanded=True):
         st.caption('API 비용 미확인 요청은 0원이 아닙니다. 아래 기존 비용 합계에는 미확인 비용이 포함되지 않습니다.')
         try:
             repo=Repository(auth,actor)
@@ -524,6 +550,15 @@ def render_operations(auth,actor):
             st.dataframe(pending,hide_index=True,width='stretch')
             if not pending:return
             chosen=st.selectbox('확인할 요청',pending,format_func=lambda r:r['purpose']+' · '+r['created_at']+' · '+r['op_key'][:10])
+            st.caption(f"보류 {len(pending)}건 · 영향 사용자 {len({r['user_id'] for r in pending})}명")
+            with st.expander('처리 여부가 확인되지 않는 오래된 요청 복구'):
+                st.write('10분 이상 지난 요청만 복구합니다. 미정산 학습 크레딧·음성 예약을 해제하고 외부 처리·비용은 미확인으로 보존합니다. 동일 요청을 자동 재호출하지 않습니다.')
+                reason = st.text_area('복구 사유 (10자 이상)', max_chars=1000, key='studio_unknown_reason')
+                consent = st.checkbox('공급자 비용이 남을 수 있으며 다음 전송은 새로운 요청임을 확인했습니다.', key='studio_unknown_consent')
+                if st.button('미확인 상태를 보존하고 잠금 복구', disabled=not consent or len(reason.strip())<10):
+                    repo.rpc('release_unknown',p_op=chosen['op_key'],p_note=reason.strip())
+                    st.success('복구 이력을 저장했습니다. 사용자 상담 기록을 다시 열어 주세요.')
+                    st.rerun()
             st.warning('공급자 처리 기록과 원장을 먼저 대조하세요. 처리 중인 요청은 조정할 수 없습니다. 음성 처리 완료·이미 만료된 원장은 별도 정산 확인이 필요합니다.')
             delivered=st.radio('확인 결과',['외부 처리되지 않음 확인','외부 처리 완료·응답 유실 확인'],key='studio_resolve_result')
             note=st.text_area('확인 근거와 처리 사유',max_chars=1000,key='studio_resolve_note')

@@ -160,6 +160,9 @@ def run() -> None:
         upload_column, mode_column = st.columns([1.05, 1], gap="large")
         with upload_column:
             st.markdown("**전체 보장분석 원본**")
+            from modules.consultation.analyzer_sample import sample_workbook
+            st.download_button('익명 예시 XLSX 내려받기',sample_workbook(),file_name='HWARANG_analyzer_sample.xlsx',mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            st.caption('필수 시트: 계약사항 / 상품별보장내용. 예시 파일로 먼저 흐름을 확인할 수 있습니다.')
             uploaded_main = guarded_upload(
                 "전체 보장내용이 포함된 컨설팅보장분석.xlsx 파일을 업로드하세요",
                 type=["xlsx"],
@@ -215,6 +218,12 @@ def run() -> None:
         elif not uploaded_main:
             st.caption("원본 파일을 업로드하면 선택 가능한 전체 보장항목이 표시됩니다.")
 
+        if parsed:
+            with st.expander('원본 보장 → 출력 포함 여부 대조'):
+                st.dataframe([{'원본 항목':item['label'],'분류':item['group'],
+                    '출력':'포함' if item['label'] in selected_labels else '미포함 · 직접 선택 가능',
+                    '확인':'분류 확인 필요' if item['group']=='기타' else '분류됨'} for item in parsed['coverages']],hide_index=True,use_container_width=True)
+                st.caption('미포함은 보장 없음이 아닙니다. 자동 정리의 기본 목록에서 제외된 보장은 항목 직접 선택에서 추가할 수 있습니다.')
         ready = bool(parsed) and bool(selected_labels) and parse_error is None
         signature = make_input_signature(main_bytes, mode, selected_labels) if ready else None
 

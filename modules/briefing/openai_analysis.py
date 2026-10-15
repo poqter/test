@@ -151,7 +151,9 @@ class OpenAIAnalysisClient:
             "Describe observed changes, attributed reported background, conditional effects, and the next thing to watch. Each sentence needs supplied event:<event_key> or metric:<code> fact_refs. "
             "Do not invent causal links or values. If evidence is insufficient, use fewer factual sentences. For other profiles, market_flow must be []."
             " MARKET is a complete article-based economic briefing without a metric dashboard. Synthesize supplied article facts. Numerical claims require supplied article evidence and dates; never invent index movements, exchange rates or yields. "
-            "Prefer concise fields so every supplied event fits in the response; leave irrelevant consultation fields empty rather than selecting fewer events."
+            "Prefer concise fields so every supplied event fits in the response; leave irrelevant consultation fields empty rather than selecting fewer events. "
+            "Avoid generic repeated background such as broad claims about uncertainty or market attention. State the concrete new development, date and attributed evidence. "
+            "If no supplied fact supports a figure or causal explanation, omit it rather than filling the field with speculation."
         )
 
     def analyze(self, profile_code: str, events: list[SharedEventCandidate]) -> tuple[list[dict[str, Any]], AnalysisUsage]:

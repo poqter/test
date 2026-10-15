@@ -146,6 +146,7 @@
       else if(k==='resume-studio')action('resume_studio')
       else if(k==='studio-history')action('studio_history')
       else if(k==='open-simulator')action('open_simulator',{scenario_id:b.dataset.id||selected})
+      else if(k.startsWith('education-'))action(k.replaceAll('-','_'))
       else if(k==='academy-home')action('academy_home')
       else if(k==='mode'){missionModalOpen=false;mode=b.dataset.id;render();action('configure',{scenario_id:selected,mode,session_length:sessionLength})}
       else if(k==='length'){missionModalOpen=false;sessionLength=b.dataset.id;render();action('configure',{scenario_id:selected,mode,session_length:sessionLength})}

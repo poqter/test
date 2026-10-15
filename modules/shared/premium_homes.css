@@ -23,3 +23,12 @@ body:has(.hw-premium-workspace) button,body:has(.hw-premium-calculator) button{t
 @media(prefers-reduced-motion:reduce){body:has(.hw-premium-workspace) details::details-content,body:has(.hw-premium-calculator) details::details-content{transition:none!important}}
 
 .st-key-hp_top_portal{padding:18px 22px!important;background:#fff;border:1px solid #d8e4ef;border-radius:12px;margin-bottom:12px}body:has(.hw-premium-calculator) [data-testid="stSidebar"] button{min-height:44px!important;white-space:normal!important;text-align:left!important}body:has(.hw-premium-calculator) [data-testid="stSidebar"] button p{font-size:14px!important;white-space:normal!important}.st-key-hp_calc_catalog [class*="st-key-hwcalc_actions_"] button p{font-size:12px!important;white-space:normal!important}
+
+/* 1.19 navigation polish; no perpetual animation. */
+body:has(.hw-premium-workspace) [data-testid="stSidebar"] button,
+body:has(.hw-premium-calculator) [data-testid="stSidebar"] button{transition:background-color 180ms ease,box-shadow 180ms ease;min-height:44px}
+body:has(.hw-premium-workspace) button:focus-visible,body:has(.hw-premium-calculator) button:focus-visible{outline:3px solid #82accb;outline-offset:2px}
+@media(prefers-reduced-motion:reduce){body:has(.hw-premium-workspace) [data-testid="stSidebar"] button,body:has(.hw-premium-calculator) [data-testid="stSidebar"] button{transition:none}}
+
+/* Shorter hero brings balanced tool categories into view. */
+.st-key-hp_workspace_hero{padding:20px 24px!important}.hp-art{min-height:160px;padding:12px}.hp-paper{padding:14px 20px;width:195px}.hp-hero-copy h2{font-size:25px!important}.hp-welcome h1{font-size:28px!important}

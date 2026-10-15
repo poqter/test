@@ -2,6 +2,7 @@
 from copy import deepcopy
 from hashlib import sha256
 import json
+from time import perf_counter
 from . import domain as d
 from .conversation import explicit_close, closing_result, guard_response
 from .provider import ProviderError, wav_seconds
@@ -64,6 +65,7 @@ class Runtime:
                 if request:self._finalize(request,role,{},True)
                 self.repo.save(s,key)
             raise
+        started=perf_counter()
         try:
             if role=='TRANSCRIBE':envelope=self.provider.transcribe(payload)
             elif role=='SPEECH':envelope=self.provider.speak(payload['text'],payload['voice'],payload.get('style','calm'))
@@ -85,6 +87,7 @@ class Runtime:
                 self.repo.update(key,'failed',request)
                 self.repo.save(s,key)
             raise
+        envelope['provider_elapsed_ms']=round((perf_counter()-started)*1000)
         envelope['credits']=self.provider.config.credits(role) if role not in ('TRANSCRIBE','SPEECH') else 0
         envelope['purpose']=role;envelope['cost_usd']=None;envelope['request_id']=request
         # Audio bytes are transient: never copied into the durable request log or learning record.

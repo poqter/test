@@ -195,6 +195,11 @@ def main() -> None:
     if '_academy_surface' not in st.session_state:
         st.session_state['_academy_surface'] = 'simulator' if independent else 'academy'
 
+    if st.session_state.get('_academy_surface') in ('courses','library','my_learning'):
+        from hwarang_academy.education.ui import render as render_learning
+        render_learning(auth,viewer_user_id,feature_permissions,viewer_profile,st.session_state['_academy_surface'])
+        return
+
     # AI Studio reuses the authenticated identity and leaves the legacy engine/history intact.
     if 'academy.simulator' in feature_permissions:
         if '_studio_open' not in st.session_state:
@@ -303,9 +308,13 @@ def main() -> None:
     event = component()(model=payload, key="academy_engine_component_v118", default=None)
     if isinstance(event, dict) and event.get("event_id") != app.ack:
         try:
-            if event.get("kind") != "academy_home" and "academy.simulator" not in feature_permissions:
+            if event.get("kind") not in ("academy_home","education_courses","education_library","education_my_learning") and "academy.simulator" not in feature_permissions:
                 raise ValueError("AI 상담 시뮬레이터 이용 권한이 없습니다.")
-            if event.get('kind') in ('studio_home', 'academy_home'):
+            if event.get('kind') in ('education_courses','education_library','education_my_learning'):
+                st.session_state['_academy_surface']=event['kind'].removeprefix('education_')
+                st.session_state['_studio_open']=False
+                app.ack=event.get('event_id')
+            elif event.get('kind') in ('studio_home', 'academy_home'):
                 st.session_state['_academy_surface'] = 'simulator' if event['kind'] == 'studio_home' else 'academy'
                 st.session_state['_studio_open'] = False
                 app.independent = False
