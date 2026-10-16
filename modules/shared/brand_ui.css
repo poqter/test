@@ -53,3 +53,13 @@ body:has(.hw-brand-ui) [data-testid="stVerticalBlock"][class*="st-key-brand_feat
 body:has(.hw-brand-ui) .brand-card h3{font-size:17px!important;line-height:1.45!important}
 body:has(.hw-brand-ui) .brand-card p{font-size:14px!important;line-height:1.6!important}
 @media(max-width:640px){.brand-feature-icon{width:48px;height:48px;font-size:30px}body:has(.hw-brand-ui) [data-testid="stVerticalBlock"][class*="st-key-brand_feature_"] h3{font-size:22px!important}}
+/* Equal-height consultation columns; both right-hand rows share the height. */
+@container(min-width:1001px){
+.st-key-brand_consult_wrap [data-testid="stHorizontalBlock"]:has(.st-key-brand_feature_analysis){align-items:stretch!important}
+.st-key-brand_consult_wrap [data-testid="stColumn"]>[data-testid="stVerticalBlock"]{height:100%!important}
+.st-key-brand_consult_wrap [data-testid="stColumn"]>[data-testid="stVerticalBlock"]>[data-testid="stLayoutWrapper"]{height:100%!important}
+.st-key-brand_consult_wrap .st-key-brand_feature_analysis{height:100%!important;box-sizing:border-box}
+.st-key-brand_consult_wrap .st-key-brand_grid_consult{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));height:100%!important;gap:14px!important}
+.st-key-brand_consult_wrap .st-key-brand_grid_consult>[data-testid="stLayoutWrapper"]{width:100%!important;height:100%!important;min-width:0!important}
+.st-key-brand_consult_wrap .st-key-brand_grid_consult [data-testid="stVerticalBlock"][class*="st-key-brand_tile_"]{height:100%!important;box-sizing:border-box}
+}
