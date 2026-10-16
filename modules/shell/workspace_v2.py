@@ -317,7 +317,8 @@ def render_home(allowed_ids, navigate, notice):
         with lead:
             if 'analyzer' in allowed:
                 with st.container(key='brand_feature_analysis'):
-                    st.markdown('🛡️');st.subheader('보장 분석 도우미');st.caption(_HOME_SHORT_COPY['analyzer'])
+                    st.markdown('<div class="brand-feature-icon" aria-hidden="true">🛡️</div>',unsafe_allow_html=True)
+                    st.subheader('보장 분석 도우미');st.caption(_HOME_SHORT_COPY['analyzer'])
                     _launch_widget(APP_BY_ID['analyzer'],'분석 시작 →',key='brand_analyze',primary=True,navigate=navigate)
         with others:grid(_HOME_TOPICS[0][4][1:],'consult')
     with st.container(key='brand_pair_wrap'):

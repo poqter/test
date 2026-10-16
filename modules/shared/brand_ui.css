@@ -45,3 +45,11 @@ body:has(.hw-brand-ui) [data-testid="stSidebarCollapsedControl"]{display:block!i
 [data-testid="stVerticalBlock"][class*="st-key-brand_feature_"] [data-testid="stButton"] button{align-items:flex-end!important;justify-content:flex-start!important;padding:20px 24px!important;color:#2469cd!important}
 [data-testid="stVerticalBlock"][class*="st-key-brand_feature_"]{padding-bottom:70px!important}
 :is([data-testid="stVerticalBlock"][class*="st-key-brand_tile_"], [data-testid="stVerticalBlock"][class*="st-key-hwcalc_card_"], [data-testid="stVerticalBlock"][class*="st-key-brand_feature_"]):has(button:focus-visible){outline:3px solid #8eb5ed;outline-offset:2px}
+
+/* Keep typography proportional to primary and standard cards. */
+.brand-feature-icon{display:flex;align-items:center;justify-content:center;width:56px;height:56px;font-size:34px;line-height:1;background:#e2edfc;border-radius:16px;margin-bottom:4px}
+body:has(.hw-brand-ui) [data-testid="stVerticalBlock"][class*="st-key-brand_feature_"] h3{font-size:24px!important;line-height:1.4!important;letter-spacing:-.5px;padding:4px 0 8px!important}
+body:has(.hw-brand-ui) [data-testid="stVerticalBlock"][class*="st-key-brand_feature_"] [data-testid="stCaptionContainer"] p{font-size:15px!important;line-height:1.65!important;color:#61738a!important}
+body:has(.hw-brand-ui) .brand-card h3{font-size:17px!important;line-height:1.45!important}
+body:has(.hw-brand-ui) .brand-card p{font-size:14px!important;line-height:1.6!important}
+@media(max-width:640px){.brand-feature-icon{width:48px;height:48px;font-size:30px}body:has(.hw-brand-ui) [data-testid="stVerticalBlock"][class*="st-key-brand_feature_"] h3{font-size:22px!important}}
