@@ -152,7 +152,6 @@ def _populate_analysis_sheet(
     coverage_start = 11
 
     output_items = [
-        {"label": "일반사망", "display": "일반 사망", "group": "사망", "values": [0] * contract_count},
         *[
             {
                 **item,
@@ -160,7 +159,6 @@ def _populate_analysis_sheet(
             }
             for item in selected
         ],
-        {"label": "기타", "display": "기타", "group": "기타", "values": [0] * contract_count},
     ]
     coverage_end = coverage_start + len(output_items) - 1
 
@@ -390,9 +388,7 @@ def _populate_proposal_sheet(
     proposal_end_col = 9  # I열
     coverage_start = 11
     output_items = [
-        {"label": "일반사망", "display": "일반 사망", "group": "사망"},
         *selected,
-        {"label": "기타", "display": "기타", "group": "기타"},
     ]
     coverage_end = coverage_start + len(output_items) - 1
 
@@ -564,6 +560,13 @@ def build_analysis_file(
     selected_labels: list[str] | None = None,
 ) -> tuple[bytes, str, str]:
     data = parse_source_file(main_bytes)
+    return build_analysis_from_data(data, selected_labels)
+
+
+def build_analysis_from_data(data: dict, selected_labels: list[str] | None = None) -> tuple[bytes, str, str]:
+    """Shared exporter; legacy XLSX route and reviewed PDF route use one layout."""
+    if data.get('source_type') == 'kb_pdf' and not data.get('reviewed'):
+        raise ValueError('PDF 검토를 완료한 뒤 출력해 주세요.')
     available = {item["label"]: item for item in data["coverages"]}
 
     if selected_labels is None:
@@ -586,6 +589,32 @@ def build_analysis_file(
         page_count=1,
     )
     _populate_proposal_sheet(workbook, data, selected)
+    if data.get('source_type') == 'kb_pdf':
+        from openpyxl.comments import Comment
+        ws = workbook['보장 분석']
+        ws['A1'].comment = Comment(
+            f"KB PDF 조회일: {data['source_date']}\n납입 추정 기준월: {data['calculation_month']}\n"
+            "납입금액은 현재 보험료가 동일하게 유지된다는 가정의 추정값입니다. 실제 수납내역이 아닙니다.\n"
+            "종수술 등 서로 다른 지급조건의 금액 합계는 1회 지급액이 아닙니다. 미분류 담보는 PDF 검토내역을 확인하세요.",
+            '화랑 WORKSPACE')
+        ws.oddFooter.left.text = f"PDF {data['source_date']} / 납입추정 {data['calculation_month']} / 미분류 담보 제외"
+        ws.oddFooter.left.size = 7
+        for col, contract in enumerate(data['contracts'], 4):
+            for row in (8, 9, 10):
+                if contract.get('payment_unknown'):
+                    ws.cell(row, col, '확인 필요')
+            for row in range(7, 11):
+                ws.cell(row, col).comment = Comment('PDF 기준 정보 / 납입금액은 기준월에 따른 추정값', '화랑 WORKSPACE')
+        for row, item in enumerate(selected, 11):
+            for col in range(4, len(data['contracts'])+4):
+                records=[r for r in data.get('details',[]) if r['contract']==col-4 and item['label'] in r['targets']]
+                if records:
+                    text='\n'.join(f"{r['page']}쪽: {r['raw']} / {r['value']:g}만원 / {r['reason']}" for r in records)
+                    ws.cell(row,col).comment=Comment(text,'화랑 WORKSPACE')
+        # Unknown amounts must not disappear from SUM as a misleading zero.
+        for row in range(7, ws.max_row+1):
+            end=get_column_letter(ws.max_column)
+            ws.cell(row,1,f'=IF(COUNTIF(D{row}:{end}{row},"확인 필요")>0,"확인 필요",SUM(D{row}:{end}{row}))')
     workbook.calculation.calcMode = "auto"
     workbook.calculation.fullCalcOnLoad = True
     workbook.calculation.forceFullCalc = True

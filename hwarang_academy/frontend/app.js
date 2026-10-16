@@ -77,11 +77,15 @@
     const rows=model.learning_history?.records||[];
     return `<section id="learning-history" class="academy-summary-card"><h3>나의 학습 기록</h3><p>최근 20회 · 규칙 기반 훈련 / 잠정 평가</p>${rows.map(r=>`<div class="rubric-row"><b>${esc(model.scenarios.find(s=>s.id===r.scenario_id)?.name||r.scenario_id)}</b><p>${esc(r.mode)} · ${r.status==='completed'?'완료':'진행 중'} · ${esc(r.last_turn_no)}회 답변</p><button type="button" class="action ghost small" data-action="history-open" data-id="${esc(r.id)}">${r.status==='completed'?'결과 보기':'이어서 상담'}</button></div>`).join('')||'<p>저장된 훈련 기록이 없습니다.</p>'}</section>`;
   }
-  function allowance(){
-    const c=model.training_credit,v=model.voice_usage;if(!c?.service_enabled)return '<p class="muted">이용량은 서비스 연결 후 표시됩니다.</p>';
-    return `<div class="wallet-line"><span>훈련 크레딧</span><strong>${Number(c.available||0).toLocaleString()}<small> 남음</small></strong></div><div class="wallet-meter"><i style="width:${Math.max(0,Math.min(100,Number(c.remaining_percent)||0))}%"></i></div><p class="wallet-detail">이번 달 ${Number(c.monthly_available||0).toLocaleString()} · 구매 ${Number(c.purchased_available||0).toLocaleString()}</p>${v?.voice_enabled?`<div class="wallet-line voice"><span>음성 대화</span><strong>${Math.floor(Number(v.available_seconds||0)/60)}<small>분 ${Number(v.available_seconds||0)%60}초</small></strong></div>`:''}${c.low?'<p class="wallet-low">남은 크레딧을 확인해 주세요.</p>':''}`;
+  function home(){
+    const first=model.scenarios.find(x=>x.id==='C07-S01')||model.scenarios[0],v=model.viewer||{},sim=model.simulator_status||{},canSim=hasPerm('academy.simulator');
+    const simLead=!canSim
+      ? `<b>현재 계정에는 이용 권한이 없습니다.</b><p>최고관리자에게 AI 상담 시뮬레이터 권한을 요청해 주세요.</p>`
+      : sim.has_session
+      ? `<b>${sim.ended?'최근 상담 결과를 다시 확인할 수 있습니다.':'진행 중인 상담이 있습니다.'}</b><p>${esc(sim.title||'AI 상담 시뮬레이터')} · ${esc(sim.mode||'')}</p><button type="button" class="text-link text-link-button" data-action="open-simulator" data-id="${esc(sim.scenario_id||first.id)}">${sim.ended?'결과 이어보기':'상담 이어하기'} →</button>`
+      : `<b>AI 상담 시뮬레이터</b><p>실제 고객과 상담하듯 훈련하고 상담 과정과 역량을 확인해보세요.</p><button type="button" class="text-link text-link-button" data-action="open-simulator" data-id="${esc(first.id)}">시뮬레이터 시작 →</button>`;
+    return `${header()}<div class="academy-layout"><nav class="academy-nav" aria-label="아카데미 메뉴">${button('⌂ <span>홈</span>','home','nav-item current')}${canSim?button('◉ <span>AI 상담 시뮬레이터</span>','open-simulator','nav-item nav-link',`data-id="${esc(sim.scenario_id||first.id)}"`):'<button class="nav-item" disabled>◉ <span>AI 상담 시뮬레이터</span><small>권한 없음</small></button>'}<button class="nav-item" disabled>♧ <span>신입교육</span><small>준비 중</small></button><button class="nav-item" disabled>▦ <span>상담교육</span><small>준비 중</small></button><button class="nav-item" disabled>▤ <span>보험실무</span><small>준비 중</small></button><button class="nav-item" disabled>✓ <span>시험 · 평가</span><small>준비 중</small></button><button class="nav-item" disabled>▣ <span>교육자료실</span><small>준비 중</small></button>${canSim?button('♙ <span>나의학습</span>','learning-history','nav-item'):'<button class="nav-item" disabled>♙ <span>나의학습</span><small>권한 없음</small></button>'}<div class="nav-foot"><span>Better Advisor<br>A Brighter Tomorrow</span><br><br>Planned &amp; Built by<br>박병선 팀장</div></nav><main class="academy-main academy-dashboard"><section class="academy-home-hero"><div><span class="eyebrow">HWARANG ACADEMY</span><h1>배움이 만드는<br>더 큰 가능성</h1><p>상담 역량부터 보험 실무까지.<br>FP의 성장을 위한 통합 교육 플랫폼</p></div><div class="hero-quote">Grow Today<br><b>Lead Tomorrow</b><small>“오늘의 배움이 내일의 더 큰 가능성을 만듭니다.”</small></div></section><div class="section-head academy-module-head"><h2>교육 프로그램</h2><span class="muted">필요한 교육과 실습을 선택해 시작하세요.</span></div><section class="academy-modules">${moduleCard('◉','AI 상담 시뮬레이터','규칙 기반 고객과 상담을 연습하고 대화 근거로 잠정 평가합니다. 현재 훈련에는 과금이 없습니다.',canSim,'open-simulator',sim.scenario_id||first.id)}${moduleCard('♧','신입교육','30일 · 60일 · 90일 단계별 온보딩 교육과정을 제공합니다.')}${moduleCard('▦','상담교육','TA부터 1차·2차 미팅, 니즈 파악과 클로징까지 단계별로 학습합니다.')}${moduleCard('▤','보험실무','보장분석, 계약, 청구 등 실무에 필요한 핵심 지식을 학습합니다.')}${moduleCard('✓','시험 · 평가','지식 평가부터 상담 실기까지 나의 역량을 점검합니다.')}${moduleCard('▣','교육자료실','스크립트, 체크리스트, 교안 등 교육 자료를 한곳에서 확인합니다.')}${moduleCard('♙','나의학습','저장된 상담과 평가 결과를 확인하고 진행 중인 훈련을 이어갑니다.',canSim,'learning-history')}</section><section class="academy-home-lower"><article class="academy-summary-card"><div class="intro-row"><h3>나의 학습 요약</h3><span class="muted">${esc(v.display_name||v.login_id||'사용자')}</span></div><div class="summary-placeholder">${learningSummary()}</div></article><article class="academy-summary-card"><div class="intro-row"><h3>AI 상담 시뮬레이터</h3><span class="muted">PRACTICE</span></div><div class="summary-placeholder">${simLead}</div></article><article class="academy-summary-card"><div class="intro-row"><h3>공지사항</h3><span class="muted">ACADEMY</span></div><div class="summary-placeholder"><b>현재 운영 모드 · 규칙 기반 훈련</b><p>평가는 잠정 결과이며 정식 AI 평가와 구분됩니다. 저장된 회차는 나의학습에서 다시 열 수 있습니다.</p></div></article></section>${canSim?learningHistory():''}</main></div>`;
   }
-  function home(){return window.HwarangPortal.render(model,{esc,button,viewerBlock,allowance,learningHistory,hasPerm})}
   function simHeader(){return `<div class="sim-top"><div class="sim-brand-group">${button('← ACADEMY 홈','academy-home','sim-home-button')}${brand('ACADEMY / AI 상담 시뮬레이터')}</div><span class="tagline">연습이, 실력을 만듭니다.</span>${viewerBlock(true)}</div>`}
   function selectedScenario(){return model.scenarios.find(s=>s.id===selected)||model.scenarios[0]}
   function missionModal(sc,brief){
@@ -140,13 +144,7 @@
   function bind(){
     root.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',()=>{
       const k=b.dataset.action;
-      if(k==='studio-home')action('studio_home')
-      else if(k==='portal-scroll')document.getElementById(b.dataset.target)?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'})
-      else if(k==='open-studio')action('open_studio',{stage:b.dataset.stage||'FIRST'})
-      else if(k==='resume-studio')action('resume_studio')
-      else if(k==='studio-history')action('studio_history')
-      else if(k==='open-simulator')action('open_simulator',{scenario_id:b.dataset.id||selected})
-      else if(k.startsWith('education-'))action(k.replaceAll('-','_'))
+      if(k==='open-simulator')action('open_simulator',{scenario_id:b.dataset.id||selected})
       else if(k==='academy-home')action('academy_home')
       else if(k==='mode'){missionModalOpen=false;mode=b.dataset.id;render();action('configure',{scenario_id:selected,mode,session_length:sessionLength})}
       else if(k==='length'){missionModalOpen=false;sessionLength=b.dataset.id;render();action('configure',{scenario_id:selected,mode,session_length:sessionLength})}

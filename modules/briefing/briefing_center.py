@@ -409,8 +409,7 @@ def _render_today(repo, can_manage):
     if not item:
         st.info('아직 '+PROFILE_LABELS[selected]+'이 게시되지 않았습니다.')
         if can_manage:
-            st.caption('운영 관리에서 최근 실행 결과를 확인하세요. 응답 대기 초과로 처리 여부가 불명확한 요청은 공급자 사용 기록 확인 후 복구해야 합니다.')
-            st.button('브리핑 생성·실패 원인 확인', on_click=_navigate, args=('운영 관리',), key='empty_generate')
+            st.button('브리핑 생성하러 가기', on_click=_navigate, args=('운영 관리',), key='empty_generate')
         return
     snapshot = repo._snapshot_for_revision(str(item['revision']['id']))
     if not snapshot:

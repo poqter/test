@@ -20,6 +20,7 @@ def other_upload_bytes(current, values):
 
 
 def guarded_upload(*args, **kwargs):
+    allow_encrypted_pdf = kwargs.pop("allow_encrypted_pdf", False)
     uploaded = st.file_uploader(*args, **kwargs)
     scope = "upload:" + str(kwargs.get("key") or (args[0] if args else "file"))
     if uploaded is None:
@@ -31,14 +32,11 @@ def guarded_upload(*args, **kwargs):
         if len(content) > MAX_FILE_BYTES or total + len(content) > MAX_SESSION_UPLOAD_BYTES:
             raise ValidationError("UPLOAD_TOO_LARGE", "업로드 처리 한도를 넘었습니다.")
         from pathlib import Path
-        signature = "validation-v2:" + Path(uploaded.name).suffix.lower() + ":" + digest_bytes(content)
-        cached(scope, signature, lambda: validate_upload(uploaded.name, content))
+        signature = "validation-v3:" + str(allow_encrypted_pdf) + ":" + Path(uploaded.name).suffix.lower() + ":" + digest_bytes(content)
+        cached(scope, signature, lambda: validate_upload(uploaded.name, content, allow_encrypted_pdf=allow_encrypted_pdf))
     except ValidationError as error:
         st.error('파일을 처리할 수 없습니다. '+str(error))
         st.info('빈 파일·손상 여부와 형식을 확인한 뒤 다시 선택하세요. 파일당 처리 한도는 20MB입니다.')
         # Stop this run: never display a previous file's result as this file's result.
         st.stop()
-    with st.expander('업로드 파일 확인 정보'):
-        st.caption(f'{uploaded.name} · {len(content):,} bytes · 파일 식별 {digest_bytes(content)[:12]}')
-        st.caption('파일 형식 검사는 계산 기준·열 매칭의 정확성 검사와 별개입니다. 각 도구의 포함·제외·확인 필요 내역을 확인하세요.')
     return uploaded

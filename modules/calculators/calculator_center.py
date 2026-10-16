@@ -226,15 +226,6 @@ def render_quick_calculator(calculator_name: str) -> None:
     kind, _group, fields, formula, assumptions = MODES[mode]
     page = _scope(kind)
     result_key = f"a_calculation_{kind}"
-    if kind == 'total' and 'hp_quick_transfer' in st.session_state:
-        pending = st.session_state.pop('hp_quick_transfer')
-        from modules.calculators.input_design import set_money_state
-        set_money_state('a_total_premium', '월 보험료', pending['premium'], policy='exact_won')
-        st.session_state['hw.quick_money_migrated.a_total_premium'] = True
-        _set_widget_value(page, 'a_total_months', pending['months'])
-        _set_widget_value(page, 'a_total_paid', 0)
-        st.session_state.pop(result_key, None)
-
 
     st.markdown(
         f"**먼저 입력할 내용** · {_mode_core_text(kind, fields)}  \n"

@@ -30,6 +30,7 @@ from modules.consultation.analyzer_exports import (
     _populate_analysis_sheet,
     _populate_proposal_sheet,
     build_analysis_file,
+    build_analysis_from_data,
 )
 
 import hashlib
@@ -160,25 +161,43 @@ def run() -> None:
         upload_column, mode_column = st.columns([1.05, 1], gap="large")
         with upload_column:
             st.markdown("**전체 보장분석 원본**")
-            from modules.consultation.analyzer_sample import sample_workbook
-            st.download_button('익명 예시 XLSX 내려받기',sample_workbook(),file_name='HWARANG_analyzer_sample.xlsx',mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-            st.caption('필수 시트: 계약사항 / 상품별보장내용. 예시 파일로 먼저 흐름을 확인할 수 있습니다.')
             uploaded_main = guarded_upload(
-                "전체 보장내용이 포함된 컨설팅보장분석.xlsx 파일을 업로드하세요",
-                type=["xlsx"],
+                "전체 보장내용이 포함된 컨설팅보장분석.xlsx 또는 KB 보장분석 PDF를 업로드하세요",
+                type=["xlsx", "pdf"],
                 key="analyzer_v2_main_file",
+                allow_encrypted_pdf=True,
             )
 
         parsed = None
         parse_error = None
         main_bytes = uploaded_main.getvalue() if uploaded_main else b""
-        if uploaded_main:
+        is_pdf = bool(uploaded_main and uploaded_main.name.lower().endswith('.pdf'))
+        from modules.consultation.analyzer_pdf_password import prepare_pdf_input
+        pdf_state = prepare_pdf_input(main_bytes if is_pdf else b'')
+        pdf_reviewed = not is_pdf
+        calculation_month = None
+        if is_pdf:
+            from modules.shared.local_time import now_kst
+            from modules.consultation.analyzer_pdf import parse_kb_pdf
+            chosen_month = st.date_input('납입 추정 기준월', value=now_kst().date().replace(day=1), key='kb_calc_month')
+            calculation_month = chosen_month.strftime('%Y-%m')
+            st.caption('선택한 날짜의 월을 사용합니다. 과거 결과 비교 시 해당 엑셀 생성월로 변경하세요.')
+        if uploaded_main and (not is_pdf or pdf_state["ready"]):
             try:
-                parsed = parse_source_file(main_bytes)
+                with st.spinner('원본 자료를 읽고 있습니다...'):
+                    if is_pdf and pdf_state.get('raw') is not None:
+                        from modules.consultation.analyzer_pdf import convert_kb
+                        parsed = convert_kb(pdf_state['raw'], calculation_month)
+                    else:
+                        parsed = parse_kb_pdf(main_bytes, calculation_month) if is_pdf else parse_source_file(main_bytes)
             except Exception as exc:
                 parse_error = exc
                 from modules.shared.error_reporting import record_error, user_message
-                st.error(user_message(record_error(exc, "analyzer.parse")))
+                if is_pdf and isinstance(exc, ValueError):
+                    st.error(str(exc))
+                    st.info('기존 컨설팅보장분석.xlsx 파일은 계속 사용할 수 있습니다.')
+                else:
+                    st.error(user_message(record_error(exc, "analyzer.parse")))
 
         with mode_column:
             st.markdown("**분석 방식**")
@@ -194,6 +213,10 @@ def run() -> None:
 
         selected_labels: list[str] = []
         if parsed:
+            if is_pdf:
+                from modules.consultation.analyzer_pdf_ui import render_pdf_review
+                token = hashlib.sha256(main_bytes + calculation_month.encode()).hexdigest()[:16]
+                parsed, pdf_reviewed = render_pdf_review(parsed, token, basic_only=mode == "간편모드")
             with st.expander('인식된 계약과 고객정보 확인', expanded=False):
                 st.write(f"고객: {parsed['customer_name']} · 보험나이: {parsed['age']} · 계약 {len(parsed['contracts'])}개")
                 st.dataframe([{'보험사': c['company'], '상품': c['product'], '월보험료': c['monthly'], '보장기간': c['coverage_period']} for c in parsed['contracts']], hide_index=True, use_container_width=True)
@@ -218,15 +241,12 @@ def run() -> None:
         elif not uploaded_main:
             st.caption("원본 파일을 업로드하면 선택 가능한 전체 보장항목이 표시됩니다.")
 
-        if parsed:
-            with st.expander('원본 보장 → 출력 포함 여부 대조'):
-                st.dataframe([{'원본 항목':item['label'],'분류':item['group'],
-                    '출력':'포함' if item['label'] in selected_labels else '미포함 · 직접 선택 가능',
-                    '확인':'분류 확인 필요' if item['group']=='기타' else '분류됨'} for item in parsed['coverages']],hide_index=True,use_container_width=True)
-                st.caption('미포함은 보장 없음이 아닙니다. 자동 정리의 기본 목록에서 제외된 보장은 항목 직접 선택에서 추가할 수 있습니다.')
-        ready = bool(parsed) and bool(selected_labels) and parse_error is None
+        ready = bool(parsed) and bool(selected_labels) and parse_error is None and pdf_reviewed
         signature = make_input_signature(main_bytes, mode, selected_labels) if ready else None
 
+        if signature and is_pdf:
+            from modules.shared.runtime_cache import fingerprint
+            signature += fingerprint(parsed)
         should_generate = False
         if mode == "간편모드" and ready:
             current_result = st.session_state.get("analyzer_v2_result")
@@ -252,10 +272,10 @@ def run() -> None:
             st.session_state.pop("analyzer_v2_error", None)
             try:
                 with st.spinner("고객 상담용 보장분석 엑셀을 만들고 있습니다..."):
-                    result_bytes, filename, customer_name = build_analysis_file(
-                        main_bytes,
-                        selected_labels,
-                    )
+                    if is_pdf:
+                        result_bytes, filename, customer_name = build_analysis_from_data(parsed, selected_labels)
+                    else:
+                        result_bytes, filename, customer_name = build_analysis_file(main_bytes, selected_labels)
                 st.session_state["analyzer_v2_result"] = {
                     "signature": signature,
                     "bytes": result_bytes,
@@ -304,7 +324,7 @@ def run() -> None:
         "사용 방법 및 출력 기준",
         "전체 보장분석 엑셀을 고객 상담용 보장표로 자동 정리합니다.",
         [
-            ("원본 업로드", "전체 보장내용이 포함된 컨설팅보장분석.xlsx 파일을 등록합니다."),
+            ("원본 업로드", "컨설팅보장분석.xlsx 또는 KB 전체 보장분석 PDF를 등록합니다. PDF는 검토 후 출력합니다."),
             ("분석 방식 선택", "간편모드는 기본 보장을 적용하고, 개인모드는 출력 항목을 직접 선택합니다."),
             ("결과 확인", "생성된 상담용 보장표를 확인하고 엑셀로 내려받습니다."),
         ],

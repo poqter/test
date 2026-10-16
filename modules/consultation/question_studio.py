@@ -1,6 +1,5 @@
 """Question selection, session-local editing and PDF export."""
 import re
-import json
 import streamlit as st
 from modules.shared.ui_components import page_header, workflow_steps, workflow_button
 from modules.shared.workspace_tools import field, session_notice
@@ -68,39 +67,13 @@ def _add_custom():
     st.session_state['b_new_question']=''
 
 
-def parse_question_template(raw):
-    if len(raw)>100000:raise ValueError('질문 템플릿은 100KB 이하여야 합니다.')
-    try:data=json.loads(raw)
-    except (ValueError,UnicodeError) as exc:raise ValueError('JSON 템플릿 형식을 확인해 주세요.') from exc
-    rows=data.get('questions') if isinstance(data,dict) and data.get('schema')=='hwarang-questions-1' else None
-    if not isinstance(rows,list) or not 1<=len(rows)<=60 or any(not isinstance(x,str) or not x.strip() or len(x)>500 for x in rows):
-        raise ValueError('질문 1~60개, 질문마다 1~500자로 작성된 템플릿이 필요합니다.')
-    return [x.strip() for x in rows]
-
-def _templates():
-    with st.popover('📋 질문 템플릿 저장·불러오기'):
-        texts=[st.session_state['b_question_edits'].get(q,QUESTIONS.get(q,{}).get('text','')) for q in st.session_state['b_questions']]
-        if texts:st.download_button('선택 질문 템플릿 저장',json.dumps({'schema':'hwarang-questions-1','questions':texts},ensure_ascii=False,indent=2),file_name='hwarang_questions.json',mime='application/json')
-        uploaded=st.file_uploader('저장한 질문 템플릿',type=['json'],key='b_template_upload')
-        st.caption('고객명·상담일은 포함하지 않습니다. 불러오면 현재 선택 질문을 교체합니다.')
-        if st.button('템플릿으로 질문 교체',disabled=uploaded is None):
-            try:rows=parse_question_template(uploaded.getvalue())
-            except ValueError as exc:st.error(str(exc));return
-            for key in list(st.session_state):
-                if key.startswith(('b_pick_','b_edit_')):del st.session_state[key]
-            st.session_state['b_questions']=[f'직접{i:02d}' for i in range(1,len(rows)+1)]
-            st.session_state['b_question_edits']=dict(zip(st.session_state['b_questions'],rows))
-            st.session_state['b_question_serial']=len(rows);st.rerun()
-
 def run():
     _init()
     page_header('고객 상담','상담 질문지 제작기','필요한 질문을 고르고, 고객에 맞게 다듬어 상담 질문지로 저장하세요.','CH')
     session_notice('b_')
-    _templates()
     steps=['1. 질문 선택','2. 편집·PDF 저장']
     step=workflow_steps(steps,'b_question_step')
-    with st.container(key='question_selection_summary'):
-        st.caption(f"선택한 질문 {len(st.session_state['b_questions'])}개 · 편집 순서대로 PDF에 반영됩니다.")
+    st.caption(f"선택한 질문 {len(st.session_state['b_questions'])}개")
     if step==steps[0]:
         purpose=st.radio('상담 목적',[r[0] for r in RECOMMENDED],horizontal=True,key='b_question_purpose')
         name,ids,description=next(r for r in RECOMMENDED if r[0]==purpose)

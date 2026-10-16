@@ -20,9 +20,6 @@ def resource_dialog(row):
     st.write(row['verification_note'])
     st.link_button('확인 근거 페이지',row['source_url'])
     st.link_button('자료 열기',row['url'])
-    problem=st.text_area('연결 문제 메모',placeholder='발생 시각, 오류 문구, 로그인 또는 보안 프로그램 여부')
-    st.download_button('담당자 전달용 확인 메모 저장',f"자료: {row['name']}\n주소: {row['url']}\n기존 확인: {status_text(row)}\n관찰한 문제: {problem}\n",file_name='portal_issue.txt')
-    st.caption('메모를 내려받은 뒤 담당자에게 전달하세요. 자동 전송되지 않습니다.')
 
 
 def resource_cards(rows):
@@ -45,7 +42,6 @@ def render_resources(data,mode,issues=()):
         contacts=[{'보험사':r['name'],'번호':r['phone'],'번호 확인일':r.get('phone_verified_at') or '재확인 필요','출처':r.get('phone_source_url') or '기존 목록','전산 접속':r.get('portal_status','미검증')} for r in data['insurers']]
         st.dataframe(pd.DataFrame(contacts),hide_index=True,use_container_width=True)
         report='화랑 WORKSPACE · 포털 확인 상태\n편집일 '+data['edited_at']+'\n\n'+'\n'.join(str(r) for r in rows+contacts)
-        st.download_button('확인 상태 목록 저장',report,file_name='portal_review_status.txt')
         return
     query=field('text_input','기관·자료·용도 검색','f_resource_search','',max_chars=100)
     base=[r for r in data['resources'] if r['group']=='서식'] if mode=='서식' else [r for r in data['resources'] if r['group'] in ('공식기관','공공사이트')]

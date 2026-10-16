@@ -69,7 +69,7 @@ def _bytes(data: bytes | bytearray | BinaryIO) -> bytes:
             data.seek(position)
 
 
-def validate_upload(filename: str, data: bytes | bytearray | BinaryIO, *, session_total: int = 0) -> UploadInfo:
+def validate_upload(filename: str, data: bytes | bytearray | BinaryIO, *, session_total: int = 0, allow_encrypted_pdf: bool = False) -> UploadInfo:
     extension = Path(filename).suffix.lower()
     if extension not in ALLOWED_EXTENSIONS:
         raise ValidationError("UPLOAD_FORMAT_INVALID", "XLSX 또는 PDF 파일만 사용할 수 있습니다.")
@@ -85,8 +85,10 @@ def validate_upload(filename: str, data: bytes | bytearray | BinaryIO, *, sessio
         try:
             from pypdf import PdfReader
             reader = PdfReader(io.BytesIO(content))
-            if reader.is_encrypted or len(reader.pages) > MAX_PDF_PAGES:
+            if reader.is_encrypted and not allow_encrypted_pdf:
                 raise ValidationError("PDF_LIMIT", "암호 없는 100페이지 이하 PDF를 사용해 주세요.")
+            if not reader.is_encrypted and len(reader.pages) > MAX_PDF_PAGES:
+                raise ValidationError("PDF_LIMIT", "100페이지 이하 PDF를 사용해 주세요.")
         except ValidationError:
             raise
         except Exception as exc:

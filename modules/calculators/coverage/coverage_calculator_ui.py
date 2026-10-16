@@ -167,8 +167,6 @@ def run(name, fields=None, calculator=None, caption=None):
             # This preserves the reviewed flow: purpose → core values → detailed rows.
             if consumed:
                 render_structured(name, entries, values)
-                for index in consumed:
-                    snapshot[entries[index][0]] = values[index]
                 table_errors = list(st.session_state.get("hw.table_errors." + name, []))
 
             labels = {
@@ -188,9 +186,6 @@ def run(name, fields=None, calculator=None, caption=None):
                         render_field(index)
 
             summary = active_condition_summary(name, snapshot)
-            if name == '이월결손금계산기':
-                ledger_count = len([row for row in str(values[0] or '').split(';') if row.strip()])
-                summary.insert(0, f'미사용 결손금: {ledger_count}건' if ledger_count else '미사용 결손금: 없음')
             if summary:
                 st.markdown('<div class="hw-active-condition"><b>현재 적용 조건</b><br>' + " · ".join(summary) + "</div>", unsafe_allow_html=True)
             missing_indices = [i for i in rendered if values[i] is None]
