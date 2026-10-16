@@ -78,7 +78,10 @@ def _render(*, isolated=False, fixed_name=None):
         if(main)main.scrollTop=0;w.scrollTo(0,0);
         })();</script>""",height=1)
         if not isolated:
-            st.button('← 계산기 목록', key='hwcalc_back_catalog', on_click=back_to_catalog)
+            back,extra=st.columns([4,1])
+            back.button('← 계산기 목록', key='hwcalc_back_catalog', on_click=back_to_catalog)
+            from modules.calculators.catalog_browser import open_new_tab
+            if extra.button('새 탭 ↗',key='hwcalc_single_tab'):open_new_tab(active,NAME_TO_ID)
     # The audited catalog is the single source of truth for public routes.
     # UI-route regression tests exercise every one of the 88 entries.
     implemented = set(ITEMS)

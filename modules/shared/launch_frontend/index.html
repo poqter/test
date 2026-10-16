@@ -1,6 +1,6 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8"><style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,'Malgun Gothic',sans-serif}button{width:100%;min-height:40px;border:1px solid #d8e1eb;border-radius:9px;background:white;color:#183750;font-size:14px;font-weight:600;cursor:pointer;padding:8px 12px}button.primary{background:#173f66;color:white;border-color:#173f66}button:disabled{opacity:.5;cursor:default}p{font-size:13px;color:#52677e;line-height:1.5;margin:6px 0}a{color:#173f66}
-</style></head><body><button id="open"></button><p id="feedback" hidden></p><script>
+button.card{min-height:106px;text-align:left;display:flex;align-items:center;gap:13px;padding:18px;border:1px solid #dde5ee;border-radius:13px}button.card strong{font-size:16px;display:block}button.card small{display:block;font-size:13px;font-weight:400;color:#62748b;line-height:1.65;margin-top:5px}button.card .icon{font-size:20px;background:#edf3fc;border-radius:10px;padding:7px}button.card .arrow{margin-left:auto}button:focus-visible{outline:3px solid #8eb5ed;outline-offset:-3px}</style></head><body><button id="open"></button><p id="feedback" hidden></p><script>
 let args={},pending=null,popup=null,done='',parentOrigin=null;
 const post=(type,data)=>parent.postMessage({isStreamlitMessage:true,type,...data},parentOrigin||'*');
 const button=document.getElementById('open'),feedback=document.getElementById('feedback');
@@ -8,7 +8,9 @@ addEventListener('message',event=>{
  if(event.source!==parent || event.data.type!=='streamlit:render')return;
  parentOrigin=event.origin; args=event.data.args||{};
  button.textContent=args.label||'앱 열기 ↗';button.disabled=Boolean(args.disabled)||Boolean(pending);
- button.className=args.primary?'primary':'';
+ button.className=args.card?'card':args.primary?'primary':'';
+ if(args.card){button.replaceChildren();const icon=document.createElement('span');icon.className='icon';icon.textContent=args.card.icon;const copy=document.createElement('span'),title=document.createElement('strong'),desc=document.createElement('small');title.textContent=args.card.title;desc.textContent=args.card.description;copy.append(title,desc);const arrow=document.createElement('span');arrow.className='arrow';arrow.textContent='↗';button.append(icon,copy,arrow);}
+ post('streamlit:setFrameHeight',{height:Math.max(args.card?110:44,document.body.scrollHeight)});
  const r=args.response;
  if(r && r.nonce===pending && r.nonce!==done){
   done=r.nonce;pending=null;button.disabled=Boolean(args.disabled);
@@ -16,7 +18,7 @@ addEventListener('message',event=>{
    if(popup&&!popup.closed){popup.location.replace(r.url);popup=null;feedback.hidden=true;}
    else {feedback.replaceChildren(document.createTextNode('팝업이 차단됐습니다. '));const link=document.createElement('a');link.textContent='앱 열기';link.href=r.url;link.target='_blank';link.rel='noopener noreferrer';feedback.append(link);feedback.hidden=false;}
   }else{if(popup&&!popup.closed)popup.close();popup=null;feedback.textContent=r.error||'연결하지 못했습니다. 다시 눌러 주세요.';feedback.hidden=false;}
-  post('streamlit:setFrameHeight',{height:feedback.hidden?44:90});
+  post('streamlit:setFrameHeight',{height:feedback.hidden?(args.card?110:44):(args.card?160:90)});
  }
 });
 button.addEventListener('click',()=>{
@@ -26,5 +28,6 @@ button.addEventListener('click',()=>{
  pending=crypto.randomUUID();button.disabled=true;button.textContent='앱을 열고 있습니다…';feedback.hidden=true;
  post('streamlit:setComponentValue',{value:{nonce:pending},dataType:'json'});
 });
+new ResizeObserver(()=>post('streamlit:setFrameHeight',{height:Math.max(args.card?110:44,document.body.scrollHeight)})).observe(document.body);
 post('streamlit:componentReady',{apiVersion:1});post('streamlit:setFrameHeight',{height:44});
 </script></body></html>

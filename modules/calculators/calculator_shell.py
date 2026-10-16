@@ -25,8 +25,8 @@ def _show_catalog(group: str = "전체") -> None:
 
 def render_sidebar() -> None:
     """Full calculator app sidebar; independent single-calculator windows omit it."""
-    from modules.shared.premium_homes import apply, identity_header
-    apply('calculator')
+    from modules.shared import brand_ui as ui
+    ui.apply()
     identity = st.session_state.get('_hwarang_calculator_identity') or {}
     owner = str((identity.get('profile') or {}).get('id') or '')
     if st.session_state.get('hp_quick_owner') != owner:
@@ -35,15 +35,22 @@ def render_sidebar() -> None:
         st.session_state['hp_quick_owner'] = owner
     permissions = set(st.session_state.get('hw_feature_permissions') or ())
     allowed_groups = [g for g in GROUPS if CALCULATOR_GROUP_PERMISSION.get(g) in permissions]
+    from modules.calculators.hwarang_calculator_center import ITEMS
+    active = st.session_state.get('hwcalc_open')
+    active_group = ITEMS[active][0] if active in ITEMS else None
     current = st.session_state.get('hwcalc_catalog_group', '전체')
     if current not in {'전체', *allowed_groups}:
         _show_catalog()
         current = '전체'
-    if not st.session_state.get('hwcalc_open'):
-        st.markdown('<section class="hp-calculator-intro"><h1>종합 계산기 센터</h1></section>', unsafe_allow_html=True)
+    ui.identity('CALCULATOR', identity.get('profile') or {})
     with st.sidebar:
-        st.markdown('### 🧮 계산기 센터')
-        st.caption('필요한 분류를 선택하세요.')
-        st.button('🗂️ 전체 계산기', key='calc_sidebar_home', type='primary' if current=='전체' and not st.session_state.get('hwcalc_open') else 'secondary', on_click=_show_catalog)
-        for index, group in enumerate(allowed_groups):
-            st.button(category_label(group, GROUP_COUNTS.get(group)), key=f'calc_sidebar_group_{index}', type='primary' if current==group and not st.session_state.get('hwcalc_open') else 'secondary', on_click=_show_catalog, args=(group,))
+        st.markdown('### 화랑 CALCULATOR')
+        st.caption('계산기 센터')
+        st.button('전체 계산기',key='calc_sidebar_home',type='primary' if current=='전체' and not active_group else 'secondary',on_click=_show_catalog,use_container_width=True)
+        for index,group in enumerate(allowed_groups):
+            st.button(f'{group}  {GROUP_COUNTS.get(group,0)}',key=f'calc_sidebar_group_{index}',type='primary' if (active_group or current)==group else 'secondary',on_click=_show_catalog,args=(group,),use_container_width=True)
+    with st.container(key='brand_mobile_category'):
+        choices=['전체']+allowed_groups
+        st.session_state['brand_mobile_group']=active_group or current
+        def change(): _show_catalog(st.session_state['brand_mobile_group'])
+        st.selectbox('현재 분류',choices,index=choices.index(current),key='brand_mobile_group',on_change=change)

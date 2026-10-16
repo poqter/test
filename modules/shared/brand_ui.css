@@ -1,0 +1,39 @@
+
+body:has(.hw-brand-ui) .stApp,body:has(.hw-brand-ui) [data-testid="stMain"]{background:#f5f7fa!important;color:#172e4d}
+body:has(.hw-brand-ui) [data-testid="stMainBlockContainer"]{max-width:1420px!important;padding:24px 32px 40px!important;container-type:inline-size}
+body:has(.hw-brand-ui) h1{font-size:28px!important;color:#172e4d!important;letter-spacing:-.7px;line-height:1.4}
+body:has(.hw-brand-ui) h2{font-size:21px!important;color:#172e4d!important}
+body:has(.hw-brand-ui) h3{font-size:16px!important;color:#172e4d;line-height:1.5}
+body:has(.hw-brand-ui) [data-testid="stToolbar"]{display:none!important}
+body:has(.hw-brand-ui) [data-testid="stSidebar"]{background:#fff!important;border-right:1px solid #e1e7ef;min-width:230px;max-width:260px}
+body:has(.hw-brand-ui) [data-testid="stSidebar"] button{background:transparent!important;border:0!important;justify-content:flex-start;box-shadow:none!important;min-height:44px;border-radius:9px!important;transform:none!important;text-align:left}
+body:has(.hw-brand-ui) [data-testid="stSidebar"] button[kind="primary"]{background:#eaf2ff!important;color:#2469cd!important}
+body:has(.hw-brand-ui) button:focus-visible{outline:3px solid #8eb5ed!important;outline-offset:2px}
+body:has(.hw-brand-ui) button:hover{transform:none!important;box-shadow:none!important}
+body:has(.hw-brand-ui) [data-testid="stTextInput"] [data-baseweb="input"]{background:white!important;border:1.5px solid #aebfd3!important;border-radius:10px!important}
+.brand-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e1e7ef;padding:0 0 18px;margin-bottom:16px;font-size:17px}.brand-header span{font-size:14px}.brand-header small{display:block;color:#65758b;font-size:12px}
+[data-testid="stVerticalBlock"][class*="st-key-brand_tile_"],[data-testid="stVerticalBlock"][class*="st-key-hwcalc_card_"]{position:relative!important;background:#fff;border:1px solid #dde5ee;border-radius:13px;padding:18px!important;min-height:106px;justify-content:center;gap:0!important}
+[data-testid="stVerticalBlock"][class*="st-key-brand_tile_"]:hover,[data-testid="stVerticalBlock"][class*="st-key-hwcalc_card_"]:hover{border-color:#a6bddb;background:#fbfdff}
+.brand-card{display:flex;align-items:center;gap:13px;min-width:0}.brand-card>div{min-width:0;flex:1}.brand-card h3{margin:0!important;padding:0!important;font-size:16px!important;font-weight:700}.brand-card p{margin:5px 0 0;color:#62748b;font-size:13px;line-height:1.65;word-break:keep-all;overflow-wrap:anywhere}.brand-icon{display:grid;place-items:center;width:34px;height:36px;flex-shrink:0;background:#edf3fc;border-radius:10px;font-size:20px}.brand-end{font-size:14px;color:#5c7292;white-space:nowrap}
+[data-testid="stVerticalBlock"][class*="st-key-brand_tile_"] [data-testid="stButton"],[data-testid="stVerticalBlock"][class*="st-key-hwcalc_card_"] [data-testid="stButton"]{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;z-index:2}
+[data-testid="stVerticalBlock"][class*="st-key-brand_tile_"] [data-testid="stButton"] button,[data-testid="stVerticalBlock"][class*="st-key-hwcalc_card_"] [data-testid="stButton"] button{width:100%!important;height:100%!important;background:transparent!important;border:0!important;box-shadow:none!important;border-radius:13px!important;transform:none!important}
+[data-testid="stVerticalBlock"][class*="st-key-brand_tile_"] [data-testid="stButton"] button p,[data-testid="stVerticalBlock"][class*="st-key-hwcalc_card_"] [data-testid="stButton"] button p{opacity:0!important}
+[class*="st-key-brand_grid_"]{gap:14px!important;flex-wrap:wrap!important;align-items:stretch!important}
+[class*="st-key-brand_grid_"]>[data-testid="stLayoutWrapper"]{width:calc((100% - 14px)/2)!important;flex:0 0 calc((100% - 14px)/2)!important;min-width:0!important}
+[class*="st-key-brand_feature_"]{background:linear-gradient(120deg,#edf5ff,#f8fbff);border:1px solid #d6e4f5;border-radius:14px;padding:24px!important;min-height:260px;height:100%;justify-content:center}
+.st-key-brand_briefing{background:white;border:1px solid #dce5ee;border-radius:12px;padding:14px 20px!important;margin:6px 0 10px}
+.brand-muted{color:#62748b;font-size:14px;line-height:1.65}.brand-sidebar-sign{font-size:11px;color:#8090a5;margin-top:32px}
+.st-key-brand_welcome{padding:6px 0 12px}.st-key-brand_welcome h1{margin:0}.st-key-brand_pair>[data-testid="stColumn"]{min-width:0}
+@container(max-width:1000px){.st-key-brand_pair{flex-wrap:wrap!important}.st-key-brand_pair>[data-testid="stColumn"]{width:100%!important;flex:1 1 100%!important}.st-key-brand_consult{flex-wrap:wrap!important}.st-key-brand_consult>[data-testid="stColumn"]{width:100%!important;flex:1 1 100%!important}[class*="st-key-brand_feature_"]{min-height:180px}}
+@media(max-width:640px){body:has(.hw-brand-ui) [data-testid="stMainBlockContainer"]{padding:18px 16px 28px!important}body:has(.hw-brand-ui) h1{font-size:23px!important}[class*="st-key-brand_grid_"]>[data-testid="stLayoutWrapper"]{width:100%!important;flex:1 1 100%!important}[class*="st-key-brand_feature_"]{min-height:0;padding:20px!important}.brand-header{font-size:15px}.brand-header small{font-size:11px}}
+@media(prefers-reduced-motion:reduce){body:has(.hw-brand-ui) *{transition:none!important;scroll-behavior:auto!important}}
+
+.st-key-brand_mobile_category{display:none}
+@media(max-width:767px){.st-key-brand_mobile_category{display:block}}
+@container(max-width:1000px){.st-key-brand_pair_wrap>[data-testid="stHorizontalBlock"],.st-key-brand_consult_wrap>[data-testid="stHorizontalBlock"]{flex-wrap:wrap!important}.st-key-brand_pair_wrap>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"],.st-key-brand_consult_wrap>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]{width:100%!important;flex:1 1 100%!important}}
+body:has(.hw-brand-ui) [data-testid="stHeader"]{display:block!important;background:transparent!important;height:0!important}
+body:has(.hw-brand-ui) [data-testid="stSidebarCollapsedControl"]{display:block!important}
+
+.st-key-brand_feature_learning,.st-key-brand_feature_practice{background:#fff!important}
+@container(min-width:1001px){.st-key-brand_grid_academy>[data-testid="stLayoutWrapper"]{width:calc((100% - 42px)/4)!important;flex:0 0 calc((100% - 42px)/4)!important}}
+@media(max-width:767px){body:has(.hw-brand-ui) [data-testid="stHeader"]{height:48px!important;background:#f5f7fa!important}body:has(.hw-brand-ui) [data-testid="stMainBlockContainer"]{padding-top:60px!important}}

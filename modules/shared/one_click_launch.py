@@ -6,11 +6,11 @@ import streamlit.components.v1 as components
 _component = components.declare_component("hwarang_one_click_launch", path=str(Path(__file__).with_name("launch_frontend")))
 
 
-def launch_button(label, *, key, issue_url, disabled=False, primary=False):
+def launch_button(label, *, key, issue_url, disabled=False, primary=False, card=None):
     response_key = "hw.launch_response." + key
     response = st.session_state.get(response_key)
     request = _component(label=label, disabled=disabled, primary=primary,
-                         response=response, key=key, default=None)
+                         response=response, card=card, key=key, default=None)
     nonce = str((request or {}).get("nonce") or "") if isinstance(request, dict) else ""
     if disabled or not re.fullmatch(r"[a-f0-9-]{36}", nonce) or (response or {}).get("nonce") == nonce:
         return

@@ -5,29 +5,13 @@ from pathlib import Path
 import base64
 import streamlit as st
 
-NAV = {'courses': ('📚 교육 프로그램', None), 'library': ('📂 교육자료실', 'academy.library'), 'my_learning': ('📖 나의 학습', 'academy.my_learning')}
+NAV = {'courses': ('교육 과정', None), 'library': ('교육자료실', 'academy.library'), 'my_learning': ('나의 학습', 'academy.my_learning')}
 CATEGORIES = {'new_hire':'신입교육','consultation':'상담교육','insurance_practice':'보험실무','assessment':'시험·평가'}
 
 def rpc(auth, owner, name, **kwargs):
     return auth._request('POST', '/rest/v1/rpc/hwarang_learning_'+name, admin=True, json={'p_actor':owner, **kwargs})
 
 def render(auth, owner, permissions, profile, surface):
-    st.markdown('''<style>[data-testid="stSidebar"]{display:block!important}[data-testid="stSidebarCollapsedControl"]{display:block!important}
-    .block-container{max-width:1240px;padding-top:2rem}button{transition:background .18s,transform .18s}
-    @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}</style>''',unsafe_allow_html=True)
-    from modules.shared.clean_design import apply_clean_design
-    apply_clean_design()
-    with st.sidebar:
-        st.title('🎓 ACADEMY')
-        if st.button('🏠 아카데미 홈',use_container_width=True):
-            st.session_state['_academy_surface']='academy';st.rerun()
-        for key,(label,permission) in NAV.items():
-            if permission is None or permission in permissions:
-                if st.button(label,key='learn_nav_'+key,use_container_width=True):
-                    st.session_state['_academy_surface']=key;st.rerun()
-        if 'academy.simulator' in permissions and st.button('🎭 AI 상담 시뮬레이터',use_container_width=True):
-            st.session_state['_academy_surface']='simulator';st.rerun()
-        st.caption('Planned & Built by 박병선 팀장')
     label,permission=NAV[surface]
     st.title(label)
     if permission and permission not in permissions:
@@ -64,7 +48,7 @@ def render(auth, owner, permissions, profile, surface):
         if not courses:st.info('이용 가능한 교육 과정이 없습니다.')
         return
     if not courses:st.info('이용 가능한 교육 과정이 없습니다. 교육 메뉴 권한을 확인해 주세요.');return
-    selected=st.selectbox('교육 과정',courses,format_func=lambda c:c['title'])
+    selected=st.selectbox('교육 과정',courses,index=next((i for i,c in enumerate(courses) if c['id']==st.session_state.get('_academy_course_id')),0),format_func=lambda c:c['title'])
     st.caption(selected['summary']+' · 자체 기초 학습 콘텐츠 / 자격 인증 과정 아님')
     done=set((selected.get('progress') or {}).get('completed_lessons') or [])
     st.progress(len(done)/len(selected['lessons']),text=f"{len(done)}/{len(selected['lessons'])} 완료")
@@ -84,7 +68,8 @@ def render(auth, owner, permissions, profile, surface):
     if len(done)==len(selected['lessons']):
         st.success('과정을 완료했습니다. 나의 학습에 기록되었습니다.')
         if 'academy.simulator' in permissions and st.button('배운 내용으로 상담 연습하기 →'):
-            st.session_state['_academy_surface']='simulator';st.rerun()
+            from hwarang_academy.shell import go
+            go('simulator');st.rerun()
 
 def _editor(auth,owner,items):
     with st.expander('관리자 · 자료 등록 및 개정'):

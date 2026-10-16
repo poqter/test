@@ -262,34 +262,67 @@ _PREMIUM_EMOJI = {
 }
 
 
-def render_home(allowed_ids: list[str], navigate: Callable[..., object], notice: dict[str, object]) -> None:
-    from modules.shared.premium_homes import apply, footer, emoji_markup
-    apply('workspace')
-    allowed = set(allowed_ids)
-    profile = st.session_state.get('login_profile') or {}
-    name = html.escape(str(profile.get('display_name') or profile.get('login_id') or '사용자'))
-    with st.container(key='hw_clean_welcome'):
-        greeting, portal = st.columns([1, 1.1], gap='medium', vertical_alignment='center')
-        greeting.markdown(f'<h1 class="hw-clean-greeting">안녕하세요, {name}님</h1>', unsafe_allow_html=True)
+_HOME_SHORT_COPY = {
+ 'analyzer':'보험사 자료를 고객용 보장분석으로 변환', 'remodeling':'변경안을 비교하고 고객용 엑셀 제작',
+ 'consultation_helper':'고객에게 필요한 상담 질문 구성','comparison_builder':'가입안별 보험료·보장을 PDF로 비교',
+ 'insurance_claim_guide':'청구 서류와 관련 담보 확인','silson_generation_comparison':'세대별 보장 차이 확인',
+ 'quick_calculators':'보험·세금·생활 계산','deposit_vs_shortpay':'10년 기준 예상 결과 비교',
+ 'renewal_vs_nonrenewal':'장기 총납입액 비교','convention':'계약 실적과 달성 여부',
+ 'summer':'7·8월 업적 계산','manager_results':'지점 실적 환산금액','commission_calculator':'예상 수당 계산',
+ 'insurer_portal':'보험사 전산·연락처·공식자료','academy':'교육·실습·평가·상담 시뮬레이션'}
+
+def render_home(allowed_ids, navigate, notice):
+    from modules.shared import brand_ui as ui
+    ui.apply()
+    allowed=set(allowed_ids)
+    profile=st.session_state.get('login_profile') or {}
+    ui.identity('WORKSPACE',profile)
+    with st.container(key='brand_welcome'):
+        left,right=st.columns([1,1.1],vertical_alignment='center')
+        left.markdown('<h1>안녕하세요, '+html.escape(str(profile.get('display_name') or profile.get('login_id') or '사용자'))+'님</h1>',unsafe_allow_html=True)
         if 'insurer_portal' in allowed:
-            with portal:
-                render_home_quick_search()
-    for category, _, _, _, app_ids in _HOME_TOPICS:
-        items = [APP_BY_ID[key] for key in app_ids if key in allowed]
-        if not items:
-            continue
-        st.subheader(category)
-        # Flex wrapping makes three columns become two then one without rerouting widgets.
-        with st.container(key='hw_clean_grid_' + str(app_ids[0]), horizontal=True):
-            for app in items:
-                with st.container(key='hw_clean_card_' + app.id):
-                    icon = emoji_markup(_PREMIUM_EMOJI.get(app.id, '📁'))
-                    st.markdown(f'<div class="hw-clean-card-copy"><span aria-hidden="true">{icon}</span><h3>{html.escape(app.label)}</h3></div><p class="hw-clean-card-desc">{html.escape(app.description)}</p>', unsafe_allow_html=True)
-                    _launch_widget(app, '분석 시작' if app.id == 'analyzer' else '열기 →', key='hw_home_launch_' + app.id, primary=app.id == 'analyzer', navigate=navigate)
+            with right:render_home_quick_search()
     if 'briefing' in allowed:
-        with st.container(key='hw_clean_briefing'):
-            copy, action = st.columns([3, 1], vertical_alignment='center')
-            copy.markdown('**브리핑 센터**  ·  경제·금융 / 보험업계 / 종합뉴스')
-            with action:
-                _launch_widget(APP_BY_ID['briefing'], '브리핑 보기 →', key='hp_briefing_fallback', navigate=navigate)
-    footer('WORKSPACE')
+        from modules.briefing.briefing_center import _published_summaries_cached, home_briefing_summary, PROFILE_ORDER, KST
+        from datetime import datetime
+        try:
+            items=_published_summaries_cached();today=str(datetime.now(KST).date())
+            ready=[c for c in PROFILE_ORDER if str(((items.get(c) or {}).get('briefing') or {}).get('briefing_date'))==today]
+            labels={'MARKET':'경제·금융','NEWS':'종합뉴스','INSURANCE':'보험업계'}
+            if len(ready)==3:status='오늘 자료 공개'
+            elif ready:status=' · '.join(labels[c] for c in ready)+' 공개 / 나머지 준비 중'
+            else:status='준비 중'
+            detail=home_briefing_summary(items)
+        except Exception:status='게시 상태 확인 중';detail='브리핑센터에서 확인해 주세요.'
+        with st.container(key='brand_briefing'):
+            info,action=st.columns([4,1.2],vertical_alignment='center')
+            info.markdown('**오늘의 브리핑 · '+status+'**')
+            if detail:info.caption(detail)
+            with action:_launch_widget(APP_BY_ID['briefing'],'브리핑 보기 →',key='brand_briefing_open',navigate=navigate)
+    def tile(key):
+        app=APP_BY_ID[key];copy=_HOME_SHORT_COPY.get(key,app.description);icon=_PREMIUM_EMOJI.get(key,'📁')
+        if app.external_app_key:
+            from modules.shared.one_click_launch import launch_button
+            with st.container(key='brand_external_'+key):
+                launch_button(app.label+' ↗',key='brand_launch_'+key,disabled=_external_launch_context(app) is None,
+                 issue_url=lambda:_external_launch_url(app,fresh=True),card={'title':app.label,'description':copy,'icon':icon})
+        else:ui.card(app.label,copy,icon,'brand_tile_'+key,_navigate_once,(navigate,key))
+    def grid(keys,suffix):
+        with st.container(key='brand_grid_'+suffix,horizontal=True):
+            for key in keys:
+                if key in allowed:tile(key)
+    st.subheader('고객 상담')
+    with st.container(key='brand_consult_wrap'):
+        lead,others=st.columns([1,2],gap='medium')
+        with lead:
+            if 'analyzer' in allowed:
+                with st.container(key='brand_feature_analysis'):
+                    st.markdown('🛡️');st.subheader('보장 분석 도우미');st.caption(_HOME_SHORT_COPY['analyzer'])
+                    _launch_widget(APP_BY_ID['analyzer'],'분석 시작 →',key='brand_analyze',primary=True,navigate=navigate)
+        with others:grid(_HOME_TOPICS[0][4][1:],'consult')
+    with st.container(key='brand_pair_wrap'):
+        calc,performance=st.columns(2,gap='medium')
+        for col,topic in zip((calc,performance),_HOME_TOPICS[1:3]):
+            with col:
+                st.subheader(topic[0]);grid(topic[4],topic[4][0])
+    st.subheader('자료·교육');grid(_HOME_TOPICS[3][4],'resources')

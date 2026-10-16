@@ -163,159 +163,43 @@ def scroll_memory(last, restore):
 
 
 def render_catalog(items, groups, implemented, *, tags=None, ids=None):
+    from modules.shared import brand_ui as ui
+    from modules.calculators.calculator_shell import _show_catalog
+    ui.apply()
     tags = tags or {}
-    ids = ids or {}
-
-    st.session_state.setdefault('hwcalc_catalog_query', st.session_state.get('hwcalc_search', ''))
-    st.session_state.setdefault('hwcalc_catalog_group', st.session_state.get('hwcalc_group', '전체'))
-    group = st.session_state['hwcalc_catalog_group']
+    st.session_state.setdefault('hwcalc_catalog_query', '')
+    group = st.session_state.get('hwcalc_catalog_group', '전체')
     is_home = group == '전체'
-
+    available = [(n,g,d) for n,(g,d) in items.items() if n in implemented]
+    st.title('종합 계산기 센터' if is_home else group)
+    st.caption('상담에 필요한 계산기를 빠르게 찾아보세요.' if is_home else f'{sum(g == group for _,g,_ in available)}개 계산기')
+    if 'hwcalc_search' not in st.session_state:
+        st.session_state['hwcalc_search'] = st.session_state['hwcalc_catalog_query']
+    search, clear = st.columns([8,1])
+    search.text_input('계산기 검색' if is_home else '이 분류에서 검색', key='hwcalc_search', on_change=save_query,
+        placeholder='예: 노후 생활비, 자녀 증여, 보험료' if is_home else '이 분류의 계산기 이름 검색',label_visibility='collapsed')
+    clear.button('초기화',on_click=set_query,args=('',),key='hwcalc_search_clear')
     if is_home:
-        st.markdown('#### 🔎 계산기 검색')
-        st.caption('계산기 이름 또는 고객의 상황으로 검색하세요.')
-        if 'hwcalc_search' not in st.session_state:
-            st.session_state['hwcalc_search'] = st.session_state['hwcalc_catalog_query']
-        search, clear = st.columns([8, 1])
-        search.text_input(
-            '계산기 이름 또는 상담 목적',
-            key='hwcalc_search',
-            on_change=save_query,
-            placeholder='예: 노후 생활비, 자녀 증여, 보험료 부담',
-            label_visibility='collapsed',
-        )
-        clear.button(
-            '초기화',
-            key='hwcalc_search_clear',
-            on_click=set_query,
-            args=('',),
-            use_container_width=True,
-        )
-        with st.expander('💡 상담 목적별로 찾기'):
-            with st.container(key='hwcalc_purposes', horizontal=True):
-                for i, (label, purpose_query) in enumerate(PURPOSES):
-                    st.button(
-                        purpose_label(label),
-                        key=f'hwcalc_purpose_{i}',
-                        on_click=set_query,
-                        args=(purpose_query,),
-                        type='tertiary',
-                    )
-        query = st.session_state['hwcalc_catalog_query'].strip()
+        with st.expander('상담 목적별로 찾기'):
+            for i,(label,q) in enumerate(PURPOSES):
+                st.button(label,key=f'hwcalc_purpose_{i}',on_click=set_query,args=(q,),type='tertiary')
+    query=st.session_state['hwcalc_catalog_query'].strip()
+    found=[(n,g,d) for n,g,d in available if (is_home or g==group) and matches(n,g,d,tags.get(n,()),query)]
+    if is_home and not query:
+        st.subheader('업무별 계산기')
+        with st.container(key='brand_grid_categories',horizontal=True):
+            for i,g in enumerate(groups):
+                from modules.calculators.hwarang_calculator_center import GROUPS
+                purpose_index=list(GROUPS).index(g)
+                count=sum(c==g for _,c,_ in available)
+                if count:
+                    ui.card(g, PURPOSES[purpose_index][0] if purpose_index<len(PURPOSES) else '상담에 필요한 수치를 확인하세요.',category_emoji(g),f'brand_tile_group_{i}',_show_catalog,(g,),badge=f'{count}개')
     else:
-        # 업무 분류 화면은 탐색 결과에 집중합니다. 숨겨진 검색 상태를 적용하지 않습니다.
-        query = ''
-
-    found = [
-        (n, g, d)
-        for n, (g, d) in items.items()
-        if n in implemented
-        and (bool(query) or group == '전체' or group == g)
-        and matches(n, g, d, tags.get(n, ()), query)
-    ]
-
-    if query:
-        heading = '🔎 검색 결과'
-        st.markdown('#### ' + heading)
-        st.caption(f'{len(found)}개 결과')
-    elif group == '전체':
-        heading = '🧮 전체 계산기'
-        st.markdown('#### ' + heading)
-        st.caption(f'{len(found)}개')
-    else:
-        # A category page already has one clear heading. Keep the item count on
-        # the same line and start the calculator cards immediately below it.
-        heading = category_label(group) + ' 계산기'
-        st.markdown(
-            '<div class="hw-catalog-category-title"><span>' + escape(heading) + '</span>'
-            '<b>' + str(len(found)) + '개</b></div>',
-            unsafe_allow_html=True,
-        )
-
-    st.markdown('''<style>
-    .hw-catalog-category-title{display:flex;align-items:center;gap:9px;margin:5px 0 13px;min-width:0}
-    .hw-catalog-category-title span{font-size:20px;font-weight:700;line-height:1.4;color:#203a58;letter-spacing:-.025em;word-break:keep-all}
-    .hw-catalog-category-title b{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;min-height:25px;padding:2px 9px;border:1px solid #cbd9e7;border-radius:999px;background:#edf3f9;color:#426588;font-size:12px;font-weight:700;line-height:1}
-    .st-key-hwcalc_search [data-baseweb="input"],
-    .st-key-hwcalc_search [data-testid="stTextInput"] > div > div{
-        background:#fff!important;
-        border:2px solid #b7c6d6!important;
-        border-radius:12px!important;
-        box-shadow:0 1px 3px rgba(25,57,89,.08)!important;
-        transition:border-color .16s ease,box-shadow .16s ease!important;
-    }
-    .st-key-hwcalc_search:hover [data-baseweb="input"],
-    .st-key-hwcalc_search:hover [data-testid="stTextInput"] > div > div{
-        border-color:#8faac3!important;
-    }
-    .st-key-hwcalc_search [data-baseweb="input"]:focus-within,
-    .st-key-hwcalc_search [data-testid="stTextInput"] > div > div:focus-within{
-        border-color:#4d7fab!important;
-        box-shadow:0 0 0 3px rgba(77,127,171,.14)!important;
-    }
-    .st-key-hwcalc_search input{
-        background:transparent!important;
-        color:#203a58!important;
-        min-height:44px!important;
-        border:0!important;
-        outline:0!important;
-        box-shadow:none!important;
-    }
-    .st-key-hwcalc_search input::placeholder{color:#8395a8!important;opacity:1!important}
-    .st-key-hwcalc_search_clear button{min-height:48px!important;border:1px solid #c9d6e3!important;border-radius:11px!important}
-    [class*="st-key-hwcalc_card_"][data-testid="stVerticalBlock"]{background:#fff;border:1px solid #dce5ef;border-radius:14px;padding:20px;transition:border-color .18s,box-shadow .18s}
-    [class*="st-key-hwcalc_card_"][data-testid="stVerticalBlock"]:hover{border-color:#9cb6d0;box-shadow:0 4px 14px #18395c0a}
-    .hw-calc-card-copy{display:flex;align-items:flex-start;gap:12px;padding:5px 0}
-    .hw-calc-card-icon{display:grid;place-items:center;flex-shrink:0;width:42px;height:42px;border-radius:12px;background:#eef3fa;font-size:24px}
-    .hw-calc-card-title{font-size:17px;font-weight:700;color:#203a58;line-height:1.45;margin-bottom:6px;word-break:keep-all;overflow-wrap:anywhere}
-    .hw-calc-card-summary{font-size:13px;line-height:1.65;color:#657b91;word-break:keep-all;overflow-wrap:anywhere}
-    .hw-calc-card-core{font-size:12px;line-height:1.5;color:#426e98;margin-top:7px;word-break:keep-all;overflow-wrap:anywhere}
-    [class*="st-key-hwcalc_actions_"][data-testid="stVerticalBlock"]{gap:8px!important;border-left:1px solid #edf1f6;padding-left:14px;justify-content:center}
-    [class*="st-key-hwcalc_card_"] button,.hw-calc-new-tab{width:100%;min-height:42px!important;padding:9px 8px!important;border-radius:9px!important;font-size:12px!important;line-height:1.35!important;transform:none!important;box-shadow:none!important}
-    [class*="st-key-hwcalc_card_"] [data-testid="stButton"] button{background:#e9f0f8!important;color:#214b76!important;border:1px solid #cbd9e7!important;justify-content:center!important;font-weight:650!important}
-    [class*="st-key-hwcalc_card_"] [data-testid="stButton"] button:hover{background:#dfeaf6!important;border-color:#a9bfd5!important}
-    [class*="st-key-hwcalc_card_"] button p{font-size:12px!important;white-space:nowrap!important}
-    .hw-calc-new-tab{display:flex;align-items:center;justify-content:center;box-sizing:border-box;background:#fff!important;color:#365f87!important;border:1px solid #cbd9e7!important;text-decoration:none!important;font-weight:600!important;white-space:nowrap}
-    .hw-calc-new-tab:hover{background:#f5f8fc!important;border-color:#9fb7cf!important;color:#214b76!important;text-decoration:none!important}
-    [class*="st-key-hwcalc_actions_"] [data-testid="stMarkdownContainer"]{width:100%!important}
-    [class*="st-key-hwcalc_actions_"] [data-testid="stMarkdownContainer"] p{margin:0!important;width:100%!important}
-    .st-key-hwcalc_purposes{padding:2px 0 12px;border-bottom:1px solid #e4ebf2;margin-bottom:10px}
-    .st-key-hwcalc_purposes button{font-size:12px!important;min-height:28px!important;padding:3px 9px!important;border-radius:16px!important;background:#edf2f7!important;color:#526982!important}
-    .st-key-hwcalc_purposes button p{font-size:12px!important}
-    [class*="st-key-hwcalc_card_"] button:focus-visible,.hw-calc-new-tab:focus-visible{outline:3px solid rgba(45,106,213,.28)!important;outline-offset:2px!important}
-    @media(max-width:768px){
-        [class*="st-key-hwcalc_card_"]>[data-testid="stHorizontalBlock"]{flex-direction:column!important}
-        [class*="st-key-hwcalc_card_"]>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]{width:100%!important;flex:1 1 100%!important}
-        [class*="st-key-hwcalc_actions_"][data-testid="stVerticalBlock"]{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px!important;border-left:0;border-top:1px solid #edf1f6;padding:12px 0 0;justify-content:stretch}
-        [class*="st-key-hwcalc_card_"] button,.hw-calc-new-tab{min-height:44px!important}
-    }
-    @media(max-width:480px){[class*="st-key-hwcalc_actions_"][data-testid="stVerticalBlock"]{grid-template-columns:1fr!important}}
-    @media(prefers-reduced-motion:reduce){
-        [class*="st-key-hwcalc_card_"]{transition:none!important}
-        .st-key-hwcalc_search [data-baseweb="input"],.st-key-hwcalc_search [data-baseweb="base-input"]{transition:none!important}
-    }
-    </style>''', unsafe_allow_html=True)
-
-    if query:
-        q = normalize(query).removesuffix('계산기')
-        def rank(item):
-            n = normalize(item[0]).removesuffix('계산기')
-            return 0 if n == q else 1 if n.startswith(q) or q in initials(n) else 2 if q in n else 3
-        found.sort(key=rank)
-        sections = [('이름 일치', [item for item in found if rank(item) < 2]),
-                    ('관련 계산기', [item for item in found if rank(item) >= 2])]
-    elif group == '전체':
-        sections = [(category, [item for item in found if item[1] == category]) for category in groups]
-    else:
-        # The selected category is already named in the page heading above.
-        # A second identical subheading only adds vertical space.
-        sections = [(None, found)]
-
-    from modules.calculators.premium_catalog import render_sections
-    render_sections(sections, items, ids, query=query, group=group)
-    if not found:
-        st.info('일치하는 계산기가 없습니다. 다른 키워드를 입력해보세요.')
-    last = st.session_state.get('hwcalc_catalog_last')
-    if last:
-        st.markdown(f'<style>.st-key-{card_key(last)}[data-testid="stVerticalBlock"]{{border-color:#5584b2!important;box-shadow:0 0 0 2px #bcd3ea60!important}}</style>', unsafe_allow_html=True)
-    scroll_memory(last, st.session_state.pop('hwcalc_catalog_restore', False))
+        if query: st.caption(f'검색 결과 {len(found)}개')
+        with st.container(key='brand_grid_calculators',horizontal=True):
+            for n,g,d in found:
+                ui.card(n,d,category_emoji(g),card_key(n),open_calculator,(n,))
+        if not found:
+            st.info('일치하는 계산기가 없습니다. 검색어를 바꾸거나 전체 분류에서 찾아보세요.')
+            st.button('전체 분류 보기',on_click=_show_catalog,key='hwcalc_empty_home')
+    scroll_memory(st.session_state.get('hwcalc_catalog_last'),st.session_state.pop('hwcalc_catalog_restore',False))

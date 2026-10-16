@@ -23,7 +23,7 @@ st.set_page_config(
     page_title="화랑 ACADEMY",
     page_icon="🎓",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="auto",
 )
 
 
@@ -47,11 +47,11 @@ def auth_service() -> AcademyAuthService:
 def _inject_shell_css(*, gate: bool = False, independent: bool = False) -> None:
     bg = "#0a233e" if independent else "#f4f7fb"
     page_bg = "#f5f8fc" if gate else bg
+    sidebar_css = '[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"], [data-testid="stExpandSidebarButton"]{display:none!important}' if gate else ''
     st.markdown(
         f"""
         <style>
-        [data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"],
-        [data-testid="stExpandSidebarButton"]{{display:none!important}}
+        {sidebar_css}
         [data-testid="stHeader"], [data-testid="stToolbar"], #MainMenu, footer{{display:none!important}}
         .stApp,[data-testid="stAppViewContainer"],[data-testid="stMain"]{{background:{page_bg}!important}}
         [data-testid="stMainBlockContainer"]{{max-width:{'1180px' if gate else '1600px'}!important;padding:{'34px 26px 54px' if gate else '0'}!important}}
@@ -194,6 +194,17 @@ def main() -> None:
     st.session_state['_academy_model_owner'] = viewer_user_id
     if '_academy_surface' not in st.session_state:
         st.session_state['_academy_surface'] = 'simulator' if independent else 'academy'
+
+    from hwarang_academy.shell import shell, home, legacy_history
+    shell(viewer_profile,feature_permissions)
+    if st.session_state.get('_academy_surface')=='academy':
+        home(auth,viewer_user_id,feature_permissions,viewer_profile,credit_status)
+        return
+    if st.session_state.get('_academy_surface')=='simulator' and not st.session_state.get('_studio_open') and 'academy.simulator' in feature_permissions:
+        from hwarang_academy.shell import go
+        go('simulator')
+    if st.session_state.get('_academy_surface')=='history' and 'academy.simulator' in feature_permissions:
+        legacy_history(auth,viewer_user_id)
 
     if st.session_state.get('_academy_surface') in ('courses','library','my_learning'):
         from hwarang_academy.education.ui import render as render_learning
