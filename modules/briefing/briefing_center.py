@@ -147,35 +147,38 @@ def _combined_sharing(repo, selected_day=None, *, use_cache=False):
         st.button('통합 공유 링크 만들기', disabled=True, key='combined_not_ready')
         return
     if day != datetime.now(KST).date().isoformat():
-        st.info(f'선택한 공유 자료는 {day}입니다. 오늘 자료와 섞지 않습니다.')
+        st.info(f'선택한 공유 자료는 {day}입니다. 영역별 실제 자료 날짜를 확인해 주세요.')
     policy = repo.operating_policy()
     try: reader_configured = bool(repo.public_base_url())
     except BriefingRepositoryError: reader_configured = False
     available = []; bundles = {}; reasons_by_code = {}
     for code in PROFILE_ORDER:
-        bundle = repo.bundle_for_date(code, day)
+        bundle = repo.customer_bundle_for_share(code, day)
         if bundle:
             reasons = sharing_blockers(bundle, policy, profile, reader_configured=reader_configured)
-            if not reasons: available.append(code); bundles[code] = bundle
+            if not reasons:
+                available.append(code); bundles[code] = bundle
+                if str(bundle['briefing']['briefing_date']) != day:
+                    reasons_by_code[code] = '최근 브리핑: '+str(bundle['briefing']['briefing_date'])
             else: reasons_by_code[code] = ' / '.join(reasons)
-        else: reasons_by_code[code] = '이 날짜에 공유 가능한 게시본이 없습니다.'
+        else: reasons_by_code[code] = '아직 공유 가능한 브리핑이 없습니다. 고객 화면에는 준비 안내가 표시됩니다.'
     if not available:
         st.warning('선택한 날짜에 고객 공유 조건을 충족한 영역이 없습니다. 아래에서 영역별 사유를 확인해 주세요.')
     elif len(available) < len(PROFILE_ORDER):
-        st.info(f'{day} · 공유 가능한 {len(available)}개 영역을 표시합니다. 준비되지 않은 영역은 제외하며 다른 날짜와 합치지 않습니다.')
+        st.info(f'{day} · 공유 가능한 {len(available)}개 영역을 표시합니다. 오늘 자료가 없으면 최근 공유 가능본의 날짜를 별도로 표시합니다.')
     approved = bool(policy.get('external_sharing_approved'))
     left, right = st.columns([1,1], gap='large')
     with left:
         with st.container(border=True):
             st.subheader('공유할 내용 선택')
-            st.caption(day+' · 같은 날짜의 고객용 본문')
+            st.caption(day+' · 영역별 실제 게시일 표시')
             codes = []
             for code in PROFILE_ORDER:
-                label = '보험 생활정보' if code == 'INSURANCE' else PROFILE_LABELS[code]
-                chosen = st.checkbox(label, value=code in available, disabled=code not in available,
-                                     key='share_section_'+uid+'_'+day+'_'+code)
-                if chosen and code in available: codes.append(code)
-                if code not in available: st.caption(reasons_by_code.get(code,'고객 적격 기사 없음'))
+                label = '보험업계' if code == 'INSURANCE' else PROFILE_LABELS[code]
+                chosen = st.checkbox(label, value=code in ('MARKET', 'NEWS'), disabled=False,
+                                     key='share_scope_v2_'+uid+'_'+day+'_'+code)
+                if chosen: codes.append(code)
+                if code in reasons_by_code: st.caption(reasons_by_code[code])
             st.caption('보험업계의 내부 정보와 상담 문구는 고객 본문에 포함되지 않습니다.')
             if not approved: st.info('최고관리자가 운영 관리에서 고객 공유를 허용하면 사용할 수 있습니다.')
             preview = st.toggle('고객 화면 미리보기', key='share_preview_'+uid+'_'+day, disabled=not codes)
@@ -183,14 +186,14 @@ def _combined_sharing(repo, selected_day=None, *, use_cache=False):
     with right:
         with st.container(border=True):
             st.subheader('보낼 문구와 링크')
-            if st.button('통합 공유 링크 만들기', disabled=not codes or not approved, type='primary',
+            if st.button('통합 공유 링크 만들기', disabled=not codes or not approved or not any(c in available for c in codes), type='primary',
                          key=key+'_make', use_container_width=True):
                 try:
                     token, packet = repo.create_combined_share(day, codes, uid)
                     st.session_state[key] = {'token':token, 'packet':packet}
                 except BriefingRepositoryError as exc: st.error(str(exc))
             shared = st.session_state.get(key)
-            if shared and codes and approved and all(code in available for code in codes):
+            if shared and codes and approved:
                 from .sharing import share_url
                 url = share_url(repo.public_base_url(), shared['token'])
                 packet = shared['packet']; sender = packet['sender']
@@ -212,15 +215,22 @@ def _combined_sharing(repo, selected_day=None, *, use_cache=False):
                     except BriefingRepositoryError as exc: st.error(str(exc))
             else:
                 st.info('영역을 선택하고 링크를 만들면 발신자 이름·직책이 포함된 문구가 표시됩니다.')
-    if preview and codes:
+    if preview and codes and any(c in bundles for c in codes):
         from .sharing import combine_bodies
         with st.container(border=True):
             st.subheader('고객에게 보이는 본문')
             try:
                 sender = repo.staff_sender(uid)
                 st.caption(day+' · '+sender['name']+' '+sender['position'])
-                render_body(combine_bodies([bundles[code] for code in codes]))
+                render_body(combine_bodies([bundles[code] for code in codes if code in bundles], codes))
             except BriefingRepositoryError as exc: st.warning(str(exc))
+
+
+@st.dialog('고객에게 공유', width='large')
+def _share_dialog(repo, day):
+    profile = st.session_state.get('login_profile') or {}
+    st.caption('담당자 · '+str(profile.get('display_name') or profile.get('name') or '')+' '+str(profile.get('position_name') or ''))
+    _combined_sharing(repo, day)
 
 
 def _internal_actions(bundle):
@@ -293,33 +303,14 @@ def _render_profile_detail(repo, code, bundle, can_manage):
         large = st.toggle('큰 글자로 읽기', key='large_'+revision['id'])
     if can_manage:
         _publish_actions(repo, bundle)
+    if st.button('고객에게 공유', key='share_from_'+revision['id'], type='primary'):
+        _share_dialog(repo, day if st.session_state.get('hw_briefing_page') == '지난 브리핑' else datetime.now(KST).date())
     render_body(body, large=large)
     if can_manage:
         with st.expander('고객에게 보이는 본문 미리보기'):
             preview = customer_body(content)
             st.caption(f"고객용 기사 {len(preview['issues'])}개 · 현재 화면은 직원 미리보기이며 외부 공개가 아닙니다.")
             render_body(preview, large=large)
-    from .staff_exports import team_summary, staff_pdf
-    tools, export, share = st.columns([2, 2, 2])
-    with tools:
-        with st.popover('팀 1분 요약', use_container_width=True):
-            st.caption('직원 내부용 · 저장된 판본')
-            st.code(team_summary(bundle), language=None)
-    with export:
-        with st.popover('직원 PDF', use_container_width=True):
-            st.caption('상담 준비를 포함한 내부용 자료입니다.')
-            if st.button('PDF 준비', key='staff_prepare_'+revision['id']):
-                try:
-                    sender = repo.staff_sender(_actor())
-                    st.session_state['staff_pdf_'+revision['id']+'_'+str(_actor())] = staff_pdf(bundle, sender)
-                except Exception:
-                    st.error('직원 PDF를 만들지 못했습니다. 본문은 계속 읽을 수 있습니다.')
-            if st.session_state.get('staff_pdf_'+revision['id']+'_'+str(_actor())):
-                st.download_button('직원 내부용 PDF 저장', st.session_state['staff_pdf_'+revision['id']+'_'+str(_actor())],
-                    file_name=f'hwarang_{code}_{day}_staff.pdf', mime='application/pdf', key='staff_download_'+revision['id'])
-    with share:
-        st.button('고객에게 공유', key='share_from_'+revision['id'], type='primary',
-                  on_click=_open_share, args=(day,), use_container_width=True)
     _internal_actions(bundle)
     if can_manage:
         from .operations_ui import render_correction, render_important_update
@@ -404,19 +395,18 @@ def _render_generate_panel(repo):
 
 def _render_today(repo, can_manage):
     summaries = _latest_summaries(False)
-    selected = st.radio('브리핑 영역', PROFILE_ORDER, format_func=lambda x:PROFILE_LABELS[x], horizontal=True, key='hw_briefing_profile')
-    item = summaries.get(selected)
-    if not item:
-        st.info('아직 '+PROFILE_LABELS[selected]+'이 게시되지 않았습니다.')
-        if can_manage:
-            st.caption('운영 관리에서 최근 실행 결과를 확인하세요. 응답 대기 초과로 처리 여부가 불명확한 요청은 공급자 사용 기록 확인 후 복구해야 합니다.')
-            st.button('브리핑 생성·실패 원인 확인', on_click=_navigate, args=('운영 관리',), key='empty_generate')
-        return
-    snapshot = repo._snapshot_for_revision(str(item['revision']['id']))
-    if not snapshot:
-        st.warning('저장된 본문을 불러오지 못했습니다.')
-        return
-    _render_profile_detail(repo, selected, repo.bundle_from_parts(item['briefing'], item['revision'], snapshot), False)
+    tabs = st.tabs([PROFILE_LABELS[c] for c in PROFILE_ORDER])
+    for selected, tab in zip(PROFILE_ORDER, tabs):
+        with tab:
+            item = summaries.get(selected)
+            if not item:
+                st.info('아직 '+PROFILE_LABELS[selected]+'이 게시되지 않았습니다.')
+                continue
+            snapshot = repo._snapshot_for_revision(str(item['revision']['id']))
+            if not snapshot:
+                st.warning('저장된 본문을 불러오지 못했습니다.')
+                continue
+            _render_profile_detail(repo, selected, repo.bundle_from_parts(item['briefing'], item['revision'], snapshot), False)
 
 
 def _render_history(repo, can_manage):

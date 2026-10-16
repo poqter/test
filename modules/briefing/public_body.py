@@ -58,45 +58,59 @@ READER_CSS='''
 .briefing-section{font-size:22px;font-weight:700;color:var(--ink);margin:42px 0 24px;padding:14px 0;border-top:2px solid var(--line)}article h2{font-size:25px}article>p{font-size:17px;line-height:1.95}.explanation{background:var(--soft);border-left:0;border-radius:8px;padding:17px 20px}.explanation p{color:#40546d;font-size:16px}.source{font-size:13px}.big article>p{font-size:20px}@media(max-width:600px){article h2{font-size:22px}.briefing-section{font-size:20px}}
 '''
 
+READER_CSS += 'header{background:#fff;color:#17273d;padding-bottom:0}.brand,header .meta{color:#64738a}.brand:before{display:none}h1,h2,article h2{color:#17273d!important;-webkit-text-fill-color:#17273d!important}h1{font-size:27px}article h2{font-size:20px}article>p{font-size:16px;line-height:1.8;color:#45556a}.reader-tabs{display:flex;gap:25px;border-bottom:1px solid #dce4ee;margin-bottom:22px}.reader-tabs button{border:0;border-bottom:3px solid transparent;border-radius:0;padding:10px 0 14px;background:transparent;color:#64738a;font-size:16px}.reader-tabs button[aria-selected=true]{border-bottom-color:#263f62;color:#263f62;font-weight:700}.edition-delay{font-size:14px;background:#f4f7fb;padding:12px 16px;color:#45556a}.panel{background:#f4f7fb;padding:17px 21px;margin-bottom:24px}.panel ul{margin:0;padding-left:20px;font-size:15px}.explanation{display:none}[hidden]{display:none!important}@media(max-width:400px){.reader-tabs{gap:18px}.reader-tabs button{font-size:14px}}@media print{[role=tabpanel][hidden]{display:block!important}.reader-tabs{display:none}}\n'
+
 def public_html(packet,*,canonical_url='',image_url='',pdf_url=''):
     e=lambda v:html.escape(str(v or ''),quote=True)
-    body=packet.get('body') or {};sender=packet.get('sender') or {};edition=packet.get('edition') or {}
+    body=packet.get('body') or {};sender=packet.get('sender') or {}
     identity=' '.join(str(sender.get(k) or '') for k in ('name','position')).strip()
-    title=f"{identity} · {packet.get('briefing_date')} {body.get('profile_label') or '오늘의 브리핑'}"
-    summary=(body.get('issues') or [{}])[0].get('summary') or '오늘의 뉴스와 시장 흐름을 확인하세요.'
-    og=f'<title>{e(title)}</title><meta property="og:title" content="{e(title)}"><meta property="og:description" content="{e(summary[:140])}"><meta property="og:type" content="article">'
+    title=f"{identity} · {packet.get('briefing_date')} 오늘의 브리핑"
+    og=f'<title>{e(title)}</title><meta property="og:title" content="{e(title)}"><meta property="og:type" content="article">'
     if canonical_url:og+=f'<meta property="og:url" content="{e(canonical_url)}">'
-    if image_url:og+=f'<meta property="og:image" content="{e(image_url)}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">'
-    parts=[f'<div class="wrap"><header><span class="brand">HWARANG · DAILY BRIEFING</span><h1>{e(body.get("profile_label") or "오늘의 브리핑")}</h1><p class="meta">{e(packet.get("briefing_date"))} · {e(identity)}</p>']
-    if edition.get('corrected_at'):parts.append(f'<p class="meta">정정 {e(display_date(edition["corrected_at"]))} · {e(edition.get("number"))}판</p>')
-    parts.append('<div class="controls"><button id="font" aria-pressed="false">큰 글자로 읽기</button>')
-    parts.append('</div></header>')
-    if body.get('market_metrics'):
-        parts.append('<h2 class="section-title">시장 지표</h2><div class="metrics">')
-        for m in body['market_metrics']:
-            state='up' if (m.get('change') or 0)>0 else 'down' if (m.get('change') or 0)<0 else 'flat'
-            parts.append(f'<div class="metric"><b>{e(m["label"])}</b><div class="value">{float(m["value"]):,.2f} <small>{e(m["unit"])}</small></div><div class="delta {state}">{e(metric_change(m))}</div><p class="meta">{e(metric_date(m))}<br>{e(m.get("reference_definition") or m.get("observation_kind"))}<br><a href="{e(m["source_url"])}" target="_blank" rel="noopener noreferrer">{e(m["source_name"])}</a></p></div>')
-        parts.append('</div>')
-    if body.get('market_flow'):parts.append('<section class="panel" style="margin-top:18px"><h2>오늘의 경제·금융 흐름</h2>'+''.join(f'<p>{e(x)}</p>' for x in body['market_flow'])+'</section>')
-    last_section = None
-    for i,row in enumerate(body.get('issues') or [],1):
-        if row.get('section_label') and row['section_label'] != last_section:
-            last_section = row['section_label']
-            parts.append(f'<h2 class="section-title briefing-section">{e(last_section)}</h2>')
-        parts.append(f'<article class="{"lead" if row.get("representative") else ""}"><span class="tag">{"중요 발표 추가 · " if row.get("important_update") else ""}{e(row.get("category"))}{" · 핵심 이슈" if row.get("representative") else ""}</span><h2>{e(row["title"])}</h2><p>{e(row.get("summary"))}</p>')
-        if row.get('why_important') or row.get('impact_summary'):parts.append(f'<div class="explanation"><h3>배경과 영향</h3><p>{e(row.get("why_important"))}</p><p>{e(row.get("impact_summary"))}</p></div>')
-        for src in row['sources']:parts.append(f'<p class="source"><a href="{e(src["url"])}" target="_blank" rel="noopener noreferrer">{e(src["source_name"])} · 원문 읽기 ↗</a><br>{e(display_date(src["published_at"]))}</p>')
-        parts.append('</article>')
-    research=body.get('research') or {}
-    if research.get('reports'):
-        parts.append('<section class="panel"><h2>공개 리서치에서 확인한 견해</h2>')
-        for group in research.get('viewpoints') or []:
-            parts.append(f'<h3>{e(group.get("theme"))} · {e(group.get("timeframe"))}</h3>')
-            for v in group.get('views') or []:parts.append(f'<p>{e(v.get("firm"))} · {e(v.get("summary"))}<br><span class="meta">{e(v.get("conditions"))}</span></p>')
-        for src in research['reports']:parts.append(f'<p class="source"><a href="{e(src["url"])}" target="_blank" rel="noopener noreferrer">{e(src["firm"])} · {e(src["title"])}</a></p>')
+    if image_url:og+=f'<meta property="og:image" content="{e(image_url)}">'
+    sections=body.get('sections') or [{'profile_code':body.get('profile_code') or 'NEWS','profile_label':body.get('profile_label') or '브리핑','briefing_date':packet.get('briefing_date')}]
+    parts=[f'<div class="wrap"><header><span class="brand">HWARANG WORKSPACE</span><h1>오늘의 브리핑</h1><p class="meta">{e(identity)}</p><div class="controls"><button id="font" aria-pressed="false">큰 글자로 읽기</button></div></header>']
+    edition=packet.get('edition') or {}
+    if edition.get('corrected_at'):
+        parts.append('<p class="meta">정정 '+e(display_date(edition['corrected_at']))+' · '+e(edition.get('number'))+'판</p>')
+    parts.append('<nav class="reader-tabs" role="tablist" aria-label="공유받은 브리핑 영역">')
+    for i,section in enumerate(sections):
+        parts.append(f'<button role="tab" id="tab-{i}" aria-controls="section-{i}" aria-selected="{str(i==0).lower()}" data-section="{i}">{e(section["profile_label"])}</button>')
+    parts.append('</nav>')
+    for i,section in enumerate(sections):
+        code=section['profile_code'];day=section.get('briefing_date')
+        rows=[r for r in body.get('issues') or [] if (r.get('section_code') or body.get('profile_code'))==code]
+        parts.append(f'<section role="tabpanel" id="section-{i}" aria-labelledby="tab-{i}"'+(' hidden' if i else '')+'>')
+        if day:
+            parts.append(f'<p class="meta" data-edition-date="{e(day)}">{e(day)} 브리핑</p>')
+            parts.append(f'<p class="edition-delay" data-stale-date="{e(day)}" hidden>오늘 브리핑은 아직 준비되지 않았습니다. 공유된 최근 자료({e(day)})를 보여드립니다.</p>')
+        if not rows:parts.append('<p class="panel">아직 공개된 브리핑이 없습니다.</p>')
+        if code=='MARKET' and body.get('market_flow'):
+            parts.append('<section class="panel"><h2>오늘의 경제·금융 흐름</h2><ul>'+''.join('<li>'+e(t)+'</li>' for t in body['market_flow'][:3])+'</ul></section>')
+        for row in rows:
+            parts.append(f'<article><h2>{e(row.get("title"))}</h2><p>{e(row.get("summary"))}</p>')
+            for src in row.get('sources') or []:
+                if is_safe_url(str(src.get('url') or '')):
+                    parts.append(f'<p class="source"><a href="{e(src["url"])}" target="_blank" rel="noopener noreferrer">{e(src.get("source_name"))} · {e(display_date(src.get("published_at")))} · 원문 읽기 ↗</a></p>')
+            parts.append('</article>')
+        research=body.get('research') or {}
+        if code=='MARKET' and research.get('reports'):
+            parts.append('<details><summary>공개 리서치 더 보기</summary>')
+            for group in research.get('viewpoints') or []:
+                parts.append('<h3>'+e(group.get('theme'))+'</h3>')
+                for v in group.get('views') or []:parts.append('<p>'+e(v.get('firm'))+' · '+e(v.get('summary'))+'</p>')
+            for src in research['reports']:
+                if is_safe_url(str(src.get('url') or '')):parts.append(f'<p class="source"><a href="{e(src["url"])}" target="_blank" rel="noopener noreferrer">{e(src.get("firm"))} · {e(src.get("title"))}</a></p>')
+            parts.append('</details>')
         parts.append('</section>')
-    parts.append(f'<footer class="reader-footer"><strong>{e(identity)}</strong><br>HWARANG BRIEFING<br><br>각 기사의 원문과 실제 관측일을 함께 확인해 주세요.</footer></div>' + '<script>document.getElementById("font").onclick=function(){let on=document.body.classList.toggle("big");this.setAttribute("aria-pressed",String(on));this.textContent=on?"기본 글자로 읽기":"큰 글자로 읽기";};</script>')
-    return '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">'+og+'<style>'+READER_CSS+'</style></head><body>'+''.join(parts)+'</body></html>'
+    parts.append(f'<footer class="reader-footer"><strong>{e(identity)}</strong><br>화랑 WORKSPACE · 출처와 원문을 함께 확인해 주세요.</footer></div>')
+    script='''<script>
+    document.getElementById('font').onclick=function(){const on=document.body.classList.toggle('big');this.setAttribute('aria-pressed',String(on));this.textContent=on?'기본 글자로 읽기':'큰 글자로 읽기';};
+    document.querySelectorAll('[data-section]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-section]').forEach(t=>t.setAttribute('aria-selected',String(t===b)));document.querySelectorAll('[role=tabpanel]').forEach(p=>p.hidden=p.id!==b.getAttribute('aria-controls'));}));
+    const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    document.querySelectorAll('[data-stale-date]').forEach(p=>p.hidden=p.dataset.staleDate>=today);
+    </script>'''
+    return '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">'+og+'<style>'+READER_CSS+'</style></head><body>'+''.join(parts)+script+'</body></html>'
 
 def public_pdf(packet):return _cached_pdf(json.dumps(packet,ensure_ascii=False,sort_keys=True))
 
@@ -136,13 +150,12 @@ def _cached_pdf(serialized):
     for i,row in enumerate(body.get('issues') or [],1):
         if row.get('section_label') and row['section_label'] != last_section:
             last_section = row['section_label']
-            story.append(Paragraph(e(last_section), heading))
+            section_day = next((s.get('briefing_date') for s in body.get('sections', []) if s.get('profile_label') == last_section), None)
+            story.append(Paragraph(e(last_section)+((' · '+e(section_day)) if section_day else ''), heading))
         article=[Paragraph('오늘의 소식',heading)] if i==1 else []
         if row.get('important_update'):article.append(Paragraph('중요 발표 추가 · '+e(display_date(row.get('added_at'))),meta))
         if row.get('representative'):article.append(Paragraph('핵심 이슈 · '+e(row.get('category')),meta))
         article.append(Paragraph(f'{i:02d} · '+e(row['title']),heading));article.append(Paragraph(e(row.get('summary')),base))
-        for key in ('why_important','impact_summary'):
-            if row.get(key):article.append(Paragraph(e(row[key]),base))
         for src in row.get('sources') or []:article.append(Paragraph(f'<a href="{e(src["url"])}" color="#155e8b">{e(src["source_name"])} · 원문 읽기</a> · {e(display_date(src["published_at"]))}',meta))
         article.append(Spacer(1,5))
         card=Table([[article]],colWidths=[507],hAlign='LEFT')

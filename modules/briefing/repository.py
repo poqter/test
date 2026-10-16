@@ -413,6 +413,23 @@ class BriefingRepository:
                     and (row['snapshot'].get('qa_payload') or {}).get('public_body_ready')]
         return max((str(row['briefing']['briefing_date']) for row in eligible or published), default=None)
 
+    def customer_bundle_for_share(self, code, day):
+        """Resolve only published, customer-approved editions on/before requested day."""
+        candidates = [self.bundle_for_date(code, day)]
+        candidates += self.history(code, limit=30)
+        for bundle in candidates:
+            if not bundle or str(bundle['briefing']['briefing_date']) > str(day):
+                continue
+            rev = bundle['revision']
+            if not (rev.get('publication_status') == 'published' and rev.get('external_share_allowed') and rev.get('external_qa_passed')):
+                continue
+            if not bundle.get('snapshot'):
+                bundle = {**bundle, 'snapshot': self._snapshot_for_revision(str(rev['id']))}
+            qa = (bundle.get('snapshot') or {}).get('qa_payload') or {}
+            if qa.get('public_body_ready') and qa.get('internal_body_ready'):
+                return bundle
+        return None
+
     def create_combined_share(self, day, codes, sender_user_id):
         import secrets
         from .sharing import build_combined_packet, PROFILE_ORDER
@@ -424,14 +441,16 @@ class BriefingRepository:
             raise BriefingRepositoryError('조직의 최초 고객 공유 설정을 켜 주세요.')
         bundles = []
         for code in codes:
-            bundle = self.bundle_for_date(code, day)
+            bundle = self.customer_bundle_for_share(code, day)
             if not bundle:
-                raise BriefingRepositoryError('선택한 날짜의 게시본이 준비되지 않았습니다.')
+                continue
             rev, qa = bundle['revision'], bundle['snapshot'].get('qa_payload') or {}
             if not (rev.get('publication_status') == 'published' and rev.get('external_share_allowed')
                     and rev.get('external_qa_passed') and qa.get('public_body_ready')):
                 raise BriefingRepositoryError('선택한 영역의 고객용 본문이 준비되지 않았습니다.')
             bundles.append(bundle)
+        if not bundles:
+            raise BriefingRepositoryError('공유 가능한 게시본이 아직 없습니다.')
         sender = self._first(self._request('GET', '/rest/v1/profiles', params={
             'id': 'eq.' + str(sender_user_id), 'select': 'display_name,position_code,is_active'}))
         if not sender or not sender.get('is_active') or not str(sender.get('display_name') or '').strip():
@@ -450,12 +469,13 @@ class BriefingRepository:
             'select': 'token,public_packet', 'order': 'created_at.desc', 'limit': '60'}) or []
         for row in existing:
             packet = row.get('public_packet') or {}
-            if (packet.get('schema') == 'hwarang-share-v3' and packet.get('components')
+            if (packet.get('schema') == 'hwarang-share-v3' and packet.get('components') and packet.get('reader_version') == '20261017'
+                and packet.get('selected_profiles') == list(codes) and packet.get('requested_date') == str(day)
                 and '|'.join(sorted(c['revision_id'] for c in packet['components'])) == fingerprint):
                 return row['token'], packet
         token = secrets.token_urlsafe(32)
         packet = build_combined_packet(bundles, {'name': sender['display_name'], 'position': position['display_name']},
-                                       self.public_base_url(), token)
+                                       self.public_base_url(), token, selected_codes=codes, requested_date=str(day))
         if not body_quality_ready(packet['body']):
             raise BriefingRepositoryError('고객에게 제공할 기사가 없습니다.')
         self._upload_share_assets(token, packet)

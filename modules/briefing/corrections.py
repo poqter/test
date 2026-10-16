@@ -120,12 +120,12 @@ def apply_correction(repo, bundle, event_key, changes, reason, actor, *, importa
                     if component['revision_id']==old['id']:
                         bundles.append({'briefing':briefing,'revision':rev,'snapshot':new_snap})
                     else:
-                        other=repo.bundle_for_date(component['profile_code'],briefing['briefing_date'])
+                        other=repo.bundle_for_date(component['profile_code'],component.get('briefing_date') or briefing['briefing_date'])
                         if not other or str(other['revision']['id'])!=component['revision_id']:
                             bundles=[];break
                         bundles.append(other)
                 if not bundles:continue
-                packet=build_combined_packet(bundles,identity,repo.public_base_url(),row['token'])
+                packet=build_combined_packet(bundles,identity,repo.public_base_url(),row['token'], selected_codes=existing.get('selected_profiles'), requested_date=existing.get('requested_date'))
             else:
                 packet=build_packet(new_snap,briefing,rev,identity,repo.public_base_url(),row['token'])
             repo._upload_share_assets(row['token'],packet);refreshed.append((row['token'],packet))

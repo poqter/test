@@ -157,6 +157,7 @@ def catch_up(repo, now=None):
     due = due_profiles()
     complete = bool(due) and all(r['status'] in ('published', 'already_published') for r in publication)
     return {'status': 'published' if complete else ('incomplete' if due else 'before_publication_time'),
+            'before_9am_target_missed': bool(due and not complete and clock() >= datetime.combine(day,time(9),KST)),
             'briefing_date': str(day), 'checked_at': (now or datetime.now(timezone.utc)).isoformat(),
             'due_profiles': due, 'generation': generation, 'publication': publication}
 

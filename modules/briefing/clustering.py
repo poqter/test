@@ -65,6 +65,11 @@ def cluster_candidates(candidates: list[SourceCandidate], *, threshold: float = 
         profiles: set[str] = set()
         for row in cluster:
             profiles.update(row.routed_profiles)
+        # Give each event one editorial home, after merging source hints.
+        if 'INSURANCE' in profiles:
+            profiles = {'INSURANCE'}
+        elif 'MARKET' in profiles:
+            profiles = {'MARKET'}
         events.append(SharedEventCandidate(
             event_key=_event_key(head.title, head.publisher_domain),
             canonical_title=head.title,

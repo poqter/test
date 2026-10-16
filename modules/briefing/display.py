@@ -36,8 +36,16 @@ def render_style():
     .st-key-hw_briefing_center [data-testid="stRadio"]{margin:5px 0 15px}
     .st-key-hw_briefing_center [data-testid="stRadio"] label{padding:6px 10px;border-radius:8px}
     .st-key-hw_briefing_center [data-testid="stVerticalBlockBorderWrapper"]{border-radius:12px}
-    @media(prefers-color-scheme:dark){.st-key-hw_briefing_center{--hw-ink:#edf2fa;--hw-muted:#b0bfd1;--hw-line:#344357;--hw-soft:#273a53;--hw-surface:#1b2637;--hw-brand:#bed6f5}}
+
     @media(max-width:640px){.hw-news,.hw-digest{padding:18px}.hw-briefing-hero h1{font-size:25px}.hw-news h3{font-size:20px}.st-key-hw_briefing_center [data-testid="stHorizontalBlock"]{flex-wrap:wrap}.st-key-hw_briefing_center [data-testid="stColumn"]{min-width:min(100%,240px)}}
+    .st-key-hw_briefing_center{background:#fff;color:#172b46;color-scheme:light;padding:0 12px}
+    .st-key-hw_briefing_center .hw-briefing-hero h1,.st-key-hw_briefing_center .hw-edition strong,.st-key-hw_briefing_center .hw-news h3,.st-key-hw_briefing_center .hw-news h3 a{color:#172b46!important;-webkit-text-fill-color:#172b46!important;opacity:1!important}
+    .hw-news,.hw-news.lead{border:0;border-bottom:1px solid #e4eaf1;border-radius:0;background:#fff;padding:22px 0;margin:0;box-shadow:none}
+    .hw-news h3{font-size:20px;font-weight:700}.hw-news p{font-size:16px!important;line-height:1.8;color:#45556a}.hw-digest{background:#f4f7fb;border:0;padding:18px 22px}.hw-digest p{font-size:15px!important;line-height:1.75;margin:5px 0}
+    .st-key-hw_briefing_center [data-baseweb="tab-list"]{gap:24px;background:#fff;border-bottom:1px solid #dce4ee}
+    .st-key-hw_briefing_center [data-baseweb="tab"]{background:transparent!important;border-radius:0!important;color:#647187!important;padding:12px 0;font-weight:500}
+    .st-key-hw_briefing_center [aria-selected="true"]{color:#243f64!important;font-weight:700}
+    .st-key-hw_briefing_center [data-baseweb="tab-highlight"]{background:#243f64}
     </style>""", unsafe_allow_html=True)
 
 
@@ -49,7 +57,7 @@ def render_body(body, *, large=False):
     representative = next((row for row in issues if row.get('representative')), None)
     ordered = ([representative] if representative else []) + [row for row in issues if row is not representative]
     flow = body.get('market_flow') or []
-    digest = flow if flow else [str(row.get('title') or '') for row in ordered[:3]]
+    digest = flow[:3]
     if digest:
         label = '오늘의 경제·금융 흐름' if flow else '오늘의 핵심'
         st.markdown('<section class="hw-digest'+(' big' if large else '')+'"><div class="tag">'+label+'</div>'+''.join('<p>'+e(text)+'</p>' for text in digest)+'</section>', unsafe_allow_html=True)
@@ -67,12 +75,6 @@ def render_body(body, *, large=False):
         source = ' · '.join([str(primary.get('source_name') or '원문'), stamp(primary.get('published_at'))]) if primary else ''
         classes = 'hw-news'+(' lead' if row is representative else '')+(' big' if large else '')
         explanation = ''
-        if row.get('why_important'):
-            explanation += f'<h4>배경</h4><p>{e(row["why_important"])}</p>'
-        if row.get('impact_summary'):
-            explanation += f'<h4>영향과 의미</h4><p>{e(row["impact_summary"])}</p>'
-        if explanation:
-            explanation = '<div class="hw-context">'+explanation+'</div>'
         st.markdown(f'<article class="{classes}"><div class="tag">{e(tag)}</div><h3>{title}</h3><p>{e(row.get("summary"))}</p>'+explanation+f'<div class="source">{e(source)}'+(f' · <a href="{e(primary["url"])}" target="_blank" rel="noopener noreferrer">원문 읽기 ↗</a>' if primary else '')+'</div></article>', unsafe_allow_html=True)
         if len(sources) > 1:
             with st.expander('추가 출처 보기'):
