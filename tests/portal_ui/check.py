@@ -10,7 +10,7 @@ event('studio_home');assert a.session_state['captured_payload']['portal_surface'
 event('open_studio',stage='FIRST');assert any(t.value=='나에게 맞는 훈련 준비' for t in a.title)
 next(b for b in a.button if b.label=='시뮬레이터 홈').click().run();assert not a.exception
 assert a.session_state['captured_payload']['portal_surface']=='simulator'
-event('resume_studio');assert any('상담 도우미' in x.value for x in a.markdown)
+event('resume_studio');assert any('상담 도움말' in x.value for x in a.markdown)
 next(b for b in a.button if b.label=='ACADEMY 홈').click().run();assert not a.exception
 assert a.session_state['captured_payload']['portal_surface']=='academy'
 event('open_simulator');assert a.session_state['captured_payload']['phase']=='setup'

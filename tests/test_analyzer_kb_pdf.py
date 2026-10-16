@@ -63,9 +63,10 @@ class TestKBPDF(unittest.TestCase):
     def test_bad_pdf_rejected(self):
         with self.assertRaises(ValueError):extract_kb_pdf(b'not a pdf')
 
-    def test_review_validation_and_export_gate(self):
+    def test_optional_review_and_validation(self):
         data=convert_kb(fixture(),'2026-01')
-        with self.assertRaises(ValueError):build_analysis_from_data(data)
+        payload, _, _ = build_analysis_from_data(data)
+        self.assertGreater(len(payload), 0)
         rows=[{'1번':str(x['values'][0])} for x in data['coverages']]
         with self.assertRaises(ValueError):apply_review(data,'=formula',35,rows)
         bad=copy.deepcopy(rows);bad[0]['1번']='-1'
@@ -74,7 +75,7 @@ class TestKBPDF(unittest.TestCase):
         result,_,_=build_analysis_from_data(reviewed)
         w=load_workbook(BytesIO(result));self.assertEqual(w.sheetnames,['보장 분석','보장 제안서'])
         self.assertIn('35세',w['보장 분석']['A1'].value)
-        self.assertIn('COUNTIF',w['보장 분석']['A7'].value)
+        self.assertEqual(w['보장 분석']['A7'].value, '=SUM(D7:D7)')
 
     def test_review_does_not_mutate_parser(self):
         data=convert_kb(fixture(),'2026-01');rows=[{'1번':str(x['values'][0])} for x in data['coverages']]

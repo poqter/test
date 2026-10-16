@@ -497,7 +497,8 @@ def run() -> None:
             st.dataframe([{'비교항목':'월 보험료','현재 (원)': current_premium,'비교안 (원)': fifth_premium},
                           {'비교항목':'예상 보험금','현재 (원)':current_payout,'비교안 (원)':fifth_payout},
                           {'비교항목':'예상 본인부담','현재 (원)':current_burden,'비교안 (원)':fifth_burden}], hide_index=True,use_container_width=True)
-            st.caption('기존 모듈의 비교 가정을 사용합니다. 실제 상품·세대별 적용 기준과 제안서 조건을 확인한 뒤 활용하세요.')
+            st.caption('현재 보험료 근거: '+current_premium_basis+' / 비교안 근거: '+premium_basis)
+            st.caption('기존 모듈의 비교 가정입니다. 약관 기준일·공제금액·한도·특약·갱신 조건을 별도로 확인해야 합니다. 금액 차이만으로 전환 적합성을 판정하지 않습니다.')
 
         k1, k2, k3 = st.columns(3)
         k1.metric("총 의료비", won(total_medical))

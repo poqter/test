@@ -4,6 +4,8 @@ import streamlit as st
 
 
 def work_panels(key):
+    from modules.shared.clean_design import apply_clean_design
+    apply_clean_design()
     with st.container(key='hw_split_'+key):
         left, right = st.columns([1.15, 1], gap='medium')
         inputs = left.container(key='hw_surface_'+key+'_inputs')

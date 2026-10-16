@@ -4,7 +4,7 @@ from modules.calculators.corporate.corporate_tax import bracket
 from modules.calculators.tax.personal_tax_models import AS_OF
 NAME='이월결손금계산기'
 KINDS=('일반법인 80%','중소기업 등 100% 자격 확인')
-FIELDS={NAME:[('발생연도, 미사용 잔액 (여러 건은 세미콜론 구분)', '2025,500000000','문자',3000),
+FIELDS={NAME:[('결손금 발생연도·미사용 잔액', '2025,500000000','문자',3000),
  ('2026년 당기 세무상 소득금액',300000000,'원',10**12),('공제 한도 자격',KINDS[0],'선택',KINDS),
  ('법60조의2 제1항1호 소규모법인 해당','아니요','선택',('아니요','예'))]}
 def losses(ledger='2025,500000000',income=300000000,kind=KINDS[0],small='아니요'):
@@ -12,8 +12,9 @@ def losses(ledger='2025,500000000',income=300000000,kind=KINDS[0],small='아니�
  if kind not in KINDS or small not in ('아니요','예'):raise ValueError('법인 구분을 확인해 주세요.')
  entries={}
  for item in str(ledger).split(';'):
+  if not item.strip():continue
   parts=item.strip().split(',')
-  if len(parts)!=2:raise ValueError('발생연도,잔액 형식으로 입력하세요. 금액에는 쉼표를 넣지 않습니다.')
+  if len(parts)!=2:raise ValueError('결손금 표의 발생연도와 미사용 잔액을 확인해 주세요.')
   y=num(parts[0],2009,2025)
   if y!=int(y) or int(y) in entries:raise ValueError('발생연도는 중복 없는 정수로 입력하세요.')
   amount=num(parts[1])

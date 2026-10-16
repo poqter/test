@@ -167,6 +167,8 @@ def run(name, fields=None, calculator=None, caption=None):
             # This preserves the reviewed flow: purpose → core values → detailed rows.
             if consumed:
                 render_structured(name, entries, values)
+                for index in consumed:
+                    snapshot[entries[index][0]] = values[index]
                 table_errors = list(st.session_state.get("hw.table_errors." + name, []))
 
             labels = {
@@ -186,6 +188,9 @@ def run(name, fields=None, calculator=None, caption=None):
                         render_field(index)
 
             summary = active_condition_summary(name, snapshot)
+            if name == '이월결손금계산기':
+                ledger_count = len([row for row in str(values[0] or '').split(';') if row.strip()])
+                summary.insert(0, f'미사용 결손금: {ledger_count}건' if ledger_count else '미사용 결손금: 없음')
             if summary:
                 st.markdown('<div class="hw-active-condition"><b>현재 적용 조건</b><br>' + " · ".join(summary) + "</div>", unsafe_allow_html=True)
             missing_indices = [i for i in rendered if values[i] is None]
@@ -242,14 +247,14 @@ def run(name, fields=None, calculator=None, caption=None):
             from modules.calculators.input_design import render_metrics
             from modules.calculators.visuals import primary_result_labels
             render_metrics(display, "cov_" + name, primary_result_labels(name))
+            for note in result.assumptions:
+                st.caption(note)
             from modules.calculators.result_pdf import build_result_pdf, pdf_section_options
             pdf_options = pdf_section_options("cov_pdf_" + name)
             if any(pdf_options.values()):
                 pdf = build_result_pdf(name, [(f"{f[0]} ({f[2]})", value) for f, value in zip(fields[name], args)], result, stamp, **pdf_options)
                 st.download_button("결과 PDF 저장", pdf, file_name=name + "_결과보고서.pdf", mime="application/pdf", key=name + "_customer", type="primary", icon=":material/download:", width="stretch")
         with advisor:
-            for note in result.assumptions:
-                st.caption(note)
             st.write(result.formula)
             st.caption("계산 시각: " + stamp)
             inputs = [{"입력 항목": f"{field[0]} ({field[2]})", "값": str(value)} for field, value in zip(fields[name], args)]

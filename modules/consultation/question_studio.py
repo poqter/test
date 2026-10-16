@@ -1,5 +1,6 @@
 """Question selection, session-local editing and PDF export."""
 import re
+import json
 import streamlit as st
 from modules.shared.ui_components import page_header, workflow_steps, workflow_button
 from modules.shared.workspace_tools import field, session_notice
@@ -67,13 +68,39 @@ def _add_custom():
     st.session_state['b_new_question']=''
 
 
+def parse_question_template(raw):
+    if len(raw)>100000:raise ValueError('질문 템플릿은 100KB 이하여야 합니다.')
+    try:data=json.loads(raw)
+    except (ValueError,UnicodeError) as exc:raise ValueError('JSON 템플릿 형식을 확인해 주세요.') from exc
+    rows=data.get('questions') if isinstance(data,dict) and data.get('schema')=='hwarang-questions-1' else None
+    if not isinstance(rows,list) or not 1<=len(rows)<=60 or any(not isinstance(x,str) or not x.strip() or len(x)>500 for x in rows):
+        raise ValueError('질문 1~60개, 질문마다 1~500자로 작성된 템플릿이 필요합니다.')
+    return [x.strip() for x in rows]
+
+def _templates():
+    with st.popover('📋 질문 템플릿 저장·불러오기'):
+        texts=[st.session_state['b_question_edits'].get(q,QUESTIONS.get(q,{}).get('text','')) for q in st.session_state['b_questions']]
+        if texts:st.download_button('선택 질문 템플릿 저장',json.dumps({'schema':'hwarang-questions-1','questions':texts},ensure_ascii=False,indent=2),file_name='hwarang_questions.json',mime='application/json')
+        uploaded=st.file_uploader('저장한 질문 템플릿',type=['json'],key='b_template_upload')
+        st.caption('고객명·상담일은 포함하지 않습니다. 불러오면 현재 선택 질문을 교체합니다.')
+        if st.button('템플릿으로 질문 교체',disabled=uploaded is None):
+            try:rows=parse_question_template(uploaded.getvalue())
+            except ValueError as exc:st.error(str(exc));return
+            for key in list(st.session_state):
+                if key.startswith(('b_pick_','b_edit_')):del st.session_state[key]
+            st.session_state['b_questions']=[f'직접{i:02d}' for i in range(1,len(rows)+1)]
+            st.session_state['b_question_edits']=dict(zip(st.session_state['b_questions'],rows))
+            st.session_state['b_question_serial']=len(rows);st.rerun()
+
 def run():
     _init()
     page_header('고객 상담','상담 질문지 제작기','필요한 질문을 고르고, 고객에 맞게 다듬어 상담 질문지로 저장하세요.','CH')
     session_notice('b_')
+    _templates()
     steps=['1. 질문 선택','2. 편집·PDF 저장']
     step=workflow_steps(steps,'b_question_step')
-    st.caption(f"선택한 질문 {len(st.session_state['b_questions'])}개")
+    with st.container(key='question_selection_summary'):
+        st.caption(f"선택한 질문 {len(st.session_state['b_questions'])}개 · 편집 순서대로 PDF에 반영됩니다.")
     if step==steps[0]:
         purpose=st.radio('상담 목적',[r[0] for r in RECOMMENDED],horizontal=True,key='b_question_purpose')
         name,ids,description=next(r for r in RECOMMENDED if r[0]==purpose)
@@ -96,39 +123,46 @@ def run():
         st.caption('상담 목적이나 검색 조건을 바꿔도 선택한 질문은 유지됩니다. 같은 질문은 한 번만 추가됩니다.')
         workflow_button('선택한 질문 편집·PDF 저장 →',steps[1],'b_question_step',primary=True)
         return
-    st.subheader('선택한 질문 편집')
-    st.caption('문구 수정은 이번 질문지에만 적용됩니다. 위·아래 버튼으로 상담 순서를 바꿀 수 있습니다.')
-    order=list(st.session_state['b_questions'])
-    for index,qid in enumerate(order):
-        original=QUESTIONS.get(qid,{}).get('text','')
-        value=st.session_state['b_question_edits'].get(qid,original)
-        st.session_state.setdefault('b_edit_'+qid,value)
+    from modules.shared.page_layouts import work_panels
+    editing, preview = work_panels('question_studio')
+    with editing:
+        st.subheader('선택한 질문 편집')
+        st.caption('문구 수정은 이번 질문지에만 적용됩니다. 위·아래 버튼으로 상담 순서를 바꿀 수 있습니다.')
+        order=list(st.session_state['b_questions'])
+        for index,qid in enumerate(order):
+            original=QUESTIONS.get(qid,{}).get('text','')
+            value=st.session_state['b_question_edits'].get(qid,original)
+            st.session_state.setdefault('b_edit_'+qid,value)
+            with st.container(border=True):
+                st.text_area(f'{index+1:02d} · {qid}',key='b_edit_'+qid,height=80,max_chars=500,on_change=_edit,args=(qid,))
+                cols=st.columns(4)
+                cols[0].button('↑ 위로',key='b_move_up_'+qid,disabled=index==0,on_click=_move,args=(qid,-1),use_container_width=True)
+                cols[1].button('↓ 아래로',key='b_move_down_'+qid,disabled=index==len(order)-1,on_click=_move,args=(qid,1),use_container_width=True)
+                cols[2].button('선택 해제',key='b_remove_'+qid,on_click=_remove,args=(qid,),use_container_width=True)
+                if qid in QUESTIONS:cols[3].button('원문으로',key='b_restore_'+qid,on_click=_restore,args=(qid,),use_container_width=True)
+        if not order:st.info('1단계에서 질문을 선택하거나 아래에서 직접 추가해 주세요.')
         with st.container(border=True):
-            st.text_area(f'{index+1:02d} · {qid}',key='b_edit_'+qid,height=80,max_chars=500,on_change=_edit,args=(qid,))
-            cols=st.columns(4)
-            cols[0].button('↑ 위로',key='b_move_up_'+qid,disabled=index==0,on_click=_move,args=(qid,-1),use_container_width=True)
-            cols[1].button('↓ 아래로',key='b_move_down_'+qid,disabled=index==len(order)-1,on_click=_move,args=(qid,1),use_container_width=True)
-            cols[2].button('선택 해제',key='b_remove_'+qid,on_click=_remove,args=(qid,),use_container_width=True)
-            if qid in QUESTIONS:cols[3].button('원문으로',key='b_restore_'+qid,on_click=_restore,args=(qid,),use_container_width=True)
-    if not order:st.info('1단계에서 질문을 선택하거나 아래에서 직접 추가해 주세요.')
-    with st.container(border=True):
-        st.text_area('내 질문 추가',key='b_new_question',max_chars=500,height=80,placeholder='이번 고객에게 물어보고 싶은 질문을 적어주세요.')
-        st.button('질문 추가',key='b_add_custom',on_click=_add_custom,disabled=not st.session_state.get('b_new_question','').strip())
-    st.subheader('PDF 저장')
-    title=field('text_input','질문지 제목','b_question_title','상담 질문지',max_chars=80)
-    left,right=st.columns(2)
-    with left:customer=field('text_input','고객명 (선택)','b_question_customer','',max_chars=40,placeholder='비워두면 필기란으로 출력')
-    with right:day=field('date_input','상담일 (선택)','b_question_date',None,format='YYYY-MM-DD')
-    st.caption('고객명·상담일을 비워두면 PDF에 빈 작성란을 남깁니다. 질문별 메모 3줄과 마지막 종합 메모가 포함됩니다.')
-    questions=[{'id':qid,'text':st.session_state['b_question_edits'].get(qid,QUESTIONS.get(qid,{}).get('text',''))} for qid in order]
-    invalid=[q['id'] for q in questions if not q['text'].strip()]
-    if invalid:st.warning('질문 내용을 입력해 주세요: '+', '.join(invalid))
-    if not title.strip():st.warning('질문지 제목을 입력해 주세요.')
-    if questions and not invalid and title.strip():
-        payload,pages=build_question_pdf(title,questions,customer,day.isoformat() if day else '')
-        st.caption(f'선택한 질문 {len(questions)}개 · PDF {pages}페이지 (종합 메모 포함)')
-        st.download_button('PDF 질문지 다운로드',payload,question_pdf_filename(title),'application/pdf',type='primary',use_container_width=True,key='b_question_download')
-    else:
-        st.button('PDF 질문지 다운로드',disabled=True,type='primary',use_container_width=True)
+            st.text_area('내 질문 추가',key='b_new_question',max_chars=500,height=80,placeholder='이번 고객에게 물어보고 싶은 질문을 적어주세요.')
+            st.button('질문 추가',key='b_add_custom',on_click=_add_custom,disabled=not st.session_state.get('b_new_question','').strip())
+    with preview:
+        st.subheader('미리보기 · PDF 저장')
+        title=field('text_input','질문지 제목','b_question_title','상담 질문지',max_chars=80)
+        left,right=st.columns(2)
+        with left:customer=field('text_input','고객명 (선택)','b_question_customer','',max_chars=40,placeholder='비워두면 필기란으로 출력')
+        with right:day=field('date_input','상담일 (선택)','b_question_date',None,format='YYYY-MM-DD')
+        st.caption('고객명·상담일을 비워두면 PDF에 빈 작성란을 남깁니다. 질문별 메모 3줄과 마지막 종합 메모가 포함됩니다.')
+        questions=[{'id':qid,'text':st.session_state['b_question_edits'].get(qid,QUESTIONS.get(qid,{}).get('text',''))} for qid in order]
+        with st.expander('질문 내용 미리보기', expanded=True):
+            for number, question in enumerate(questions, 1):
+                st.write(f"{number}. {question['text']}")
+        invalid=[q['id'] for q in questions if not q['text'].strip()]
+        if invalid:st.warning('질문 내용을 입력해 주세요: '+', '.join(invalid))
+        if not title.strip():st.warning('질문지 제목을 입력해 주세요.')
+        if questions and not invalid and title.strip():
+            payload,pages=build_question_pdf(title,questions,customer,day.isoformat() if day else '')
+            st.caption(f'선택한 질문 {len(questions)}개 · PDF {pages}페이지 (종합 메모 포함)')
+            st.download_button('PDF 질문지 다운로드',payload,question_pdf_filename(title),'application/pdf',type='primary',use_container_width=True,key='b_question_download')
+        else:
+            st.button('PDF 질문지 다운로드',disabled=True,type='primary',use_container_width=True)
 
     workflow_button('← 질문 선택',steps[0],'b_question_step')

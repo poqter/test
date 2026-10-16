@@ -72,11 +72,15 @@ _RESULT_SCHEMA: dict[str, Any] = {
 class OpenAIAnalysisClient:
     """Model-only Phase C analyzer. It never receives web-search tools."""
 
-    def __init__(self, api_key: str | None = None, model: str | None = None, timeout: float = 60.0,
+    def __init__(self, api_key: str | None = None, model: str | None = None, timeout: float | None = None,
                  on_response: Callable[[dict[str, Any]], None] | None = None):
         self.api_key = (api_key or os.getenv("OPENAI_API_KEY", "")).strip()
         self.model = (model or os.getenv("BRIEFING_ROUTINE_MODEL", "") or os.getenv("BRIEFING_DISCOVERY_MODEL", "")).strip()
-        self.timeout = timeout
+        try:
+            configured = float(timeout if timeout is not None else os.getenv("BRIEFING_ANALYSIS_TIMEOUT_SECONDS", "180"))
+        except (TypeError, ValueError):
+            configured = 180.0
+        self.timeout = min(300.0, max(30.0, configured))
         self.http = requests.Session()
         self.on_response = on_response
         self.before_request = None
@@ -147,7 +151,9 @@ class OpenAIAnalysisClient:
             "Describe observed changes, attributed reported background, conditional effects, and the next thing to watch. Each sentence needs supplied event:<event_key> or metric:<code> fact_refs. "
             "Do not invent causal links or values. If evidence is insufficient, use fewer factual sentences. For other profiles, market_flow must be []."
             " MARKET is a complete article-based economic briefing without a metric dashboard. Synthesize supplied article facts. Numerical claims require supplied article evidence and dates; never invent index movements, exchange rates or yields. "
-            "Prefer concise fields so every supplied event fits in the response; leave irrelevant consultation fields empty rather than selecting fewer events."
+            "Prefer concise fields so every supplied event fits in the response; leave irrelevant consultation fields empty rather than selecting fewer events. "
+            "Avoid generic repeated background such as broad claims about uncertainty or market attention. State the concrete new development, date and attributed evidence. "
+            "If no supplied fact supports a figure or causal explanation, omit it rather than filling the field with speculation."
         )
 
     def analyze(self, profile_code: str, events: list[SharedEventCandidate]) -> tuple[list[dict[str, Any]], AnalysisUsage]:
@@ -200,7 +206,7 @@ class OpenAIAnalysisClient:
         }
         record = {"profile_code": profile_code, "input_identity": input_identity, "status": "started", "usage": None,
                   "usage_available": False, "requested_event_keys": [e.event_key for e in events],
-                  "requested_max_output_tokens": payload["max_output_tokens"]}
+                  "requested_max_output_tokens": payload["max_output_tokens"], "read_timeout_seconds": self.timeout}
 
         def notify_failure(message: str) -> BriefingAnalysisError:
             record["failure_message"] = message
@@ -223,7 +229,7 @@ class OpenAIAnalysisClient:
                 "https://api.openai.com/v1/responses",
                 headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
                 json=payload,
-                timeout=self.timeout,
+                timeout=(10.0, self.timeout),
             )
         except requests.RequestException as exc:
             details = request_diagnostic(exc=exc)

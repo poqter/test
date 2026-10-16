@@ -18,6 +18,8 @@ def inject_global_styles() -> None:
 
 
 def page_header(category: str, title: str, description: str, icon: str) -> None:
+    from modules.shared.clean_design import apply_clean_design
+    apply_clean_design()
     category = {
         '상담·제안서': '고객 상담', '보험자료 분석': '고객 상담',
         '고객 전달자료': '고객 상담', '재무·보험 계산': '보험 비교 · 계산',

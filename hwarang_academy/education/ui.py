@@ -15,6 +15,8 @@ def render(auth, owner, permissions, profile, surface):
     st.markdown('''<style>[data-testid="stSidebar"]{display:block!important}[data-testid="stSidebarCollapsedControl"]{display:block!important}
     .block-container{max-width:1240px;padding-top:2rem}button{transition:background .18s,transform .18s}
     @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}</style>''',unsafe_allow_html=True)
+    from modules.shared.clean_design import apply_clean_design
+    apply_clean_design()
     with st.sidebar:
         st.title('🎓 ACADEMY')
         if st.button('🏠 아카데미 홈',use_container_width=True):
@@ -25,7 +27,7 @@ def render(auth, owner, permissions, profile, surface):
                     st.session_state['_academy_surface']=key;st.rerun()
         if 'academy.simulator' in permissions and st.button('🎭 AI 상담 시뮬레이터',use_container_width=True):
             st.session_state['_academy_surface']='simulator';st.rerun()
-        st.caption('HWARANG · LEARN / PRACTICE / GROW')
+        st.caption('Planned & Built by 박병선 팀장')
     label,permission=NAV[surface]
     st.title(label)
     if permission and permission not in permissions:

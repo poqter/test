@@ -395,7 +395,7 @@ def run() -> None:
             st.caption('미래 보험료는 선택한 시나리오 또는 입력값입니다. 현재 보장과 신규 계약의 지급조건·심사·면책 차이는 이 보험료 계산에 포함되지 않습니다.')
 
         if saving >= 0:
-            result_text = f'비갱신형 전환 시 예상 보험료를 <span class="rn-result-value">약 {_won(saving)} 절감</span>할 수 있습니다.'
+            result_text = f'입력한 갱신 가정에서 총보험료 차이는 <span class="rn-result-value">약 {_won(saving)}</span>입니다. 실제 갱신 보험료와 보장 조건에 따라 달라집니다.'
         else:
             result_text = f'현재 조건에서는 비갱신형 전환안이 <span class="rn-result-value negative">약 {_won(abs(saving))} 더 높습니다.</span>'
 

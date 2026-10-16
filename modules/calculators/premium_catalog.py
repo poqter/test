@@ -42,9 +42,9 @@ def render_sections(sections, items, ids, *, query='', group='전체'):
                                         f'<div class="hw-calc-card-copy"><span class="hw-calc-card-icon" aria-hidden="true">{emoji_markup(category_emoji(items[name][0]))}</span>'
                                         f'<div><div class="hw-calc-card-title">{escape(name.removesuffix("계산기"))}</div>'
                                         f'<div class="hw-calc-card-summary">{escape(summary)}</div>'
-                                        f'<div class="hw-calc-card-core">먼저 입력 · {escape(meta.get("core", "핵심 조건"))}</div></div></div>', unsafe_allow_html=True)
-                                    with st.container(key='hwcalc_actions_'+card_key(name)):
-                                        st.button('현재 탭에서 열기 →', key=card_key(name)+'_open_here', on_click=open_calculator, args=(name,), use_container_width=True)
-                                        if st.button('새 탭에서 열기 ↗', key=card_key(name)+'_prepare_tab', use_container_width=True):
+                                        '</div></div>', unsafe_allow_html=True)
+                                    with st.container(key='hwcalc_actions_'+card_key(name), horizontal=True):
+                                        st.button('현재 탭', key=card_key(name)+'_open_here', on_click=open_calculator, args=(name,), use_container_width=True)
+                                        if st.button('새 탭 ↗', key=card_key(name)+'_prepare_tab', use_container_width=True):
                                             open_new_tab(name, ids)
     footer('CALCULATOR')

@@ -9,6 +9,8 @@ def apply(surface: str) -> None:
         raise ValueError('Unknown home surface')
     css = Path(__file__).with_name('premium_homes.css').read_text(encoding='utf-8')
     st.markdown('<style>' + css + '</style>', unsafe_allow_html=True)
+    from modules.shared.clean_design import apply_clean_design
+    apply_clean_design()
     st.markdown(f'<div class="hw-premium-{surface}" aria-hidden="true"></div>', unsafe_allow_html=True)
 
 

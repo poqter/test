@@ -1,0 +1,62 @@
+{
+  "version": "1.20.0",
+  "baseline": "1.19.0 + uploaded current KB PDF module family",
+  "build": "hwarang-2026.10.16-clean-ui-1.20.0",
+  "production_deployed": false,
+  "new_sql": [],
+  "existing_sql_requirements": [
+    25,
+    26
+  ],
+  "validation": {
+    "pytest_passed": 357,
+    "calculator_routes": 88,
+    "source_browser_widths": [
+      1440,
+      1024,
+      768,
+      390,
+      320
+    ],
+    "chat_browser_widths": [
+      1600,
+      768,
+      390
+    ],
+    "live_api_tested": false,
+    "database_mutated": false
+  },
+  "changed_files": [
+    "hwarang_academy/education/ui.py",
+    "hwarang_academy/frontend/academy-home.css",
+    "hwarang_academy/frontend/academy-home.js",
+    "hwarang_academy/frontend/index.html",
+    "hwarang_academy/studio/chat_frontend/chat.css",
+    "hwarang_academy/studio/ui.py",
+    "modules/calculators/calculator_shell.py",
+    "modules/calculators/comparison/deposit_vs_shortpay.py",
+    "modules/calculators/coverage/coverage_calculator_ui.py",
+    "modules/calculators/premium_catalog.py",
+    "modules/consultation/analyzer.py",
+    "modules/consultation/analyzer_exports.py",
+    "modules/consultation/analyzer_pdf.py",
+    "modules/consultation/analyzer_pdf_password.py",
+    "modules/consultation/analyzer_pdf_ui.py",
+    "modules/consultation/analyzer_state.py",
+    "modules/consultation/question_studio.py",
+    "modules/shared/build_info.py",
+    "modules/shared/clean_design.css",
+    "modules/shared/clean_design.py",
+    "modules/shared/page_layouts.py",
+    "modules/shared/premium_homes.py",
+    "modules/shared/ui_components.py",
+    "modules/shared/upload_ui.py",
+    "modules/shared/validators.py",
+    "modules/shell/workspace_v2.py",
+    "scripts/audit_kb_pdf.py",
+    "tests/portal_ui/check.py",
+    "tests/test_analyzer_kb_pdf.py",
+    "tests/test_analyzer_pdf_password.py",
+    "tests/test_clean_ui_120.py"
+  ]
+}

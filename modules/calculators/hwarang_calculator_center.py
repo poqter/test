@@ -56,8 +56,6 @@ def _render(*, isolated=False, fixed_name=None):
     notice = st.session_state.pop('hwcalc_transfer_notice', None)
     if notice:
         st.info(notice)
-    if not isolated and not st.session_state.get('hwcalc_open'):
-        page_header('화랑 CALCULATOR', '종합 계산기 센터 (88개)', '보험·생활자금·연금·재무·세금·법인 의사결정을 위한 88개 통합 계산 도구', 'QC')
     if notice:
         st.session_state['hwcalc_open'] = st.session_state.get('hwcalc_selected')
     from modules.calculators.catalog_browser import render_catalog, back_to_catalog

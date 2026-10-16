@@ -267,7 +267,7 @@ def render(auth,owner,permissions,credit_status=None):
         rows=repo.rows()
     except Exception:
         st.error('AI 상담 저장소를 연결하지 못했습니다. Migration 23 적용 및 ACADEMY 접근 설정을 확인해 주세요. 기존 규칙 기반 훈련은 유지됩니다.');return
-    history_context = st.container(border=True) if st.session_state.get('_studio_history_open') and not st.session_state.get('_studio_state') else st.popover('🕒 나의 AI 상담 기록 · 최근 50회', use_container_width=False)
+    history_context = st.container(border=True) if st.session_state.get('_studio_history_open') and not st.session_state.get('_studio_state') else st.popover('상담 기록', use_container_width=False)
     with history_context:
         if rows:
             chosen=st.selectbox('저장된 상담',rows,format_func=lambda r:f"{STAGES.get(r['stage'],r['stage'])} · {'자유 연습' if r['mode']=='PRACTICE' else '공식 평가'} · {r['updated_at'][:16]}")
@@ -285,7 +285,7 @@ def render(auth,owner,permissions,credit_status=None):
                 for item in pending_own:
                     st.caption(f"요청 {item['op_key'][:12]} · {item['status']} · 마지막 변경 {item['updated_at']}")
                 st.caption('오래된 미확인 요청은 관리자 → 학습 AI에서 복구할 수 있습니다. 페이지 새로고침만으로 재호출하지 않습니다.')
-        if st.session_state.get('_studio_state') and st.button('저장된 상담 상태 새로고침', key='studio_refresh_saved'):
+        if st.session_state.get('_studio_state') and pending_own and st.button('저장된 상담 상태 새로고침', key='studio_refresh_saved'):
             st.session_state['_studio_state'] = repo.load(st.session_state['_studio_state']['id'])
             st.session_state.pop('_studio_chat_error', None)
             st.session_state.pop('_studio_client_ack', None)
@@ -372,16 +372,18 @@ def _active_room(repo,runtime,s,config,permissions):
     @media(max-width:1050px){.st-key-studio_room [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .st-key-studio_customer_panel){flex-wrap:wrap!important}.st-key-studio_room [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .st-key-studio_customer_panel)>[data-testid="stColumn"]:nth-child(1){flex:1 1 23%!important;min-width:190px!important}.st-key-studio_room [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .st-key-studio_customer_panel)>[data-testid="stColumn"]:nth-child(2){flex:3 1 65%!important;min-width:350px!important}.st-key-studio_room [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .st-key-studio_customer_panel)>[data-testid="stColumn"]:nth-child(3){flex:1 1 100%!important}}
     @media(max-width:650px){.st-key-studio_room [data-testid="stHorizontalBlock"]:has(> [data-testid="stColumn"] .st-key-studio_customer_panel)>[data-testid="stColumn"]{flex:1 1 100%!important;min-width:100%!important}.st-key-studio_customer_panel{padding:14px!important}.st-key-studio_room .studio-customer{display:flex;margin-bottom:8px}.st-key-studio_room .studio-avatar{width:42px;height:42px;margin:0}.st-key-studio_room .studio-live{margin:0 0 0 auto}}
     </style>""",unsafe_allow_html=True)
+    from modules.shared.clean_design import apply_clean_design
+    apply_clean_design()
     with st.container(key='studio_room'):
-        left,center,right=st.columns([1.05,2.65,1.12],gap='medium')
+        left,center,right=st.columns([1,2.8,1.05],gap='medium')
         with left,st.container(key='studio_customer_panel'):
-            st.caption('CUSTOMER PROFILE')
+            st.markdown('### 고객 정보')
             _customer_card(s)
             with st.expander('고객 자료',expanded=s.get('documents_shared',False)):_materials(s)
-            st.markdown('**오늘의 상담 목표**');st.write(GOALS[s['stage']])
             st.caption(f"진행한 대화 {len(s['turns'])}회")
         with right,st.container(key='studio_help_panel'):
-            st.markdown('### 상담 도우미')
+            st.markdown('### 상담 도움말')
+            st.markdown('**이번 연습 목표**');st.write(GOALS[s['stage']])
             if s['mode']=='ASSESSMENT':st.caption('공식 평가에서는 힌트와 되돌리기를 제공하지 않습니다.')
             _room_help(repo,runtime,s,config)
             st.divider()

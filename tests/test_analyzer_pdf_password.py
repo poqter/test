@@ -12,10 +12,10 @@ from modules.shared.validators import validate_upload,ValidationError
 
 
 class PasswordTests(TestCase):
-    def test_default_37(self):
-        self.assertEqual(len(DEFAULT_COVERAGES),37)
-        self.assertNotIn('항암방사선약물치료비',DEFAULT_COVERAGES)
-        self.assertNotIn('표적항암약물허가치료비',DEFAULT_COVERAGES)
+    def test_current_default_39(self):
+        self.assertEqual(len(DEFAULT_COVERAGES),39)
+        self.assertIn('항암방사선약물치료비',DEFAULT_COVERAGES)
+        self.assertIn('표적항암약물허가치료비',DEFAULT_COVERAGES)
 
     def test_wrong_then_correct_same_content(self):
         state={PASSWORD_KEY:'wrong'};content=b'%PDF-test'
