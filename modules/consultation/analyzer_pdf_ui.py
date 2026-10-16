@@ -1,4 +1,4 @@
-"""Review gate for KB PDF only. Existing XLSX UI is unaffected."""
+"""Optional review for KB PDF only. Existing XLSX UI is unaffected."""
 import copy
 import json
 import math
@@ -31,8 +31,7 @@ def apply_review(data, name, age, edited):
 
 def render_pdf_review(data, token, basic_only=True):
     import streamlit as st
-    token += "_37" if basic_only else "_all"
-    from modules.shared.runtime_cache import fingerprint
+    token += "_39" if basic_only else "_all"
     if basic_only:
         from modules.consultation.analyzer_model import DEFAULT_COVERAGES
         data=copy.deepcopy(data)
@@ -57,7 +56,7 @@ def render_pdf_review(data, token, basic_only=True):
                            file_name='KB_PDF_review.json',mime='application/json',key='kb_detail_'+token)
     rows=[{'보장항목':item['display'],**{f'{i+1}번':str(v) for i,v in enumerate(item['values'])}}
           for item in data['coverages']]
-    with st.expander('보장금액 확인 및 수정 (만원)',expanded=True):
+    with st.expander('보장금액 확인 및 수정 (만원)',expanded=False):
         st.caption('계약 번호별 금액입니다. 확인 필요는 원문을 확인한 뒤 숫자로 바꿀 수 있습니다. 남겨두면 엑셀에도 확인 필요로 표시됩니다. 종수술 합계는 1회 지급액이 아닙니다.')
         edited=st.data_editor(rows,disabled=['보장항목'],hide_index=True,use_container_width=True,
                               num_rows='fixed',key='kb_editor_'+token)
@@ -66,7 +65,4 @@ def render_pdf_review(data, token, basic_only=True):
     except ValueError as exc:
         st.error(str(exc))
         return data,False
-    signature=fingerprint(reviewed)
-    accepted=st.checkbox('계약·분류 제외 내역·추정 납입금액을 검토했습니다. 확인 필요 항목은 미확정 상태로 출력합니다.',
-                          key='kb_accept_'+signature)
-    return reviewed,accepted
+    return reviewed,True

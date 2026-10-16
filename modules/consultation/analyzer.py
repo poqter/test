@@ -171,6 +171,8 @@ def run() -> None:
         parsed = None
         parse_error = None
         main_bytes = uploaded_main.getvalue() if uploaded_main else b""
+        from modules.consultation.analyzer_state import reset_for_upload, sort_contracts, result_is_current
+        reset_for_upload(st.session_state, main_bytes)
         is_pdf = bool(uploaded_main and uploaded_main.name.lower().endswith('.pdf'))
         from modules.consultation.analyzer_pdf_password import prepare_pdf_input
         pdf_state = prepare_pdf_input(main_bytes if is_pdf else b'')
@@ -211,12 +213,15 @@ def run() -> None:
 
             st.caption("자동 정리는 파일을 올리면 결과를 만듭니다. 항목 직접 선택은 출력할 보장을 고른 뒤 실행합니다.")
 
+        result_area = st.container(key="analyzer_page_results")
         selected_labels: list[str] = []
         if parsed:
+            parsed = sort_contracts(parsed)
             if is_pdf:
                 from modules.consultation.analyzer_pdf_ui import render_pdf_review
                 token = hashlib.sha256(main_bytes + calculation_month.encode()).hexdigest()[:16]
-                parsed, pdf_reviewed = render_pdf_review(parsed, token, basic_only=mode == "간편모드")
+                with st.expander("PDF 인식 내용 확인 및 수정", expanded=False):
+                    parsed, pdf_reviewed = render_pdf_review(parsed, token, basic_only=mode == "간편모드")
             with st.expander('인식된 계약과 고객정보 확인', expanded=False):
                 st.write(f"고객: {parsed['customer_name']} · 보험나이: {parsed['age']} · 계약 {len(parsed['contracts'])}개")
                 st.dataframe([{'보험사': c['company'], '상품': c['product'], '월보험료': c['monthly'], '보장기간': c['coverage_period']} for c in parsed['contracts']], hide_index=True, use_container_width=True)
@@ -265,7 +270,13 @@ def run() -> None:
                 key="analyzer_v2_run",
             )
 
-    with st.container(key="analyzer_page_results"):
+        previous_result = st.session_state.get("analyzer_v2_result")
+        if (mode == "개인모드" and is_pdf and ready and previous_result
+                and previous_result.get("mode") == mode
+                and previous_result.get("signature") != signature):
+            should_generate = True
+
+    with result_area:
         st.markdown("### 02 · 분석 결과 및 다운로드")
         if should_generate:
             st.session_state.pop("analyzer_v2_result", None)
@@ -301,7 +312,7 @@ def run() -> None:
                 st.rerun()
 
         result = st.session_state.get("analyzer_v2_result")
-        if result and result.get("signature") == signature:
+        if result_is_current(result, signature):
             st.success("보장 분석이 완료되었습니다.")
             col1, col2, col3 = st.columns(3)
             col1.metric("고객명", result["customer_name"])
@@ -324,7 +335,7 @@ def run() -> None:
         "사용 방법 및 출력 기준",
         "전체 보장분석 엑셀을 고객 상담용 보장표로 자동 정리합니다.",
         [
-            ("원본 업로드", "컨설팅보장분석.xlsx 또는 KB 전체 보장분석 PDF를 등록합니다. PDF는 검토 후 출력합니다."),
+            ("원본 업로드", "컨설팅보장분석.xlsx 또는 KB 전체 보장분석 PDF를 등록합니다. PDF는 바로 출력할 수 있으며, 확인 영역에서 인식 내용을 수정할 수 있습니다."),
             ("분석 방식 선택", "간편모드는 기본 보장을 적용하고, 개인모드는 출력 항목을 직접 선택합니다."),
             ("결과 확인", "생성된 상담용 보장표를 확인하고 엑셀로 내려받습니다."),
         ],
