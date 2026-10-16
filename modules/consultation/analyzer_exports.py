@@ -577,6 +577,16 @@ def build_analysis_from_data(data: dict, selected_labels: list[str] | None = Non
     if not selected:
         raise ValueError("출력할 보장항목을 한 개 이상 선택해 주세요.")
 
+    # Keep a general-death row immediately above illness death in both sheets.
+    selected = [item for item in selected if item['label'] != '일반사망']
+    general_death = available.get('일반사망', {
+        'label': '일반사망', 'display': '일반 사망', 'group': '사망',
+        'values': [None] * len(data['contracts']),
+    })
+    death_position = next((i for i, item in enumerate(selected)
+                           if item['label'] == '질병사망'), 0)
+    selected.insert(death_position, general_death)
+
     workbook = Workbook()
     workbook.remove(workbook.active)
     all_contract_indices = list(range(len(data["contracts"])))
