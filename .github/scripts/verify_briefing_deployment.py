@@ -17,7 +17,13 @@ with sync_playwright() as p:
     while time.monotonic()<deadline:
         try:
             page.goto('https://hwarang-workspace.streamlit.app/?briefing_health=1',wait_until='domcontentloaded',timeout=45000)
-            page.get_by_text(expected,exact=False).wait_for(timeout=20000)
+            for _ in range(20):
+                if any(expected in frame.locator('body').inner_text(timeout=2000)
+                       for frame in page.frames):
+                    break
+                page.wait_for_timeout(1000)
+            else:
+                raise RuntimeError('Release not ready in app frame')
             ready=True
             print('DEPLOYED_RELEASE_OK '+ENGINE_VERSION)
             break
@@ -28,9 +34,14 @@ with sync_playwright() as p:
         browser.close()
         raise SystemExit('Expected deployed release was not observed. Check Streamlit deployment logs.')
     page.goto('https://hwarang-workspace.streamlit.app/',wait_until='domcontentloaded',timeout=45000)
-    page.get_by_test_id('stAppViewContainer').wait_for(timeout=30000)
+    for _ in range(30):
+        if any(frame.get_by_test_id('stAppViewContainer').count() for frame in page.frames):
+            break
+        page.wait_for_timeout(1000)
+    else:
+        raise SystemExit('Workspace app frame did not load.')
     page.wait_for_timeout(3000)
-    if page.get_by_test_id('stException').count():
+    if any(frame.get_by_test_id('stException').count() for frame in page.frames):
         raise SystemExit('Workspace login view contains a Streamlit exception.')
     print('WORKSPACE_ENTRY_OK')
     browser.close()
