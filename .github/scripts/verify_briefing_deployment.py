@@ -2,9 +2,11 @@
 import time
 from playwright.sync_api import sync_playwright
 from pathlib import Path
-import sys
-sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
-from modules.briefing.diagnostics import ENGINE_VERSION
+import json
+# Read release metadata without importing the app's optional runtime dependencies.
+ENGINE_VERSION = json.loads(
+    (Path(__file__).resolve().parents[2] / 'STAGE1_CHANGED_FILES.json').read_text()
+)['engine_version']
 
 expected=f'HWARANG_BRIEFING_RELEASE={ENGINE_VERSION};READY=true'
 with sync_playwright() as p:
