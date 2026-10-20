@@ -225,8 +225,6 @@ def main() -> None:
     if render_recovery_entry(auth):
         st.stop()
     flash = st.session_state.pop("hw_account_flash", "")
-    if flash:
-        st.success(flash)
     state = st.session_state.get("hwarang_auth")
     if state:
         try:
@@ -244,8 +242,17 @@ def main() -> None:
             clear_workspace_session()
             st.warning("로그인 시간이 만료되었거나 계정 권한이 변경되었습니다. 다시 로그인해 주세요.")
 
-    if not render_login(auth):
-        st.stop()
+    # Keep the authentication screen at one stable delta path, including the
+    # one-time password-change notice. Explicitly remove it before rendering
+    # the workspace so interrupted reruns cannot leave a stale login container.
+    login_slot = st.empty()
+    if not (st.session_state.get("hwarang_auth") and st.session_state.get("password_correct")):
+        with login_slot.container():
+            if flash:
+                st.success(flash)
+            if not render_login(auth):
+                st.stop()
+    login_slot.empty()
 
 
     permission_role = st.session_state.get("login_user")
