@@ -171,7 +171,7 @@ def render_login(auth: HwarangAuthService) -> bool:
             if submitted:
                 try:
                     _set_authenticated(auth, auth.sign_in(login_id, password))
-                    st.rerun()
+                    return True
                 except HwarangAuthError as exc:
                     login_feedback.error(str(exc), icon="⚠️")
         st.markdown('<div class="hw-auth-footer">Planned &amp; Built by 박병선 팀장</div>', unsafe_allow_html=True)
@@ -224,7 +224,7 @@ def main() -> None:
 
     if render_recovery_entry(auth):
         st.stop()
-    flash = st.session_state.pop("hw_account_flash", "")
+    flash = st.session_state.get("hw_account_flash", "")
     state = st.session_state.get("hwarang_auth")
     if state:
         try:
@@ -248,10 +248,18 @@ def main() -> None:
     login_slot = st.empty()
     if not (st.session_state.get("hwarang_auth") and st.session_state.get("password_correct")):
         with login_slot.container():
+            # Reserve the notice position on every login render. Removing the
+            # password-change notice on submit shifts the entire auth shell
+            # while sign_in waits for the server, leaving stale child blocks.
+            notice_slot = st.empty()
             if flash:
-                st.success(flash)
+                notice_slot.success(flash)
             if not render_login(auth):
                 st.stop()
+        # Clear before requesting another run, not only after it starts.
+        login_slot.empty()
+        st.session_state.pop("hw_account_flash", None)
+        st.rerun()
     login_slot.empty()
 
 

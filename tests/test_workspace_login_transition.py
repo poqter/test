@@ -21,6 +21,11 @@ workspace.main()
     app.run()
     assert not app.exception
     assert len(app.success) == 1
+    # A rerender (including an unsuccessful submit) must not consume the notice
+    # and move the auth shell before the next authentication request completes.
+    app.run()
+    assert len(app.success) == 1
+    assert app.session_state['hw_account_flash']
     app.text_input[0].input('test')
     app.text_input[1].input('example123')
     next(button for button in app.button if button.label == '워크스페이스 시작 →').click().run()
