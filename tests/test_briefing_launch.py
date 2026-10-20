@@ -37,7 +37,7 @@ def test_conflicting_same_observation_is_not_arbitrarily_chosen():
 
 def test_license_missing_keeps_internal_values_and_closes_customer():
     result=validated_metrics(observations(False),AS_OF);assert result['complete'] and not result['external_complete']
-    source=content('MARKET',8,False);assert staff_body(source)['market_metrics']==[]
+    source=content('MARKET',8,False);assert len(staff_body(source)['market_metrics'])==6
     assert customer_body(source)['market_metrics']==[]
 
 def test_change_units_and_daily_date_precision():
@@ -116,7 +116,7 @@ def test_market_missing_rechecked_without_spending_api(monkeypatch):
 
 def test_uncertain_request_blocks_recovery(monkeypatch):
     repo=Mock();repo.ai_generation_enabled.return_value=True;repo.claim_run.return_value={'claimed':True,'checkpoint':{'pending_request':{'kind':'analysis'}}}
-    assert generate_group(repo,date(2026,10,9),'DAILY',retry=True)['reason']=='unconfirmed_api_request'
+    assert generate_group(repo,date(2026,10,9),'NEWS',retry=True)['reason']=='unconfirmed_api_request'
     repo.reserve_request.assert_not_called()
 
 def test_org_approval_off_does_not_change_shadow_or_publish():
@@ -210,8 +210,8 @@ def test_publisher_round_robin_and_display_caps():
             self.rows=rows
             return [{'event_key':r.event_key,'importance_score':80,'category':'사회·안전','confidence':'high','summary':'가상 기사 요약'} for r in rows],AnalysisUsage()
     analyzer=Analyzer();result=run_phase_c(PhaseBResult(AS_OF,candidates,events,[],{}),analyzer=analyzer)
-    assert len(analyzer.rows)==20 and sum(r.candidates[0].publisher_domain=='mk.co.kr' for r in analyzer.rows)==6
-    assert sum(r.selection_tier=='core' for r in result.analyses)==1 and sum(r.selection_tier!='excluded' for r in result.analyses)==10
+    assert len(analyzer.rows)==30 and sum(r.candidates[0].publisher_domain=='mk.co.kr' for r in analyzer.rows)==6
+    assert sum(r.selection_tier=='core' for r in result.analyses)==10 and sum(r.selection_tier!='excluded' for r in result.analyses)==13
 
 def test_full_three_profile_pipeline_saves_same_facts_and_resumes_without_ai(monkeypatch):
     from modules.briefing import runtime as rt
@@ -252,10 +252,10 @@ def test_full_three_profile_pipeline_saves_same_facts_and_resumes_without_ai(mon
     saved={};result=rt.generate_and_store_briefings(repository=repo,profile_codes=('NEWS','MARKET','INSURANCE'),as_of=AS_OF,checkpoint=saved,save_checkpoint=lambda state:None)
     assert len(result.profiles)==3 and sorted(calls)==['INSURANCE','MARKET','NEWS']
     bycode={s['content_payload']['profile_code']:s for s in snaps}
-    assert len(bycode['NEWS']['content_payload']['issues'])==10 and len(bycode['MARKET']['content_payload']['issues'])==8
+    assert len(bycode['NEWS']['content_payload']['issues'])==13 and len(bycode['MARKET']['content_payload']['issues'])==9
     assert all(s['qa_payload']['internal_body_ready'] for s in snaps) and bycode['MARKET']['qa_payload']['public_body_ready']
     assert len(bycode['MARKET']['content_payload']['market_flow'])==3
-    assert bycode['MARKET']['content_payload']['market_metrics']['items']==[]
+    assert len(bycode['MARKET']['content_payload']['market_metrics']['items'])==6
     calls.clear();snaps.clear();rt.generate_and_store_briefings(repository=repo,profile_codes=('NEWS','MARKET','INSURANCE'),as_of=AS_OF,checkpoint=saved,save_checkpoint=lambda state:None)
     assert not calls and not snaps;repo.publish_revision.assert_not_called()
 

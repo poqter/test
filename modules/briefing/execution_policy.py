@@ -40,9 +40,9 @@ def analysis_identity(profile, events, model, prompt, schema):
 
 def request_plan(group):
     # Initial primary lanes; recovery reserves remain subject to the shared DB cap.
-    web = 2 if group == "MARKET" else 4
+    web = 4 if group == "DAILY" else 2
     research = group == "MARKET" and os.getenv("BRIEFING_ENABLE_RESEARCH", "false").lower() == "true"
-    analysis = (1 if group == "MARKET" else 2) + int(research)
+    analysis = (2 if group == "DAILY" else 1) + int(research)
     return {"web_requests_max": web, "analysis_requests_max": analysis,
             "output_tokens_max": web * 2000 + analysis * 12000,
             "note": "직접 피드·저장 결과로 실제 요청은 줄어듭니다. 입력 토큰과 실제 검색 결과는 실행 전 확정할 수 없어 총비용 상한은 아닙니다."}

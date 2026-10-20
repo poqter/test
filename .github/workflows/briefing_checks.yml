@@ -1,5 +1,7 @@
 name: Briefing offline checks
 on:
+  push:
+    branches: [main]
   pull_request:
     paths: ['.github/scripts/**', 'app.py', 'modules/briefing/**', 'modules/shared/**', 'public_reader/**', 'tests/**', 'requirements.txt', 'constraints.txt', 'STAGE1_CHANGED_FILES.json', '.github/workflows/**']
   workflow_dispatch:
@@ -20,3 +22,17 @@ jobs:
         run: python -m pytest -q
       - name: Customer reader HTTP regression
         run: node --test tests/test_briefing_public.mjs
+  deployed-release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: python -m pip install playwright==1.55.0
+      - run: python -m playwright install --with-deps chromium
+      - name: Verify deployed release and workspace entry
+        run: python .github/scripts/verify_briefing_deployment.py

@@ -57,39 +57,50 @@ def render_body(body, *, large=False):
     representative = next((row for row in issues if row.get('representative')), None)
     ordered = ([representative] if representative else []) + [row for row in issues if row is not representative]
     flow = body.get('market_flow') or []
-    digest = flow[:3]
+    digest = flow[:5]
     if digest:
         label = '오늘의 경제·금융 흐름' if flow else '오늘의 핵심'
         st.markdown('<section class="hw-digest'+(' big' if large else '')+'"><div class="tag">'+label+'</div>'+''.join('<p>'+e(text)+'</p>' for text in digest)+'</section>', unsafe_allow_html=True)
+    from .public_body import metric_date, metric_change
+    for m in body.get('market_metrics') or []:
+        st.caption(f"{m['label']} · {m['value']} {m.get('unit','')} · {metric_change(m)} · {metric_date(m)} · {m.get('source_name','')}")
+    ordered=sorted(ordered,key=lambda r:r.get('reading_group')=='more')
+    last_group=None
     last_section = None
     for index, row in enumerate(ordered, 1):
         if row.get("section_label") and row["section_label"] != last_section:
             last_section = row["section_label"]
             st.markdown('<h2 class="hw-briefing-section">'+e(last_section)+'</h2>', unsafe_allow_html=True)
+        group=row.get('reading_group') or 'main'
+        if group != last_group:
+            last_group=group
+            st.markdown('<h2 class="hw-briefing-section">'+('더 읽을 기사' if group=='more' else '오늘의 주요 뉴스')+'</h2>',unsafe_allow_html=True)
         sources = [s for s in row.get('sources') or [] if is_safe_url(str(s.get('url') or ''))]
         primary = sources[0] if sources else None
         title = e(row.get('title') or '오늘의 소식')
         if primary:
             title = f'<a href="{e(primary["url"])}" target="_blank" rel="noopener noreferrer">{title}</a>'
-        tag = ('중요 발표 추가 · ' if row.get('important_update') else '오늘의 주요 뉴스 · ' if row is representative else f'{index:02d} · ') + str(row.get('category') or '뉴스')
+        tag = ('중요 발표 추가 · ' if row.get('important_update') else f'{index:02d} · ') + str(row.get('category') or '뉴스')
         source = ' · '.join([str(primary.get('source_name') or '원문'), stamp(primary.get('published_at'))]) if primary else ''
         classes = 'hw-news'+(' lead' if row is representative else '')+(' big' if large else '')
         explanation = ''
-        st.markdown(f'<article class="{classes}"><div class="tag">{e(tag)}</div><h3>{title}</h3><p>{e(row.get("summary"))}</p>'+explanation+f'<div class="source">{e(source)}'+(f' · <a href="{e(primary["url"])}" target="_blank" rel="noopener noreferrer">원문 읽기 ↗</a>' if primary else '')+'</div></article>', unsafe_allow_html=True)
+        summary = '' if row.get('headline_sufficient') else '<p>'+e(row.get('summary'))+'</p>'
+        if row.get('event_date'): explanation += '<div class="source">사건·발표일 '+e(row['event_date'])+'</div>'
+        if row.get('important_update'): explanation += '<div class="source">추가 '+e(stamp(row.get('added_at')))+'</div>'
+        st.markdown(f'<article class="{classes}"><div class="tag">{e(tag)}</div><h3>{title}</h3>{summary}'+explanation+f'<div class="source">{e(source)}'+(f' · <a href="{e(primary["url"])}" target="_blank" rel="noopener noreferrer">원문 읽기 ↗</a>' if primary else '')+'</div></article>', unsafe_allow_html=True)
         if len(sources) > 1:
             with st.expander('추가 출처 보기'):
                 for src in sources[1:]:
                     st.link_button(str(src.get('source_name') or '추가 원문'), src['url'])
     if not issues:
         st.info('이 판본에 저장된 요약 기사가 없습니다.')
-    links = body.get('source_links') or []
-    if links:
-        with st.expander(f'더 읽을 기사 · 원문 {len(links)}개'):
-            st.caption('수집된 원문 목록입니다. 요약·검증이 끝난 기사 수와 별도로 표시합니다.')
-            for source in links:
-                if is_safe_url(str(source.get('url') or '')):
-                    st.link_button(str(source.get('title') or '원문'), source['url'], use_container_width=True)
-                    st.caption(str(source.get('source_name') or '')+' · '+stamp(source.get('published_at')))
+    for kind,label in (('calendar','오늘 예정된 주요 발표 · KST'),('weather','오늘의 날씨')):
+        if body.get(kind):st.markdown('**'+label+'**')
+        for item in body.get(kind) or []:
+            st.write((stamp(item['scheduled_at'])+' · ' if item.get('scheduled_at') else '')+str(item.get('title') or ''))
+            st.write(str(item.get('summary') or ''))
+            for src in item.get('sources',[]):
+                if is_safe_url(str(src.get('url') or '')):st.link_button(str(src.get('source_name') or '원문'),src['url'])
     if (body.get('research') or {}).get('reports'):
         render_research(body['research'])
 

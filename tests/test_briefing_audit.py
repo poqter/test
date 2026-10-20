@@ -67,9 +67,9 @@ def test_recover_retains_each_group_failure_without_another_attempt(monkeypatch)
     generate=Mock(side_effect=[BriefingRunError('OpenAI analysis HTTP 401',{'request_failure':{'http_status':401}}),BriefingRunError('OpenAI discovery HTTP 429',{'request_failure':{'http_status':429}})])
     monkeypatch.setattr(scheduler,'generate_group',generate);monkeypatch.setattr(scheduler,'publish_ready',lambda *a:[])
     result=run_scheduled('recover',repo=Mock())
-    assert generate.call_count==2
+    assert generate.call_count==3
     assert result['MARKET']['diagnostic']['diagnostics']['request_failure']['http_status']==401
-    assert result['DAILY']['diagnostic']['diagnostics']['request_failure']['http_status']==429
+    assert result['NEWS']['diagnostic']['diagnostics']['request_failure']['http_status']==429
 
 
 def test_one_successful_collection_with_valid_article_is_not_a_source_count_hold():
@@ -112,4 +112,4 @@ _internal_actions({'snapshot':{'id':'synthetic'},'actions':[{'id':'a','title':'ê
 @pytest.mark.parametrize('cores',[0,1,5,8])
 def test_insurance_compatibility_related_cap_never_expands_to_fifteen(cores):
     from modules.briefing.profile_rules import light_digest_limit
-    assert light_digest_limit(cores,'INSURANCE')==7
+    assert light_digest_limit(cores,'INSURANCE')==3

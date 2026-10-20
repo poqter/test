@@ -35,14 +35,15 @@ def test_combined_projection_deduplicates_and_excludes_internal_insurance():
     bundles[2]['snapshot']['content_payload']['issues'][0]['category']='영업·채널'
     packet=build_combined_packet(bundles,{'name':'검수용 이름','position':'팀장'},'https://example.org','x'*43)
     assert len(packet['body']['issues'])==8
-    assert len(packet['components'])==3 and packet['body']['market_metrics']==[]
+    assert len(packet['components'])==3 and len(packet['body']['market_metrics'])==6
     assert 'internal_secret' not in str(packet) and 'conversation_payload' not in str(packet)
     assert '<details><summary>해설과 영향' not in packet['rendered_html']
-    assert '배경과 영향' in packet['rendered_html'] and '팀장' in packet['rendered_html']
+    assert '배경과 영향' not in packet['rendered_html'] and '팀장' in packet['rendered_html']
 
 
 def test_combined_dates_must_match():
-    with pytest.raises(ValueError):combine_bodies([bundle('NEWS'),bundle('MARKET','2026-10-08')])
+    body=combine_bodies([bundle('NEWS'),bundle('MARKET','2026-10-08')])
+    assert {s['briefing_date'] for s in body['sections']}=={'2026-10-08','2026-10-09'}
 
 
 @pytest.mark.parametrize('defect',['empty','summary','source','date'])
@@ -115,7 +116,7 @@ def test_combined_share_button_and_pdf_work_without_ai(monkeypatch):
     repo=Mock();repo.latest_complete_customer_date.return_value='2026-10-09'
     repo.public_base_url.return_value='https://example.org'
     repo.operating_policy.return_value={'external_sharing_approved':True}
-    repo.bundle_for_date.side_effect=lambda code,day:next(b for b in saved if b['briefing']['profile_code']==code)
+    repo.customer_bundle_for_share.side_effect=lambda code,day:next(b for b in saved if b['briefing']['profile_code']==code)
     repo.create_combined_share.return_value=('x'*43,packet)
     monkeypatch.setattr(center,'_repo',lambda:repo)
     script="""

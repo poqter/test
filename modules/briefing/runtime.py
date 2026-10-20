@@ -152,11 +152,14 @@ def _content_payload(profile_code: str, rows: list[ProfileEventAnalysis], phase_
         "coverage_status": coverage_status,
         "core_count": sum(r.selection_tier == "core" for r in rows),
         "light_count": sum(r.selection_tier == "light_digest" for r in rows),
-        "source_links": _extra_source_links(profile_code, {r.event_key for r in selected}, phase_b),
+        "editorial_version": 2,
+        "source_links": [],
         "issues": [
             {
                 "event_key": r.event_key,
                 "selection_tier": r.selection_tier,
+                "headline_sufficient": r.profile_payload.get("headline_sufficient") is True,
+                "event_date": r.profile_payload.get("event_date") or "",
                 "importance_score": r.importance_score,
                 "category": r.category,
                 "issue_status": r.issue_status,
@@ -263,6 +266,13 @@ def _persist_profile(
     now = datetime.now(timezone.utc)
     kst_date = phase_b.as_of.astimezone(KST).date()
     rows = phase_c.profile_rows(profile_code)
+    from .editorial import remove_unchanged_repeats
+    from datetime import timedelta
+    previous = repo.bundle_for_date(profile_code, kst_date-timedelta(days=1))
+    if isinstance(previous,dict):
+        remove_unchanged_repeats(rows, (previous['snapshot'].get('content_payload') or {}).get('issues', []))
+        from .phase_c import _apply_caps
+        _apply_caps(rows, profile_code)
     routed_events = [event for event in phase_b.events if profile_code in event.routed_profiles]
     coverage_status = _coverage_status(phase_b, profile_code, len(routed_events))
     coverage_status = _display_coverage_status(profile_code, rows, phase_b, coverage_status)
@@ -296,6 +306,8 @@ def _persist_profile(
     today_action = _today_actions(rows)
     content = _content_payload(profile_code, rows, phase_b, coverage_status)
     if profile_code == "MARKET": content.update(market_context or {})
+    from .editorial import verified_extras
+    content.update(verified_extras(rows, phase_b, profile_code))
     external = customer_body(content)
     public_ready = body_quality_ready(external)
     if profile_code != "INSURANCE": public_ready = public_ready and len(external["issues"]) == len(content["issues"])
@@ -324,6 +336,8 @@ def _persist_profile(
             "excluded_counts": phase_b.excluded_counts,
             "collection_diagnostics": phase_b.diagnostics,
             "source_health": phase_b.source_health,
+            "editorial_audit": [{"event_key":r.event_key,"title":r.title,"tier":r.selection_tier,
+                "score":r.importance_score,"validation":r.validation_status,**r.profile_payload} for r in rows],
             "selection_diagnostics": {
                 "routed_events": len(routed_events),
                 "analyzed_events": sum(not r.profile_payload.get('analysis_missing') for r in rows),
@@ -477,6 +491,7 @@ def generate_and_store_briefings(
     before_request=None,
     trigger_type: str = "manual",
     allow_partial_market: bool = False,
+    saved_material_only: bool = False,
 ) -> BriefingGenerationResult:
     """Run one shared Phase B discovery, one Phase C batch per routed profile,
     then persist immutable V1.6 snapshots for the requested profiles.
@@ -593,7 +608,8 @@ def generate_and_store_briefings(
                 retry_missing_search=False, supplement_only=True,
                 include_research=os.getenv("BRIEFING_ENABLE_RESEARCH", "false").lower()=="true",
                 on_discovery_response=lambda record: record_usage(record, discovery=True),
-                direct_checkpoint=saved, on_direct_complete=save)
+                direct_checkpoint=saved, on_direct_complete=save,
+                saved_material_only=saved_material_only, seed_candidates=saved.get("seed_candidates"))
             saved["phase_b"] = encode(phase_b); save()
         progress["phase_b"] = {"collection": phase_b.diagnostics, "source_health": phase_b.source_health,
                                "excluded_counts": phase_b.excluded_counts,
@@ -636,6 +652,13 @@ def generate_and_store_briefings(
             if code not in completed_c:
                 client = OpenAIAnalysisClient(on_response=lambda record: record_usage(record, discovery=False))
                 client.before_request = before_request
+                from datetime import timedelta
+                if code not in saved.setdefault('previous_news',{}):
+                    previous=repo.bundle_for_date(code,as_of.astimezone(KST).date()-timedelta(days=1))
+                    saved['previous_news'][code]=[{k:r.get(k) for k in ('title','summary','event_key')}
+                        for r in (previous['snapshot'].get('content_payload') or {}).get('issues',[])] if isinstance(previous,dict) else []
+                    save()
+                client.previous_news=saved['previous_news'][code]
                 cached = saved.get("analysis_responses", {}).get(code)
                 if cached is None and checkpoint is not None:
                     # Older releases retained the paid output in failed-job
@@ -645,7 +668,12 @@ def generate_and_store_briefings(
                 if cached is not None:
                     client.cached_response = cached
                     progress["reused_analysis_profiles"].append(code)
-                if code=='MARKET':client.market_metrics=[]
+                if code=='MARKET':
+                    if 'observations' not in saved:
+                        saved['observations'] = collect_metrics(as_of) if not saved_material_only else {'items': [], 'collection_status':'deadline_skipped'}
+                        save()
+                    # Public synthesis uses only externally permitted observations.
+                    client.market_metrics=[r for r in saved['observations']['items'] if r.get('value') is not None and r.get('external_allowed')]
                 completed_c[code] = encode(run_phase_c(phase_b, profile_codes=(code,), analyzer=client))
                 if code=='MARKET':saved['market_flow']=client.market_flow
                 save()
@@ -661,17 +689,17 @@ def generate_and_store_briefings(
             research, _ = build_research(phase_b.candidates if client else [], client=client,
                 on_response=lambda record: record_usage(record, discovery=False))
             market_rows = sorted([r for r in phase_c.profile_rows("MARKET") if r.selection_tier != "excluded"], key=lambda r:-r.importance_score)
-            market_context = {"market_metrics": {"items": [], "not_required": True}, "research": research,
+            market_context = {"market_metrics": saved.get("observations", {"items": []}), "research": research,
                 "market_news_only": False, "market_mode": "article_briefing",
                 "market_flow": [r['text'] for r in saved.get('market_flow',[])], "market_flow_facts":saved.get('market_flow',[])}
             saved["market_context"] = market_context; save()
         if "MARKET" in requested:
-            market_context["market_metrics"] = {"items": [], "not_required": True}
+            market_context["market_metrics"] = saved.get("observations", {"items": []})
             market_context["market_news_only"] = False
             market_context["market_mode"] = "article_briefing"
             visible_market = [r for r in phase_c.profile_rows("MARKET")
                               if r.selection_tier != "excluded" and r.validation_status == "ok"]
-            allowed_refs = {"event:" + r.event_key for r in visible_market}
+            allowed_refs = {"event:" + r.event_key for r in visible_market} | {"metric:"+r["code"] for r in market_context["market_metrics"].get("items",[]) if r.get("value") is not None and r.get("external_allowed")}
             flow_facts = [r for r in market_context.get("market_flow_facts", [])
                           if r.get("fact_refs") and set(r["fact_refs"]) <= allowed_refs]
             market_context["market_flow_facts"] = flow_facts

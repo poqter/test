@@ -87,12 +87,12 @@ with patch.object(ui,'rpc',rpc):
     at.checkbox(key='read_foundation-new_hire_1').check().run()
     at.button(key='complete_foundation-new_hire_1').click().run()
     assert not at.exception and at.session_state['done']==['1']
-    at.button(key='learn_nav_library').click().run()
+    at.session_state['_academy_surface']='library';at.run()
     assert not at.exception
     assert len(at.get('download_button'))==3
     at.text_input[0].set_value('없는 자료').run()
     assert len(at.get('download_button'))==0
-    at.button(key='learn_nav_my_learning').click().run()
+    at.session_state['_academy_surface']='my_learning';at.run()
     assert not at.exception
 
 

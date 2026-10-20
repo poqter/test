@@ -115,6 +115,8 @@ def extract_publication_metadata(html: str, *, url: str) -> PublicationMetadata:
                 if isinstance(identity, dict):
                     identity = identity.get("@id")
                 if not identity or canonicalize_url(str(identity)) == canonicalize_url(url):
+                    if node.get("articleBody") and len(str(node['articleBody'])) > len(parser.description):
+                        parser.description = str(node['articleBody'])[:4000]
                     if node.get("datePublished"):
                         dates.append(str(node["datePublished"]))
             if "@graph" in node:
@@ -210,7 +212,7 @@ class PublicationDateEnricher:
             self.stats["unsafe_url"] += 1
             row.metadata["publication_status"] = "unsafe_url"
             return
-        if row.published_at is not None and row.title:
+        if row.published_at is not None and row.title and len(row.description.strip()) >= 180:
             self.stats["existing_date"] += 1
             row.metadata.setdefault("publication_status", "existing_date")
             return
@@ -229,7 +231,9 @@ class PublicationDateEnricher:
         if row.published_at is None:
             row.published_at = result.published_at
         row.title = row.title or result.title
-        row.description = row.description or result.description
+        if len(result.description) > len(row.description):
+            row.description = result.description
+        row.metadata["enrichment_status"] = result.status
         row.metadata["publication_status"] = result.status
         row.metadata["publication_date_source"] = "html_metadata" if result.published_at else "unconfirmed"
         self.stats[result.status] += 1

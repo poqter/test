@@ -68,8 +68,8 @@ def cluster_candidates(candidates: list[SourceCandidate], *, threshold: float = 
         # Give each event one editorial home, after merging source hints.
         if 'INSURANCE' in profiles:
             profiles = {'INSURANCE'}
-        elif 'MARKET' in profiles:
-            profiles = {'MARKET'}
+        # Market developments may also warrant a short NEWS headline.
+        # Insurance retains its single editorial home.
         events.append(SharedEventCandidate(
             event_key=_event_key(head.title, head.publisher_domain),
             canonical_title=head.title,

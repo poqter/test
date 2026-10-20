@@ -6,28 +6,73 @@ from .repository import BriefingRepository
 from .runtime import generate_and_store_briefings, body_quality_ready
 
 KST=ZoneInfo('Asia/Seoul')
-GROUPS={'MARKET':('MARKET',),'DAILY':('NEWS','INSURANCE')}
+GROUPS={'MARKET':('MARKET',),'NEWS':('NEWS',),'INSURANCE':('INSURANCE',)}
 
 
 def cutoff(day, group):
-    return datetime.combine(day,time(7,0) if group=='MARKET' else time(7,30),KST).astimezone(timezone.utc)
+    return datetime.combine(day,time(7,30),KST).astimezone(timezone.utc)
 
 
-def generate_group(repo, day, group, retry=False, actor=None, allow_partial_market=False):
-    if group not in GROUPS:raise ValueError('Unknown briefing group')
+def collect_early(repo, day, slot):
+    """Two free, durable candidate collections; never a final editorial selection."""
+    if not repo.operating_policy().get('scheduled_generation_enabled'):
+        return {'status':'skipped','reason':'scheduled_generation_paused'}
+    key=f'{day}:COLLECT_{slot}'; owner=str(uuid.uuid4())
+    claim=repo.claim_run(key,day,'COLLECT',owner,False)
+    if not claim.get('claimed'): return {'status':'reused'}
+    saved=claim.get('checkpoint') or {}
+    try:
+        from .phase_b import run_phase_b
+        from .direct_sources import load_direct_source_specs_from_env
+        from .checkpoints import encode
+        result=run_phase_b(as_of=datetime.now(timezone.utc),
+            direct_sources=load_direct_source_specs_from_env(), enable_web_discovery=False)
+        saved['early_collection']=encode(result)
+        repo.save_run(key,owner,saved,'completed')
+        return {'status':'collected','candidates':len(result.candidates),'paid_requests':0}
+    except Exception:
+        repo.save_run(key,owner,saved,'failed')
+        raise
+
+
+def generate_group(repo, day, group, retry=False, actor=None, allow_partial_market=False, now=None):
+    if group not in GROUPS and group != 'DAILY':raise ValueError('Unknown briefing group')
     if actor is None and not repo.operating_policy().get('scheduled_generation_enabled'):
         return {'status':'skipped','reason':'scheduled_generation_paused'}
     if actor is not None:repo.require_manager(actor)
     if not repo.ai_generation_enabled():return {'status':'blocked','reason':'platform_ai_service_disabled'}
+    if group == 'DAILY':
+        results={}
+        for code in ('NEWS','INSURANCE'):
+            try: results[code]=generate_group(repo,day,code,retry,actor,now=now)
+            except Exception as exc:
+                from .diagnostics import failure_diagnostic
+                results[code]={'status':'failed','diagnostic':failure_diagnostic(exc)}
+        return results
+    if group in ('NEWS','INSURANCE'):
+        legacy=repo.daily_run_status(day,'DAILY')
+        if isinstance(legacy,dict) and legacy.get('attempts'):
+            return {'status':'blocked','reason':'legacy_daily_run_preserved'}
     repo.sync_business_calendar(day)
     owner=str(uuid.uuid4()); key=f'{day}:{group}'
     claim=repo.claim_run(key,day,group,owner,retry)
     if not claim.get('claimed'): return {'status':'skipped','reason':claim.get('status')}
     saved=claim.get('checkpoint') or {}
+    if not saved.get('phase_b') and not saved.get('seed_candidates'):
+        candidates=[]
+        for slot in ('630','720'):
+            state=repo.daily_run_status(day,'COLLECT_'+slot)
+            early=state.get('checkpoint',{}).get('early_collection',{}) if isinstance(state,dict) else {}
+            candidates.extend(early.get('candidates',[]))
+        saved['seed_candidates']=candidates
     def save(state):repo.save_run(key,owner,state)
     if saved.get('pending_request') or saved.get('charge_uncertain'):
         repo.save_run(key,owner,saved,'blocked'); return {'status':'blocked','reason':'unconfirmed_api_request'}
     def before(kind):
+        local=(now or datetime.now(KST)).astimezone(KST)
+        if actor is None and (local.date()!=day or local.time()>=time(8,50)
+                or kind != 'analysis' and local.time()>=time(8,40)):
+            raise RuntimeError('자동 운영 신규 요청 마감: 저장 결과만 사용합니다.')
         if saved.get('pending_request') or saved.get('charge_uncertain'):
             raise RuntimeError('이전 유료 요청 상태를 확인할 수 없어 추가 호출을 중단합니다.')
         saved['pending_request']={'kind':kind,'at':datetime.now(timezone.utc).isoformat()};save(saved)
@@ -39,7 +84,8 @@ def generate_group(repo, day, group, retry=False, actor=None, allow_partial_mark
         result=generate_and_store_briefings(repository=repo,profile_codes=GROUPS[group],force_shadow=True,
             as_of=cutoff(day,group),checkpoint=saved,save_checkpoint=save,before_request=before,
             trigger_type='retry' if retry else 'scheduled',actor_user_id=actor,
-            allow_partial_market=allow_partial_market)
+            allow_partial_market=allow_partial_market,
+            saved_material_only=actor is None and (now or datetime.now(KST)).astimezone(KST).time()>=time(8,40))
         repo.save_run(key,owner,saved,'completed')
         return {'status':'completed','profiles':[r.profile_code for r in result.profiles],
                 'market_news_only':bool(saved.get('market_news_only'))}
@@ -58,7 +104,7 @@ def publish_ready(repo, day, codes, *, now=None):
         bundle=repo.bundle_for_date(code,day,include_draft=True)
         if not bundle:results.append({'profile':code,'status':'no_snapshot'});continue
         revision=bundle['revision']; qa=bundle['snapshot'].get('qa_payload') or {}
-        publish_at=datetime.combine(day,time(7,30) if code=='MARKET' else time(8),KST)
+        publish_at=datetime.combine(day,time(8),KST)
         if (now or datetime.now(timezone.utc))<publish_at:results.append({'profile':code,'status':'before_publication_time'});continue
         if revision.get('publication_status')=='published':
             results.append({'profile':code,'status':'already_published'});continue
@@ -103,7 +149,7 @@ def catch_up(repo, now=None):
     def due_profiles():
         return [code for code in ('MARKET', 'NEWS', 'INSURANCE')
                 if profiles.get(code, {}).get('is_enabled') is not False
-                and clock() >= datetime.combine(day, time(7,30) if code == 'MARKET' else time(8), KST)]
+                and clock() >= datetime.combine(day, time(8), KST)]
     from .diagnostics import failure_diagnostic
 
     def publish_independently():
@@ -118,7 +164,12 @@ def catch_up(repo, now=None):
     # Publish saved editions first: a slow/failed MARKET cannot hold NEWS hostage.
     publish_independently()
     generation = {}
-    for group in ('DAILY', 'MARKET'):
+    local=clock().astimezone(KST)
+    if time(6,30)<=local.time()<time(7,30):
+        slot='720' if local.time()>=time(7,20) else '630'
+        try:generation['collection']=collect_early(repo,day,slot)
+        except Exception as exc:generation['collection']={'status':'failed','diagnostic':failure_diagnostic(exc)}
+    for group in ('NEWS', 'INSURANCE', 'MARKET'):
         if clock().astimezone(KST).date() != day:
             generation[group] = {'status': 'blocked', 'reason': 'business_day_changed'}
             continue
@@ -134,9 +185,13 @@ def catch_up(repo, now=None):
             if all(existing):
                 generation[group] = {'status': 'reused', 'reason': 'stored_editions'}
                 continue
-            # Do not reconstruct a partially saved group by paying for it again.
-            if any(existing):
-                generation[group] = {'status': 'blocked', 'reason': 'partial_saved_editions'}
+            if clock()>=datetime.combine(day,time(8,50),KST):
+                generation[group]={'status':'blocked','reason':'new_generation_deadline'}
+                continue
+            # Do not evade a pre-upgrade DAILY paid-request lock with new keys.
+            legacy=repo.daily_run_status(day,'DAILY') if group in ('NEWS','INSURANCE') else {}
+            if legacy.get('attempts'):
+                generation[group]={'status':'blocked','reason':'legacy_daily_run_preserved'}
                 continue
             state = repo.daily_run_status(day, group)
             status = state.get('status')
@@ -148,7 +203,7 @@ def catch_up(repo, now=None):
                 generation[group] = {'status': 'retry_wait'}
                 continue
             generation[group] = generate_group(repo, day, group, retry=retry,
-                                                allow_partial_market=group == 'MARKET')
+                                                allow_partial_market=group == 'MARKET', now=now)
         except Exception as exc:
             generation[group] = {'status': 'failed', 'diagnostic': failure_diagnostic(exc)}
         # Commit each available edition without waiting for another group.

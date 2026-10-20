@@ -46,7 +46,11 @@ if __name__=='__main__':
             policy = repo.operating_policy()
             result={'status':'checked' if source_ok and required_ready else 'configuration_required','feed_probe':probe,'project_openai_api_calls':0,'ai_enabled':repo.ai_generation_enabled(),
                 'policy':{k:policy.get(k) for k in ('scheduled_generation_enabled','automatic_publication_enabled','external_sharing_approved')},
-                'settings':checks, 'operations':repo.operation_status(day)}
+                'settings':checks, 'operations':repo.operation_status(day),
+                'today_editions':{code: ({'status':b['revision'].get('publication_status'),
+                    'validation':b['revision'].get('validation_status'), 'date':str(b['briefing']['briefing_date'])}
+                    if (b:=repo.bundle_for_date(code,day,include_draft=True)) else {'status':'no_snapshot'})
+                    for code in ('MARKET','NEWS','INSURANCE')}}
         else:result=run_scheduled(args.action)
         if configuration_failure(result, action=args.action):code=2
         report={'build':build_info(),'action':args.action,'checked_at':datetime.now(timezone.utc).isoformat(),'result':result}

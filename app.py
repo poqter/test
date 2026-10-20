@@ -14,6 +14,13 @@ from modules.shell.workspace_v2 import render_home, render_sidebar
 
 st.set_page_config(page_title="화랑WORKSPACE", page_icon="H", layout="wide", initial_sidebar_state="auto")
 st.set_option("client.toolbarMode", "minimal")
+# Public release probe exposes code readiness only; no credentials, DB or AI calls.
+if st.query_params.get("briefing_health") == "1":
+    from modules.briefing.diagnostics import build_info
+    release = build_info()
+    st.code("HWARANG_BRIEFING_RELEASE=" + release['engine_version'] +
+            ";READY=" + str(release['code_matches_release']).lower())
+    st.stop()
 inject_global_styles()
 
 NOTICE = {

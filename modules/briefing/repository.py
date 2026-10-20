@@ -569,7 +569,7 @@ class BriefingRepository:
 
     def daily_run_status(self, day, group):
         return self._first(self._request('GET','/rest/v1/hwarang_briefing_daily_runs',params={
-            'run_key':'eq.'+str(day)+':'+group,'select':'status,attempts','limit':'1'})) or {}
+            'run_key':'eq.'+str(day)+':'+group,'select':'status,attempts,checkpoint','limit':'1'})) or {}
 
     def staff_sender(self, user_id):
         sender = self._first(self._request('GET', '/rest/v1/profiles', params={

@@ -12,6 +12,7 @@ def repo(monkeypatch):
     r=Mock()
     r._snapshot_for_revision.side_effect=lambda rid:next(x['snapshot'] for x in saved.values() if x['revision']['id']==rid)
     r.bundle_from_parts.side_effect=lambda b,v,s:{'briefing':b,'revision':v,'snapshot':s,'actions':[]}
+    r.customer_bundle_for_share.side_effect=lambda code,day,**kwargs:saved[code]
     r.bundle_for_date.side_effect=lambda code,day,**kwargs:saved[code]
     r.latest_complete_customer_date.return_value='2026-10-09'
     r.public_base_url.return_value='https://example.org'
@@ -38,7 +39,7 @@ def test_employee_navigation_and_reading_do_not_query_sharing_or_manage(repo):
     a=app();assert not a.exception
     menu=next(r for r in a.radio if r.key=='hw_briefing_page')
     assert menu.options==['오늘 브리핑','지난 브리핑','고객에게 공유']
-    assert next(r for r in a.radio if r.key=='hw_briefing_profile').value=='MARKET'
+    assert [t.label for t in a.tabs][:3]==['경제·금융 브리핑','종합뉴스 브리핑','보험업계 브리핑']
     assert not any(b.label=='이 브리핑 게시하기' for b in a.button)
     repo.operating_policy.assert_not_called();repo.create_combined_share.assert_not_called()
     repo.operation_status.assert_not_called();repo.reserve_request.assert_not_called()
@@ -66,6 +67,7 @@ def test_history_reading_routes_share_to_same_day(repo):
     assert not a.exception
     next(b for b in a.button if b.label=='고객에게 공유').click().run()
     assert not a.exception
-    assert a.session_state['hw_briefing_share_day']=='2026-10-09'
-    assert next(r for r in a.radio if r.key=='hw_briefing_page').value=='고객에게 공유'
+    assert any('2026-10-09' in c.value for c in a.caption)
+    assert next(r for r in a.radio if r.key=='hw_briefing_page').value=='지난 브리핑'
+    assert any(c.label=='보험업계' and c.value is False for c in a.checkbox)
     repo.reserve_request.assert_not_called()

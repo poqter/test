@@ -32,9 +32,13 @@ def _project(content,external):
                      and row.get('category') in {'제도·규제','상품·보험료','보험금·보상','세제·재무','소비자·사회이슈'})
             if (state!='customer_ready' and not neutral) or row.get('category') in {'영업·채널','보험사·시장'}:continue
         sources=[{k:r.get(k) for k in ('title','source_name','url','published_at')} for r in row.get('sources',[]) if is_safe_url(str(r.get('url') or '')) and r.get('published_at')][:4]
-        if sources:issues.append({k:row.get(k) for k in ('event_key','title','summary','category','why_important','impact_summary','representative')}|{'sources':sources, 'important_update':row.get('event_key') in update_keys,
+        if sources:issues.append({k:row.get(k) for k in ('event_key','title','summary','category','why_important','impact_summary','representative','headline_sufficient','event_date')}|{'sources':sources, 'reading_group':'more' if content.get('editorial_version') == 2 and row.get('selection_tier') == 'light_digest' else 'main', 'important_update':row.get('event_key') in update_keys,
             'added_at':row.get('added_at') if row.get('event_key') in update_keys else None})
-    metrics=[]
+    raw_metrics=content.get('market_metrics') or {}
+    raw_metrics=raw_metrics.get('items',[]) if isinstance(raw_metrics,dict) else raw_metrics
+    metrics=[{k:r.get(k) for k in METRIC_FIELDS} for r in raw_metrics
+             if r.get('value') is not None and is_safe_url(str(r.get('source_url') or ''))
+             and (not external or r.get('external_allowed') is True)]
     research=content.get('research') or {}
     def views(rows):return [{k:v.get(k) for k in ('firm','url','stance','summary','conditions')} for v in rows if isinstance(v,dict) and is_safe_url(str(v.get('url') or ''))]
     safe={k:research.get(k) for k in ('status','report_count','institution_count','note')}
@@ -42,14 +46,18 @@ def _project(content,external):
     safe['common']=[{k:r.get(k) for k in ('theme','timeframe','stance','firms')}|{'views':views(r.get('views') or [])} for r in research.get('common') or []]
     safe['differences']=[{k:r.get(k) for k in ('theme','timeframe')}|{'positive':views(r.get('positive') or []),'cautious':views(r.get('cautious') or [])} for r in research.get('differences') or []]
     safe['viewpoints']=[{k:r.get(k) for k in ('theme','timeframe')}|{'views':views(r.get('views') or [])} for r in research.get('viewpoints') or []]
-    return {'schema':'hwarang-public-v2','profile_code':content.get('profile_code'),'profile_label':content.get('profile_label'),'as_of':content.get('as_of'),'issues':issues,'market_flow':[str(x) for x in content.get('market_flow',[])],'market_metrics':metrics,'research':safe}
+    extras={}
+    for key in ('weather','calendar'):
+        extras[key]=[{k:r.get(k) for k in ('title','summary','scheduled_at')}|{'sources':[
+            {k:src.get(k) for k in ('url','source_name','published_at')} for src in r.get('sources',[])
+            if is_safe_url(str(src.get('url') or '')) and src.get('published_at')]}
+            for r in content.get(key,[]) if isinstance(r,dict)][:3 if key=='calendar' else 1]
+    return {'schema':'hwarang-public-v2' ,'profile_code':content.get('profile_code'),'profile_label':content.get('profile_label'),'as_of':content.get('as_of'),'issues':issues,'market_flow':[str(x) for x in content.get('market_flow',[])],'market_metrics':metrics,'research':safe,**extras}
 
 def customer_body(content):return _project(content,True)
 def staff_body(content):
     body = _project(content, False)
-    body['source_links'] = [{k:row.get(k) for k in ('title','url','source_name','published_at')}
-                            for row in content.get('source_links') or []
-                            if is_safe_url(str(row.get('url') or '')) and row.get('published_at')]
+    body['source_links'] = []  # Raw, unanalyzed legacy links never become verified reading.
     return body
 
 READER_CSS='''
@@ -86,13 +94,38 @@ def public_html(packet,*,canonical_url='',image_url='',pdf_url=''):
             parts.append(f'<p class="edition-delay" data-stale-date="{e(day)}" hidden>오늘 브리핑은 아직 준비되지 않았습니다. 공유된 최근 자료({e(day)})를 보여드립니다.</p>')
         if not rows:parts.append('<p class="panel">아직 공개된 브리핑이 없습니다.</p>')
         if code=='MARKET' and body.get('market_flow'):
-            parts.append('<section class="panel"><h2>오늘의 경제·금융 흐름</h2><ul>'+''.join('<li>'+e(t)+'</li>' for t in body['market_flow'][:3])+'</ul></section>')
+            parts.append('<section class="panel"><h2>오늘의 경제·금융 흐름</h2><ul>'+''.join('<li>'+e(t)+'</li>' for t in body['market_flow'][:5])+'</ul></section>')
+        if code=='MARKET':
+            for m in body.get('market_metrics') or []:
+                parts.append('<p class="source">'+e(m.get('label'))+' · '+e(m.get('value'))+' '+e(m.get('unit'))+' · '+e(metric_change(m))+' · '+e(metric_date(m))+' · <a href="'+e(m.get('source_url'))+'">'+e(m.get('source_name'))+'</a></p>')
+        reading_group = None
+        counters = {'main':0, 'more':0}
+        rows=sorted(rows,key=lambda r:r.get('reading_group')=='more')
         for row in rows:
-            parts.append(f'<article><h2>{e(row.get("title"))}</h2><p>{e(row.get("summary"))}</p>')
+            group=row.get('reading_group') or 'main'
+            if group!=reading_group:
+                reading_group=group
+                parts.append('<h2 class="section-title">'+('더 읽을 기사' if group=='more' else '오늘의 주요 뉴스')+'</h2>')
+            counters[group]+=1
+            parts.append('<article><span class="tag">'+f'{counters[group]:02d}'+' · '+e(row.get('category'))+'</span><h2>'+e(row.get('title'))+'</h2>')
+            if not row.get('headline_sufficient'):
+                parts.append('<p>'+e(row.get('summary'))+'</p>')
+            if row.get('important_update'):
+                parts.append('<p class="meta">중요 발표 추가 · '+e(display_date(row.get('added_at')))+'</p>')
+            if row.get('event_date'):
+                parts.append('<span class="meta">사건·발표일 '+e(row['event_date'])+'</span>')
             for src in row.get('sources') or []:
                 if is_safe_url(str(src.get('url') or '')):
                     parts.append(f'<p class="source"><a href="{e(src["url"])}" target="_blank" rel="noopener noreferrer">{e(src.get("source_name"))} · {e(display_date(src.get("published_at")))} · 원문 읽기 ↗</a></p>')
             parts.append('</article>')
+        for kind,label in (('calendar','오늘 예정된 주요 발표 · KST'),('weather','오늘의 날씨')):
+            if (kind=='calendar' and code!='MARKET') or (kind=='weather' and code!='NEWS'):continue
+            extras=body.get(kind) or []
+            if extras:parts.append('<section class="panel"><h2>'+label+'</h2>')
+            for item in extras:
+                parts.append('<p>'+e(display_date(item['scheduled_at']) if item.get('scheduled_at') else '')+' '+e(item.get('title'))+' · '+e(item.get('summary'))+'</p>')
+                for src in item.get('sources',[]):parts.append('<a class="source" href="'+e(src['url'])+'">'+e(src.get('source_name'))+'</a>')
+            if extras:parts.append('</section>')
         research=body.get('research') or {}
         if code=='MARKET' and research.get('reports'):
             parts.append('<details><summary>공개 리서치 더 보기</summary>')

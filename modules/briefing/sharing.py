@@ -37,13 +37,16 @@ def combine_bodies(bundles, selected_codes=None):
         raise ValueError('공유 가능한 게시본이 없습니다.')
     sections, issues, seen_keys, seen_urls = [], [], set(), set()
     flow = []
+    metrics = []
+    extras={"weather":[],"calendar":[]}
     for bundle in sorted(bundles, key=lambda b: PROFILE_ORDER.index(b['briefing']['profile_code'])):
         body = customer_body(bundle['snapshot'].get('content_payload') or {})
+        for key in extras:extras[key].extend(body.get(key) or [])
         selected = []
         for row in body['issues']:
             key = row.get('event_key')
             urls = {s['url'] for s in row.get('sources') or []}
-            if key in seen_keys or urls & seen_urls:
+            if (key in seen_keys or urls & seen_urls) and not (body['profile_code']=='NEWS' and row.get('headline_sufficient')):
                 continue
             seen_keys.add(key); seen_urls.update(urls)
             item = {**row, 'section_label': body['profile_label'], 'section_code': body['profile_code']}
@@ -52,6 +55,7 @@ def combine_bodies(bundles, selected_codes=None):
                          'as_of': body.get('as_of'), 'briefing_date': str(bundle['briefing']['briefing_date']), 'article_count': len(selected)})
         if body['profile_code'] == 'MARKET':
             flow = body.get('market_flow') or []
+            metrics = body.get('market_metrics') or []
     if selected_codes:
         labels = {'MARKET':'경제·금융', 'NEWS':'종합뉴스', 'INSURANCE':'보험업계'}
         present = {s['profile_code'] for s in sections}
@@ -59,7 +63,7 @@ def combine_bodies(bundles, selected_codes=None):
         sections.sort(key=lambda s: PROFILE_ORDER.index(s['profile_code']))
     return {'schema': 'hwarang-public-v2', 'profile_code': 'COMBINED',
             'profile_label': '오늘의 통합 브리핑', 'as_of': max(s['as_of'] or '' for s in sections),
-            'sections': sections, 'issues': issues, 'market_flow': flow, 'market_metrics': [], 'research': {}}
+            'sections': sections, 'issues': issues, 'market_flow': flow, 'market_metrics': metrics, 'research': {},**extras}
 
 
 def render_packet(packet, base, token):
@@ -71,7 +75,7 @@ def render_packet(packet, base, token):
 
 
 def build_combined_packet(bundles, sender, base, token, *, selected_codes=None, requested_date=None):
-    return render_packet({'schema': 'hwarang-share-v3', 'body': combine_bodies(bundles, selected_codes), 'reader_version':'20261017',
+    return render_packet({'schema': 'hwarang-share-v3', 'body': combine_bodies(bundles, selected_codes), 'reader_version':'20261020',
         'selected_profiles':list(selected_codes or [b['briefing']['profile_code'] for b in bundles]),
         'requested_date':requested_date or max(str(b['briefing']['briefing_date']) for b in bundles),
         'briefing_date': max(str(b['briefing']['briefing_date']) for b in bundles),

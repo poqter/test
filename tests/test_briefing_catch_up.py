@@ -64,7 +64,7 @@ def generate(monkeypatch):
     monkeypatch.setattr(s, 'generate_and_store_briefings', call)
     return call
 
-@pytest.mark.parametrize('clock,count,published', [('06:30:00',0,[]), ('07:05:00',1,[]), ('07:31:00',2,['MARKET']), ('09:29:00',2,['NEWS','INSURANCE','MARKET'])])
+@pytest.mark.parametrize('clock,count,published', [('06:30:00',0,[]), ('07:05:00',0,[]), ('07:31:00',3,[]), ('08:29:00',3,['NEWS','INSURANCE','MARKET'])])
 def test_late_tick_performs_all_due_steps(generate, clock, count, published):
     repo = Repo()
     result = s.catch_up(repo, at(clock))
@@ -77,9 +77,9 @@ def test_late_tick_performs_all_due_steps(generate, clock, count, published):
 
 def test_repeated_ticks_reuse_paid_results_and_do_not_republish(generate):
     repo = Repo()
-    for clock in ('09:29:00','09:47:00','10:07:00'):
+    for clock in ('08:29:00','08:47:00','10:07:00'):
         assert s.catch_up(repo, at(clock))['status']=='published'
-    assert len(repo.paid)==2 and len(repo.publications)==3
+    assert len(repo.paid)==3 and len(repo.publications)==3
     assert all(r['attempts']==1 for r in repo.runs.values())
 
 def test_stored_drafts_without_run_ledger_are_published_without_ai(generate):
@@ -93,7 +93,7 @@ def test_market_failure_does_not_block_daily_publication(generate):
         if kw['profile_codes']==('MARKET',): raise RuntimeError('Market unavailable before request')
         return normal(**kw)
     generate.side_effect=fail_market
-    repo=Repo();result=s.catch_up(repo,at('09:29:00'))
+    repo=Repo();result=s.catch_up(repo,at('08:29:00'))
     assert repo.publications==['NEWS','INSURANCE']
     assert result['status']=='incomplete'
 
@@ -107,7 +107,7 @@ def test_existing_run_guards_prevent_duplicate_payment(generate,state):
 def test_partial_saved_daily_is_held_without_repaying_for_news(generate):
     repo=Repo();repo.saved={'NEWS':edition('NEWS'),'MARKET':edition('MARKET')}
     result=s.catch_up(repo,at('09:29:00'))
-    assert result['generation']['DAILY']['reason']=='partial_saved_editions'
+    assert result['generation']['INSURANCE']['reason']=='new_generation_deadline'
     generate.assert_not_called();assert repo.publications==['MARKET','NEWS']
 
 def test_safe_failed_attempt_retries_once_after_0810(generate):
@@ -119,7 +119,7 @@ def test_safe_failed_attempt_retries_once_after_0810(generate):
 def test_unknown_response_checkpoint_is_never_sent_again(generate):
     repo=Repo();repo.runs['MARKET']={'status':'failed','attempts':1,'checkpoint':{'pending_request':{'kind':'analysis'}}}
     repo.saved={c:edition(c,'published') for c in ('NEWS','INSURANCE')}
-    s.catch_up(repo,at('09:29:00'))
+    s.catch_up(repo,at('08:29:00'))
     generate.assert_not_called();assert not repo.paid
     assert repo.runs['MARKET']['status']=='blocked'
 

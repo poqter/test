@@ -49,24 +49,53 @@ def _selection_for(score: float, event: SharedEventCandidate, profile_code: str,
 
 
 def _apply_caps(rows: list[ProfileEventAnalysis], profile_code: str) -> None:
+    """One quality floor for both lists; importance decides position, not truth."""
     rule = PROFILE_RULES[profile_code]
-    core = sorted((x for x in rows if x.selection_tier == "core"), key=lambda x: x.importance_score, reverse=True)
-    for row in core[rule.max_core:]:
-        row.profile_payload["original_selection_tier"] = "core"
-        row.selection_tier = "light_digest" if row.importance_score >= rule.light_floor else "excluded"
-
-    core_count = sum(1 for x in rows if x.selection_tier == "core")
-    light_limit = light_digest_limit(core_count, profile_code)
-    light = sorted((x for x in rows if x.selection_tier == "light_digest"), key=lambda x: x.importance_score, reverse=True)
-    for row in light[light_limit:]:
-        row.selection_tier = "excluded"
+    eligible = sorted((r for r in rows if r.selection_tier != 'excluded'),
+                      key=lambda r: (-r.importance_score, r.event_key))
+    # Resolve duplicate chains/cycles to one strongest verified story.
+    parent={r.event_key:r.event_key for r in eligible}
+    def root(key):
+        while parent[key]!=key:
+            parent[key]=parent[parent[key]];key=parent[key]
+        return key
+    for r in eligible:
+        other=r.profile_payload.get('duplicate_of')
+        if other in parent:parent[root(other)]=root(r.event_key)
+    winners={}
+    for r in eligible:winners.setdefault(root(r.event_key),r.event_key)
+    earnings = 0
+    ranked = []
+    for row in eligible:
+        kind = row.profile_payload.get('editorial_kind')
+        reason = None
+        if winners[root(row.event_key)] != row.event_key:
+            reason = 'same_event_duplicate'
+        if row.profile_payload.get('is_new_development') is False:
+            reason = 'unchanged_prior_day'
+        if kind in {'promotion', 'opinion', 'weather'}:
+            reason = 'not_main_news'  # weather requires a separate verified forecast block
+        if profile_code == 'INSURANCE' and kind == 'earnings':
+            earnings += 1
+            if earnings > 1: reason = 'earnings_daily_cap'
+        if reason:
+            row.selection_tier = 'excluded'
+            row.profile_payload['selection_decision'] = reason
+        else:
+            ranked.append(row)
+    for index, row in enumerate(ranked):
+        row.selection_tier = ('core' if index < rule.max_core else
+                              'light_digest' if index < rule.max_core + 3 else 'excluded')
+        row.profile_payload['selection_decision'] = (
+            'main' if row.selection_tier == 'core' else
+            'more' if row.selection_tier == 'light_digest' else 'capacity')
 
 
 def run_phase_c(
     phase_b: PhaseBResult,
     *,
     analyzer: Analyzer | None = None,
-    max_events_per_profile: int = 20,
+    max_events_per_profile: int = 30,
     profile_codes: tuple[str, ...] | None = None,
     on_analysis_response: Callable[[dict[str, Any]], None] | None = None,
 ) -> PhaseCResult:
@@ -110,10 +139,14 @@ def run_phase_c(
             validation_status = "ok"
             if high_risk and evidence_status not in {"official_confirmed", "multi_source_confirmed"}:
                 validation_status = "required"
-            if confidence == "low" and score >= PROFILE_RULES[profile_code].core_threshold:
+            if confidence == "low":
                 validation_status = "required"
 
             selection_tier = _selection_for(score, event, profile_code, evidence_status)
+            source_texts=[c.description.strip() for c in event.candidates]
+            if (raw.get("essential_facts_complete") is False or not raw.get("summary")
+                    or raw.get("essential_facts_complete") is True and not any(len(t)>40 for t in source_texts)) :
+                validation_status = "required"
             if validation_status != "ok":
                 selection_tier = "excluded"
 
@@ -140,7 +173,9 @@ def run_phase_c(
                 },
                 workspace_actions=validated_tool_actions(raw.get("workspace_tool_codes")),
                 profile_payload={"next_step": str(raw.get("next_step") or ""), "confidence": confidence,
-                                 "analysis_missing": event.event_key not in raw_by_key},
+                                 "analysis_missing": event.event_key not in raw_by_key,
+                                 **{k: raw.get(k) for k in ('essential_facts_complete','headline_sufficient','editorial_kind','event_date','selection_reason','duplicate_of','is_new_development','scheduled_at')},
+                                 "selection_decision": "quality_hold" if validation_status != "ok" else "below_importance_floor"},
                 escalation_required=(high_risk and validation_status != "ok") or confidence == "low",
             ))
 

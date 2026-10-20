@@ -79,8 +79,15 @@ def run_phase_b(
     include_research: bool = True,
     direct_checkpoint: dict | None = None,
     on_direct_complete: Callable | None = None,
+    saved_material_only: bool = False,
+    seed_candidates: list | None = None,
 ) -> PhaseBResult:
     as_of = as_of or datetime.now(timezone.utc)
+    from zoneinfo import ZoneInfo
+    from datetime import time
+    def enrichment_closed():
+        local=datetime.now(ZoneInfo('Asia/Seoul'))
+        return saved_material_only or (direct_checkpoint is not None and local.date()==as_of.astimezone(ZoneInfo('Asia/Seoul')).date() and local.time()>=time(8,40))
     direct_sources = list(direct_sources)
     direct_details: dict[str, Any] = {}
     from dataclasses import asdict
@@ -92,6 +99,8 @@ def run_phase_b(
         direct_candidates = [source(row) for row in cached_direct['candidates']]
         direct_health = cached_direct['health']
         direct_details = cached_direct['diagnostics']
+    elif saved_material_only:
+        direct_candidates, direct_health = [], {}
     else:
         direct_candidates, direct_health = collect_direct_sources(direct_sources, diagnostics=direct_details)
         if direct_checkpoint is not None:
@@ -101,11 +110,16 @@ def run_phase_b(
                 'candidates': [json_value(asdict(row)) for row in direct_candidates],
                 'health': direct_health, 'diagnostics': direct_details}
             if on_direct_complete: on_direct_complete()
+    if seed_candidates:
+        from .checkpoints import source
+        direct_candidates = _dedupe(direct_candidates + [source(row) for row in seed_candidates])
+        for row in direct_candidates:
+            if row.source_code:direct_health.setdefault(row.source_code,'ok')
     lanes = list(previous_lanes or [])
     web_candidates: list[SourceCandidate] = []
     budget = DiscoveryBudget(on_response=on_discovery_response)
     skipped_lanes: list[dict[str, str]] = []
-    if enable_web_discovery:
+    if enable_web_discovery and not saved_material_only:
         client = discovery_client or OpenAIWebDiscoveryClient()
         client.as_of = as_of
         try:
@@ -118,7 +132,7 @@ def run_phase_b(
                     continue
                 if any(done.lane_code == lane.lane_code for done in lanes):
                     continue
-                if supplement_only and lane.lane_code!='broker_research':
+                if supplement_only and lane.lane_code not in {'broker_research','official_wire_broadcast','trusted_media'}:
                     eligible=[]
                     for candidate in direct_candidates:
                         if not candidate.published_at or not candidate.title:continue
@@ -176,8 +190,11 @@ def run_phase_b(
     # Interleave lanes so one publisher/lane cannot exhaust the HTTP allowance.
     ordered_web = [row for i in range(max((len(l.candidates) for l in lanes), default=0)) for l in lanes if i < len(l.candidates) for row in [l.candidates[i]]]
     for candidate in [*direct_candidates, *ordered_web]:
-        if candidate.collector_provider != "openai_web_search" or source_identity(candidate.url):
+        if not enrichment_closed() and (candidate.collector_provider != "openai_web_search" or source_identity(candidate.url)):
             enricher.enrich(candidate)
+        if candidate.published_at and candidate.published_at > as_of:
+            excluded['after_cutoff'] = excluded.get('after_cutoff', 0) + 1
+            continue
         normalize_candidate(candidate, as_of=as_of)
         ok, reason = passes_common_gate(candidate)
         if not ok:
@@ -204,7 +221,7 @@ def run_phase_b(
     excluded.update({f"direct_health:{key}:{value}": 1 for key, value in direct_health.items() if value != "ok"})
     return PhaseBResult(as_of=as_of, candidates=accepted, events=events, discovery_lanes=lanes, excluded_counts=excluded,
                         source_health=health, diagnostics={"raw_direct_candidates": len(direct_candidates), "raw_web_candidates": len(web_candidates),
-                        "publication": dict(enricher.stats), "lanes": lane_health,
+                        "saved_material_only": saved_material_only, "publication": dict(enricher.stats), "lanes": lane_health,
                         "discovery_budget": budget.snapshot(), "skipped_lanes": skipped_lanes,
                         "candidate_sample": [candidate_diagnostic(c) for c in [*ordered_web, *direct_candidates][:80]],
                         "candidate_sample_limit": 80})

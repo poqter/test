@@ -35,6 +35,15 @@ def render_operations(repo):
             st.caption('브리핑 비용은 학습 AI 크레딧과 별도입니다. 단가표가 없으면 비용을 0원으로 표시하지 않습니다. 최종 청구액은 공급사에서 확인합니다. 뉴스 피드·지표 서비스의 계약 비용은 API 토큰 비용에 포함되지 않습니다.')
             if costs.get('row_limit_reached'):st.warning('이달 조회 한도 1,000건에 도달했습니다. 합계는 조회된 기록 기준입니다.')
         except BriefingRepositoryError as exc:st.warning(str(exc))
+    with st.expander('관리자 선정 기록 · AI 호출 없음'):
+        for code,label in PROFILE_LABELS.items():
+            try:
+                bundle=repo.bundle_for_date(code,day,include_draft=True)
+                if bundle:
+                    qa=bundle['snapshot'].get('qa_payload') or {}
+                    st.markdown('**'+label+'**')
+                    st.json({'선정':qa.get('editorial_audit',[]),'수집':qa.get('collection_diagnostics',{}),'제외':qa.get('excluded_counts',{})},expanded=False)
+            except BriefingRepositoryError as exc:st.warning(str(exc))
     with st.expander('수집 연결 확인 · AI 호출 없음'):
         if st.button('언론사 피드 연결 확인',key='launch_feed_probe'):
             from .direct_sources import load_direct_source_specs_from_env,probe_direct_sources
@@ -46,7 +55,7 @@ def render_operations(repo):
         # Button state is a transient bool; keep the report under a separate key.
         probe=st.session_state.get('launch_feed_probe_result')
         if probe:
-            st.caption('이 확인은 현재 시각 기준입니다. 아침 브리핑은 07:00/07:30 이전 기사만 사용합니다.')
+            st.caption('이 확인은 현재 시각 기준입니다. 아침 브리핑은 07:30 이전 기사만 사용합니다.')
             st.dataframe([{'피드':code,**value} for code,value in probe['direct_sources'].items()],hide_index=True)
             st.download_button('피드 진단 저장',json.dumps(probe,ensure_ascii=False,indent=2),file_name='briefing_feed_diagnostics.json')
         st.caption('경제·금융은 기사 중심으로 생성합니다. 별도 시장 지표 API나 유료 공급원은 필요하지 않습니다.')
@@ -58,7 +67,7 @@ def render_operations(repo):
 def _render_policy(repo, actor):
     with st.container(border=True):
         st.subheader('자동 운영')
-        st.caption('경제·금융 07:00 생성 / 07:30 게시 · 뉴스·보험 07:30 생성 / 08:00 게시')
+        st.caption('06:30 사전 수집 · 07:20 최종 후보 확인 · 07:30 마감 · 08:00 영역별 게시 · 08:40 새 탐색 중단 · 08:50 최종 게시 시도')
         try:
             policy=repo.operating_policy()
             st.caption('최초 조직 승인 후 품질 검증을 통과한 다음 판본부터 예약 공개합니다.')

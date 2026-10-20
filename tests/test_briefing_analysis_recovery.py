@@ -26,7 +26,7 @@ def no_paid_services(monkeypatch):
 def event(i):
     host='mk.co.kr' if i%2 else 'hankyung.com'
     c=SourceCandidate(f'검수용 가상 문화 소식 {i}',f'https://{host}/synthetic/{i}',host,'synthetic','news',
-        published_at=NOW-timedelta(hours=1),freshness_tier='core_window',routed_profiles={'NEWS'},
+        description='검수용 가상 뉴스의 본문입니다. 박물관의 전시 장소와 전시 기간 및 참여 작가 명단이 공개됐습니다.', published_at=NOW-timedelta(hours=1),freshness_tier='core_window',routed_profiles={'NEWS'},
         publisher_domain=host,canonical_url=f'https://{host}/synthetic/{i}')
     return SharedEventCandidate(f'{i:032x}',c.title,[c],{'NEWS'},c.published_at,c.published_at)
 
@@ -36,7 +36,9 @@ def row(e):
         'title':e.canonical_title,'summary':'검수용 가상 기사입니다. 실제 보도가 아닙니다.',
         'why_important':'가상 배경 설명','impact_summary':'가상 영향 설명','action_state':'watch',
         'communication_state':'not_applicable','audience_segments':[],'recommended_expression':'',
-        'check_first':'','avoid_expression':'','next_step':'','workspace_tool_codes':[],'confidence':'medium'}
+        'check_first':'','avoid_expression':'','next_step':'','workspace_tool_codes':[],'confidence':'medium','essential_facts_complete':True,'headline_sufficient':False,
+        'editorial_kind':'development','event_date':'','selection_reason':'검수 사실 확인',
+        'duplicate_of':'','is_new_development':True,'scheduled_at':''}
 
 
 def response(rows):
@@ -163,7 +165,7 @@ def test_runtime_reuses_paid_output_without_discovery_analysis_or_duplicate_usag
     before=Mock(side_effect=AssertionError('No paid reservation allowed'))
     result=rt.generate_and_store_briefings(repository=repo,profile_codes=('NEWS',),as_of=NOW,
         checkpoint=saved,save_checkpoint=lambda state:None,before_request=before)
-    assert result.profiles[0].light_count==5 and 'NEWS' in saved['phase_c_by_profile']
+    assert result.profiles[0].core_count==6 and 'NEWS' in saved['phase_c_by_profile']
     assert result.profiles[0].validation_status=='ok' and result.profiles[0].coverage_status=='healthy'
     snapshot=repo.create_snapshot.call_args.args[0]
     assert len(snapshot['content_payload']['issues'])==6

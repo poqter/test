@@ -137,10 +137,10 @@ def test_partial_share_ui_shows_missing_reason_without_publication(monkeypatch):
                                       'INSURANCE': [bundle('INSURANCE', '2026-10-12')]})
     assert not app.exception
     checks = {c.label: c for c in app.checkbox}
-    assert checks['경제·금융 브리핑'].disabled
-    assert not checks['종합뉴스 브리핑'].disabled and not checks['보험 생활정보'].disabled
+    assert not checks['경제·금융 브리핑'].disabled and checks['경제·금융 브리핑'].value
+    assert not checks['종합뉴스 브리핑'].disabled and not checks['보험업계'].disabled
     assert any('2개 영역' in item.value for item in app.info)
-    assert any('게시본이 없습니다' in item.value for item in app.caption)
+    assert any('아직 공유 가능한 브리핑이 없습니다' in item.value for item in app.caption)
     assert not next(b for b in app.button if b.label == '통합 공유 링크 만들기').disabled
     repo.create_combined_share.assert_not_called()
     assert {str(call.args[1]) for call in repo.bundle_for_date.call_args_list} == {'2026-10-12'}
@@ -158,7 +158,7 @@ def test_selected_date_is_not_replaced_by_fallback(monkeypatch):
     app, repo = share_app(monkeypatch, {'NEWS': [bundle('NEWS', '2026-10-12')]}, selected='2026-10-10')
     assert not app.exception
     assert next(b for b in app.button if b.label == '통합 공유 링크 만들기').disabled
-    repo.history.assert_not_called()
+    assert repo.history.call_count==3  # dated fallback never uses a future edition
 
 
 @pytest.mark.parametrize('defect', ['public_body_ready', 'external_qa_passed', 'external_share_allowed'])

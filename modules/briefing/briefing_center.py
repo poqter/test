@@ -337,7 +337,7 @@ def _render_generate_panel(repo):
         return
     st.subheader('브리핑 생성')
     st.caption('이미 완료한 작업은 재사용합니다. 새 수집·분석에는 기존 API 요금이 발생할 수 있습니다.')
-    group = st.selectbox('생성할 영역', ['DAILY','MARKET'], format_func=lambda x:'종합뉴스·보험업계' if x=='DAILY' else '경제·금융')
+    group = st.selectbox('생성할 영역', ['NEWS','INSURANCE','MARKET'], format_func=lambda x:PROFILE_LABELS[x])
     from .preflight import run_runtime_preflight, preflight_ready
     checks = run_runtime_preflight(require_direct_sources=False)
     for check in checks:
@@ -357,7 +357,7 @@ def _render_generate_panel(repo):
     completed = run.get('status') == 'completed'
     before_cutoff = datetime.now(KST) < cutoff(day, group)
     disabled = before_cutoff or not preflight_ready(checks) or not repo.ai_generation_enabled()
-    st.caption('수집 마감 · '+('07:00' if group=='MARKET' else '07:30')+' KST. 이후 발행된 뉴스는 다음 아침 브리핑에 포함됩니다.')
+    st.caption('수집 마감 · '+'07:30'+' KST. 이후 발행된 뉴스는 다음 아침 브리핑에 포함됩니다.')
     if not repo.ai_generation_enabled():
         st.warning('전체 AI가 꺼져 있습니다. 관리자센터에서 전체 AI 서비스를 켜면 생성할 수 있습니다.')
     if before_cutoff:
