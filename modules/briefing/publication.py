@@ -57,9 +57,20 @@ class _MetadataParser(HTMLParser):
         self.scripts: list[str] = []
         self._script: list[str] | None = None
         self._time = False
+        self.article_text = []
+        self._article_depth = 0
+        self._skip_depth = 0
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
+        marker = ' '.join((a.get('id',''), a.get('class',''), a.get('itemprop',''))).lower()
+        if tag in {'script','style','nav','aside'}:
+            self._skip_depth += 1
+        if tag not in {'meta','link','br','hr','img','input','source','wbr'}:
+            if self._article_depth:
+                self._article_depth += 1
+            elif tag == 'article' or any(x in marker for x in ('articlebody','article-body','article_body','article-view-content','newsct_article','news_view','news_cnt_detail_wrap')):
+                self._article_depth = 1
         key = (a.get("property") or a.get("name") or a.get("itemprop") or "").lower()
         if tag == "meta":
             content = a.get("content") or ""
@@ -77,12 +88,18 @@ class _MetadataParser(HTMLParser):
             self._script = []
 
     def handle_data(self, data):
+        if self._article_depth and not self._skip_depth and data.strip():
+            self.article_text.append(data.strip())
         if self._script is not None:
             self._script.append(data)
         if self._time:
             self.dates.append(data.strip())
 
     def handle_endtag(self, tag):
+        if self._article_depth:
+            self._article_depth -= 1
+        if tag in {'script','style','nav','aside'} and self._skip_depth:
+            self._skip_depth -= 1
         if tag == "script" and self._script is not None:
             self.scripts.append("".join(self._script))
             self._script = None
@@ -127,6 +144,9 @@ def extract_publication_metadata(html: str, *, url: str) -> PublicationMetadata:
             visit(json.loads(raw))
         except (ValueError, TypeError, RecursionError):
             continue
+    article = '\n'.join(parser.article_text)
+    if len(article) > len(parser.description):
+        parser.description = article[:12000]
     parsed = [dt for raw in dates if (dt := parse_publication_date(raw, url=url))]
     # Conflicting explicit publication dates fail closed rather than refreshing old news.
     if parsed and (max(parsed) - min(parsed)).total_seconds() > 86400:
@@ -151,7 +171,7 @@ _CACHE: OrderedDict[str, tuple[float, PublicationMetadata]] = OrderedDict()
 
 
 class PublicationDateEnricher:
-    def __init__(self, *, session=None, max_requests=24, total_seconds=35.0, timeout_seconds=5.0, clock=time.monotonic, destination_check=_public_destination):
+    def __init__(self, *, session=None, max_requests=30, total_seconds=100.0, timeout_seconds=5.0, clock=time.monotonic, destination_check=_public_destination):
         self.http = session or requests.Session()
         self.http.trust_env = False
         self.max_requests = max_requests

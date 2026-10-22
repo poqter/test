@@ -27,7 +27,7 @@ def test_main_and_more_caps_and_identical_quality_floor(profile,main):
     result=analyze(20,profile,{0:{'essential_facts_complete':False},1:{'confidence':'low'}})
     assert all(r.selection_tier=='excluded' for r in result.analyses[:2])
     assert sum(r.selection_tier=='core' for r in result.analyses)==main
-    assert sum(r.selection_tier=='light_digest' for r in result.analyses)==3
+    assert sum(r.selection_tier=='light_digest' for r in result.analyses)==(6 if profile=='MARKET' else 8)
     assert all(r.validation_status=='ok' for r in result.analyses if r.selection_tier!='excluded')
 
 
@@ -47,7 +47,7 @@ def test_shared_more_reading_visible_and_admin_payload_is_private():
     html=public_html({'body':body,'sender':{'name':'담당 설계사','position':'팀장'},'briefing_date':'2026-10-20'})
     assert html.count('더 읽을 기사')==1 and len(body['issues'])==3
     assert src['issues'][0]['summary'] not in html
-    assert src['issues'][2]['summary'] in html and 'PRIVATE_AUDIT' not in html
+    assert '<details class="more-reading">' in html and 'PRIVATE_AUDIT' not in html
     assert '담당 설계사 팀장' in html and 'role="tab"' in html
     assert src['issues'][0]['summary']  # Internal evidence is retained.
 

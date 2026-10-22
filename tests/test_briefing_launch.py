@@ -211,7 +211,7 @@ def test_publisher_round_robin_and_display_caps():
             return [{'event_key':r.event_key,'importance_score':80,'category':'사회·안전','confidence':'high','summary':'가상 기사 요약'} for r in rows],AnalysisUsage()
     analyzer=Analyzer();result=run_phase_c(PhaseBResult(AS_OF,candidates,events,[],{}),analyzer=analyzer)
     assert len(analyzer.rows)==30 and sum(r.candidates[0].publisher_domain=='mk.co.kr' for r in analyzer.rows)==6
-    assert sum(r.selection_tier=='core' for r in result.analyses)==10 and sum(r.selection_tier!='excluded' for r in result.analyses)==13
+    assert sum(r.selection_tier=='core' for r in result.analyses)==10 and sum(r.selection_tier!='excluded' for r in result.analyses)==18
 
 def test_full_three_profile_pipeline_saves_same_facts_and_resumes_without_ai(monkeypatch):
     from modules.briefing import runtime as rt
@@ -237,7 +237,7 @@ def test_full_three_profile_pipeline_saves_same_facts_and_resumes_without_ai(mon
             if code=='MARKET':self.market_flow=[{'text':str(i)+' 검수용 해설','fact_refs':['metric:KOSPI']} for i in range(3)]
             usage=AnalysisUsage('synthetic-model',input_tokens=100,output_tokens=30)
             self.on_response({'profile_code':code,'usage':asdict(usage),'usage_available':True,'status':'completed'})
-            return [{'event_key':r.event_key,'importance_score':80-i,'confidence':'high','category':'소비자·사회이슈' if code=='INSURANCE' else '사회·안전',
+            return [{'event_key':r.event_key,'importance_score':80-i,'confidence':'high','editorial_kind':'development','category':'소비자·사회이슈' if code=='INSURANCE' else ('경제지표' if i%2 else '기업·산업') if code=='MARKET' else ('교육' if i%2 else '사회·안전'),
                 'title':r.canonical_title,'summary':'검수용 가상 기사 요약','why_important':'확인된 사실의 설명','impact_summary':'조건을 붙인 영향',
                 'communication_state':'customer_ready','action_state':'watch'} for i,r in enumerate(rows)],usage
     monkeypatch.setattr('modules.briefing.openai_analysis.OpenAIAnalysisClient',Analyzer)
@@ -252,7 +252,7 @@ def test_full_three_profile_pipeline_saves_same_facts_and_resumes_without_ai(mon
     saved={};result=rt.generate_and_store_briefings(repository=repo,profile_codes=('NEWS','MARKET','INSURANCE'),as_of=AS_OF,checkpoint=saved,save_checkpoint=lambda state:None)
     assert len(result.profiles)==3 and sorted(calls)==['INSURANCE','MARKET','NEWS']
     bycode={s['content_payload']['profile_code']:s for s in snaps}
-    assert len(bycode['NEWS']['content_payload']['issues'])==13 and len(bycode['MARKET']['content_payload']['issues'])==9
+    assert len(bycode['NEWS']['content_payload']['issues'])==14 and len(bycode['MARKET']['content_payload']['issues'])==12
     assert all(s['qa_payload']['internal_body_ready'] for s in snaps) and bycode['MARKET']['qa_payload']['public_body_ready']
     assert len(bycode['MARKET']['content_payload']['market_flow'])==3
     assert len(bycode['MARKET']['content_payload']['market_metrics']['items'])==6

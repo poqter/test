@@ -155,7 +155,7 @@ class OpenAIAnalysisClient:
             "MARKET prioritizes the overall market and macro picture, not isolated company stories. An individual meal price is not the CPI. "
             "An economic event in NEWS should have a brief public-impact headline; MARKET explains the dated market facts. "
             "Separate publication time from event_date (ISO date only if explicit, otherwise empty). Do not present old events as last night's news. "
-            "essential_facts_complete must be false if sources are title-only, an unrelated roundup, or lack the central who/what/status/evidence. "
+            "Missing background or future impact alone is NOT missing essential facts. A verified attributed statement may be reported as a statement, not as proof of its claim. Preserve proposed/confirmed/effective status, scope and central numerical conditions. essential_facts_complete must be false if sources are title-only, an unrelated roundup, or lack the central who/what/status/evidence. "
             "Missing optional context is not a reason to reject a factually complete event. Never write 제공된 자료에는/제목뿐/세부 내용은 없다. "
             "Use headline_sufficient=true when a factual headline alone conveys the news; still provide an evidence-grounded internal summary. "
             "Otherwise summary is 1-2 concise factual sentences. Do not duplicate the headline or prepend publisher-name boilerplate. "

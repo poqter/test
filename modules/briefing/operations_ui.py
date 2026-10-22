@@ -42,6 +42,12 @@ def render_operations(repo):
                 if bundle:
                     qa=bundle['snapshot'].get('qa_payload') or {}
                     st.markdown('**'+label+'**')
+                    from collections import Counter
+                    reasons=Counter(r.get('hold_reason') or r.get('selection_decision') for r in qa.get('editorial_audit',[]) if r.get('tier')=='excluded')
+                    labels={'source_text_missing':'원문 근거 부족','essential_facts_missing':'핵심 조건·수치 누락','source_conflict':'출처 불일치','analysis_missing':'분석 결과 누락','cross_check_required':'추가 확인 필요','capacity':'수량 제한','below_importance_floor':'중요도 미달','quality_hold':'검증 보류'}
+                    st.caption('게시 상태 · '+str(bundle['revision'].get('publication_status')))
+                    if reasons:st.dataframe([{'제외·보류 사유':labels.get(k,k),'기사 수':n} for k,n in reasons.items()],hide_index=True)
+                    st.caption('근거 부족은 원문 보충, 선정 부적합은 후보 교체가 필요합니다. 같은 근거로 분석을 반복하지 않습니다.')
                     st.json({'선정':qa.get('editorial_audit',[]),'수집':qa.get('collection_diagnostics',{}),'제외':qa.get('excluded_counts',{})},expanded=False)
             except BriefingRepositoryError as exc:st.warning(str(exc))
     with st.expander('수집 연결 확인 · AI 호출 없음'):

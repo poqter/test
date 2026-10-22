@@ -1,5 +1,5 @@
 # Direct runtime dependencies only.
-# Briefing release 1.13.0: rebuild Cloud runtime to replace cached Python modules.
+# Briefing release 1.14.0: rebuild Cloud runtime to replace cached Python modules.
 # Exact deployment versions are managed in constraints.txt to keep one source of truth.
 -c constraints.txt
 streamlit

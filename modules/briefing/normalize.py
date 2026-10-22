@@ -112,10 +112,10 @@ def classify_freshness(published_at: datetime | None, as_of: datetime) -> str:
     if as_of.tzinfo is None:
         as_of = as_of.replace(tzinfo=timezone.utc)
     local = as_of.astimezone(ZoneInfo("Asia/Seoul"))
-    start = (local - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    start = local - timedelta(hours=24)
     if published_at > as_of:
         return "undated"
-    return "core_window" if published_at >= start else "stale"
+    return "core_window" if published_at >= start else "fallback_window" if published_at >= local-timedelta(hours=48) else "stale"
 
 
 def normalize_candidate(candidate: SourceCandidate, *, as_of: datetime) -> SourceCandidate:

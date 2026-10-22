@@ -165,7 +165,7 @@ def _combined_sharing(repo, selected_day=None, *, use_cache=False):
     if not available:
         st.warning('선택한 날짜에 고객 공유 조건을 충족한 영역이 없습니다. 아래에서 영역별 사유를 확인해 주세요.')
     elif len(available) < len(PROFILE_ORDER):
-        st.info(f'{day} · 공유 가능한 {len(available)}개 영역을 표시합니다. 오늘 자료가 없으면 최근 공유 가능본의 날짜를 별도로 표시합니다.')
+        st.info(f'{day} · 공유 가능한 {len(available)}개 영역을 표시합니다. 없는 영역은 준비 안내로 표시하며 이전 날짜 기사를 섞지 않습니다.')
     approved = bool(policy.get('external_sharing_approved'))
     left, right = st.columns([1,1], gap='large')
     with left:
@@ -179,6 +179,7 @@ def _combined_sharing(repo, selected_day=None, *, use_cache=False):
                                      key='share_scope_v2_'+uid+'_'+day+'_'+code)
                 if chosen: codes.append(code)
                 if code in reasons_by_code: st.caption(reasons_by_code[code])
+                elif code in bundles: st.caption(str(bundles[code]['briefing']['briefing_date'])+' 브리핑')
             st.caption('보험업계의 내부 정보와 상담 문구는 고객 본문에 포함되지 않습니다.')
             if not approved: st.info('최고관리자가 운영 관리에서 고객 공유를 허용하면 사용할 수 있습니다.')
             preview = st.toggle('고객 화면 미리보기', key='share_preview_'+uid+'_'+day, disabled=not codes)
@@ -292,13 +293,13 @@ def _render_profile_detail(repo, code, bundle, can_manage):
     day = str(briefing.get('briefing_date') or '')
     published = revision.get('publication_status') == 'published'
     status = '게시됨' if published else '게시 전 초안'
-    st.markdown(f'<div class="hw-edition"><span class="hw-edition-state">{html.escape(status)}</span><strong>{html.escape(PROFILE_LABELS[code])}</strong><span>{html.escape(day)} · 수집 마감 {html.escape(stamp(content.get("as_of")))}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="hw-edition"><span class="hw-edition-state">{html.escape(status)}</span><strong>{html.escape(PROFILE_LABELS[code])}</strong><span>{html.escape(day)}</span></div>', unsafe_allow_html=True)
     if day != datetime.now(KST).date().isoformat():
         st.info(f'오늘 브리핑은 아직 준비되지 않았습니다. 최근 정상본({day})을 보여드립니다.')
     body = _body(snapshot)
     c1, c2 = st.columns([2, 1])
     with c1:
-        st.caption(f"요약 기사 {len(body.get('issues') or [])}개 · 저장된 본문을 읽습니다.")
+        st.caption(f"주요 뉴스 {sum(r.get('reading_group') != 'more' for r in body.get('issues', []))}건")
     with c2:
         large = st.toggle('큰 글자로 읽기', key='large_'+revision['id'])
     if can_manage:
@@ -401,6 +402,12 @@ def _render_today(repo, can_manage):
             item = summaries.get(selected)
             if not item:
                 st.info('아직 '+PROFILE_LABELS[selected]+'이 게시되지 않았습니다.')
+                continue
+            if str(item['briefing']['briefing_date']) != datetime.now(KST).date().isoformat():
+                st.info('오늘 브리핑이 아직 제공되지 않았습니다.')
+                if st.button('이전 브리핑 보기',key='previous_'+selected):
+                    st.session_state['history_profile']=selected
+                    _navigate('지난 브리핑');st.rerun()
                 continue
             snapshot = repo._snapshot_for_revision(str(item['revision']['id']))
             if not snapshot:

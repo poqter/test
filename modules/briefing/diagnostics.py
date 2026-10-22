@@ -8,7 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-ENGINE_VERSION = "1.13.0-editorial"
+ENGINE_VERSION = "1.14.0-evidence"
 DIAGNOSTIC_SCHEMA = "briefing-daily-diagnostics-v4"
 
 

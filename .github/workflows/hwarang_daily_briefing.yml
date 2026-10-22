@@ -8,7 +8,7 @@ on:
     - cron: '0 23 * * *'  # 08:00 KST
     - cron: '10 23 * * *' # 08:10 KST, at most one recovery
     - cron: '7,17,27,37,47,57 22,23 * * *' # 07:07-08:57 KST priority checks
-    - cron: '7,27,47 0,1,2 * * *' # 09:07-11:47 KST saved publication only
+    - cron: '7 0 * * *' # 09:07-11:47 KST saved publication only
   push:
     branches: [main]
     paths: ['modules/briefing/**', '.github/scripts/hwarang_daily_briefing.py', '.github/workflows/hwarang_daily_briefing.yml', 'STAGE1_CHANGED_FILES.json']

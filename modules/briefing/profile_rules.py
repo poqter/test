@@ -54,4 +54,4 @@ PROFILE_RULES: Final[dict[str, ProfileRule]] = {
 
 def light_digest_limit(core_count: int = 0, profile_code: str = "INSURANCE") -> int:
     """Verified additional reading is capped independently; never a quota."""
-    return 3
+    return 6 if profile_code == "MARKET" else 8

@@ -189,7 +189,33 @@ def run_phase_b(
     enricher = date_enricher or PublicationDateEnricher()
     # Interleave lanes so one publisher/lane cannot exhaust the HTTP allowance.
     ordered_web = [row for i in range(max((len(l.candidates) for l in lanes), default=0)) for l in lanes if i < len(l.candidates) for row in [l.candidates[i]]]
-    for candidate in [*direct_candidates, *ordered_web]:
+    # Route and balance before spending bounded HTTP requests. A finance feed
+    # must not exhaust NEWS/INSURANCE's evidence allowance.
+    from collections import defaultdict
+    from datetime import timedelta
+    pools = defaultdict(list)
+    seen_urls = set()
+    for candidate in [*ordered_web, *direct_candidates]:
+        normalize_candidate(candidate, as_of=as_of)
+        candidate.routed_profiles = route_profiles(candidate, _hint(candidate))
+        for hint in candidate.metadata.get('profile_hints', []):
+            candidate.routed_profiles.update(route_profiles(candidate, str(hint)))
+        if profile_codes and not set(profile_codes).intersection(candidate.routed_profiles):
+            continue
+        if candidate.published_at and candidate.published_at > as_of:
+            excluded['after_cutoff']=excluded.get('after_cutoff',0)+1
+            continue
+        if candidate.published_at and candidate.published_at < as_of-timedelta(hours=48):
+            excluded['stale']=excluded.get('stale',0)+1
+            continue
+        url=candidate.canonical_url or candidate.url
+        if url in seen_urls:continue
+        seen_urls.add(url)
+        pools[candidate.source_code or candidate.source_name].append(candidate)
+    for pool in pools.values():
+        pool.sort(key=lambda c: (c.source_kind!='official', -(c.published_at.timestamp() if c.published_at else 0)))
+    ordered = [pool[i] for i in range(max((len(p) for p in pools.values()), default=0)) for pool in pools.values() if i<len(pool)]
+    for candidate in ordered:
         if not enrichment_closed() and (candidate.collector_provider != "openai_web_search" or source_identity(candidate.url)):
             enricher.enrich(candidate)
         if candidate.published_at and candidate.published_at > as_of:
@@ -208,6 +234,15 @@ def run_phase_b(
             continue
         accepted.append(candidate)
 
+    if date_enricher is None and not enrichment_closed():
+        needs = any(sum(code in c.routed_profiles and len(c.description.strip())>80 for c in accepted) < target
+                    for code,target in {'MARKET':12,'NEWS':18,'INSURANCE':15}.items()
+                    if profile_codes is None or code in profile_codes)
+        if needs:
+            enricher.max_requests = 45
+            for candidate in accepted:
+                if candidate.metadata.get('enrichment_status') == 'budget_exhausted' and not enrichment_closed():
+                    enricher.enrich(candidate)
     lane_health = []
     for lane in lanes:
         usable = [c for c in accepted if c.metadata.get("lane_code") == lane.lane_code and lane.profile_code in c.routed_profiles]

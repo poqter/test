@@ -32,7 +32,7 @@ def _project(content,external):
                      and row.get('category') in {'제도·규제','상품·보험료','보험금·보상','세제·재무','소비자·사회이슈'})
             if (state!='customer_ready' and not neutral) or row.get('category') in {'영업·채널','보험사·시장'}:continue
         sources=[{k:r.get(k) for k in ('title','source_name','url','published_at')} for r in row.get('sources',[]) if is_safe_url(str(r.get('url') or '')) and r.get('published_at')][:4]
-        if sources:issues.append({k:row.get(k) for k in ('event_key','title','summary','category','why_important','impact_summary','representative','headline_sufficient','event_date')}|{'sources':sources, 'reading_group':'more' if content.get('editorial_version') == 2 and row.get('selection_tier') == 'light_digest' else 'main', 'important_update':row.get('event_key') in update_keys,
+        if sources:issues.append({k:row.get(k) for k in ('event_key','title','summary','category','why_important','impact_summary','representative','headline_sufficient','event_date')}|{'sources':sources, 'reading_group':'more' if content.get('editorial_version',0) >= 2 and row.get('selection_tier') == 'light_digest' else 'main', 'important_update':row.get('event_key') in update_keys,
             'added_at':row.get('added_at') if row.get('event_key') in update_keys else None})
     raw_metrics=content.get('market_metrics') or {}
     raw_metrics=raw_metrics.get('items',[]) if isinstance(raw_metrics,dict) else raw_metrics
@@ -68,6 +68,8 @@ READER_CSS='''
 
 READER_CSS += 'header{background:#fff;color:#17273d;padding-bottom:0}.brand,header .meta{color:#64738a}.brand:before{display:none}h1,h2,article h2{color:#17273d!important;-webkit-text-fill-color:#17273d!important}h1{font-size:27px}article h2{font-size:20px}article>p{font-size:16px;line-height:1.8;color:#45556a}.reader-tabs{display:flex;gap:25px;border-bottom:1px solid #dce4ee;margin-bottom:22px}.reader-tabs button{border:0;border-bottom:3px solid transparent;border-radius:0;padding:10px 0 14px;background:transparent;color:#64738a;font-size:16px}.reader-tabs button[aria-selected=true]{border-bottom-color:#263f62;color:#263f62;font-weight:700}.edition-delay{font-size:14px;background:#f4f7fb;padding:12px 16px;color:#45556a}.panel{background:#f4f7fb;padding:17px 21px;margin-bottom:24px}.panel ul{margin:0;padding-left:20px;font-size:15px}.explanation{display:none}[hidden]{display:none!important}@media(max-width:400px){.reader-tabs{gap:18px}.reader-tabs button{font-size:14px}}@media print{[role=tabpanel][hidden]{display:block!important}.reader-tabs{display:none}}\n'
 
+READER_CSS += '.more-reading{border:1px solid var(--line);border-radius:8px;padding:8px 16px;margin:20px 0}.more-title{display:block;padding:12px 0;line-height:1.6;text-decoration:none;border-top:1px solid var(--line)}.reader-tabs button[aria-selected=true]{border-bottom-color:#0b9ea8}.reader-tabs{gap:18px}.reader-tabs button{flex:1}.panel{background:#fafbfd}.big .more-title{font-size:20px}'
+
 def public_html(packet,*,canonical_url='',image_url='',pdf_url=''):
     e=lambda v:html.escape(str(v or ''),quote=True)
     body=packet.get('body') or {};sender=packet.get('sender') or {}
@@ -100,7 +102,8 @@ def public_html(packet,*,canonical_url='',image_url='',pdf_url=''):
                 parts.append('<p class="source">'+e(m.get('label'))+' · '+e(m.get('value'))+' '+e(m.get('unit'))+' · '+e(metric_change(m))+' · '+e(metric_date(m))+' · <a href="'+e(m.get('source_url'))+'">'+e(m.get('source_name'))+'</a></p>')
         reading_group = None
         counters = {'main':0, 'more':0}
-        rows=sorted(rows,key=lambda r:r.get('reading_group')=='more')
+        more=[r for r in rows if r.get('reading_group')=='more']
+        rows=[r for r in rows if r.get('reading_group')!='more']
         for row in rows:
             group=row.get('reading_group') or 'main'
             if group!=reading_group:
@@ -118,6 +121,12 @@ def public_html(packet,*,canonical_url='',image_url='',pdf_url=''):
                 if is_safe_url(str(src.get('url') or '')):
                     parts.append(f'<p class="source"><a href="{e(src["url"])}" target="_blank" rel="noopener noreferrer">{e(src.get("source_name"))} · {e(display_date(src.get("published_at")))} · 원문 읽기 ↗</a></p>')
             parts.append('</article>')
+        if more:
+            parts.append('<details class="more-reading"><summary>더 읽을 기사 · '+str(len(more))+'건</summary>')
+            for row in more:
+                src=next((s for s in row.get('sources',[]) if is_safe_url(str(s.get('url') or ''))),None)
+                if src:parts.append('<a class="more-title" href="'+e(src['url'])+'" target="_blank" rel="noopener noreferrer">'+e(row.get('title'))+' ↗</a>')
+            parts.append('</details>')
         for kind,label in (('calendar','오늘 예정된 주요 발표 · KST'),('weather','오늘의 날씨')):
             if (kind=='calendar' and code!='MARKET') or (kind=='weather' and code!='NEWS'):continue
             extras=body.get(kind) or []
@@ -139,7 +148,7 @@ def public_html(packet,*,canonical_url='',image_url='',pdf_url=''):
     parts.append(f'<footer class="reader-footer"><strong>{e(identity)}</strong><br>화랑 WORKSPACE · 출처와 원문을 함께 확인해 주세요.</footer></div>')
     script='''<script>
     document.getElementById('font').onclick=function(){const on=document.body.classList.toggle('big');this.setAttribute('aria-pressed',String(on));this.textContent=on?'기본 글자로 읽기':'큰 글자로 읽기';};
-    document.querySelectorAll('[data-section]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-section]').forEach(t=>t.setAttribute('aria-selected',String(t===b)));document.querySelectorAll('[role=tabpanel]').forEach(p=>p.hidden=p.id!==b.getAttribute('aria-controls'));}));
+    const positions={};let active='0';document.querySelectorAll('[data-section]').forEach(b=>b.addEventListener('click',()=>{positions[active]=window.scrollY;active=b.dataset.section;document.querySelectorAll('[data-section]').forEach(t=>t.setAttribute('aria-selected',String(t===b)));document.querySelectorAll('[role=tabpanel]').forEach(p=>p.hidden=p.id!==b.getAttribute('aria-controls'));window.scrollTo(0,positions[active]||0);}));
     const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     document.querySelectorAll('[data-stale-date]').forEach(p=>p.hidden=p.dataset.staleDate>=today);
     </script>'''

@@ -168,8 +168,8 @@ def test_auth_failure_logs_no_server_payload(caplog):
 
 def test_holiday_news_uses_previous_calendar_day_not_business_day():
     as_of=datetime(2026,10,8,22,30,tzinfo=timezone.utc) # Oct 9 07:30 KST
-    assert classify_freshness(datetime(2026,10,7,15,tzinfo=timezone.utc),as_of)=='core_window'
-    assert classify_freshness(datetime(2026,10,7,14,59,tzinfo=timezone.utc),as_of)=='stale'
+    assert classify_freshness(datetime(2026,10,7,15,tzinfo=timezone.utc),as_of)=='fallback_window'
+    assert classify_freshness(datetime(2026,10,6,22,29,tzinfo=timezone.utc),as_of)=='stale'
     assert classify_freshness(as_of+timedelta(seconds=1),as_of)=='undated'
 
 def test_market_can_use_last_confirmed_day_and_reject_future():

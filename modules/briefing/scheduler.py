@@ -25,7 +25,8 @@ def collect_early(repo, day, slot):
         from .phase_b import run_phase_b
         from .direct_sources import load_direct_source_specs_from_env
         from .checkpoints import encode
-        result=run_phase_b(as_of=datetime.now(timezone.utc),
+        from .publication import PublicationDateEnricher
+        result=run_phase_b(as_of=datetime.now(timezone.utc), date_enricher=PublicationDateEnricher(max_requests=0),
             direct_sources=load_direct_source_specs_from_env(), enable_web_discovery=False)
         saved['early_collection']=encode(result)
         repo.save_run(key,owner,saved,'completed')
@@ -73,6 +74,8 @@ def generate_group(repo, day, group, retry=False, actor=None, allow_partial_mark
         if actor is None and (local.date()!=day or local.time()>=time(8,50)
                 or kind != 'analysis' and local.time()>=time(8,40)):
             raise RuntimeError('자동 운영 신규 요청 마감: 저장 결과만 사용합니다.')
+        if retry and saved.get('supplement_started'):
+            raise RuntimeError('추가 분석 기회를 사용해 신규 유료 재시도를 중단합니다.')
         if saved.get('pending_request') or saved.get('charge_uncertain'):
             raise RuntimeError('이전 유료 요청 상태를 확인할 수 없어 추가 호출을 중단합니다.')
         saved['pending_request']={'kind':kind,'at':datetime.now(timezone.utc).isoformat()};save(saved)
@@ -211,7 +214,24 @@ def catch_up(repo, now=None):
     publication = publish_independently()
     due = due_profiles()
     complete = bool(due) and all(r['status'] in ('published', 'already_published') for r in publication)
-    return {'status': 'published' if complete else ('incomplete' if due else 'before_publication_time'),
+    notification_required = False
+    notification = 'none'
+    failures = [r for r in publication if r.get('status') == 'failed']
+    failures += [r for r in generation.values() if r.get('status') == 'failed']
+    final_missed = bool(due and not complete and clock() >= datetime.combine(day,time(9),KST))
+    if failures or final_missed:
+        notification = 'final_unpublished' if final_missed else 'system_error'
+        # Atomic daily claim deduplicates workflow failure notifications across
+        # scheduled and watchdog callers. It never reserves an AI request.
+        if hasattr(repo, 'claim_run'):
+            alert_key=f'{day}:ALERT_{notification}'
+            alert_owner=str(uuid.uuid4())
+            alert=repo.claim_run(alert_key,day,'ALERT_'+notification,alert_owner,False)
+            notification_required=bool(alert.get('claimed'))
+            if notification_required:
+                repo.save_run(alert_key,alert_owner,{'notification':notification,'publication':publication},'completed')
+    return {'notification_required':notification_required,'notification':notification,
+            'status': 'published' if complete else ('incomplete' if due else 'before_publication_time'),
             'before_9am_target_missed': bool(due and not complete and clock() >= datetime.combine(day,time(9),KST)),
             'briefing_date': str(day), 'checked_at': (now or datetime.now(timezone.utc)).isoformat(),
             'due_profiles': due, 'generation': generation, 'publication': publication}

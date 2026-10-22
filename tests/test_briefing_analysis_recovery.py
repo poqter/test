@@ -32,7 +32,7 @@ def event(i):
 
 
 def row(e):
-    return {'event_key':e.event_key,'importance_score':55,'category':'교육','issue_status':'보도',
+    return {'event_key':e.event_key,'importance_score':55,'category':'교육' if int(e.event_key,16)%2 else '사회·안전','issue_status':'보도',
         'title':e.canonical_title,'summary':'검수용 가상 기사입니다. 실제 보도가 아닙니다.',
         'why_important':'가상 배경 설명','impact_summary':'가상 영향 설명','action_state':'watch',
         'communication_state':'not_applicable','audience_segments':[],'recommended_expression':'',

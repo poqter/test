@@ -158,7 +158,7 @@ def test_selected_date_is_not_replaced_by_fallback(monkeypatch):
     app, repo = share_app(monkeypatch, {'NEWS': [bundle('NEWS', '2026-10-12')]}, selected='2026-10-10')
     assert not app.exception
     assert next(b for b in app.button if b.label == '통합 공유 링크 만들기').disabled
-    assert repo.history.call_count==3  # dated fallback never uses a future edition
+    assert repo.history.call_count==0  # share only the explicitly requested date
 
 
 @pytest.mark.parametrize('defect', ['public_body_ready', 'external_qa_passed', 'external_share_allowed'])

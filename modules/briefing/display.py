@@ -64,7 +64,8 @@ def render_body(body, *, large=False):
     from .public_body import metric_date, metric_change
     for m in body.get('market_metrics') or []:
         st.caption(f"{m['label']} · {m['value']} {m.get('unit','')} · {metric_change(m)} · {metric_date(m)} · {m.get('source_name','')}")
-    ordered=sorted(ordered,key=lambda r:r.get('reading_group')=='more')
+    more = [r for r in ordered if r.get('reading_group') == 'more']
+    ordered = [r for r in ordered if r.get('reading_group') != 'more']
     last_group=None
     last_section = None
     for index, row in enumerate(ordered, 1):
@@ -92,6 +93,12 @@ def render_body(body, *, large=False):
             with st.expander('추가 출처 보기'):
                 for src in sources[1:]:
                     st.link_button(str(src.get('source_name') or '추가 원문'), src['url'])
+    if more:
+        with st.expander(f'더 읽을 기사 · {len(more)}건', expanded=False):
+            for row in more:
+                source = next((x for x in row.get('sources', []) if is_safe_url(str(x.get('url') or ''))), None)
+                if source:
+                    st.markdown('<a style="display:block;padding:12px 0;line-height:1.6" href="'+e(source['url'])+'" target="_blank" rel="noopener noreferrer">'+e(row.get('title'))+' ↗</a>', unsafe_allow_html=True)
     if not issues:
         st.info('이 판본에 저장된 요약 기사가 없습니다.')
     for kind,label in (('calendar','오늘 예정된 주요 발표 · KST'),('weather','오늘의 날씨')):

@@ -112,4 +112,4 @@ _internal_actions({'snapshot':{'id':'synthetic'},'actions':[{'id':'a','title':'ê
 @pytest.mark.parametrize('cores',[0,1,5,8])
 def test_insurance_compatibility_related_cap_never_expands_to_fifteen(cores):
     from modules.briefing.profile_rules import light_digest_limit
-    assert light_digest_limit(cores,'INSURANCE')==3
+    assert light_digest_limit(cores,'INSURANCE')==8

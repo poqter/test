@@ -416,9 +416,9 @@ class BriefingRepository:
     def customer_bundle_for_share(self, code, day):
         """Resolve only published, customer-approved editions on/before requested day."""
         candidates = [self.bundle_for_date(code, day)]
-        candidates += self.history(code, limit=30)
+        # Never substitute another date in a newly issued share.
         for bundle in candidates:
-            if not bundle or str(bundle['briefing']['briefing_date']) > str(day):
+            if not bundle or str(bundle['briefing']['briefing_date']) != str(day):
                 continue
             rev = bundle['revision']
             if not (rev.get('publication_status') == 'published' and rev.get('external_share_allowed') and rev.get('external_qa_passed')):
@@ -469,7 +469,7 @@ class BriefingRepository:
             'select': 'token,public_packet', 'order': 'created_at.desc', 'limit': '60'}) or []
         for row in existing:
             packet = row.get('public_packet') or {}
-            if (packet.get('schema') == 'hwarang-share-v3' and packet.get('components') and packet.get('reader_version') == '20261017'
+            if (packet.get('schema') == 'hwarang-share-v3' and packet.get('components') and packet.get('reader_version') == '20261022'
                 and packet.get('selected_profiles') == list(codes) and packet.get('requested_date') == str(day)
                 and '|'.join(sorted(c['revision_id'] for c in packet['components'])) == fingerprint):
                 return row['token'], packet

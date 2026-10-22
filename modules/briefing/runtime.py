@@ -152,7 +152,7 @@ def _content_payload(profile_code: str, rows: list[ProfileEventAnalysis], phase_
         "coverage_status": coverage_status,
         "core_count": sum(r.selection_tier == "core" for r in rows),
         "light_count": sum(r.selection_tier == "light_digest" for r in rows),
-        "editorial_version": 2,
+        "editorial_version": 3,
         "source_links": [],
         "issues": [
             {
@@ -160,6 +160,7 @@ def _content_payload(profile_code: str, rows: list[ProfileEventAnalysis], phase_
                 "selection_tier": r.selection_tier,
                 "headline_sufficient": r.profile_payload.get("headline_sufficient") is True,
                 "event_date": r.profile_payload.get("event_date") or "",
+                "editorial_kind": r.profile_payload.get("editorial_kind"),
                 "importance_score": r.importance_score,
                 "category": r.category,
                 "issue_status": r.issue_status,
@@ -224,6 +225,13 @@ def body_quality_ready(body: dict[str, Any]) -> bool:
     if not issues:
         return False
     from .normalize import is_safe_url
+    if content_version := body.get('editorial_version'):
+        if content_version >= 3:
+            code=body.get('profile_code')
+            main=[r for r in issues if r.get('selection_tier')=='core']
+            if len(main) < {'MARKET':3,'NEWS':3,'INSURANCE':2}.get(code,1):return False
+            if code in {'MARKET','NEWS'} and len({r.get('category') for r in main if r.get('category')})<2:return False
+            if code=='INSURANCE' and not any(r.get('editorial_kind')=='development' and r.get('category') in {'제도·규제','상품·보험료','보험금·보상','영업·채널','소비자·사회이슈'} for r in main):return False
     for issue in issues:
         if not str(issue.get("title") or "").strip() or not str(issue.get("summary") or "").strip():
             return False
@@ -676,6 +684,55 @@ def generate_and_store_briefings(
                     client.market_metrics=[r for r in saved['observations']['items'] if r.get('value') is not None and r.get('external_allowed')]
                 completed_c[code] = encode(run_phase_c(phase_b, profile_codes=(code,), analyzer=client))
                 if code=='MARKET':saved['market_flow']=client.market_flow
+                save()
+        # Optional single bounded supplement; durable marker prevents replay if
+        # the worker dies after a paid response. The shared reserve still wins.
+        from datetime import time as clock_time
+        from .phase_c import _apply_caps
+        for code in requested:
+            initial = restore_c(completed_c[code])
+            visible = [r for r in initial.analyses if r.selection_tier == 'core']
+            target = {'MARKET':4, 'NEWS':8, 'INSURANCE':5}[code]
+            local_now = datetime.now(KST)
+            if (len(visible) >= target or trigger_type == 'retry' or saved_material_only
+                    or local_now.date() != as_of.astimezone(KST).date() or local_now.time() >= clock_time(8,30)
+                    or code in saved.get('supplement_started', []) or before_request is None):
+                continue
+            used = {r.event_key for r in initial.analyses}
+            candidates = [e for e in phase_b.events if e.event_key not in used and code in e.routed_profiles
+                          and any(len(c.description.strip()) > 80 for c in e.candidates)]
+            if not candidates:continue
+            from .costs import estimate_cost
+            from .execution_policy import budget_notice
+            cost=repo.cost_status()
+            estimate=estimate_cost({'model_name':os.getenv('BRIEFING_ROUTINE_MODEL',''), 'input_tokens':100000, 'output_tokens':12000})
+            limits=[budget_notice(cost.get('today' if period=='day' else period,{}),period) for period in ('day','month')]
+            # Extra calls require known prices, complete accounting and configured
+            # monetary headroom; the original daily atomic request cap also applies.
+            if (estimate is None or any(x.get('limit_usd') is None for x in limits)
+                    or cost.get('row_limit_reached')
+                    or any(cost.get(p,{}).get('unknown_cost_requests',0) for p in ('today','month'))
+                    or any(cost.get(p,{}).get('accounted_known_usd',0)+estimate > limit['limit_usd']
+                           for p,limit in zip(('today','month'),limits))):
+                saved.setdefault('supplement_result',{})[code]={'status':'budget_hold'};save();continue
+            saved.setdefault('supplement_started', []).append(code); save()
+            client = OpenAIAnalysisClient(on_response=lambda record: record_usage(record, discovery=False))
+            client.before_request = before_request
+            client.previous_news = saved.get('previous_news', {}).get(code, [])
+            supplement_b = PhaseBResult(phase_b.as_of, phase_b.candidates, candidates, [], {})
+            try:
+                extra = run_phase_c(supplement_b, profile_codes=(code,), analyzer=client, max_events_per_profile=10)
+                merged = initial.analyses + extra.analyses
+                # Reconsider capacity-only exclusions without bypassing quality.
+                for row in merged:
+                    if row.profile_payload.get('selection_decision') == 'capacity':row.selection_tier='light_digest'
+                _apply_caps(merged, code)
+                initial.analyses = merged
+                initial.eligible_analyses += extra.eligible_analyses
+                completed_c[code] = encode(initial); save()
+            except Exception as exc:
+                if saved.get('pending_request') or saved.get('charge_uncertain'):raise
+                saved.setdefault('supplement_result', {})[code] = {'status':'stopped','reason':type(exc).__name__}
                 save()
         pieces = [restore_c(completed_c[code]) for code in requested]
         phase_c = PhaseCResult([r for p in pieces for r in p.analyses],

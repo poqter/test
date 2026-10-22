@@ -27,11 +27,11 @@ def sample(code='NEWS', hosts=('www.mois.go.kr', 'www.yna.co.kr'), tiers=None):
     return rows, PhaseBResult(AS_OF,candidates,events,[],{})
 
 @pytest.mark.parametrize('hosts,tiers,expected', [
-    (('www.mois.go.kr',), ['core'], 'healthy'),
-    (('www.mois.go.kr','www.yna.co.kr'), ['core','excluded'], 'healthy'),
-    (('www.mois.go.kr','www.mois.go.kr'), ['core','light_digest'], 'healthy'),
-    (('www.donga.com','sports.donga.com'), ['core','light_digest'], 'healthy'),
-    (('www.mois.go.kr','www.yna.co.kr'), ['core','light_digest'], 'healthy'),
+    (('www.mois.go.kr',), ['core'], 'degraded'),
+    (('www.mois.go.kr','www.yna.co.kr'), ['core','excluded'], 'degraded'),
+    (('www.mois.go.kr','www.mois.go.kr'), ['core','light_digest'], 'degraded'),
+    (('www.donga.com','sports.donga.com'), ['core','light_digest'], 'degraded'),
+    (('www.mois.go.kr','www.yna.co.kr'), ['core','light_digest'], 'degraded'),
     (('www.mois.go.kr',), ['excluded'], 'insufficient'),
 ])
 def test_quality_uses_displayed_articles_not_search_success(hosts,tiers,expected):

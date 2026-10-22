@@ -75,7 +75,7 @@ def _apply_caps(rows: list[ProfileEventAnalysis], profile_code: str) -> None:
             reason = 'unchanged_prior_day'
         if kind in {'promotion', 'opinion', 'weather'}:
             reason = 'not_main_news'  # weather requires a separate verified forecast block
-        if profile_code == 'INSURANCE' and kind == 'earnings':
+        if not reason and profile_code == 'INSURANCE' and kind == 'earnings':
             earnings += 1
             if earnings > 1: reason = 'earnings_daily_cap'
         if reason:
@@ -85,7 +85,7 @@ def _apply_caps(rows: list[ProfileEventAnalysis], profile_code: str) -> None:
             ranked.append(row)
     for index, row in enumerate(ranked):
         row.selection_tier = ('core' if index < rule.max_core else
-                              'light_digest' if index < rule.max_core + 3 else 'excluded')
+                              'light_digest' if index < rule.max_core + light_digest_limit(profile_code=profile_code) else 'excluded')
         row.profile_payload['selection_decision'] = (
             'main' if row.selection_tier == 'core' else
             'more' if row.selection_tier == 'light_digest' else 'capacity')
@@ -123,6 +123,8 @@ def run_phase_c(
         # Round-robin by publisher before analysis so a busy single feed cannot
         # occupy the entire paid input pool. Importance is still scored by facts.
         balanced = _balanced_events(prioritized)
+        # Prefer candidates with actual evidence over title-only feed entries.
+        balanced.sort(key=lambda e: not any(len(c.description.strip()) > 80 for c in e.candidates))
         selected_events = balanced[:max_events_per_profile]
         omitted_by_profile[profile_code] = max(0, len(prioritized) - len(selected_events))
         raw_rows, usage = client.analyze(profile_code, selected_events)
@@ -174,6 +176,7 @@ def run_phase_c(
                 workspace_actions=validated_tool_actions(raw.get("workspace_tool_codes")),
                 profile_payload={"next_step": str(raw.get("next_step") or ""), "confidence": confidence,
                                  "analysis_missing": event.event_key not in raw_by_key,
+                                 "hold_reason": ("analysis_missing" if not raw else "source_conflict" if evidence_status == "conflicted" else "source_text_missing" if not any(len(t)>40 for t in source_texts) else "essential_facts_missing" if raw.get("essential_facts_complete") is False else "cross_check_required" if validation_status != "ok" else ""),
                                  **{k: raw.get(k) for k in ('essential_facts_complete','headline_sufficient','editorial_kind','event_date','selection_reason','duplicate_of','is_new_development','scheduled_at')},
                                  "selection_decision": "quality_hold" if validation_status != "ok" else "below_importance_floor"},
                 escalation_required=(high_risk and validation_status != "ok") or confidence == "low",

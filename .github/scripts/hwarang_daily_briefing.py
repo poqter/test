@@ -14,7 +14,7 @@ from modules.briefing.diagnostics import build_info,failure_diagnostic
 def configuration_failure(result, *, action=None):
     if action == 'catch_up':
         # Delivery is authoritative; a transient earlier exception may have recovered.
-        return not isinstance(result, dict) or result.get('status') not in ('published', 'before_publication_time')
+        return not isinstance(result, dict) or (bool(result['notification_required']) if 'notification_required' in result else result.get('status') not in ('published', 'before_publication_time'))
     if action == 'check':
         # Historical failures are evidence, not failures of this readiness check.
         if not isinstance(result, dict):
