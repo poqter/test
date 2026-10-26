@@ -70,6 +70,23 @@ READER_CSS += 'header{background:#fff;color:#17273d;padding-bottom:0}.brand,head
 
 READER_CSS += '.more-reading{border:1px solid var(--line);border-radius:8px;padding:8px 16px;margin:20px 0}.more-title{display:block;padding:12px 0;line-height:1.6;text-decoration:none;border-top:1px solid var(--line)}.reader-tabs button[aria-selected=true]{border-bottom-color:#0b9ea8}.reader-tabs{gap:18px}.reader-tabs button{flex:1}.panel{background:#fafbfd}.big .more-title{font-size:20px}'
 
+from .presentation import CARD_CSS, article_html
+READER_CSS += CARD_CSS + """
+.wrap.reader-modern{max-width:840px;background:#fafbfd;padding:0 24px 24px;overflow:visible}
+.reader-modern header{background:#fff;margin:0 -24px 20px;padding:26px 24px 0;border-radius:14px 14px 0 0}
+.reader-modern .brand{margin-bottom:15px;font-size:11px;letter-spacing:2px}.reader-modern h1{font-size:27px;font-weight:650}
+.reader-modern .controls{margin:0;padding:0;border:0;justify-content:flex-end;background:transparent}
+.reader-modern .controls button{border:0;background:transparent;font-size:14px}
+.reader-modern .reader-tabs{position:sticky;top:0;z-index:5;background:#fff;margin:0 -4px 16px;gap:0}
+.reader-modern .reader-tabs button{flex:1;min-height:48px;font-size:15px;border-radius:0}
+.reader-modern .reader-tabs button[aria-selected=true]{color:#126d73;border-bottom-color:#168b90}
+.reader-modern .section-title{font-size:18px;font-weight:600;color:#172b46;margin:20px 0 12px}.reader-modern .section-title:after{display:none}
+.reader-modern .panel{background:#eff5fa;border-radius:14px;padding:20px}.reader-modern .panel li{padding-bottom:8px}
+.reader-modern .reader-footer{margin:24px -24px -24px;background:#f1f5f8;padding:20px 24px}
+.reader-modern .more-reading{background:#fff;border-radius:12px}.reader-modern summary{min-height:44px}
+@media(max-width:600px){.wrap.reader-modern{padding:0 16px 20px}.reader-modern header{margin:0 -16px 14px;padding:22px 16px 0}.reader-modern .reader-footer{margin:20px -16px -20px;padding:20px 16px}}
+"""
+
 def public_html(packet,*,canonical_url='',image_url='',pdf_url=''):
     e=lambda v:html.escape(str(v or ''),quote=True)
     body=packet.get('body') or {};sender=packet.get('sender') or {}
@@ -79,7 +96,7 @@ def public_html(packet,*,canonical_url='',image_url='',pdf_url=''):
     if canonical_url:og+=f'<meta property="og:url" content="{e(canonical_url)}">'
     if image_url:og+=f'<meta property="og:image" content="{e(image_url)}">'
     sections=body.get('sections') or [{'profile_code':body.get('profile_code') or 'NEWS','profile_label':body.get('profile_label') or '브리핑','briefing_date':packet.get('briefing_date')}]
-    parts=[f'<div class="wrap"><header><span class="brand">HWARANG WORKSPACE</span><h1>오늘의 브리핑</h1><p class="meta">{e(identity)}</p><div class="controls"><button id="font" aria-pressed="false">큰 글자로 읽기</button></div></header>']
+    parts=[f'<div class="wrap reader-modern"><header><span class="brand">HWARANG WORKSPACE</span><h1>오늘의 브리핑</h1><p class="meta">{e(identity)} · {e(packet.get('requested_date') or packet.get('briefing_date'))}</p><div class="controls"><button id="font" aria-pressed="false">큰 글자로 읽기</button></div></header>']
     edition=packet.get('edition') or {}
     if edition.get('corrected_at'):
         parts.append('<p class="meta">정정 '+e(display_date(edition['corrected_at']))+' · '+e(edition.get('number'))+'판</p>')
@@ -94,9 +111,12 @@ def public_html(packet,*,canonical_url='',image_url='',pdf_url=''):
         if day:
             parts.append(f'<p class="meta" data-edition-date="{e(day)}">{e(day)} 브리핑</p>')
             parts.append(f'<p class="edition-delay" data-stale-date="{e(day)}" hidden>오늘 브리핑은 아직 준비되지 않았습니다. 공유된 최근 자료({e(day)})를 보여드립니다.</p>')
+        if code=='NEWS' and body.get('weather_forecast'):
+            from .weather import weather_html
+            parts.append(weather_html(body['weather_forecast']))
         if not rows:parts.append('<p class="panel">아직 공개된 브리핑이 없습니다.</p>')
         if code=='MARKET' and body.get('market_flow'):
-            parts.append('<section class="panel"><h2>오늘의 경제·금융 흐름</h2><ul>'+''.join('<li>'+e(t)+'</li>' for t in body['market_flow'][:5])+'</ul></section>')
+            parts.append('<section class="panel"><h2>오늘의 경제·금융 흐름</h2><ul>'+''.join('<li>'+e(t)+'</li>' for t in body['market_flow'])+'</ul></section>')
         if code=='MARKET':
             for m in body.get('market_metrics') or []:
                 parts.append('<p class="source">'+e(m.get('label'))+' · '+e(m.get('value'))+' '+e(m.get('unit'))+' · '+e(metric_change(m))+' · '+e(metric_date(m))+' · <a href="'+e(m.get('source_url'))+'">'+e(m.get('source_name'))+'</a></p>')
@@ -110,24 +130,14 @@ def public_html(packet,*,canonical_url='',image_url='',pdf_url=''):
                 reading_group=group
                 parts.append('<h2 class="section-title">'+('더 읽을 기사' if group=='more' else '오늘의 주요 뉴스')+'</h2>')
             counters[group]+=1
-            parts.append('<article><span class="tag">'+f'{counters[group]:02d}'+' · '+e(row.get('category'))+'</span><h2>'+e(row.get('title'))+'</h2>')
-            if not row.get('headline_sufficient'):
-                parts.append('<p>'+e(row.get('summary'))+'</p>')
-            if row.get('important_update'):
-                parts.append('<p class="meta">중요 발표 추가 · '+e(display_date(row.get('added_at')))+'</p>')
-            if row.get('event_date'):
-                parts.append('<span class="meta">사건·발표일 '+e(row['event_date'])+'</span>')
-            for src in row.get('sources') or []:
-                if is_safe_url(str(src.get('url') or '')):
-                    parts.append(f'<p class="source"><a href="{e(src["url"])}" target="_blank" rel="noopener noreferrer">{e(src.get("source_name"))} · {e(display_date(src.get("published_at")))} · 원문 읽기 ↗</a></p>')
-            parts.append('</article>')
+            parts.append(article_html(row,lead=counters[group]==1,heading='h2'))
         if more:
             parts.append('<details class="more-reading"><summary>더 읽을 기사 · '+str(len(more))+'건</summary>')
             for row in more:
                 src=next((s for s in row.get('sources',[]) if is_safe_url(str(s.get('url') or ''))),None)
                 if src:parts.append('<a class="more-title" href="'+e(src['url'])+'" target="_blank" rel="noopener noreferrer">'+e(row.get('title'))+' ↗</a>')
             parts.append('</details>')
-        for kind,label in (('calendar','오늘 예정된 주요 발표 · KST'),('weather','오늘의 날씨')):
+        for kind,label in (('calendar','오늘 예정된 주요 발표 · KST'),):
             if (kind=='calendar' and code!='MARKET') or (kind=='weather' and code!='NEWS'):continue
             extras=body.get(kind) or []
             if extras:parts.append('<section class="panel"><h2>'+label+'</h2>')
@@ -149,7 +159,9 @@ def public_html(packet,*,canonical_url='',image_url='',pdf_url=''):
     script='''<script>
     document.getElementById('font').onclick=function(){const on=document.body.classList.toggle('big');this.setAttribute('aria-pressed',String(on));this.textContent=on?'기본 글자로 읽기':'큰 글자로 읽기';};
     const positions={};let active='0';document.querySelectorAll('[data-section]').forEach(b=>b.addEventListener('click',()=>{positions[active]=window.scrollY;active=b.dataset.section;document.querySelectorAll('[data-section]').forEach(t=>t.setAttribute('aria-selected',String(t===b)));document.querySelectorAll('[role=tabpanel]').forEach(p=>p.hidden=p.id!==b.getAttribute('aria-controls'));window.scrollTo(0,positions[active]||0);}));
+    document.querySelectorAll('[role=tab]').forEach((b,i)=>b.addEventListener('keydown',ev=>{const tabs=[...document.querySelectorAll('[role=tab]')];let n;if(ev.key==='ArrowRight')n=(i+1)%tabs.length;if(ev.key==='ArrowLeft')n=(i+tabs.length-1)%tabs.length;if(ev.key==='Home')n=0;if(ev.key==='End')n=tabs.length-1;if(n!==undefined){ev.preventDefault();tabs[n].click();tabs[n].focus();}}));
     const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    document.querySelectorAll('[data-weather-date]').forEach(p=>{if(p.dataset.weatherDate!==today){const h=p.querySelector('.weather-head span');if(h)h.textContent='공유일의 날씨';}});
     document.querySelectorAll('[data-stale-date]').forEach(p=>p.hidden=p.dataset.staleDate>=today);
     </script>'''
     return '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">'+og+'<style>'+READER_CSS+'</style></head><body>'+''.join(parts)+script+'</body></html>'

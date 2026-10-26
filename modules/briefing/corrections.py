@@ -125,7 +125,7 @@ def apply_correction(repo, bundle, event_key, changes, reason, actor, *, importa
                             bundles=[];break
                         bundles.append(other)
                 if not bundles:continue
-                packet=build_combined_packet(bundles,identity,repo.public_base_url(),row['token'], selected_codes=existing.get('selected_profiles'), requested_date=existing.get('requested_date'))
+                packet=build_combined_packet(bundles,identity,repo.public_base_url(),row['token'], selected_codes=existing.get('selected_profiles'), requested_date=existing.get('requested_date'), weather=existing.get('body',{}).get('weather_forecast'))
             else:
                 packet=build_packet(new_snap,briefing,rev,identity,repo.public_base_url(),row['token'])
             repo._upload_share_assets(row['token'],packet);refreshed.append((row['token'],packet))

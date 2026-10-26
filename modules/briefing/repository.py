@@ -430,7 +430,7 @@ class BriefingRepository:
                 return bundle
         return None
 
-    def create_combined_share(self, day, codes, sender_user_id):
+    def create_combined_share(self, day, codes, sender_user_id, *, weather_region=None):
         import secrets
         from .sharing import build_combined_packet, PROFILE_ORDER
         from .runtime import body_quality_ready
@@ -461,6 +461,10 @@ class BriefingRepository:
             raise BriefingRepositoryError('계정에 실제 직책을 등록해 주세요.')
         if not self.public_endpoint_ready():
             raise BriefingRepositoryError('고객 읽기 페이지 연결을 확인해 주세요.')
+        weather=None
+        if 'NEWS' in codes and weather_region is not None:
+            from .weather import get_weather
+            weather=get_weather(weather_region,str(day))
         revisions = [str(b['revision']['id']) for b in bundles]
         fingerprint = '|'.join(sorted(revisions))
         existing = self._request('GET', '/rest/v1/hwarang_briefing_public_shares', params={
@@ -469,13 +473,14 @@ class BriefingRepository:
             'select': 'token,public_packet', 'order': 'created_at.desc', 'limit': '60'}) or []
         for row in existing:
             packet = row.get('public_packet') or {}
-            if (packet.get('schema') == 'hwarang-share-v3' and packet.get('components') and packet.get('reader_version') == '20261022'
+            if (packet.get('schema') == 'hwarang-share-v3' and packet.get('components') and packet.get('reader_version') == '20261026-cards'
+                and all((packet.get('body',{}).get('weather_forecast') or {}).get(k)==(weather or {}).get(k) for k in ('region_code','date','issued_at','status'))
                 and packet.get('selected_profiles') == list(codes) and packet.get('requested_date') == str(day)
                 and '|'.join(sorted(c['revision_id'] for c in packet['components'])) == fingerprint):
                 return row['token'], packet
         token = secrets.token_urlsafe(32)
         packet = build_combined_packet(bundles, {'name': sender['display_name'], 'position': position['display_name']},
-                                       self.public_base_url(), token, selected_codes=codes, requested_date=str(day))
+                                       self.public_base_url(), token, selected_codes=codes, requested_date=str(day),weather=weather)
         if not body_quality_ready(packet['body']):
             raise BriefingRepositoryError('고객에게 제공할 기사가 없습니다.')
         self._upload_share_assets(token, packet)

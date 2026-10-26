@@ -47,6 +47,19 @@ def render_style():
     .st-key-hw_briefing_center [aria-selected="true"]{color:#243f64!important;font-weight:700}
     .st-key-hw_briefing_center [data-baseweb="tab-highlight"]{background:#243f64}
     </style>""", unsafe_allow_html=True)
+    from .presentation import CARD_CSS
+    st.markdown("<style>"+CARD_CSS+"""
+    .st-key-hw_briefing_center{max-width:860px;margin:auto;padding:0 4px;background:#fafbfd}
+    .st-key-hw_briefing_center .hw-briefing-hero{background:#fff;padding:12px 8px 20px}
+    .st-key-hw_briefing_center [data-baseweb="tab-list"]{gap:0;position:sticky;top:0;z-index:5;background:#fff}
+    .st-key-hw_briefing_center [data-baseweb="tab"]{flex:1;min-height:48px;font-size:16px}
+    .st-key-hw_briefing_center [data-baseweb="tab-highlight"]{background:#168b90}
+    .st-key-hw_briefing_center button{min-height:44px}
+    .hw-briefing-section{border:0;margin:20px 0 5px;padding:0;font-size:19px;font-weight:600}
+    .hw-digest{background:#f0f5f9;border-radius:14px;margin:16px 0}
+    .hw-digest .tag{color:#172b46;font-weight:600;font-size:17px}
+    .st-key-hw_briefing_center .hw-edition{margin-top:14px}
+    </style>""",unsafe_allow_html=True)
 
 
 def render_body(body, *, large=False):
@@ -56,8 +69,11 @@ def render_body(body, *, large=False):
     issues = body.get('issues') or []
     representative = next((row for row in issues if row.get('representative')), None)
     ordered = ([representative] if representative else []) + [row for row in issues if row is not representative]
+    if body.get('weather_forecast'):
+        from .weather import weather_html
+        st.markdown(weather_html(body['weather_forecast']),unsafe_allow_html=True)
     flow = body.get('market_flow') or []
-    digest = flow[:5]
+    digest = flow
     if digest:
         label = '오늘의 경제·금융 흐름' if flow else '오늘의 핵심'
         st.markdown('<section class="hw-digest'+(' big' if large else '')+'"><div class="tag">'+label+'</div>'+''.join('<p>'+e(text)+'</p>' for text in digest)+'</section>', unsafe_allow_html=True)
@@ -76,23 +92,8 @@ def render_body(body, *, large=False):
         if group != last_group:
             last_group=group
             st.markdown('<h2 class="hw-briefing-section">'+('더 읽을 기사' if group=='more' else '오늘의 주요 뉴스')+'</h2>',unsafe_allow_html=True)
-        sources = [s for s in row.get('sources') or [] if is_safe_url(str(s.get('url') or ''))]
-        primary = sources[0] if sources else None
-        title = e(row.get('title') or '오늘의 소식')
-        if primary:
-            title = f'<a href="{e(primary["url"])}" target="_blank" rel="noopener noreferrer">{title}</a>'
-        tag = ('중요 발표 추가 · ' if row.get('important_update') else f'{index:02d} · ') + str(row.get('category') or '뉴스')
-        source = ' · '.join([str(primary.get('source_name') or '원문'), stamp(primary.get('published_at'))]) if primary else ''
-        classes = 'hw-news'+(' lead' if row is representative else '')+(' big' if large else '')
-        explanation = ''
-        summary = '' if row.get('headline_sufficient') else '<p>'+e(row.get('summary'))+'</p>'
-        if row.get('event_date'): explanation += '<div class="source">사건·발표일 '+e(row['event_date'])+'</div>'
-        if row.get('important_update'): explanation += '<div class="source">추가 '+e(stamp(row.get('added_at')))+'</div>'
-        st.markdown(f'<article class="{classes}"><div class="tag">{e(tag)}</div><h3>{title}</h3>{summary}'+explanation+f'<div class="source">{e(source)}'+(f' · <a href="{e(primary["url"])}" target="_blank" rel="noopener noreferrer">원문 읽기 ↗</a>' if primary else '')+'</div></article>', unsafe_allow_html=True)
-        if len(sources) > 1:
-            with st.expander('추가 출처 보기'):
-                for src in sources[1:]:
-                    st.link_button(str(src.get('source_name') or '추가 원문'), src['url'])
+        from .presentation import article_html
+        st.markdown(article_html(row, lead=index==1, large=large), unsafe_allow_html=True)
     if more:
         with st.expander(f'더 읽을 기사 · {len(more)}건', expanded=False):
             for row in more:
@@ -101,7 +102,7 @@ def render_body(body, *, large=False):
                     st.markdown('<a style="display:block;padding:12px 0;line-height:1.6" href="'+e(source['url'])+'" target="_blank" rel="noopener noreferrer">'+e(row.get('title'))+' ↗</a>', unsafe_allow_html=True)
     if not issues:
         st.info('이 판본에 저장된 요약 기사가 없습니다.')
-    for kind,label in (('calendar','오늘 예정된 주요 발표 · KST'),('weather','오늘의 날씨')):
+    for kind,label in (('calendar','오늘 예정된 주요 발표 · KST'),):
         if body.get(kind):st.markdown('**'+label+'**')
         for item in body.get(kind) or []:
             st.write((stamp(item['scheduled_at'])+' · ' if item.get('scheduled_at') else '')+str(item.get('title') or ''))

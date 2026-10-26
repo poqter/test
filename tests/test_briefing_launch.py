@@ -97,7 +97,7 @@ def test_reader_escapes_names_article_text_and_has_first_response_og():
     html=public_html(p,canonical_url='https://example.org/',image_url='https://example.org/image',pdf_url='https://example.org/pdf')
     assert '<script>leak()' not in html and '<img onerror=' not in html
     assert 'property="og:title"' in html and '&lt;script&gt;leak()&lt;/script&gt; 팀장' in html
-    assert html.count('원문 읽기 ↗')==10 and '큰 글자로 읽기' in html and 'PDF 저장' not in html
+    assert html.count('원문 ↗')==10 and '큰 글자로 읽기' in html and 'PDF 저장' not in html
     assert 'internal_secret' not in html
 
 def test_global_ai_off_stops_before_lock_or_source_call(monkeypatch):

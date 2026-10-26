@@ -183,14 +183,24 @@ def _combined_sharing(repo, selected_day=None, *, use_cache=False):
             st.caption('보험업계의 내부 정보와 상담 문구는 고객 본문에 포함되지 않습니다.')
             if not approved: st.info('최고관리자가 운영 관리에서 고객 공유를 허용하면 사용할 수 있습니다.')
             preview = st.toggle('고객 화면 미리보기', key='share_preview_'+uid+'_'+day, disabled=not codes)
-    key = 'combined_share_'+day+'_'+uid+'_'+'_'.join(codes)
+    from .weather import REGIONS, DEFAULT_REGION, checked_region, region_name, get_weather
+    weather_region=None
+    if 'NEWS' in codes:
+        options=[r['code'] for r in REGIONS]
+        preferred=checked_region(st.session_state.get('hw_weather_region',DEFAULT_REGION))
+        weather_region=st.selectbox('공유할 날씨 지역 · 시·도',options,index=options.index(preferred),
+            format_func=region_name,key='share_weather_'+uid+'_'+day)
+        st.caption('시·도 대표 지점 기준입니다. 선택한 날짜의 예보를 공유 링크에 함께 저장합니다.')
+    st.caption('공유 범위 · '+' / '.join(PROFILE_LABELS[c] for c in codes)+
+        (' · 날씨 '+region_name(weather_region) if weather_region else ''))
+    key = 'combined_share_'+str(weather_region or 'none')+'_'+day+'_'+uid+'_'+'_'.join(codes)
     with right:
         with st.container(border=True):
             st.subheader('보낼 문구와 링크')
             if st.button('통합 공유 링크 만들기', disabled=not codes or not approved or not any(c in available for c in codes), type='primary',
                          key=key+'_make', use_container_width=True):
                 try:
-                    token, packet = repo.create_combined_share(day, codes, uid)
+                    token, packet = repo.create_combined_share(day, codes, uid, weather_region=weather_region)
                     st.session_state[key] = {'token':token, 'packet':packet}
                 except BriefingRepositoryError as exc: st.error(str(exc))
             shared = st.session_state.get(key)
@@ -223,7 +233,9 @@ def _combined_sharing(repo, selected_day=None, *, use_cache=False):
             try:
                 sender = repo.staff_sender(uid)
                 st.caption(day+' · '+sender['name']+' '+sender['position'])
-                render_body(combine_bodies([bundles[code] for code in codes if code in bundles], codes))
+                preview_body=combine_bodies([bundles[code] for code in codes if code in bundles], codes)
+                if weather_region:preview_body['weather_forecast']=get_weather(weather_region,day)
+                render_body(preview_body)
             except BriefingRepositoryError as exc: st.warning(str(exc))
 
 
@@ -297,6 +309,13 @@ def _render_profile_detail(repo, code, bundle, can_manage):
     if day != datetime.now(KST).date().isoformat():
         st.info(f'오늘 브리핑은 아직 준비되지 않았습니다. 최근 정상본({day})을 보여드립니다.')
     body = _body(snapshot)
+    if code=='NEWS':
+        from .weather import REGIONS, DEFAULT_REGION, checked_region, region_name, get_weather
+        options=[r['code'] for r in REGIONS]
+        preferred=checked_region(st.session_state.get('hw_weather_region',DEFAULT_REGION))
+        region=st.selectbox('날씨 지역 · 시·도',options,index=options.index(preferred),format_func=region_name,key='weather_select_'+revision['id'])
+        st.session_state['hw_weather_region']=region
+        body['weather_forecast']=get_weather(region,day)
     c1, c2 = st.columns([2, 1])
     with c1:
         st.caption(f"주요 뉴스 {sum(r.get('reading_group') != 'more' for r in body.get('issues', []))}건")
@@ -396,7 +415,9 @@ def _render_generate_panel(repo):
 
 def _render_today(repo, can_manage):
     summaries = _latest_summaries(False)
-    tabs = st.tabs([PROFILE_LABELS[c] for c in PROFILE_ORDER])
+    tabs = st.tabs([PROFILE_LABELS[c] for c in PROFILE_ORDER],key='briefing_reading_tabs')
+    from .reading_state import install_reading_state
+    install_reading_state()
     for selected, tab in zip(PROFILE_ORDER, tabs):
         with tab:
             item = summaries.get(selected)

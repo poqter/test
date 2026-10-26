@@ -74,8 +74,11 @@ def render_packet(packet, base, token):
     return packet
 
 
-def build_combined_packet(bundles, sender, base, token, *, selected_codes=None, requested_date=None):
-    return render_packet({'schema': 'hwarang-share-v3', 'body': combine_bodies(bundles, selected_codes), 'reader_version':'20261022',
+def build_combined_packet(bundles, sender, base, token, *, selected_codes=None, requested_date=None, weather=None):
+    body=combine_bodies(bundles, selected_codes)
+    if weather is not None and "NEWS" in (selected_codes or [b["briefing"]["profile_code"] for b in bundles]):
+        body["weather_forecast"]=weather
+    return render_packet({'schema': 'hwarang-share-v3', 'body': body, 'reader_version':'20261026-cards',
         'selected_profiles':list(selected_codes or [b['briefing']['profile_code'] for b in bundles]),
         'requested_date':requested_date or max(str(b['briefing']['briefing_date']) for b in bundles),
         'briefing_date': max(str(b['briefing']['briefing_date']) for b in bundles),
