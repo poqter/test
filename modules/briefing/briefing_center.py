@@ -307,7 +307,7 @@ def _render_profile_detail(repo, code, bundle, can_manage):
     content = snapshot.get('content_payload') or {}
     day = str(briefing.get('briefing_date') or '')
     published = revision.get('publication_status') == 'published'
-    status = '게시됨' if published else '게시 전 초안'
+    status = ('최신 브리핑' if day == datetime.now(KST).date().isoformat() else '이전 브리핑') if published else '게시 전 초안'
     st.markdown(f'<div class="hw-edition"><span class="hw-edition-state">{html.escape(status)}</span><strong>{html.escape(PROFILE_LABELS[code])}</strong><span>{html.escape(day)}</span></div>', unsafe_allow_html=True)
     body = _body(snapshot)
     c1, c2 = st.columns([2, 1])
