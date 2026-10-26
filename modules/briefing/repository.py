@@ -473,7 +473,7 @@ class BriefingRepository:
             'select': 'token,public_packet', 'order': 'created_at.desc', 'limit': '60'}) or []
         for row in existing:
             packet = row.get('public_packet') or {}
-            if (packet.get('schema') == 'hwarang-share-v3' and packet.get('components') and packet.get('reader_version') == '20261026-compact-weather'
+            if (packet.get('schema') == 'hwarang-share-v3' and packet.get('components') and packet.get('reader_version') == '20261026-insurance-section'
                 and all((packet.get('body',{}).get('weather_forecast') or {}).get(k)==(weather or {}).get(k) for k in ('region_code','date','issued_at','status'))
                 and packet.get('selected_profiles') == list(codes) and packet.get('requested_date') == str(day)
                 and '|'.join(sorted(c['revision_id'] for c in packet['components'])) == fingerprint):

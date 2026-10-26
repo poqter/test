@@ -87,9 +87,9 @@ def test_ecos_ignores_today_and_wrong_instrument():
     row=ecos_observation({'StatisticSearch':{'row':[{'ITEM_CODE1':'0000001','TIME':d,'DATA_VALUE':v} for d,v in [('20261009','1400'),('20261008','1300'),('20261007','1290')]]}},AS_OF)
     assert row['value']==1300 and row['as_of_precision']=='date'
 
-def test_customer_insurance_excludes_sales_and_internal_counsel():
+def test_customer_insurance_keeps_news_but_excludes_internal_counsel():
     source=content('INSURANCE',4);source['issues'][0]['category']='영업·채널';source['issues'][1]['communication_state']='internal_check'
-    safe=customer_body(source);assert len(safe['issues'])==2 and len(staff_body(source)['issues'])==4
+    safe=customer_body(source);assert len(safe['issues'])==4 and len(staff_body(source)['issues'])==4
     assert 'internal_secret' not in json.dumps(safe,ensure_ascii=False) and 'conversation_payload' not in json.dumps(safe)
 
 def test_reader_escapes_names_article_text_and_has_first_response_og():

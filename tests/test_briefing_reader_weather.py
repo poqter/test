@@ -53,3 +53,20 @@ def test_weather_in_common_header_and_customer_identity_stays():
     assert markup.index('data-weather-date=')<markup.index('role="tablist"')
     assert markup.index('박병선 팀장')<markup.index('role="tabpanel"')
     assert 'ArrowRight' in markup and '서울특별시' in markup
+
+
+def test_province_fetch_uses_forecast_location_but_preserves_selected_region(monkeypatch):
+    from unittest.mock import Mock, MagicMock
+    import modules.briefing.weather as w
+    response = MagicMock()
+    response.status_code = 200
+    response.iter_content.return_value = [b'forecast']
+    response.__enter__.return_value = response
+    request = Mock(return_value=response)
+    monkeypatch.setattr(w.requests, 'get', request)
+    monkeypatch.setattr(w, 'parse_forecast', lambda doc, region, day, **kw: {'status':'ok','region_code':region,'date':day})
+    w._fetch.cache_clear()
+    result = w.get_weather('4100000000')
+    assert request.call_args.kwargs['params']['code'] == '4111500000'
+    assert result['region_code'] == '4100000000'
+    w._fetch.cache_clear()

@@ -12,7 +12,7 @@ import requests
 KST=ZoneInfo('Asia/Seoul')
 ENDPOINT='https://www.weather.go.kr/w/wnuri-fct2021/main/digital-forecast.do'
 SOURCE_URL='https://www.weather.go.kr/w/forecast/overall/short-term.do'
-# KMA's own province representative grids, verified against rest/zone/dong.do.
+# Public province choices mapped to verified KMA forecast locations.
 REGIONS=json.loads(Path(__file__).with_name('weather_regions.json').read_text(encoding='utf-8'))
 DEFAULT_REGION='1100000000'
 
@@ -65,8 +65,9 @@ def _fetch(region, day, bucket):
     unavailable={'status':'unavailable','region_code':region,'region_name':region_name(region),'date':day}
     # A past edition must never acquire today's forecast.
     if day!=now.date().isoformat():return {**unavailable,'reason':'historical'}
+    forecast_code=next(r.get('forecast_code',r['code']) for r in REGIONS if r['code']==region)
     try:
-        with requests.get(ENDPOINT,params={'code':region,'unit':'m/s','hr1':'Y'},
+        with requests.get(ENDPOINT,params={'code':forecast_code,'unit':'m/s','hr1':'Y'},
                 headers={'User-Agent':'HWARANG-Briefing/1.15 weather display'},timeout=(12,12),
                 allow_redirects=False,stream=True) as response:
             if response.status_code!=200:raise ValueError('upstream_unavailable')

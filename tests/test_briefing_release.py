@@ -28,13 +28,13 @@ def offline(monkeypatch):
     monkeypatch.setattr('requests.sessions.Session.request',Mock(side_effect=AssertionError('Unexpected live HTTP')))
 
 
-def test_combined_projection_deduplicates_and_excludes_internal_insurance():
+def test_combined_projection_keeps_insurance_news_and_excludes_private_fields():
     bundles=[bundle(code) for code in ('MARKET','NEWS','INSURANCE')]
     duplicate=deepcopy(bundles[0]['snapshot']['content_payload']['issues'][0])
     bundles[1]['snapshot']['content_payload']['issues'].append(duplicate)
     bundles[2]['snapshot']['content_payload']['issues'][0]['category']='영업·채널'
     packet=build_combined_packet(bundles,{'name':'검수용 이름','position':'팀장'},'https://example.org','x'*43)
-    assert len(packet['body']['issues'])==8
+    assert len(packet['body']['issues'])==9
     assert len(packet['components'])==3 and len(packet['body']['market_metrics'])==6
     assert 'internal_secret' not in str(packet) and 'conversation_payload' not in str(packet)
     assert '<details><summary>해설과 영향' not in packet['rendered_html']
@@ -148,3 +148,11 @@ def test_official_update_is_separate_and_customer_projection_has_a_date():
     assert projected['issues'][0]['important_update'] and projected['issues'][0]['added_at']
     with pytest.raises(ValueError):updated_content(src,{**update,'url':'https://example.org/fake'},'추가')
     with pytest.raises(ValueError):updated_content(revised,update,'중복')
+
+
+def test_insurance_section_keeps_articles_also_present_in_market():
+    market, insurance = bundle('MARKET'), bundle('INSURANCE')
+    insurance['snapshot']['content_payload']['issues'][0] = deepcopy(market['snapshot']['content_payload']['issues'][0])
+    body = combine_bodies([market, insurance], ['MARKET', 'INSURANCE'])
+    assert len([r for r in body['issues'] if r['section_code'] == 'INSURANCE']) == 3
+    assert next(s for s in body['sections'] if s['profile_code'] == 'INSURANCE')['article_count'] == 3

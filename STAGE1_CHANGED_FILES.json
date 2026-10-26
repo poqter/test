@@ -1,17 +1,17 @@
 {
-  "engine_version": "1.15.2-reader",
+  "engine_version": "1.15.3-reader",
   "baseline_zip_sha256": "4e5eb26b344e061f4261cb2c2213981ff9dcb65a301c00bbd635b143c7c70384",
   "briefing_code_sha256": {
     "__init__.py": "66c4884dd2d46a2e672f3dc686c8c53e1cbfc0ff7af3a3ee7917ef0b6e90ad47",
     "api_errors.py": "20ca68aa829159e97f59d18b429b36fb588dfde1ae3d78f35ef5d5d6b108b7dd",
-    "briefing_center.py": "746228cb8052a3ac2088f6c52c20cd0ce0e0309b55038ed314438f38ff2293ac",
+    "briefing_center.py": "91ca3229b47cde03601b24fd89f2086e853127531926378d2bc423fe96894f8b",
     "business_calendar.py": "d65fbee6e2102e2d4cd60c11979b3cfba4255971d8c0e4d291f41112731b8dd9",
     "checkpoints.py": "9b644a671d0ab5e4e412f20ec718f84545b41d97a220d1ee723a81e5e962af48",
     "clustering.py": "4a34591a00905fbd299d1f7c1bcfeaa5b3fd87380c43b3a50269cdbb155f356a",
     "config.py": "babd234dc1bddd17cfbf8d1ba1e0ecf7b92d7c358f72f3f72ff7b786d768733a",
     "corrections.py": "5f44539ee7b0fdcca92ca8839771ae2d403f5479a42b7605ec8bc6d21fd27d2c",
     "costs.py": "8cdca5c8068dae87365613997739660780e375d50a5b9f069d103b05fd068a5e",
-    "diagnostics.py": "fb3286016d069b25fb0d2a89d5ce45b0463840ec4511032e291fe167b485f0b7",
+    "diagnostics.py": "2a3626759a34ca95bb252b5956956defe5b2a7ef5fdca2fa2d37e8bbbb8b9acb",
     "direct_sources.py": "bfb68b32e84a8f407bbe126ef632ed1d9fe470e972e87efd901fc82731474d4a",
     "discovery_budget.py": "cdc061db8d2ad846f31817963189fdcddd828095ada99abfa35901d326dc0373",
     "display.py": "1f84d543c186fee86a855fe2294090997d0743a0175e0b9c3b52570484cc2c0c",
@@ -33,18 +33,18 @@
     "preflight.py": "d13d780bb60e8f1726230a01d87ae535bf5c02bda9f2545fd373ede6b06d4273",
     "presentation.py": "80b741767b3c7771824bf3af66a06b57a05c6761483de2ec620c90f00fc1014d",
     "profile_rules.py": "dd99470840284ba981cc5041437792e2a3ffb4e805ba3efeedc1748d68d6ccbc",
-    "public_body.py": "968781040a12e47d5d75209268bd45d645fc17913676de45b55e1eafe76ea7e6",
+    "public_body.py": "dc10c4eee0fb32063b6839f4143398a3584be5cfc457952d73bd5cec87ce219c",
     "publication.py": "6e63b14564a533383e519a888cdb86320487ca93304d8eee878f3ddbb92f80b2",
     "reading_state.py": "a7011ece952cd87ad8e92aba07eb900d1c7c41a80f44db916f8c8363c76f8b94",
-    "repository.py": "814b2e210c64d88b03eb99e045fc234af0a7fbc40472e42dc2a52a902de47a2c",
+    "repository.py": "17261a826d1c9ee1cd32eab430d2c8cfd166c0c5149d9a845065457ba85db329",
     "research.py": "093fb3d8f5d0316ba714fa3c7cd41466e6964cee83897330c93b8813ca931125",
     "runtime.py": "cbb170ed355d62c2e405c60a57b58db6c12e46248682b0824a98677ef822f013",
     "scheduler.py": "2a534ced39a744b9f11e134eead3d54e22a6dd926e03cc98f7d0a76c454f21ef",
-    "sharing.py": "5233e6f8bc2b5feb1d1e2675a22e6e54d0e1c2d258516e9ead92f674472be167",
+    "sharing.py": "6be77a3babb214e458b48877a20decca232475d45197b2d841d3d59f18fed842",
     "source_policy.py": "f29b127896197a08a2222dad1008f0c7c3b77421b822030ff66a41913a548703",
     "staff_exports.py": "d7044d7dab64080f2d6663ee0cad9c4dc333cfffed76e46927d6d77f867ef19d",
     "tool_policy.py": "0762fb107425b9aacf9cec571f1f9e67044b17abad40d075f7cc5185e4460383",
-    "weather.py": "eb07f5e191bd9189f284d16b88f4f21075c4a30a8e35115c07c1eb7d38c1578a"
+    "weather.py": "2b0064ae277d5d9f09dd32103939eece19023f21afd6c7addc81f2224cb949e2"
   },
   "changed_files": [
     {

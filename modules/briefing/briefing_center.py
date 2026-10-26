@@ -180,7 +180,7 @@ def _combined_sharing(repo, selected_day=None, *, use_cache=False):
                 if chosen: codes.append(code)
                 if code in reasons_by_code: st.caption(reasons_by_code[code])
                 elif code in bundles: st.caption(str(bundles[code]['briefing']['briefing_date'])+' 브리핑')
-            st.caption('보험업계의 내부 정보와 상담 문구는 고객 본문에 포함되지 않습니다.')
+            st.caption('보험업계 선택 시 게시된 기사 전체를 공유합니다. 직원용 상담 문구와 운영 정보는 제외됩니다.')
             if not approved: st.info('최고관리자가 운영 관리에서 고객 공유를 허용하면 사용할 수 있습니다.')
             preview = st.toggle('고객 화면 미리보기', key='share_preview_'+uid+'_'+day, disabled=not codes)
     from .weather import REGIONS, DEFAULT_REGION, checked_region, region_name, get_weather

@@ -26,11 +26,6 @@ def _project(content,external):
     issues=[]
     update_keys={r.get('event_key') for r in content.get('important_updates',[])}
     for row in content.get('important_updates',[])+content.get('issues',[]):
-        if external and content.get('profile_code')=='INSURANCE':
-            state=row.get('communication_state')
-            neutral=(state=='not_applicable' and row.get('customer_article_eligible') is True
-                     and row.get('category') in {'제도·규제','상품·보험료','보험금·보상','세제·재무','소비자·사회이슈'})
-            if (state!='customer_ready' and not neutral) or row.get('category') in {'영업·채널','보험사·시장'}:continue
         sources=[{k:r.get(k) for k in ('title','source_name','url','published_at')} for r in row.get('sources',[]) if is_safe_url(str(r.get('url') or '')) and r.get('published_at')][:4]
         if sources:issues.append({k:row.get(k) for k in ('event_key','title','summary','category','why_important','impact_summary','representative','headline_sufficient','event_date')}|{'sources':sources, 'reading_group':'more' if content.get('editorial_version',0) >= 2 and row.get('selection_tier') == 'light_digest' else 'main', 'important_update':row.get('event_key') in update_keys,
             'added_at':row.get('added_at') if row.get('event_key') in update_keys else None})

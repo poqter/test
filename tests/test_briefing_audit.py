@@ -54,8 +54,8 @@ def test_discovery_preserves_http_error_before_usage_callback():
     assert seen[0]['http_status']==429 and seen[0]['provider_error_code']=='rate_limit_exceeded'
 
 
-@pytest.mark.parametrize('state,marker,expected',[('not_applicable',True,1),('not_applicable',False,0),('unknown',True,0),('internal_check',True,0),('consultation_reference',True,0)])
-def test_insurance_article_eligibility_is_separate_and_fail_closed(state,marker,expected):
+@pytest.mark.parametrize('state,marker,expected',[('not_applicable',True,1),('not_applicable',False,1),('unknown',True,1),('internal_check',True,1),('consultation_reference',True,1),('do_not_mention',False,1)])
+def test_insurance_news_is_independent_of_private_consultation_state(state,marker,expected):
     source=content('INSURANCE',1);source['issues'][0].update(category='소비자·사회이슈',communication_state=state,customer_article_eligible=marker)
     body=customer_body(source);assert len(body['issues'])==expected
     assert all('customer_article_eligible' not in r and 'communication_state' not in r for r in body['issues'])
