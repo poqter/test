@@ -62,7 +62,7 @@ def combine_bodies(bundles, selected_codes=None):
         sections += [{'profile_code':c, 'profile_label':labels[c], 'briefing_date':None, 'as_of':None, 'article_count':0} for c in PROFILE_ORDER if c in selected_codes and c not in present]
         sections.sort(key=lambda s: PROFILE_ORDER.index(s['profile_code']))
     return {'schema': 'hwarang-public-v2', 'profile_code': 'COMBINED',
-            'profile_label': '오늘의 통합 브리핑', 'as_of': max(s['as_of'] or '' for s in sections),
+            'profile_label': '오늘의 브리핑', 'as_of': max(s['as_of'] or '' for s in sections),
             'sections': sections, 'issues': issues, 'market_flow': flow, 'market_metrics': metrics, 'research': {},**extras}
 
 
@@ -78,7 +78,7 @@ def build_combined_packet(bundles, sender, base, token, *, selected_codes=None, 
     body=combine_bodies(bundles, selected_codes)
     if weather is not None:
         body["weather_forecast"]=weather
-    return render_packet({'schema': 'hwarang-share-v3', 'body': body, 'reader_version':'20261026-insurance-section',
+    return render_packet({'schema': 'hwarang-share-v3', 'body': body, 'reader_version':'20261026-share-preview',
         'selected_profiles':list(selected_codes or [b['briefing']['profile_code'] for b in bundles]),
         'requested_date':requested_date or max(str(b['briefing']['briefing_date']) for b in bundles),
         'briefing_date': max(str(b['briefing']['briefing_date']) for b in bundles),

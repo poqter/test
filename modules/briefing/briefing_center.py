@@ -209,7 +209,7 @@ def _combined_sharing(repo, selected_day=None, *, use_cache=False):
                 url = share_url(repo.public_base_url(), shared['token'])
                 packet = shared['packet']; sender = packet['sender']
                 st.caption('아래 문구의 복사 버튼으로 링크까지 복사한 뒤 카카오톡·문자에 붙여넣으세요.')
-                st.code(f"{sender['name']} {sender['position']}의 통합 브리핑\n{day} · 소식 {len(packet['body']['issues'])}개\n{url}", language=None)
+                st.code(f"{sender['name']} {sender['position']}이 전하는 오늘의 브리핑\n{day} · 소식 {len(packet['body']['issues'])}개\n{url}", language=None)
                 a,b = st.columns(2)
                 a.link_button('고객 화면 열기', url, use_container_width=True)
                 try:

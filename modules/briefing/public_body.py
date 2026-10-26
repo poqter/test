@@ -92,8 +92,16 @@ def public_html(packet,*,canonical_url='',image_url='',pdf_url=''):
     e=lambda v:html.escape(str(v or ''),quote=True)
     body=packet.get('body') or {};sender=packet.get('sender') or {}
     identity=' '.join(str(sender.get(k) or '') for k in ('name','position')).strip()
-    title=f"{identity} · {packet.get('briefing_date')} 오늘의 브리핑"
+    date_text=str(packet.get('requested_date') or packet.get('briefing_date') or '')
+    try: short_date=datetime.fromisoformat(date_text).strftime('%m.%d')
+    except ValueError: short_date=''
+    title=(short_date+' 오늘의 브리핑').strip()
+    labels={'MARKET':'경제·금융','NEWS':'종합뉴스','INSURANCE':'보험업계'}
+    codes=packet.get('selected_profiles') or [s.get('profile_code') for s in body.get('sections',[])] or [body.get('profile_code')]
+    topics=' · '.join(labels[c] for c in dict.fromkeys(codes) if c in labels)
+    description=((identity+'이 전하는 ') if identity else '')+(topics or '오늘의 주요 소식')
     og=f'<title>{e(title)}</title><meta property="og:title" content="{e(title)}"><meta property="og:type" content="article">'
+    og+=f'<meta property="og:description" content="{e(description)}"><meta name="description" content="{e(description)}">'
     if canonical_url:og+=f'<meta property="og:url" content="{e(canonical_url)}">'
     if image_url:og+=f'<meta property="og:image" content="{e(image_url)}">'
     sections=body.get('sections') or [{'profile_code':body.get('profile_code') or 'NEWS','profile_label':body.get('profile_label') or '브리핑','briefing_date':packet.get('briefing_date')}]
@@ -248,6 +256,6 @@ def preview_png(packet):
         while draw.textlength(text,font=face)>max_width and size>20:size-=1;face=ImageFont.truetype(str(font),size)
         draw.text(at,text,font=face,fill=color)
     body=packet.get('body') or {};sender=packet.get('sender') or {}
-    put(str(packet.get('briefing_date') or ''),(128,110),30,'#435a6d');put(str(body.get('profile_label') or '오늘의 브리핑'),(128,202),58)
-    put('오늘의 소식을 편하게 읽어보세요',(128,310),34,'#435a6d');put(' '.join(str(sender.get(k) or '') for k in ('name','position')).strip(),(128,442),34)
+    put(str(packet.get('requested_date') or packet.get('briefing_date') or ''),(128,132),34,'#435a6d');put('오늘의 브리핑',(128,230),72)
+    put(' '.join(str(sender.get(k) or '') for k in ('name','position')).strip(),(128,382),38)
     put('화랑 WORKSPACE',(880,518),20,'#435a6d',220);out=BytesIO();image.save(out,format='PNG');return out.getvalue()
