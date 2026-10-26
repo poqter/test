@@ -168,20 +168,20 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
         with st.container(key="hw_sidebar_header"):
             st.markdown('<div class="sig-brand"><span class="sig-mark">H</span><div><strong>화랑</strong><small>WORKSPACE</small></div></div>', unsafe_allow_html=True)
             st.button(
-                "🏠 홈", key="v2_nav_home", use_container_width=True,
+                "홈", icon=":material/home:", key="v2_nav_home", use_container_width=True,
                 type="primary" if st.session_state.get("active_app") == "home" else "secondary",
                 on_click=_navigate_once, args=(navigate, "home", None),
             )
             if "briefing" in allowed:
                 st.button(
-                    "📰 브리핑 센터", key="hw_sidebar_briefing", use_container_width=True,
+                    "브리핑 센터", icon=":material/newspaper:", key="hw_sidebar_briefing", use_container_width=True,
                     type="primary" if st.session_state.get("active_app") == "briefing" else "secondary",
                     on_click=_navigate_once, args=(navigate, "briefing", None),
                 )
             if "analyzer" in allowed:
                 with st.container(key="hw_sidebar_quick"):
                     st.button(
-                        "🛡️ 보장 분석 시작", key="hw_sidebar_analyzer", use_container_width=True,
+                        "보장 분석 시작", icon=":material/shield:", key="hw_sidebar_analyzer", use_container_width=True,
                         on_click=_navigate_once, args=(navigate, "analyzer", None),
                     )
             query = st.text_input("기능 빠른 검색", placeholder="상령일, 문자, 실손…", key="sig_nav_search").strip().lower()

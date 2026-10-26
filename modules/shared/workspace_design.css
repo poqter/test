@@ -1,0 +1,59 @@
+/* One opt-in web layer. Removing its call in app.py restores the previous UI.
+   Keep icon fonts, native widget behavior, card click targets and exports intact. */
+body:has(.hw-design-2026){--hw-ink:#172e4d;--hw-muted:#52657d;--hw-blue:#2d6ad5;--hw-line:#dce5ee;--hw-bg:#f5f7fa;--hw-soft-blue:#edf4ff}
+body:has(.hw-design-2026) :is(.stApp,[data-testid="stDialog"],[data-baseweb="popover"]),
+body:has(.hw-design-2026) :is(h1,h2,h3,h4,h5,h6,p,label,input,textarea,select,button,summary,table,small,strong,b,.hw-news,.hw-digest,.hw-page-title,.hw-page-desc,.brand-muted){font-family:'HW LINE Seed','Malgun Gothic',sans-serif!important;font-weight:700!important;text-shadow:none!important;font-synthesis:none}
+body:has(.hw-design-2026) :is(p,li,td){line-height:1.75}
+body:has(.hw-design-2026) :is(h1,h2,h3,.hw-page-title){letter-spacing:-.025em!important;line-height:1.4!important}
+body:has(.hw-design-2026) :is(input,[data-testid="stMetricValue"],.temps,.value){font-variant-numeric:tabular-nums}
+body:has(.hw-design-2026) [data-testid="stMainBlockContainer"]{max-width:1420px!important;padding:30px 32px 44px!important}
+body:has(.hw-design-2026):not(:has(.hw-auth-bg)) :is(.stApp,[data-testid="stAppViewContainer"],[data-testid="stMain"]){background:#f5f7fa!important}
+body:has(.hw-design-2026) :is(.hw-page-head,.brand-header){margin-bottom:20px!important;padding-bottom:18px!important;border-bottom:1px solid #dce5ee!important}
+body:has(.hw-design-2026) .hw-page-icon{background:#edf4ff;color:#2d6ad5;border-radius:14px}
+body:has(.hw-design-2026) :is([data-testid="stForm"],[data-testid="stExpander"],[data-testid="stMetric"]){border-radius:14px!important;border-color:#dce5ee!important;box-shadow:none!important}
+body:has(.hw-design-2026) :is(.stButton button,.stDownloadButton button,[data-testid="stFormSubmitButton"] button,[data-testid="stLinkButton"] a){border-radius:11px!important;transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease!important}
+body:has(.hw-design-2026) :is(input,textarea,[data-baseweb="select"]>div){border-radius:10px!important}
+body:has(.hw-design-2026) :is(button,a,input,textarea,summary):focus-visible{outline:3px solid #2d6ad5!important;outline-offset:3px!important}
+/* Explicit brand / navigation / primary action / search rhythm. */
+body:has(.hw-design-2026) [data-testid="stSidebar"] .st-key-hw_sidebar_header{gap:8px!important;padding-bottom:12px!important;box-shadow:none!important}
+body:has(.hw-design-2026) [data-testid="stSidebar"] .sig-brand{padding:18px 16px!important;margin:0 0 20px!important;border:1px solid #dae7fb!important;border-radius:16px!important;background:#f4f8ff!important;gap:12px!important}
+body:has(.hw-design-2026) [data-testid="stSidebar"] .sig-mark{width:40px;height:40px;border-radius:12px;box-shadow:none!important}
+body:has(.hw-design-2026) [data-testid="stSidebar"] .sig-brand small{font-size:11px!important;letter-spacing:.1em}
+body:has(.hw-design-2026) [data-testid="stSidebar"] .st-key-hw_sidebar_header button{min-height:46px!important;justify-content:flex-start!important;padding:10px 14px!important;text-align:left!important}
+body:has(.hw-design-2026) [data-testid="stSidebar"] .st-key-hw_sidebar_quick{margin-top:12px!important;margin-bottom:24px!important}
+body:has(.hw-design-2026) [data-testid="stSidebar"] .st-key-hw_sidebar_quick button{margin:0!important;background:#2d6ad5!important;color:white!important;box-shadow:none!important}
+body:has(.hw-design-2026) [data-testid="stSidebar"] .st-key-hw_sidebar_quick button:hover{background:#245fca!important}
+body:has(.hw-design-2026) [data-testid="stSidebar"] [data-testid="stExpander"]{margin:5px 0!important;border:1px solid #e1e8f0!important;border-radius:12px!important;background:#fff!important}
+body:has(.hw-design-2026) [data-testid="stSidebar"] [data-testid="stExpander"] summary{padding:12px!important}
+/* Login keeps the existing navy palette, with a clear surface and no glass blur. */
+body:has(.hw-design-2026) .st-key-hw_auth_shell{background:#15344f!important;border:1px solid #3c5b74!important;border-radius:24px!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;padding:36px!important}
+body:has(.hw-design-2026) .hw-auth-copy h1{color:#fff!important;-webkit-text-fill-color:#fff!important;font-size:clamp(28px,3.2vw,42px)!important;line-height:1.5!important}
+body:has(.hw-design-2026) .hw-auth-copy p{color:#d6e4ef!important;font-size:17px!important}
+body:has(.hw-design-2026) .st-key-hw_auth_card{background:#fff!important;padding:30px!important;border-radius:18px!important;box-shadow:none!important;border:1px solid #dce5ee!important}
+body:has(.hw-design-2026) .st-key-hw_auth_card [data-testid="stTextInput"] [data-baseweb="input"]{background:#f5f8fc!important;border:1px solid #9cacc0!important;box-shadow:none!important}
+body:has(.hw-design-2026) .st-key-hw_auth_card [data-testid="stTextInput"] [data-baseweb="input"]:focus-within{border-color:#2d6ad5!important;outline:2px solid #c9dcfa}
+body:has(.hw-design-2026) .st-key-hw_auth_card label p{color:#203952!important}
+body:has(.hw-design-2026) .hw-auth-card-heading p{color:#52657d!important}
+body:has(.hw-design-2026) .hw-auth-footer{margin-top:36px!important;color:#d6e4ef!important}
+/* Compact home, business surfaces and aligned briefing/weather. */
+body:has(.hw-design-2026) [data-testid="stVerticalBlock"][class*="st-key-brand_tile_"]{padding:20px!important;border-radius:16px!important;transition:translate .2s ease,border-color .2s ease,box-shadow .2s ease!important}
+body:has(.hw-design-2026) [data-testid="stVerticalBlock"][class*="st-key-brand_tile_"]:hover{translate:0 -3px;border-color:#9dbbe6!important;box-shadow:0 8px 20px #173b5d0c!important}
+body:has(.hw-design-2026) .brand-card p{color:#52657d!important}
+body:has(.hw-design-2026) .brand-icon{width:40px;height:40px;border-radius:12px}
+body:has(.hw-design-2026) :is(.st-key-brand_briefing,.hw-news,.hw-digest){border-radius:16px!important;border-color:#dce5ee!important}
+body:has(.hw-design-2026) .st-key-hw_briefing_header{padding:20px 24px!important;background:#fff!important;border:1px solid #dce5ee!important;border-radius:16px!important}
+body:has(.hw-design-2026) .st-key-hw_briefing_header>[data-testid="stHorizontalBlock"]{align-items:center!important}
+body:has(.hw-design-2026) .hw-weather{margin:0!important;box-shadow:none!important;border-radius:12px!important}
+/* Animate stable entry elements only, never the whole app on widget reruns.
+   Text is fully visible at every frame. */
+@keyframes hw-design-enter{from{translate:0 10px}to{translate:0 0}}
+body:has(.hw-design-2026) :is(.hw-auth-copy,.brand-header,.hw-page-head){animation:hw-design-enter .45s cubic-bezier(.2,.7,.2,1) both}
+@media(max-width:767px){
+ body:has(.hw-design-2026) [data-testid="stMainBlockContainer"]{padding:60px 16px 28px!important}
+ body:has(.hw-design-2026) .st-key-hw_auth_shell{padding:22px 18px!important}
+ body:has(.hw-design-2026) .st-key-hw_auth_card{padding:22px!important}
+ body:has(.hw-design-2026) .st-key-hw_briefing_header{padding:18px!important}
+ body:has(.hw-design-2026) .st-key-hw_briefing_header>[data-testid="stHorizontalBlock"]{flex-wrap:wrap!important}
+ body:has(.hw-design-2026) .st-key-hw_briefing_header>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]{flex:1 1 100%!important;width:100%!important}
+}
+@media(prefers-reduced-motion:reduce){body:has(.hw-design-2026) *,body:has(.hw-design-2026) *:before,body:has(.hw-design-2026) *:after{animation:none!important;transition:none!important;translate:none!important;scroll-behavior:auto!important}}

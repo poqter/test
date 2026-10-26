@@ -1,12 +1,19 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8"><style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,'Malgun Gothic',sans-serif}button{width:100%;min-height:40px;border:1px solid #d8e1eb;border-radius:9px;background:white;color:#183750;font-size:14px;font-weight:600;cursor:pointer;padding:8px 12px}button.primary{background:#173f66;color:white;border-color:#173f66}button:disabled{opacity:.5;cursor:default}p{font-size:13px;color:#52677e;line-height:1.5;margin:6px 0}a{color:#173f66}
-button.card{min-height:106px;text-align:left;display:flex;align-items:center;gap:13px;padding:18px;border:1px solid #dde5ee;border-radius:13px}button.card strong{font-size:17px;display:block}button.card small{display:block;font-size:14px;font-weight:400;color:#62748b;line-height:1.65;margin-top:5px}button.card .icon{font-size:20px;background:#edf3fc;border-radius:10px;padding:7px}button.card .arrow{margin-left:auto}button:focus-visible{outline:3px solid #8eb5ed;outline-offset:-3px}</style></head><body><button id="open"></button><p id="feedback" hidden></p><script>
+button.card{min-height:106px;text-align:left;display:flex;align-items:center;gap:13px;padding:18px;border:1px solid #dde5ee;border-radius:13px}button.card strong{font-size:17px;display:block}button.card small{display:block;font-size:14px;font-weight:400;color:#62748b;line-height:1.65;margin-top:5px}button.card .icon{font-size:20px;background:#edf3fc;border-radius:10px;padding:7px}button.card .arrow{margin-left:auto}button:focus-visible{outline:3px solid #8eb5ed;outline-offset:-3px}
+@font-face{font-family:'HW LINE Seed';src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_11-01@1.0/LINESeedKR-Bd.woff2') format('woff2');font-weight:100 900;font-display:swap}
+body.workspace-design,body.workspace-design button,body.workspace-design small{font-family:'HW LINE Seed','Malgun Gothic',sans-serif;font-weight:700}
+body.workspace-design button.card{border-radius:16px;padding:20px;transition:border-color .18s ease,background-color .18s ease}
+body.workspace-design button.card:hover{border-color:#9dbbe6;background:#fbfdff}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head><body><button id="open"></button><p id="feedback" hidden></p><script>
 let args={},pending=null,popup=null,done='',parentOrigin=null;
 const post=(type,data)=>parent.postMessage({isStreamlitMessage:true,type,...data},parentOrigin||'*');
 const button=document.getElementById('open'),feedback=document.getElementById('feedback');
 addEventListener('message',event=>{
  if(event.source!==parent || event.data.type!=='streamlit:render')return;
  parentOrigin=event.origin; args=event.data.args||{};
+ document.body.classList.toggle('workspace-design',Boolean(args.workspace_design));
  button.textContent=args.label||'앱 열기 ↗';button.disabled=Boolean(args.disabled)||Boolean(pending);
  button.className=args.card?'card':args.primary?'primary':'';
  if(args.card){button.replaceChildren();const icon=document.createElement('span');icon.className='icon';icon.textContent=args.card.icon;const copy=document.createElement('span'),title=document.createElement('strong'),desc=document.createElement('small');title.textContent=args.card.title;desc.textContent=args.card.description;copy.append(title,desc);const arrow=document.createElement('span');arrow.className='arrow';arrow.textContent='↗';button.append(icon,copy,arrow);}

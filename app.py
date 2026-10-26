@@ -22,6 +22,8 @@ if st.query_params.get("briefing_health") == "1":
             ";READY=" + str(release['code_matches_release']).lower())
     st.stop()
 inject_global_styles()
+from modules.shared.workspace_design import apply_workspace_design
+apply_workspace_design()
 
 NOTICE = {
     "date": "2026.10.15",

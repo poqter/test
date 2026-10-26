@@ -43,5 +43,16 @@ with sync_playwright() as p:
     page.wait_for_timeout(3000)
     if any(frame.get_by_test_id('stException').count() for frame in page.frames):
         raise SystemExit('Workspace login view contains a Streamlit exception.')
-    print('WORKSPACE_ENTRY_OK')
+    frame=next(frame for frame in page.frames if frame.get_by_test_id('stAppViewContainer').count())
+    frame.locator('.hw-design-2026').wait_for(state='attached', timeout=15000)
+    loaded=frame.evaluate("""async () => {
+        const faces = await document.fonts.load('700 16px "HW LINE Seed"', '화랑');
+        return faces.length > 0 && faces.every(face => face.status === 'loaded');
+    }""")
+    if not loaded:
+        raise SystemExit('LINE Seed font did not load.')
+    heading=frame.locator('.hw-auth-copy h1')
+    if not heading.is_visible():
+        raise SystemExit('Login heading is not visible.')
+    print('WORKSPACE_ENTRY_OK;LINE_SEED_LOADED')
     browser.close()

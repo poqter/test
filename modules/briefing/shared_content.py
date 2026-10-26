@@ -18,7 +18,7 @@ def split_packet(packet,base):
     for key in ('sender','asset_version','rendered_html'):common.pop(key,None)
     weather=common['body'].pop('weather_forecast',None)
     visible={k:weather[k] for k in VISIBLE_WEATHER if k in weather} if weather else {}
-    common['reader_version']='20261026-shared-content'
+    common['reader_version']='20261027-line-seed'
     if any(marker in json.dumps(common,ensure_ascii=False) for marker in (IDENTITY,TOKEN,WEATHER)):
         raise ValueError('Reserved rendering marker in content')
     template=public_html({**common,'sender':{'name':IDENTITY,'position':''}},canonical_url=share_url(base,TOKEN),image_url=share_url(base,TOKEN,'preview'))

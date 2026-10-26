@@ -88,6 +88,17 @@ READER_CSS += CARD_CSS + """
 @media(max-width:600px){.wrap.reader-modern{padding:0 16px 20px}.reader-modern header{margin:0 -16px 14px;padding:22px 16px 0}.reader-modern .reader-footer{margin:20px -16px -20px;padding:20px 16px}}
 """
 
+# Web reader only: PDF typography and document generation below remain unchanged.
+READER_CSS += """
+@font-face{font-family:'HW LINE Seed';src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_11-01@1.0/LINESeedKR-Bd.woff2') format('woff2');font-weight:100 900;font-display:swap}
+body,button,.button{font-family:'HW LINE Seed','Malgun Gothic',sans-serif;font-weight:700;text-shadow:none;font-synthesis:none}
+.wrap{border-radius:18px}.panel,.metric{border-radius:12px}.value,.temps{font-variant-numeric:tabular-nums}
+button,.button,a{transition:background-color .18s ease,border-color .18s ease}
+button:focus-visible,a:focus-visible{outline:3px solid #2d6ad5;outline-offset:3px}
+@media(max-width:600px){.wrap{border-radius:0}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+"""
+
 def public_html(packet,*,canonical_url='',image_url='',pdf_url=''):
     e=lambda v:html.escape(str(v or ''),quote=True)
     body=packet.get('body') or {};sender=packet.get('sender') or {}
