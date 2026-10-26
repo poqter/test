@@ -110,8 +110,8 @@ def render_signup_dialog(auth: HwarangAuthService) -> None:
         for branch in branches
     }
     with st.form("hw_signup_form", clear_on_submit=False):
-        login_id = st.text_input("아이디", placeholder="아이디")
-        password = st.text_input("비밀번호", type="password", placeholder="비밀번호")
+        login_id = st.text_input("아이디", placeholder="")
+        password = st.text_input("비밀번호", type="password", placeholder="")
         password_confirm = st.text_input("비밀번호 확인", type="password", placeholder="비밀번호 확인")
         display_name = st.text_input("이름", placeholder="이름")
         email = st.text_input("이메일", placeholder="이메일")
@@ -155,19 +155,20 @@ def render_login(auth: HwarangAuthService) -> bool:
             <p>상담과 관리에 필요한 도구를 한 공간에.</p><i></i></div>""", unsafe_allow_html=True)
         with login_col:
             with st.container(key="hw_auth_card"):
-                st.markdown('<div class="hw-auth-card-heading"><small>WELCOME BACK</small><h2>로그인</h2><p>아이디와 비밀번호를 입력해 시작하세요.</p></div>', unsafe_allow_html=True)
+                st.markdown('<div class="hw-auth-card-heading"><small>WELCOME BACK</small><h2>로그인</h2></div>', unsafe_allow_html=True)
                 with st.form("login_form", clear_on_submit=False):
-                    login_id = st.text_input("아이디", placeholder="아이디")
-                    password = st.text_input("비밀번호", type="password", placeholder="비밀번호")
-                    submitted = st.form_submit_button("워크스페이스 시작 →", type="primary", use_container_width=True)
+                    login_id = st.text_input("아이디", placeholder="")
+                    password = st.text_input("비밀번호", type="password", placeholder="")
+                    submitted = st.form_submit_button("로그인", type="primary", use_container_width=True)
                 login_feedback = st.empty()
-                if st.button("회원가입", key="hw_open_signup", use_container_width=True):
-                    render_signup_dialog(auth)
-                if st.button("비밀번호를 잊으셨나요?", key="hw_open_recovery", use_container_width=True):
-                    recovery_dialog(auth)
+                with st.container(key="hw_auth_secondary", horizontal=True):
+                    if st.button("회원가입", key="hw_open_signup", type="tertiary"):
+                        render_signup_dialog(auth)
+                    if st.button("비밀번호 찾기", key="hw_open_recovery", type="tertiary"):
+                        recovery_dialog(auth)
                 st.markdown(
-                    f'<div class="hw-auth-help"><span>이메일을 사용할 수 없으신가요?</span>'
-                    f'<a href="{NOTICE["contact_url"]}" target="_blank" rel="noopener noreferrer">박병선 팀장에게 문의해 주세요 ↗</a></div>',
+                    f'<div class="hw-auth-help"><span>로그인에 문제가 있나요?</span>'
+                    f'<a href="{NOTICE["contact_url"]}" target="_blank" rel="noopener noreferrer">문의하기 ↗</a></div>',
                     unsafe_allow_html=True,
                 )
             if submitted:

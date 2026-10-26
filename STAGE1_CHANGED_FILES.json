@@ -1,5 +1,5 @@
 {
-  "engine_version": "1.17.1-reading",
+  "engine_version": "1.17.2-login",
   "baseline_zip_sha256": "4e5eb26b344e061f4261cb2c2213981ff9dcb65a301c00bbd635b143c7c70384",
   "briefing_code_sha256": {
     "__init__.py": "66c4884dd2d46a2e672f3dc686c8c53e1cbfc0ff7af3a3ee7917ef0b6e90ad47",
@@ -11,7 +11,7 @@
     "config.py": "babd234dc1bddd17cfbf8d1ba1e0ecf7b92d7c358f72f3f72ff7b786d768733a",
     "corrections.py": "15a1d4f07bb4c0633514e1c189e3461d1fb96928d275c982d3bd053cf373f6b7",
     "costs.py": "8cdca5c8068dae87365613997739660780e375d50a5b9f069d103b05fd068a5e",
-    "diagnostics.py": "4977b35eafe3f3621e0cb7809844b42b9180f2279487ac77ad7a7f6616e26853",
+    "diagnostics.py": "47c3e4cb3a2564d6b1684add49c830d3749a7dee6303c70d6203884f96bd2c1c",
     "direct_sources.py": "bfb68b32e84a8f407bbe126ef632ed1d9fe470e972e87efd901fc82731474d4a",
     "discovery_budget.py": "cdc061db8d2ad846f31817963189fdcddd828095ada99abfa35901d326dc0373",
     "display.py": "52a37b72302517596477dd96412b5adfd491f07bdad916a27c3afffc53d0701f",
