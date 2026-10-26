@@ -43,13 +43,13 @@ def test_cards_escape_text_and_link_title_and_footer():
     row['sources'][0]['url']='javascript:alert(1)'
     assert 'javascript:' not in article_html(row)
 
-def test_weather_only_on_selected_news_panel_and_customer_identity_stays():
+def test_weather_in_common_header_and_customer_identity_stays():
     w=parse_forecast(DOC,'1100000000','2026-10-26',now=NOW)
     packet={'sender':{'name':'박병선','position':'팀장'},'briefing_date':'2026-10-26','body':{
         'profile_code':'COMBINED','sections':[{'profile_code':'MARKET','profile_label':'경제·금융'},{'profile_code':'NEWS','profile_label':'종합뉴스'}],
         'issues':[],'weather_forecast':w}}
     markup=public_html(packet)
     assert markup.count('data-weather-date=')==1
-    assert markup.index('id="section-1"')<markup.index('data-weather-date=')
+    assert markup.index('data-weather-date=')<markup.index('role="tablist"')
     assert markup.index('박병선 팀장')<markup.index('role="tabpanel"')
     assert 'ArrowRight' in markup and '서울특별시' in markup

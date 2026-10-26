@@ -8,6 +8,7 @@ from modules.briefing.costs import usage_summary
 @pytest.fixture
 def repo(monkeypatch):
     monkeypatch.setattr('requests.sessions.Session.request',Mock(side_effect=AssertionError('No network in UI test')))
+    monkeypatch.setattr('modules.briefing.weather.get_weather', lambda region, day: {'status':'unavailable','region_name':'서울특별시','date':day})
     saved={code:bundle(code) for code in ('MARKET','NEWS','INSURANCE')}
     r=Mock()
     r._snapshot_for_revision.side_effect=lambda rid:next(x['snapshot'] for x in saved.values() if x['revision']['id']==rid)

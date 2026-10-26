@@ -185,7 +185,7 @@ def _combined_sharing(repo, selected_day=None, *, use_cache=False):
             preview = st.toggle('고객 화면 미리보기', key='share_preview_'+uid+'_'+day, disabled=not codes)
     from .weather import REGIONS, DEFAULT_REGION, checked_region, region_name, get_weather
     weather_region=None
-    if 'NEWS' in codes:
+    if codes:
         options=[r['code'] for r in REGIONS]
         preferred=checked_region(st.session_state.get('hw_weather_region',DEFAULT_REGION))
         weather_region=st.selectbox('공유할 날씨 지역 · 시·도',options,index=options.index(preferred),
@@ -309,13 +309,6 @@ def _render_profile_detail(repo, code, bundle, can_manage):
     if day != datetime.now(KST).date().isoformat():
         st.info(f'오늘 브리핑은 아직 준비되지 않았습니다. 최근 정상본({day})을 보여드립니다.')
     body = _body(snapshot)
-    if code=='NEWS':
-        from .weather import REGIONS, DEFAULT_REGION, checked_region, region_name, get_weather
-        options=[r['code'] for r in REGIONS]
-        preferred=checked_region(st.session_state.get('hw_weather_region',DEFAULT_REGION))
-        region=st.selectbox('날씨 지역 · 시·도',options,index=options.index(preferred),format_func=region_name,key='weather_select_'+revision['id'])
-        st.session_state['hw_weather_region']=region
-        body['weather_forecast']=get_weather(region,day)
     c1, c2 = st.columns([2, 1])
     with c1:
         st.caption(f"주요 뉴스 {sum(r.get('reading_group') != 'more' for r in body.get('issues', []))}건")
@@ -500,7 +493,18 @@ def run():
                 st.session_state['hw_briefing_page'] = pages[0]
             current = st.session_state['hw_briefing_page']
             title = {'오늘 브리핑':'오늘의 브리핑','지난 브리핑':'지난 브리핑','고객에게 공유':'고객에게 공유','운영 관리':'운영 관리'}[current]
-            st.markdown('<div class="hw-briefing-hero"><span>화랑 WORKSPACE / BRIEFING CENTER</span><h1>'+html.escape(title)+'</h1></div>', unsafe_allow_html=True)
+            heading, weather_column = st.columns([1.35, 1], gap='medium')
+            with heading:
+                st.markdown('<div class="hw-briefing-hero"><span>화랑 WORKSPACE / BRIEFING CENTER</span><h1>'+html.escape(title)+'</h1></div>', unsafe_allow_html=True)
+            with weather_column:
+                from .weather import REGIONS, DEFAULT_REGION, checked_region, region_name, get_weather, weather_html
+                options = [r['code'] for r in REGIONS]
+                preferred = checked_region(st.session_state.get('hw_weather_region', DEFAULT_REGION))
+                region = st.selectbox('날씨 지역 · 시·도', options, index=options.index(preferred),
+                                      format_func=region_name, key='hw_header_weather_region')
+                st.session_state['hw_weather_region'] = region
+                st.markdown(weather_html(get_weather(region, datetime.now(KST).date().isoformat())), unsafe_allow_html=True)
+
             mode = st.radio('브리핑 메뉴', pages, horizontal=True, label_visibility='collapsed', key='hw_briefing_page')
             flash = st.session_state.pop('hw_briefing_flash', '')
             if flash: st.success(flash)

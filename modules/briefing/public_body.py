@@ -75,6 +75,12 @@ READER_CSS += CARD_CSS + """
 .wrap.reader-modern{max-width:840px;background:#fafbfd;padding:0 24px 24px;overflow:visible}
 .reader-modern header{background:#fff;margin:0 -24px 20px;padding:26px 24px 0;border-radius:14px 14px 0 0}
 .reader-modern .brand{margin-bottom:15px;font-size:11px;letter-spacing:2px}.reader-modern h1{font-size:27px;font-weight:650}
+.reader-modern .reader-heading{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,360px);gap:24px;align-items:center}
+.reader-modern .reader-heading-weather .hw-weather{margin:0;padding:14px 16px;grid-template-columns:52px minmax(0,1fr);gap:10px}
+.reader-modern .reader-heading-weather svg{width:52px;height:52px}
+.reader-modern .reader-heading-weather .weather-note{font-size:11px;margin-top:5px}
+.reader-modern .reader-heading-weather strong{font-size:18px}
+@media(max-width:600px){.reader-modern .reader-heading{grid-template-columns:minmax(0,1fr);gap:12px}.reader-modern .reader-heading-weather:empty{display:none}}
 .reader-modern .controls{margin:0;padding:0;border:0;justify-content:flex-end;background:transparent}
 .reader-modern .controls button{border:0;background:transparent;font-size:14px}
 .reader-modern .reader-tabs{position:sticky;top:0;z-index:5;background:#fff;margin:0 -4px 16px;gap:0}
@@ -96,7 +102,9 @@ def public_html(packet,*,canonical_url='',image_url='',pdf_url=''):
     if canonical_url:og+=f'<meta property="og:url" content="{e(canonical_url)}">'
     if image_url:og+=f'<meta property="og:image" content="{e(image_url)}">'
     sections=body.get('sections') or [{'profile_code':body.get('profile_code') or 'NEWS','profile_label':body.get('profile_label') or '브리핑','briefing_date':packet.get('briefing_date')}]
-    parts=[f'<div class="wrap reader-modern"><header><span class="brand">HWARANG WORKSPACE</span><h1>오늘의 브리핑</h1><p class="meta">{e(identity)} · {e(packet.get('requested_date') or packet.get('briefing_date'))}</p><div class="controls"><button id="font" aria-pressed="false">큰 글자로 읽기</button></div></header>']
+    from .weather import weather_html
+    header_weather = weather_html(body['weather_forecast']) if body.get('weather_forecast') else ''
+    parts=[f'<div class="wrap reader-modern"><header><div class="reader-heading"><div class="reader-heading-copy"><span class="brand">HWARANG WORKSPACE</span><h1>오늘의 브리핑</h1><p class="meta">{e(identity)} · {e(packet.get('requested_date') or packet.get('briefing_date'))}</p></div><div class="reader-heading-weather">{header_weather}</div></div><div class="controls"><button id="font" aria-pressed="false">큰 글자로 읽기</button></div></header>']
     edition=packet.get('edition') or {}
     if edition.get('corrected_at'):
         parts.append('<p class="meta">정정 '+e(display_date(edition['corrected_at']))+' · '+e(edition.get('number'))+'판</p>')
@@ -111,9 +119,6 @@ def public_html(packet,*,canonical_url='',image_url='',pdf_url=''):
         if day:
             parts.append(f'<p class="meta" data-edition-date="{e(day)}">{e(day)} 브리핑</p>')
             parts.append(f'<p class="edition-delay" data-stale-date="{e(day)}" hidden>오늘 브리핑은 아직 준비되지 않았습니다. 공유된 최근 자료({e(day)})를 보여드립니다.</p>')
-        if code=='NEWS' and body.get('weather_forecast'):
-            from .weather import weather_html
-            parts.append(weather_html(body['weather_forecast']))
         if not rows:parts.append('<p class="panel">아직 공개된 브리핑이 없습니다.</p>')
         if code=='MARKET' and body.get('market_flow'):
             parts.append('<section class="panel"><h2>오늘의 경제·금융 흐름</h2><ul>'+''.join('<li>'+e(t)+'</li>' for t in body['market_flow'])+'</ul></section>')
