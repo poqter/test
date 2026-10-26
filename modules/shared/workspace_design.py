@@ -1,10 +1,8 @@
 """Reversible web-only design layer; never used by PDF/Excel generators."""
 from base64 import b64encode
-from functools import lru_cache
 from pathlib import Path
 import streamlit as st
 
-@lru_cache(maxsize=1)
 def stylesheet():
     root = Path(__file__).parent
     font = b64encode((root / 'fonts/LINESeedKR-Bd.woff2').read_bytes()).decode('ascii')
