@@ -309,8 +309,6 @@ def _render_profile_detail(repo, code, bundle, can_manage):
     published = revision.get('publication_status') == 'published'
     status = '게시됨' if published else '게시 전 초안'
     st.markdown(f'<div class="hw-edition"><span class="hw-edition-state">{html.escape(status)}</span><strong>{html.escape(PROFILE_LABELS[code])}</strong><span>{html.escape(day)}</span></div>', unsafe_allow_html=True)
-    if day != datetime.now(KST).date().isoformat():
-        st.info(f'오늘 브리핑은 아직 준비되지 않았습니다. 최근 정상본({day})을 보여드립니다.')
     body = _body(snapshot)
     c1, c2 = st.columns([2, 1])
     with c1:
@@ -419,12 +417,6 @@ def _render_today(repo, can_manage):
             item = summaries.get(selected)
             if not item:
                 st.info('아직 '+PROFILE_LABELS[selected]+'이 게시되지 않았습니다.')
-                continue
-            if str(item['briefing']['briefing_date']) != datetime.now(KST).date().isoformat():
-                st.info('오늘 브리핑이 아직 제공되지 않았습니다.')
-                if st.button('이전 브리핑 보기',key='previous_'+selected):
-                    st.session_state['history_profile']=selected
-                    _navigate('지난 브리핑');st.rerun()
                 continue
             snapshot = repo._snapshot_for_revision(str(item['revision']['id']))
             if not snapshot:

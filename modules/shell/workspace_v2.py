@@ -290,7 +290,7 @@ def render_home(allowed_ids, navigate, notice):
             ready=[c for c in PROFILE_ORDER if str(((items.get(c) or {}).get('briefing') or {}).get('briefing_date'))==today]
             labels={'MARKET':'경제·금융','NEWS':'종합뉴스','INSURANCE':'보험업계'}
             if len(ready)==3:status='오늘 자료 공개'
-            elif ready:status=' · '.join(labels[c] for c in ready)+' 공개 / 나머지 준비 중'
+            elif any(items.get(c) for c in PROFILE_ORDER):status='최신 자료 공개'
             else:status='준비 중'
             detail=home_briefing_summary(items)
         except Exception:status='게시 상태 확인 중';detail='브리핑센터에서 확인해 주세요.'
