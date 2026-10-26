@@ -79,7 +79,7 @@ def render_body(body, *, large=False):
     digest = flow
     if digest:
         label = '오늘의 경제·금융 흐름' if flow else '오늘의 핵심'
-        st.markdown('<section class="hw-digest'+(' big' if large else '')+'"><div class="tag">'+label+'</div>'+''.join('<p>'+e(text)+'</p>' for text in digest)+'</section>', unsafe_allow_html=True)
+        st.markdown('<section class="hw-digest hw-market-flow'+(' big' if large else '')+'"><div class="tag">'+label+'</div>'+'<div class="hw-flow-copy">'+''.join('<p>'+e(text)+'</p>' for text in digest)+'</div></section>', unsafe_allow_html=True)
     from .public_body import metric_date, metric_change
     for m in body.get('market_metrics') or []:
         st.caption(f"{m['label']} · {m['value']} {m.get('unit','')} · {metric_change(m)} · {metric_date(m)} · {m.get('source_name','')}")

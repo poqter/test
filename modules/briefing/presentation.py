@@ -6,13 +6,22 @@ READER_VERSION = '20261026-cards'
 e = lambda value: html.escape(str(value or ''), quote=True)
 
 CARD_CSS = '''
+/* Keep the summary aligned with its heading, with a comfortable reading measure. */
+.hw-market-flow .hw-flow-copy{max-width:42rem;text-align:left}
+.hw-market-flow .hw-flow-copy p{font-size:16px!important;line-height:1.9!important;margin:0!important;word-break:keep-all;overflow-wrap:break-word;text-align:left;letter-spacing:0}
+.hw-market-flow .hw-flow-copy p+p{margin-top:16px!important}
+.hw-market-flow .tag,.hw-market-flow>h2{margin-bottom:16px!important}
+.hw-market-flow.big .hw-flow-copy p,.big .hw-market-flow .hw-flow-copy p{font-size:20px!important}
+
 .hw-news,.hw-news.lead{box-sizing:border-box;background:#fff;border:1px solid #e2e8ef;border-radius:14px;padding:20px 22px;margin:12px 0;color:#172b46;box-shadow:0 2px 7px #172b4603;overflow-wrap:anywhere}
 .hw-news.lead{border-top:2px solid #168b90}
 .hw-news .tag{display:inline-block;background:#e8f6f5;color:#126d73;border-radius:20px;padding:3px 11px;font-size:12px;font-weight:600;margin:0 0 10px;line-height:1.7}
 .hw-news h3,.hw-news h2{font-family:inherit;font-size:20px;font-weight:600;letter-spacing:-.45px;line-height:1.5;margin:0 0 9px;color:#172b46}
+.hw-news :is(h2,h3){padding:0!important;margin:0 0 14px!important}
+.hw-news [data-testid="stHeaderActionElements"],.hw-news :is(h2,h3) a[href^="#"]{display:none!important}
 .hw-news h3 a,.hw-news h2 a{color:inherit;text-decoration:none;display:block;white-space:normal;overflow-wrap:anywhere}
 .hw-news h3 a:hover,.hw-news h2 a:hover{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px}
-.hw-news p{font-size:16px!important;line-height:1.75;margin:0 0 12px;color:#46566b}
+.hw-news p{max-width:42rem;font-size:16px!important;line-height:1.9!important;margin:0 0 16px!important;color:#46566b;text-align:left;word-break:keep-all;overflow-wrap:break-word;letter-spacing:0}
 .hw-news .source{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:#617188;line-height:1.7;margin:0}
 .hw-news .source a{color:#21445e;text-decoration:none;min-height:44px;display:inline-flex;align-items:center;white-space:nowrap}
 .hw-news .event-date{font-size:12px;color:#617188;margin-bottom:7px}.hw-news details{font-size:13px;margin-top:5px}.hw-news details a{display:block;padding:10px 0}

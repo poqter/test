@@ -135,7 +135,7 @@ def public_html(packet,*,canonical_url='',image_url='',pdf_url=''):
             parts.append(f'<p class="edition-delay" data-stale-date="{e(day)}" hidden>오늘 브리핑은 아직 준비되지 않았습니다. 공유된 최근 자료({e(day)})를 보여드립니다.</p>')
         if not rows:parts.append('<p class="panel">아직 공개된 브리핑이 없습니다.</p>')
         if code=='MARKET' and body.get('market_flow'):
-            parts.append('<section class="panel"><h2>오늘의 경제·금융 흐름</h2><ul>'+''.join('<li>'+e(t)+'</li>' for t in body['market_flow'])+'</ul></section>')
+            parts.append('<section class="panel hw-market-flow"><h2>오늘의 경제·금융 흐름</h2><div class="hw-flow-copy">'+''.join('<p>'+e(t)+'</p>' for t in body['market_flow'])+'</div></section>')
         if code=='MARKET':
             for m in body.get('market_metrics') or []:
                 parts.append('<p class="source">'+e(m.get('label'))+' · '+e(m.get('value'))+' '+e(m.get('unit'))+' · '+e(metric_change(m))+' · '+e(metric_date(m))+' · <a href="'+e(m.get('source_url'))+'">'+e(m.get('source_name'))+'</a></p>')
