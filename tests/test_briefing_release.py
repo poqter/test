@@ -78,12 +78,14 @@ def test_create_combined_validates_saved_sections_and_uses_atomic_registration()
     def request(method,path,**kwargs):
         if path.endswith('/profiles'):return [{'display_name':'검수용 이름','position_code':'TEAM','is_active':True}]
         if path.endswith('/positions'):return [{'display_name':'팀장'}]
-        return []
+        if path.endswith('hwarang_register_combined_share_once'):
+            return {'token':kwargs['json']['p_token'],'public_packet':kwargs['json']['p_packet']}
+        return None
     repo._request=Mock(side_effect=request)
     token,packet=repo.create_combined_share('2026-10-09',('NEWS','MARKET'),'user')
     assert len(packet['components'])==2
     registration=repo._request.call_args
-    assert registration.args[1].endswith('hwarang_register_combined_share')
+    assert registration.args[1].endswith('hwarang_register_combined_share_once')
     assert registration.kwargs['json']['p_revisions']==['rev-MARKET','rev-NEWS']
     assert repo._upload_share_assets.call_count==1
 

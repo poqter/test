@@ -197,6 +197,7 @@ def _combined_sharing(repo, selected_day=None, *, use_cache=False):
     with right:
         with st.container(border=True):
             st.subheader('보낼 문구와 링크')
+            st.caption('같은 설정은 기존 링크를 재사용합니다. 링크는 최초 생성 후 30일간 유효하며, 만료 7일 후 공유 자료가 삭제됩니다.')
             if st.button('통합 공유 링크 만들기', disabled=not codes or not approved or not any(c in available for c in codes), type='primary',
                          key=key+'_make', use_container_width=True):
                 try:

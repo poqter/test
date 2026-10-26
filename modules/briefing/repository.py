@@ -466,27 +466,72 @@ class BriefingRepository:
             from .weather import get_weather
             weather=get_weather(weather_region,str(day))
         revisions = [str(b['revision']['id']) for b in bundles]
-        fingerprint = '|'.join(sorted(revisions))
-        existing = self._request('GET', '/rest/v1/hwarang_briefing_public_shares', params={
-            'sender_user_id': 'eq.' + str(sender_user_id), 'revoked_at': 'is.null',
-            'expires_at': 'gt.' + datetime.now(timezone.utc).isoformat(),
-            'select': 'token,public_packet', 'order': 'created_at.desc', 'limit': '60'}) or []
-        for row in existing:
-            packet = row.get('public_packet') or {}
-            if (packet.get('schema') == 'hwarang-share-v3' and packet.get('components') and packet.get('reader_version') == '20261026-share-preview'
-                and all((packet.get('body',{}).get('weather_forecast') or {}).get(k)==(weather or {}).get(k) for k in ('region_code','date','issued_at','status'))
-                and packet.get('selected_profiles') == list(codes) and packet.get('requested_date') == str(day)
-                and '|'.join(sorted(c['revision_id'] for c in packet['components'])) == fingerprint):
-                return row['token'], packet
         token = secrets.token_urlsafe(32)
         packet = build_combined_packet(bundles, {'name': sender['display_name'], 'position': position['display_name']},
                                        self.public_base_url(), token, selected_codes=codes, requested_date=str(day),weather=weather)
         if not body_quality_ready(packet['body']):
             raise BriefingRepositoryError('고객에게 제공할 기사가 없습니다.')
+        existing = self._request('POST', '/rest/v1/rpc/hwarang_find_reusable_share', json={
+            'p_sender': sender_user_id, 'p_packet': packet})
+        if existing:
+            return existing['token'], existing['public_packet']
         self._upload_share_assets(token, packet)
-        self._request('POST', '/rest/v1/rpc/hwarang_register_combined_share', json={
+        # Register only after all files exist. The database serializes matching
+        # requests and returns the winner without extending its original expiry.
+        registered = self._request('POST', '/rest/v1/rpc/hwarang_register_combined_share_once', json={
             'p_token': token, 'p_sender': sender_user_id, 'p_revisions': revisions, 'p_packet': packet})
-        return token, packet
+        if not isinstance(registered, dict) or not registered.get('token'):
+            raise BriefingRepositoryError('공유 링크 저장 결과를 확인하지 못했습니다. 다시 시도해 주세요.')
+        if registered['token'] != token:
+            # A simultaneous request won. Its files and packet are untouched.
+            # Failed/ambiguous uploads are caught by the 37-day orphan sweep.
+            try:
+                self._delete_share_asset_paths([
+                    token+'/'+packet['asset_version']+'/'+name for name in ('preview.png','briefing.pdf')])
+            except BriefingRepositoryError:
+                pass
+        return registered['token'], registered['public_packet']
+
+    def _delete_share_asset_paths(self, paths):
+        for offset in range(0, len(paths), 1000):
+            self._request('DELETE', '/storage/v1/object/briefing-share-assets',
+                          json={'prefixes': paths[offset:offset+1000]})
+
+    def cleanup_expired_shares(self, *, max_batches=100):
+        """Remove expired copies after seven days; keep originals and live links.
+
+        The database independently verifies Storage is empty before deleting the
+        share row. On failure the row remains available for the next daily retry.
+        """
+        import re
+        counts = {'deleted_shares': 0, 'deleted_orphan_files': 0, 'failed': 0}
+        for _ in range(max_batches):
+            batch = self._request('POST', '/rest/v1/rpc/hwarang_share_cleanup_batch', json={}) or {}
+            shares, orphans = batch.get('shares') or [], batch.get('orphans') or []
+            if not shares and not orphans:
+                break
+            for row in shares:
+                token, paths = row['token'], row.get('paths') or []
+                if not re.fullmatch(r'[A-Za-z0-9_-]{32,64}', token) or any(
+                        not path.startswith(token+'/') for path in paths):
+                    counts['failed'] += 1
+                    continue
+                try:
+                    self._delete_share_asset_paths(paths)
+                    done = self._request('POST', '/rest/v1/rpc/hwarang_finish_share_cleanup',
+                                         json={'p_token': token})
+                    counts['deleted_shares' if done is True else 'failed'] += 1
+                except BriefingRepositoryError:
+                    counts['failed'] += 1
+            if orphans:
+                try:
+                    self._delete_share_asset_paths(orphans)
+                    counts['deleted_orphan_files'] += len(orphans)
+                except BriefingRepositoryError:
+                    counts['failed'] += 1
+            if counts['failed']:
+                break
+        return counts
 
     def public_share(self, token):
         import re

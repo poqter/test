@@ -1,17 +1,17 @@
 {
-  "engine_version": "1.15.4-reader",
+  "engine_version": "1.15.5-sharing",
   "baseline_zip_sha256": "4e5eb26b344e061f4261cb2c2213981ff9dcb65a301c00bbd635b143c7c70384",
   "briefing_code_sha256": {
     "__init__.py": "66c4884dd2d46a2e672f3dc686c8c53e1cbfc0ff7af3a3ee7917ef0b6e90ad47",
     "api_errors.py": "20ca68aa829159e97f59d18b429b36fb588dfde1ae3d78f35ef5d5d6b108b7dd",
-    "briefing_center.py": "91e8049c309f2b5428410acaeb00bb75e005ff2f7edbe5dcf50613b37479313a",
+    "briefing_center.py": "1c84317f396f24ead950e55b04f7d2564cc14d633321b156d37162ec608b10fd",
     "business_calendar.py": "d65fbee6e2102e2d4cd60c11979b3cfba4255971d8c0e4d291f41112731b8dd9",
     "checkpoints.py": "9b644a671d0ab5e4e412f20ec718f84545b41d97a220d1ee723a81e5e962af48",
     "clustering.py": "4a34591a00905fbd299d1f7c1bcfeaa5b3fd87380c43b3a50269cdbb155f356a",
     "config.py": "babd234dc1bddd17cfbf8d1ba1e0ecf7b92d7c358f72f3f72ff7b786d768733a",
     "corrections.py": "5f44539ee7b0fdcca92ca8839771ae2d403f5479a42b7605ec8bc6d21fd27d2c",
     "costs.py": "8cdca5c8068dae87365613997739660780e375d50a5b9f069d103b05fd068a5e",
-    "diagnostics.py": "ccae173b3ed38939078ae8c7baf5ba9ce69402da30b189178105bea4f191b3e3",
+    "diagnostics.py": "9058bdcbbfa7ab32920e703bce08ff38dbaafd5894aceed46226ad79d4b6a93e",
     "direct_sources.py": "bfb68b32e84a8f407bbe126ef632ed1d9fe470e972e87efd901fc82731474d4a",
     "discovery_budget.py": "cdc061db8d2ad846f31817963189fdcddd828095ada99abfa35901d326dc0373",
     "display.py": "1f84d543c186fee86a855fe2294090997d0743a0175e0b9c3b52570484cc2c0c",
@@ -36,7 +36,7 @@
     "public_body.py": "6f340a3214442a3235f3acf4300aaf02cb0868a4858da049f9236794d293f7f9",
     "publication.py": "6e63b14564a533383e519a888cdb86320487ca93304d8eee878f3ddbb92f80b2",
     "reading_state.py": "a7011ece952cd87ad8e92aba07eb900d1c7c41a80f44db916f8c8363c76f8b94",
-    "repository.py": "397c2be5ae605363649b1852a6ea80142f8d7a7d1095b9cc4d325c9fbe0732d6",
+    "repository.py": "a65537826c4c2f5c90c7e03c6ee2a470099fbabd52ea5b9fe60b5807262f39a6",
     "research.py": "093fb3d8f5d0316ba714fa3c7cd41466e6964cee83897330c93b8813ca931125",
     "runtime.py": "cbb170ed355d62c2e405c60a57b58db6c12e46248682b0824a98677ef822f013",
     "scheduler.py": "2a534ced39a744b9f11e134eead3d54e22a6dd926e03cc98f7d0a76c454f21ef",
@@ -462,5 +462,11 @@
     "extra_checks_kst": "07:07-11:47 every 20 minutes",
     "schedule_delay_guaranteed_fixed": false,
     "notes": "All scheduled triggers reconcile due work. Existing manual actions remain. Partial saved groups are held rather than repaid. Previous release sections are historical."
+  },
+  "share_lifecycle_20261026": {
+    "reuse": "same sender, selected profiles, date, revisions, visible weather and identity; atomic registration; original expiry retained",
+    "retention": "expires_at + 7 days; Storage API deletion before row removal; original briefings retained",
+    "schedule": "03:15 Asia/Seoul daily",
+    "orphan_retention_days": 37
   }
 }
