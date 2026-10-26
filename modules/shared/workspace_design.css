@@ -72,3 +72,20 @@ body:has(.hw-design-2026) .hw-auth-help a:hover{background:#edf4ff!important}
 body:has(.hw-design-2026) .st-key-hw_auth_card [data-testid="stTextInputRootElement"]{border:1px solid #aab9c9!important;border-radius:10px!important;box-shadow:none!important}
 body:has(.hw-design-2026) .st-key-hw_auth_card [data-testid="stTextInputRootElement"]:focus-within{border-color:#2d6ad5!important;outline:2px solid #c9dcfa!important}
 body:has(.hw-design-2026) .st-key-hw_auth_card [data-testid="stTextInputRootElement"] [data-baseweb="input"]{border:0!important;outline:none!important}
+/* Visible entrance and interaction motion; keep every text frame fully readable.
+   Animate stable presentation blocks, never the app/form or input widgets. */
+@keyframes hw-surface-enter{from{translate:0 24px}to{translate:0 0}}
+@media(prefers-reduced-motion:no-preference){
+ body:has(.hw-design-2026) :is(.hw-auth-copy,.brand-header,.hw-page-head){animation:hw-surface-enter .65s cubic-bezier(.2,.7,.2,1) backwards!important}
+ body:has(.hw-design-2026) :is(.st-key-hw_auth_card,.st-key-brand_welcome,.st-key-brand_briefing,.st-key-hw_briefing_header){animation:hw-surface-enter .7s cubic-bezier(.2,.7,.2,1) .08s backwards!important}
+ body:has(.hw-design-2026) [data-testid="stVerticalBlock"]:is([class*="st-key-brand_tile_"],[class*="st-key-brand_feature_"],[class*="st-key-brand_external_"]){animation:hw-surface-enter .7s cubic-bezier(.2,.7,.2,1) .12s backwards;transition:translate .24s ease,border-color .24s ease,box-shadow .24s ease!important}
+ body:has(.hw-design-2026) [class*="st-key-brand_grid_"]>[data-testid="stLayoutWrapper"]:nth-child(even) [data-testid="stVerticalBlock"]{animation-delay:.2s}
+ body:has(.hw-design-2026) [data-testid="stVerticalBlock"]:is([class*="st-key-brand_tile_"],[class*="st-key-brand_feature_"]):hover{translate:0 -5px!important;box-shadow:0 10px 24px #173b5d12!important;border-color:#9dbbe6!important}
+ body:has(.hw-design-2026) .hw-news{animation:hw-surface-enter .6s cubic-bezier(.2,.7,.2,1) backwards;transition:translate .22s ease,border-color .22s ease,box-shadow .22s ease!important}
+ body:has(.hw-design-2026) .hw-news:hover{translate:0 -3px;box-shadow:0 8px 20px #173b5d0d;border-color:#b3c8e1}
+ body:has(.hw-design-2026) [data-testid="stSidebar"] .stButton button{transition:translate .2s ease,background-color .2s ease,border-color .2s ease!important}
+ body:has(.hw-design-2026) [data-testid="stSidebar"] .stButton button:hover{translate:3px 0}
+ body:has(.hw-design-2026) .st-key-hw_auth_card [data-testid="stFormSubmitButton"] button{transition:translate .2s ease,background-color .2s ease!important}
+ body:has(.hw-design-2026) .st-key-hw_auth_card [data-testid="stFormSubmitButton"] button:hover{translate:0 -2px}
+ body:has(.hw-design-2026) .st-key-hw_auth_card [data-testid="stFormSubmitButton"] button:active{translate:0 0}
+}
