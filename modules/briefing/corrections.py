@@ -95,44 +95,8 @@ def apply_correction(repo, bundle, event_key, changes, reason, actor, *, importa
             'retrieved_at':datetime.now(timezone.utc).isoformat(),
             'last_verified_at':datetime.now(timezone.utc).isoformat(), 'access_status':'ok',
             'untrusted_external':True}])
-    # Private assets are prepared before changing the current published pointer.
-    # Combined links can depend on this section even when it is not the anchor.
-    dependents = repo._request('GET','/rest/v1/hwarang_briefing_share_components', params={
-        'revision_id':'eq.'+old['id'], 'select':'token'}) or []
-    direct = repo._request('GET','/rest/v1/hwarang_briefing_public_shares',params={
-        'revision_id':'eq.'+old['id'], 'revoked_at':'is.null',
-        'expires_at':'gt.'+datetime.now(timezone.utc).isoformat(), 'select':'token,public_packet'}) or []
-    shares = {r['token']:r for r in direct}
-    if dependents:
-        additional = repo._request('GET','/rest/v1/hwarang_briefing_public_shares',params={
-            'token':repo._in_filter(r['token'] for r in dependents), 'revoked_at':'is.null',
-            'expires_at':'gt.'+datetime.now(timezone.utc).isoformat(), 'select':'token,public_packet'}) or []
-        shares.update({r['token']:r for r in additional})
-    refreshed=[]
-    if public_ready:
-        for row in shares.values():
-            existing = row.get('public_packet') or {}
-            identity=existing.get('sender')
-            if not identity:continue
-            if existing.get('components'):
-                bundles=[]
-                for component in existing['components']:
-                    if component['revision_id']==old['id']:
-                        bundles.append({'briefing':briefing,'revision':rev,'snapshot':new_snap})
-                    else:
-                        other=repo.bundle_for_date(component['profile_code'],component.get('briefing_date') or briefing['briefing_date'])
-                        if not other or str(other['revision']['id'])!=component['revision_id']:
-                            bundles=[];break
-                        bundles.append(other)
-                if not bundles:continue
-                packet=build_combined_packet(bundles,identity,repo.public_base_url(),row['token'], selected_codes=existing.get('selected_profiles'), requested_date=existing.get('requested_date'), weather=existing.get('body',{}).get('weather_forecast'))
-            else:
-                packet=build_packet(new_snap,briefing,rev,identity,repo.public_base_url(),row['token'])
-            repo._upload_share_assets(row['token'],packet);refreshed.append((row['token'],packet))
+    # Existing morning links are immutable; only new shares use the new edition.
     repo.publish_revision(briefing['id'],rev['id'],actor_user_id=actor)
-    for token,packet in refreshed:
-        repo._request('POST','/rest/v1/rpc/hwarang_refresh_briefing_share',json={
-            'p_token':token,'p_old':old['id'],'p_new':rev['id'],'p_packet':packet})
     repo.audit({'actor_type':'user','actor_user_id':actor,'action':'BRIEFING_CORRECTED','briefing_id':briefing['id'],
         'revision_id':rev['id'],'details':{'previous_revision':old['id'],'event_key':event_key,'reason':reason[:1000], 'important_update':bool(important_update)}})
     return rev

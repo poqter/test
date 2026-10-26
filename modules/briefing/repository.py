@@ -471,26 +471,65 @@ class BriefingRepository:
                                        self.public_base_url(), token, selected_codes=codes, requested_date=str(day),weather=weather)
         if not body_quality_ready(packet['body']):
             raise BriefingRepositoryError('고객에게 제공할 기사가 없습니다.')
-        existing = self._request('POST', '/rest/v1/rpc/hwarang_find_reusable_share', json={
-            'p_sender': sender_user_id, 'p_packet': packet})
+        from .shared_content import split_packet
+        parts = split_packet(packet, self.public_base_url())
+        existing = self._request('POST', '/rest/v1/rpc/hwarang_find_shared_link', json={
+            'p_sender': sender_user_id, 'p_key': parts['reuse_key']})
         if existing:
-            return existing['token'], existing['public_packet']
-        self._upload_share_assets(token, packet)
-        # Register only after all files exist. The database serializes matching
-        # requests and returns the winner without extending its original expiry.
-        registered = self._request('POST', '/rest/v1/rpc/hwarang_register_combined_share_once', json={
-            'p_token': token, 'p_sender': sender_user_id, 'p_revisions': revisions, 'p_packet': packet})
-        if not isinstance(registered, dict) or not registered.get('token'):
+            return existing, self.public_share(existing)
+        legacy = self._request('POST', '/rest/v1/rpc/hwarang_find_reusable_share', json={
+            'p_sender': sender_user_id, 'p_packet': packet})
+        if legacy:
+            return legacy['token'], legacy['public_packet']
+        self._request('POST', '/rest/v1/rpc/hwarang_prepare_preview', json={'p_id': parts['preview_id']})
+        self._upload_shared_preview(parts['preview_id'], packet)
+        token = self._request('POST', '/rest/v1/rpc/hwarang_register_shared_link', json={
+            'p_token': token, 'p_sender': sender_user_id, 'p_revisions': revisions,
+            'p_packet': packet, 'p_parts': parts})
+        if not isinstance(token, str):
             raise BriefingRepositoryError('공유 링크 저장 결과를 확인하지 못했습니다. 다시 시도해 주세요.')
-        if registered['token'] != token:
-            # A simultaneous request won. Its files and packet are untouched.
-            # Failed/ambiguous uploads are caught by the 37-day orphan sweep.
-            try:
-                self._delete_share_asset_paths([
-                    token+'/'+packet['asset_version']+'/'+name for name in ('preview.png','briefing.pdf')])
-            except BriefingRepositoryError:
-                pass
-        return registered['token'], registered['public_packet']
+        return token, self.public_share(token)
+
+    def _upload_shared_preview(self, preview_id, packet):
+        from .public_body import preview_png
+        path = '/storage/v1/object/briefing-share-assets/shared/'+preview_id+'/preview.png'
+        try:
+            exists = self.http.head(self.url+path, headers=self.server_headers(), timeout=15)
+            if exists.status_code == 200:
+                return
+            if exists.status_code not in (400, 404):
+                raise BriefingRepositoryError('미리보기 저장 상태를 확인하지 못했습니다.')
+            response = self.http.post(self.url+path, data=preview_png(packet),
+                headers={**self.server_headers(),'Content-Type':'image/png','x-upsert':'false'}, timeout=20)
+            if response.status_code == 409:
+                return
+            if not 200 <= response.status_code < 300:
+                raise BriefingRepositoryError('공유 미리보기를 저장하지 못했습니다.')
+        except requests.RequestException as exc:
+            raise BriefingRepositoryError('공유 미리보기 연결을 확인해 주세요.') from exc
+
+    def retention_status(self):
+        return self._first(self._request('GET','/rest/v1/hwarang_share_retention_status',
+                                        params={'select':'*','id':'eq.true'})) or {}
+
+    def run_share_retention(self):
+        self._request('PATCH','/rest/v1/hwarang_share_retention_status',params={'id':'eq.true'},
+                      json={'status':'running','last_started_at':datetime.now(timezone.utc).isoformat()})
+        try:
+            counts = self.cleanup_expired_shares()
+            paths = self._request('POST','/rest/v1/rpc/hwarang_collect_shared_garbage',json={}) or []
+            self._delete_share_asset_paths(paths)
+            counts['deleted_shared_previews'] = self._request('POST','/rest/v1/rpc/hwarang_finish_preview_cleanup',json={})
+            now = datetime.now(timezone.utc).isoformat()
+            status = {'status':'failed' if counts['failed'] else 'success','counts':counts,'last_finished_at':now}
+            if not counts['failed']:
+                status['last_success_at'] = now
+            self._request('PATCH','/rest/v1/hwarang_share_retention_status',params={'id':'eq.true'},json=status)
+            return counts
+        except Exception:
+            self._request('PATCH','/rest/v1/hwarang_share_retention_status',params={'id':'eq.true'},
+                          json={'status':'failed','last_finished_at':datetime.now(timezone.utc).isoformat()})
+            raise
 
     def _delete_share_asset_paths(self, paths):
         for offset in range(0, len(paths), 1000):

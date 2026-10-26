@@ -27,3 +27,10 @@ r=await handle(new Request(url,{method:'HEAD'}),deps);assert.equal(r.status,200)
 r=await handle(new Request('https://example.org/?health=1'),{env:()=>undefined,fetcher:async()=>{throw new Error('Health called DB');}});assert.equal(r.status,503);
 calls=[];r=await handle(new Request(url),{env:n=>n==='SUPABASE_SERVICE_ROLE_KEY'?'sb_secret_synthetic':env(n),fetcher:async(u,o)=>{calls.push(o);return new Response(JSON.stringify(packet));}});assert.equal(r.status,200);assert.equal(calls[0].headers.apikey,'sb_secret_synthetic');assert.ok(!('Authorization' in calls[0].headers));
 console.log('Customer HTTP: '+assertions+' assertions passed (HTML, OG, anonymous reads, assets, live closure, no secrets).');
+// Shared image paths use the same live token gate; arbitrary paths are rejected.
+const shared={...packet,storage_version:4,preview_path:'shared/'+'b'.repeat(64)+'/preview.png'};
+calls=[];
+r=await handle(new Request(url+'&asset=preview'),{env,fetcher:async(u,o)=>{calls.push(u);return u.includes('/rpc/')?new Response(JSON.stringify(shared)):new Response(new Uint8Array([1]),{headers:{'Content-Type':'image/png'}});}});
+assert.equal(r.status,200);assert.ok(calls[1].endsWith(shared.preview_path));
+r=await handle(new Request(url+'&asset=preview'),{env,fetcher:async()=>new Response(JSON.stringify({...shared,preview_path:'../other/secret'}))});assert.equal(r.status,503);
+r=await handle(new Request(url+'&asset=pdf'),{env,fetcher:async()=>new Response(JSON.stringify(shared))});assert.equal(r.status,404);

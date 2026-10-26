@@ -10,7 +10,7 @@ function message(status: number, text: string): Response {
   return new Response('<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>브리핑 안내</title><body style="font:18px/1.8 sans-serif;margin:48px auto;max-width:600px;padding:20px">'+text+'</body></html>', {status, headers:{...headers,"Content-Type":"text/html; charset=utf-8"}});
 }
 // Log only bounded classifications. Never log URLs, headers, keys, tokens or upstream bodies.
-const READER_RELEASE = "reader-20261014-readable";
+const READER_RELEASE = "reader-20261026-shared";
 function cleanSetting(value: string | undefined) {
   let text = String(value || "").trim();
   if (text.length >= 2 && ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'")))) text = text.slice(1, -1).trim();
@@ -64,10 +64,17 @@ export async function handle(request: Request, deps: Dependencies): Promise<Resp
       if (typeof packet.rendered_html !== "string" || packet.rendered_html.length > 500000) { logFailure("body_validation","invalid_body"); return message(503,"브리핑 본문을 확인하고 있습니다."); }
       return new Response(request.method === "HEAD" ? null : applyReaderDesign(packet.rendered_html),{headers:{...headers,"Content-Type":"text/html; charset=utf-8"}});
     }
+    if (packet.storage_version === 4 && asset === "pdf") {
+      return message(404,"PDF가 필요하시면 담당 설계사에게 요청해 주세요.");
+    }
     const filename = asset === "pdf" ? "briefing.pdf" : "preview.png";
     const type = asset === "pdf" ? "application/pdf" : "image/png";
+    const assetPath = packet.storage_version === 4
+      ? (/^shared\/[a-f0-9]{64}\/preview\.png$/.test(packet.preview_path || "") ? packet.preview_path : null)
+      : token+"/"+packet.asset_version+"/"+filename;
+    if (!assetPath) return message(503,"파일을 확인하고 있습니다.");
     stage = "asset_lookup";
-    const stored = await deps.fetcher(base+"/storage/v1/object/briefing-share-assets/"+token+"/"+packet.asset_version+"/"+filename,{headers:auth,signal:AbortSignal.timeout(10000)});
+    const stored = await deps.fetcher(base+"/storage/v1/object/briefing-share-assets/"+assetPath,{headers:auth,signal:AbortSignal.timeout(10000)});
     if (!stored.ok) { logFailure(stage,"upstream_http_error",stored.status); return message(503,"파일을 준비하고 있습니다. 잠시 후 다시 확인해 주세요."); }
     const buffer = await stored.arrayBuffer();
     if (buffer.byteLength > 4000000 || (stored.headers.get("Content-Type") || "").split(";")[0] !== type) return message(503,"파일을 확인하고 있습니다.");

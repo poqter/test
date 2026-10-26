@@ -11,6 +11,20 @@ def render_operations(repo):
     actor=str((st.session_state.get('login_profile') or {}).get('id') or '')
     day=datetime.now(ZoneInfo('Asia/Seoul')).date()
     _render_policy(repo, actor)
+    with st.expander('공유 자료 자동 정리'):
+        try:
+            retention = repo.retention_status()
+            if isinstance(retention, dict) and retention:
+                labels = {'success':'정상 완료','failed':'실패 · 다음 예약 실행에서 재시도','running':'실행 중','never':'첫 실행 대기'}
+                st.write('상태: '+labels.get(retention.get('status'),'확인 필요'))
+                def local_time(value):
+                    return datetime.fromisoformat(value.replace('Z','+00:00')).astimezone(ZoneInfo('Asia/Seoul')).strftime('%Y-%m-%d %H:%M') if value else '아직 없음'
+                st.caption('마지막 성공: '+local_time(retention.get('last_success_at')))
+                counts = retention.get('counts') or {}
+                st.caption('최근 삭제: 공유 링크 '+str(counts.get('deleted_shares',0))+'개 · 공통 이미지 '+str(counts.get('deleted_shared_previews',0))+'개')
+            st.caption('매일 03:15 예약 · 신규 링크 7일 열람 / 만료 후 7일 보관 · 기존 링크는 원래 만료일 유지')
+        except BriefingRepositoryError:
+            st.warning('자동 정리 상태를 불러오지 못했습니다.')
     with st.expander('실행 이력 · 상세 오류 · 비용'):
         try:
             enabled=repo.ai_generation_enabled();st.info('전체 AI: '+('켜짐' if enabled else '꺼짐 · 유료 브리핑 생성 중단'))

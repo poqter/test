@@ -19,6 +19,7 @@ SCRIPT = '''
 import streamlit as st
 from modules.briefing.operations_ui import render_operations
 class ReadOnlyRepo:
+    def retention_status(self): return {}
     def bundle_for_date(self,*args,**kwargs):return None
     def ai_generation_enabled(self): return False
     def operation_status(self, day): return {'runs': [], 'jobs': []}

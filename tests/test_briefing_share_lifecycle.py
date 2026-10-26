@@ -37,31 +37,6 @@ def test_exact_reuse_does_not_upload_or_register_or_extend_expiry():
     assert not any('register' in c.args[1] or c.args[0]=='PATCH' for c in repo._request.call_args_list)
 
 
-def test_concurrent_loser_returns_winner_and_only_removes_own_files():
-    repo = sharing_repo()
-    winner = {'token':'w'*43, 'public_packet':{'body':{'immutable':True}}}
-    repo._request = Mock(side_effect=request_handler(registered=winner))
-    assert repo.create_combined_share('2026-10-09', ['NEWS'], 'user') == (winner['token'],winner['public_packet'])
-    candidate = repo._upload_share_assets.call_args.args[0]
-    deletion = repo._request.call_args
-    assert deletion.args == ('DELETE','/storage/v1/object/briefing-share-assets')
-    assert all(p.startswith(candidate+'/') for p in deletion.kwargs['json']['prefixes'])
-    assert candidate != winner['token']
-
-
-def test_unknown_registration_result_never_deletes_potentially_live_files():
-    repo = sharing_repo()
-    request = request_handler()
-    def ambiguous(method, path, **kwargs):
-        if path.endswith('hwarang_register_combined_share_once'):
-            raise BriefingRepositoryError('timeout')
-        return request(method,path,**kwargs)
-    repo._request = Mock(side_effect=ambiguous)
-    with pytest.raises(BriefingRepositoryError):
-        repo.create_combined_share('2026-10-09', ['NEWS'], 'user')
-    assert not any(c.args[0]=='DELETE' for c in repo._request.call_args_list)
-
-
 def test_cleanup_storage_first_then_row_and_continues_until_empty():
     repo = sharing_repo(); token='a'*43
     batch={'shares':[{'token':token,'paths':[token+'/v/preview.png',token+'/v/briefing.pdf']}], 'orphans':[]}

@@ -259,7 +259,7 @@ def test_full_three_profile_pipeline_saves_same_facts_and_resumes_without_ai(mon
     calls.clear();snaps.clear();rt.generate_and_store_briefings(repository=repo,profile_codes=('NEWS','MARKET','INSURANCE'),as_of=AS_OF,checkpoint=saved,save_checkpoint=lambda state:None)
     assert not calls and not snaps;repo.publish_revision.assert_not_called()
 
-def test_correction_new_revision_same_token_and_original_sender():
+def test_correction_leaves_existing_shared_snapshots_unchanged():
     repo=Mock();src=content(count=2);old=deepcopy(src)
     bundle={'briefing':{'id':'b','briefing_date':'2026-10-09'},'revision':{'id':'old','publication_status':'published','coverage_status':'healthy'},
         'snapshot':{'id':'snap','content_payload':src,'qa_payload':{'public_body_ready':True}},'issue_sources':[]}
@@ -272,9 +272,10 @@ def test_correction_new_revision_same_token_and_original_sender():
     repo._request.side_effect=request;repo._first.side_effect=BriefingRepository._first;repo.insert_sources.return_value=[];repo.insert_issues.return_value=[]
     apply_correction(repo,bundle,'event-0',{'summary':'정정된 요약'},'표현 정정','manager')
     assert src==old and repo.create_revision.call_args.args[0]['revision_type']=='correction'
-    token,p=repo._upload_share_assets.call_args.args;assert token=='z'*43 and p['sender']['name']=='최초 등록 이름'
-    assert p['body']['issues'][0]['summary']=='정정된 요약' and p['edition']['number']==2 and '정정 ' in p['rendered_html']
-    assert any(call.args[0]=='POST' and call.kwargs.get('json',{}).get('p_new')=='new' for call in repo._request.call_args_list)
+    repo._upload_share_assets.assert_not_called()
+    assert not any(call.args[1].endswith('hwarang_refresh_briefing_share') for call in repo._request.call_args_list)
+    repo.publish_revision.assert_called_once()
+
 
 
 def test_correction_form_can_submit_a_new_reason():

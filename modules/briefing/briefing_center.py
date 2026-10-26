@@ -197,7 +197,7 @@ def _combined_sharing(repo, selected_day=None, *, use_cache=False):
     with right:
         with st.container(border=True):
             st.subheader('보낼 문구와 링크')
-            st.caption('같은 설정은 기존 링크를 재사용합니다. 링크는 최초 생성 후 30일간 유효하며, 만료 7일 후 공유 자료가 삭제됩니다.')
+            st.caption('같은 설정은 기존 링크를 재사용합니다. 링크는 최초 생성 후 7일간 유효하며, 만료 7일 후 공유 자료가 삭제됩니다.')
             if st.button('통합 공유 링크 만들기', disabled=not codes or not approved or not any(c in available for c in codes), type='primary',
                          key=key+'_make', use_container_width=True):
                 try:
@@ -213,12 +213,14 @@ def _combined_sharing(repo, selected_day=None, *, use_cache=False):
                 st.code(f"{sender['name']} {sender['position']}이 전하는 오늘의 브리핑\n{day} · 소식 {len(packet['body']['issues'])}개\n{url}", language=None)
                 a,b = st.columns(2)
                 a.link_button('고객 화면 열기', url, use_container_width=True)
-                try:
-                    pdf = public_pdf(packet)
-                except Exception:
-                    st.warning('PDF 생성이 지연됐습니다. 공유 링크는 사용할 수 있습니다.')
-                else:
-                    b.download_button('고객 PDF 저장', pdf, mime='application/pdf',
+                pdf_key = 'share_pdf_'+shared['token']
+                if b.button('고객 PDF 준비', key=key+'_prepare_pdf', use_container_width=True):
+                    try:
+                        st.session_state[pdf_key] = public_pdf(packet)
+                    except Exception:
+                        st.warning('PDF를 준비하지 못했습니다. 다시 시도해 주세요.')
+                if pdf_key in st.session_state:
+                    b.download_button('고객 PDF 저장', st.session_state[pdf_key], mime='application/pdf',
                         file_name=f'hwarang_briefing_{day}.pdf', key=key+'_pdf', use_container_width=True)
                 if st.button('이 공유 링크 취소', key=key+'_revoke'):
                     try:

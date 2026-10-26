@@ -75,19 +75,24 @@ def test_create_combined_validates_saved_sections_and_uses_atomic_registration()
     repo.public_endpoint_ready=lambda:True
     repo.public_base_url=lambda:'https://example.org'
     repo._upload_share_assets=Mock()
+    repo._upload_shared_preview=Mock()
+    saved={}
+    repo.public_share=lambda token:saved[token]
     def request(method,path,**kwargs):
         if path.endswith('/profiles'):return [{'display_name':'검수용 이름','position_code':'TEAM','is_active':True}]
         if path.endswith('/positions'):return [{'display_name':'팀장'}]
-        if path.endswith('hwarang_register_combined_share_once'):
-            return {'token':kwargs['json']['p_token'],'public_packet':kwargs['json']['p_packet']}
+        if path.endswith('hwarang_register_shared_link'):
+            saved[kwargs['json']['p_token']]=kwargs['json']['p_packet']
+            return kwargs['json']['p_token']
         return None
     repo._request=Mock(side_effect=request)
     token,packet=repo.create_combined_share('2026-10-09',('NEWS','MARKET'),'user')
     assert len(packet['components'])==2
     registration=repo._request.call_args
-    assert registration.args[1].endswith('hwarang_register_combined_share_once')
+    assert registration.args[1].endswith('hwarang_register_shared_link')
     assert registration.kwargs['json']['p_revisions']==['rev-MARKET','rev-NEWS']
-    assert repo._upload_share_assets.call_count==1
+    assert repo._upload_shared_preview.call_count==1
+    repo._upload_share_assets.assert_not_called()
 
 
 def test_market_scheduler_never_fetches_metrics(monkeypatch):
@@ -132,6 +137,8 @@ _combined_sharing(_repo())
     button=next(b for b in app.button if b.label=='통합 공유 링크 만들기')
     assert not button.disabled
     button.click().run()
+    assert not app.exception and not app.get('download_button')
+    next(b for b in app.button if b.label=='고객 PDF 준비').click().run()
     assert not app.exception and app.get('download_button')
     repo.create_combined_share.assert_called_once()
     repo.reserve_request.assert_not_called()
