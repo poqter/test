@@ -34,3 +34,15 @@ r=await handle(new Request(url+'&asset=preview'),{env,fetcher:async(u,o)=>{calls
 assert.equal(r.status,200);assert.ok(calls[1].endsWith(shared.preview_path));
 r=await handle(new Request(url+'&asset=preview'),{env,fetcher:async()=>new Response(JSON.stringify({...shared,preview_path:'../other/secret'}))});assert.equal(r.status,503);
 r=await handle(new Request(url+'&asset=pdf'),{env,fetcher:async()=>new Response(JSON.stringify(shared))});assert.equal(r.status,404);
+// Render-time badges follow Korea's viewing day; saved prose stays immutable.
+const {applyReaderDesign}=await import('../public_reader/worker.js');
+const original='<html><head></head><body><p class="meta" data-edition-date="2026-10-26">2026-10-26 브리핑</p><p class="meta" data-edition-date="2026-10-27">2026-10-27 브리핑</p><p class="edition-delay" data-stale-date="2026-10-26" hidden>오늘 브리핑 미제공</p><article><h2>저장된 제목</h2><p>공유 당시 기사와 요약 54.4%</p></article></body></html>';
+const updated=applyReaderDesign(original,'2026-10-27');
+assert.ok(updated.includes('edition-badge previous">이전 브리핑'));
+assert.ok(updated.includes('edition-badge">최신 브리핑'));
+assert.ok(updated.includes('<article><h2>저장된 제목</h2><p>공유 당시 기사와 요약 54.4%</p></article>'));
+assert.ok(!updated.includes('오늘 브리핑 미제공'));
+assert.ok(updated.includes('LINESeedKR-Bd.woff2'));
+assert.ok(updated.includes('data-edition-date="2026-10-26"'));
+const later=applyReaderDesign(original,'2026-10-28');
+assert.equal((later.match(/edition-badge previous">이전 브리핑/g)||[]).length,2);
