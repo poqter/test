@@ -13,6 +13,9 @@ def stamp(value):
 def render_style():
     st.markdown("""<style>
     .st-key-hw_briefing_center{--hw-ink:#172b46;--hw-muted:#62728a;--hw-line:#dce4ee;--hw-soft:#edf3fb;--hw-surface:#fff;--hw-brand:#173d6a}
+    .st-key-hw_briefing_header .hw-briefing-hero{border:0;margin:0;padding:16px 0;background:transparent}
+    .st-key-hw_briefing_header .hw-weather{margin:0;padding:16px 20px}
+    .st-key-hw_weather_toolbar{margin-top:4px}
     .hw-briefing-hero{padding:7px 0 18px;margin:0 0 10px;border-bottom:1px solid var(--hw-line,#dce4ee)}
     .hw-briefing-hero>span{font-size:12px;letter-spacing:1px;color:var(--hw-muted,#62728a)}
     .hw-briefing-hero h1{font-size:29px;font-weight:650;letter-spacing:-1px;margin:8px 0 0;color:var(--hw-ink,#172b46);line-height:1.35}

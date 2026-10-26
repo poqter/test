@@ -78,7 +78,7 @@ READER_CSS += CARD_CSS + """
 .reader-modern .reader-heading{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,360px);gap:24px;align-items:center}
 .reader-modern .reader-heading-weather .hw-weather{margin:0;padding:14px 16px;grid-template-columns:52px minmax(0,1fr);gap:10px}
 .reader-modern .reader-heading-weather svg{width:52px;height:52px}
-.reader-modern .reader-heading-weather .weather-note{font-size:11px;margin-top:5px}
+.reader-modern .reader-heading-copy{padding:4px 0}.reader-modern .reader-heading-copy h1{margin:0 0 12px;line-height:1.35}.reader-modern .reader-heading-copy .meta{margin:0}.reader-modern .reader-heading-copy .brand{display:block;margin-bottom:12px}
 .reader-modern .reader-heading-weather strong{font-size:18px}
 @media(max-width:600px){.reader-modern .reader-heading{grid-template-columns:minmax(0,1fr);gap:12px}.reader-modern .reader-heading-weather:empty{display:none}}
 .reader-modern .controls{margin:0;padding:0;border:0;justify-content:flex-end;background:transparent}

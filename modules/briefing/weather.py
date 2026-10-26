@@ -102,7 +102,6 @@ def weather_html(weather):
     icon='<svg viewBox="0 0 96 96" aria-hidden="true" focusable="false">'+sun+clouds+drops+'</svg>'
     def degree(v):return '—' if v is None else f'{float(v):g}°'
     periods=' · '.join(label+' '+str(weather[key]) for key,label in (('morning','오전'),('afternoon','오후')) if weather.get(key))
-    issued=str(weather.get('issued_at') or '')[:16].replace('T',' ')
     return (f'<section class="hw-weather" data-weather-date="{date}">'+icon+'<div><div class="weather-head"><span>오늘의 날씨</span><span>'+region+'</span></div><strong>'+e(condition)+'</strong>'
         +'<div class="temps">최저 <span class="low">'+degree(weather.get('low'))+'</span> / 최고 <span class="high">'+degree(weather.get('high'))+'</span></div>'
-        +'<div>'+e(periods)+'</div><div>'+e(weather.get('guidance'))+'</div><div class="weather-note">'+date+' · '+e(weather.get('location_note'))+'<br><a href="'+SOURCE_URL+'" target="_blank" rel="noopener noreferrer">기상청</a> · '+e(issued)+' 발표<br>'+e(weather.get('temperature_note'))+'</div></div></section>')
+        +'<div>'+e(periods)+'</div><div>'+e(weather.get('guidance'))+'</div></div></section>')
