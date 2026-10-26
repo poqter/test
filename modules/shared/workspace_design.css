@@ -69,3 +69,6 @@ body:has(.hw-design-2026) .hw-auth-help{flex-direction:row!important;align-items
 body:has(.hw-design-2026) .hw-auth-help span{font-size:13px!important;color:#52657d!important}
 body:has(.hw-design-2026) .hw-auth-help a,body:has(.hw-design-2026) .hw-auth-help a:visited{background:transparent!important;border:0!important;border-radius:6px!important;min-height:44px!important;padding:4px 6px!important;font-size:13px!important;color:#245fca!important;text-decoration:underline!important;text-underline-offset:4px}
 body:has(.hw-design-2026) .hw-auth-help a:hover{background:#edf4ff!important}
+body:has(.hw-design-2026) .st-key-hw_auth_card [data-testid="stTextInputRootElement"]{border:1px solid #aab9c9!important;border-radius:10px!important;box-shadow:none!important}
+body:has(.hw-design-2026) .st-key-hw_auth_card [data-testid="stTextInputRootElement"]:focus-within{border-color:#2d6ad5!important;outline:2px solid #c9dcfa!important}
+body:has(.hw-design-2026) .st-key-hw_auth_card [data-testid="stTextInputRootElement"] [data-baseweb="input"]{border:0!important;outline:none!important}
