@@ -17,6 +17,8 @@ el('choices').children[1].click();req=last();render(req.id,'연결 오류');ok(!
 el('next').click();req=last();ok(req.payload.cursor===1);a.cursor=1;a.revision=5;render(req.id);el('finish').click();ok(el('confirm').open);el('cancel').click();ok(!el('confirm').open);
 // A remote revision during a poll cannot be overwritten through retry.
 intervals[1]();req=last();el('choices').firstChild.click();a.revision=9;a.answers={'1':2,'2':2};render(req.id);ok(!el('failure').hidden);ok(el('retry').disabled);el('reload').click();req=last();render(req.id);ok(el('failure').hidden);ok(el('choices').children[1].getAttribute('aria-pressed')==='true');
+// Confirm dialog keeps background polling from swallowing the submit click.
+el('finish').click();const before=messages.length;intervals[1]();ok(messages.length===before);ok(!el('submit').disabled);el('submit').click();req=last();ok(req.action==='submit');ok(el('submit').disabled);render(req.id);
 // Expiry locks new answers and asks server to finalize.
 now+=3001000;intervals[0]();ok(el('timer').textContent==='00:00');ok([...el('choices').children].every(b=>b.disabled));ok(last().action==='poll');
 console.log(JSON.stringify({checks,status:'passed',covers:'DOM stability, timer, queued answers, poll race, retry, navigation, confirmation, expiry'}));dom.window.close();
