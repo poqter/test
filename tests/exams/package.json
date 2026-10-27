@@ -1,0 +1,1 @@
+{"private":true,"scripts":{"test:dom":"node frontend.cjs && node review_frontend.cjs","test:db":"node database.mjs"},"devDependencies":{"@electric-sql/pglite":"0.3.14","jsdom":"26.1.0"}}
