@@ -1,199 +1,190 @@
-"""CBT: one question, server deadline, durable answers and original review text."""
+"""Exam selection, immutable results, and scoped learning dashboard."""
 from uuid import uuid4
+from datetime import datetime,timedelta
 import html
 import streamlit as st
 import pandas as pd
 from .repository import Repository
-
+from .component import active
+from .analytics import KST,stamp,mode_label,in_window,summarize
 MANAGERS={'team_leader','deputy_branch_manager','branch_manager','division_head','chief_representative'}
 
-def _text(text):
-    st.markdown('<div class="exam-text">'+html.escape(str(text)).replace('\n','<br>')+'</div>',unsafe_allow_html=True)
+def _text(value):
+    st.markdown('<div class="exam-prose">'+html.escape(str(value)).replace('\n','<br>')+'</div>',unsafe_allow_html=True)
 
 def _question(q):
     _text(q['question'])
-    if q.get('passage'): _text(q['passage'])
-    if q.get('underlined_text'): st.caption('밑줄 표시: '+q['underlined_text'])
-    if q.get('table'):
-        table=q['table']; st.table(pd.DataFrame(table['rows'],columns=table['headers']))
+    if q.get('passage'):_text(q['passage'])
+    if q.get('underlined_text'):st.caption('밑줄 표시: '+q['underlined_text'])
+    if q.get('table'):st.table(pd.DataFrame(q['table']['rows'],columns=q['table']['headers']))
 
-def _put(repo,a,**changes):
-    payload={k:a[k] for k in ('id','revision','answers','flags','cursor')};payload.update(changes)
-    try:
-        saved=repo.call('save',**payload)
-        st.session_state['_academy_exam_attempt']=saved
-        st.session_state.pop('_academy_exam_error',None)
-        return saved
-    except Exception as exc:
-        # Keep visible pending input and never acknowledge a failed write.
-        st.session_state['_academy_exam_pending']=payload
-        st.session_state['_academy_exam_error']='답안 저장을 확인하지 못했습니다. 재시도하거나 저장된 답안을 다시 불러오세요.'
-        return None
+def _open(aid):
+    st.session_state['_academy_exam_id']=aid;st.rerun()
 
-def _answer(repo,a,key,number):
-    answers=dict(a['answers']);value=st.session_state.get(key)
-    if value is None:answers.pop(str(number),None)
-    else:answers[str(number)]=value
-    _put(repo,a,answers=answers)
+def _close():
+    st.session_state.pop('_academy_exam_id',None);st.rerun()
 
-def _flag(repo,a,key,number):
-    flags=set(a['flags'])
-    if st.session_state.get(key):flags.add(number)
-    else:flags.discard(number)
-    _put(repo,a,flags=sorted(flags))
-
-def _result(a,manager=False):
-    st.subheader('시험 결과' if a['mode']=='exam' else '자유학습 결과')
+def _result(repo,a,manager=False):
+    review=a.get('source_kind')=='review'
+    st.subheader('오답 복습 결과' if review else mode_label(a)+' 결과')
+    st.caption(a['title']+' · '+stamp(a['submitted_at']).strftime('%Y.%m.%d %H:%M'))
     for col,s in zip(st.columns(len(a['result']['sections'])),a['result']['sections']):
-        col.metric(s['name'],f"{s['score']}점",'합격' if s['passed'] else '불합격')
-    st.caption('합격기준 60점 · 통합 응시는 과목별로 판정합니다.')
-    only=st.checkbox('오답·미응답만 보기',value=True,key='exam_wrong_'+a['id'])
-    for q in a['questions']:
-        answer=a['answers'].get(str(q['number']));correct=answer==q['answer']
-        if only and correct:continue
-        with st.expander(f"{q['number']}번 · {'정답' if correct else '미응답' if answer is None else '오답'}"):
+        col.metric(s['name'],f"{s['score']}{'%' if review else '점'}",None if review else '합격' if s['passed'] else '기준 미달')
+    if not review:st.caption('과목별 60점 이상 · 통합 시험은 과목별로 판정합니다.')
+    wrong=[q for q in a['questions'] if a['answers'].get(str(q['number']))!=q['answer']]
+    missing=sum(str(q['number']) not in a['answers'] for q in a['questions'])
+    seconds=max(0,int((stamp(a['submitted_at'])-stamp(a['started_at'])).total_seconds()))
+    for c,(label,value) in zip(st.columns(4),[('정답',len(a['questions'])-len(wrong)),('오답',len(wrong)-missing),('미응답',missing),('소요 시간',f'{seconds//60}분 {seconds%60}초')]):c.metric(label,value)
+    if not manager and wrong:
+        if st.button('다시 틀린 문제 풀기' if review else '오답 다시 풀기',type='primary',key='review_'+a['id']):
+            rid=st.session_state.setdefault('_academy_exam_start_request',str(uuid4()))
+            b=repo.call('review_start',id=rid,parent_id=a['id'])
+            st.session_state.pop('_academy_exam_start_request',None);_open(b['id'])
+        st.caption('복습 결과는 별도로 저장되며 원래 시험 점수는 바뀌지 않습니다.')
+    only=st.toggle('오답·미응답만 보기',value=True,key='exam_wrong_'+a['id'])
+    questions=wrong if only else a['questions']
+    if not questions:st.success('모든 문제를 맞혔습니다.')
+    else:
+        key='_academy_exam_result_cursor_'+a['id']
+        pos=min(st.session_state.get(key,0),len(questions)-1)
+        q=questions[pos];answer=a['answers'].get(str(q['number']))
+        with st.container(border=True):
+            st.markdown(f"### 문제 {q['number']} · {'미응답' if answer is None else '정답' if answer==q['answer'] else '오답'}")
             _question(q)
-            for c in q['choices']: _text(f"{'①②③④'[c['number']-1]} {c['text']}")
-            st.write(f"내 답: {answer if answer else '미응답'} · 정답: {q['answer']}")
-            st.markdown('**원본 해설**');_text(q['explanation'])
-    if st.button('상세 닫기' if manager else '시험 목록으로',key='exam_back_'+a['id']):
-        if manager:
-            st.session_state.pop('_academy_exam_review',None);st.rerun()
-        st.session_state.pop('_academy_exam_attempt',None);st.session_state.pop('_academy_exam_id',None);st.rerun()
+            for c in q['choices']:
+                marker=' ✓ 정답' if c['number']==q['answer'] else ''
+                if c['number']==answer:marker+=' · 내 답'
+                _text(f"{c['number']}. {c['text']}{marker}")
+            st.divider();st.markdown('**원본 해설**');_text(q['explanation'])
+            st.caption(f"출처: {q.get('source_title',a['title'])} · 원본 {q.get('source_number',q['number'])}번")
+        x,y,z=st.columns([1,2,1]);y.caption(f'{pos+1} / {len(questions)}문제')
+        if x.button('← 이전 문제',disabled=pos==0,key='result_prev_'+a['id']):st.session_state[key]=pos-1;st.rerun()
+        if z.button('다음 문제 →',disabled=pos==len(questions)-1,key='result_next_'+a['id']):st.session_state[key]=pos+1;st.rerun()
+    if not manager and st.button('시험 목록으로',key='result_back'):_close()
 
-@st.fragment(run_every='5s')
-def _active(repo,initial):
-    a=st.session_state.get('_academy_exam_attempt') or initial
-    try:
-        current=repo.call('get',id=a['id'])
-        if current['revision']!=a['revision']:
-            # A concurrent tab changed the attempt: recreate input widgets from saved state.
-            for key in list(st.session_state):
-                if key.startswith('_academy_exam_choice_') or key.startswith('_academy_exam_flag_'):del st.session_state[key]
-        a=current;st.session_state['_academy_exam_attempt']=a
-    except Exception:
-        st.error('연결을 확인하지 못했습니다. 저장되지 않은 답안이 있을 수 있습니다. 연결 복구 후 다시 불러오세요.');return
-    if a['status']=='submitted':st.rerun()
-    pending=st.session_state.get('_academy_exam_pending')
-    if pending and pending['id']==a['id']:
-        st.error(st.session_state.get('_academy_exam_error','저장 대기 중인 답안이 있습니다.'))
-        x,y=st.columns(2)
-        if x.button('저장 재시도'):
-            # Do not overwrite a newer revision from another tab.
-            if pending['revision']!=a['revision']:st.warning('다른 화면에서 답안이 변경되었습니다. 저장된 답안을 다시 불러오세요.')
-            elif _put(repo,a,**{k:pending[k] for k in ('answers','flags','cursor')}):
-                st.session_state.pop('_academy_exam_pending',None);st.rerun()
-        if y.button('저장된 답안 다시 불러오기'):
-            st.session_state.pop('_academy_exam_pending',None)
-            for key in list(st.session_state):
-                if key.startswith(('_academy_exam_choice_','_academy_exam_flag_')):del st.session_state[key]
-            st.rerun()
-        return
-    questions=a['questions'];pos=a['cursor'];q=questions[pos];number=q['number']
-    top=st.columns([3,1]);top[0].subheader(a['title'])
-    seconds=a.get('remaining_seconds');top[1].metric('남은 시간',f'{int(seconds)//60:02}:{int(seconds)%60:02}' if seconds is not None else '자유학습')
-    st.caption(f"{pos+1} / {len(questions)} 문항 · 응답 {len(a['answers'])}개 · 미응답 {len(questions)-len(a['answers'])}개")
-    main,side=st.columns([3,1])
-    with main:
-        st.markdown(f'### 문제 {number}')
-        _question(q)
-        options=[c['number'] for c in q['choices']];labels={c['number']:f"{'①②③④'[c['number']-1]} {c['text']}" for c in q['choices']}
-        key=f'_academy_exam_choice_{a["id"]}_{number}'
-        if key not in st.session_state:st.session_state[key]=a['answers'].get(str(number))
-        st.radio('답안 선택',options,index=None,format_func=lambda v:labels[v],key=key,on_change=_answer,args=(repo,a,key,number))
-        flagkey=f'_academy_exam_flag_{a["id"]}_{number}'
-        if flagkey not in st.session_state:st.session_state[flagkey]=number in a['flags']
-        st.checkbox('다시 확인할 문제',key=flagkey,on_change=_flag,args=(repo,a,flagkey,number))
-        left,right=st.columns(2)
-        if left.button('← 이전',disabled=pos==0):
-            if _put(repo,a,cursor=pos-1):st.rerun()
-        if right.button('다음 →',disabled=pos==len(questions)-1):
-            if _put(repo,a,cursor=pos+1):st.rerun()
-        st.caption('답안 선택 즉시 저장 · 연결이 끊겨도 시험 시간은 계속 흐릅니다.')
-    with side:
-        st.markdown('**문항 이동**');st.caption('● 응답 · ★ 다시 확인')
-        for start in range(0,len(questions),3):
-            for col,item in zip(st.columns(3),questions[start:start+3]):
-                n=item['number'];label=f'{n}'+('★' if n in a['flags'] else '●' if str(n) in a['answers'] else '')
-                if col.button(label,key=f'exam_jump_{a["id"]}_{n}',type='primary' if n==number else 'secondary'):
-                    if _put(repo,a,cursor=questions.index(item)):st.rerun()
-    st.divider()
-    confirm=st.checkbox(f"미응답 {len(questions)-len(a['answers'])}개를 확인했으며 제출하겠습니다.",key='_academy_exam_confirm_'+a['id'])
-    if st.button('시험 종료·제출',type='primary',disabled=not confirm):
-        try:st.session_state['_academy_exam_attempt']=repo.call('submit',id=a['id'],revision=a['revision']);st.rerun()
-        except Exception:st.error('제출 결과를 확인하지 못했습니다. 다시 확인해 주세요. 중복 제출은 한 번만 처리됩니다.')
+def _history(rows):
+    if not rows:st.info('아직 응시 기록이 없습니다. 시험 시작에서 첫 문제를 풀어보세요.')
+    page=st.number_input('기록 페이지',min_value=1,max_value=max(1,(len(rows)+9)//10),value=1,step=1,key='_academy_exam_history_page')
+    for r in rows[(page-1)*10:page*10]:
+        with st.container(border=True):
+            st.write(r['title']);st.caption(f"{mode_label(r)} · {stamp(r['started_at']).strftime('%Y.%m.%d %H:%M')} · {'진행 중' if r['status']=='active' else '완료'}")
+            if r.get('result'):st.write(' / '.join(f"{s['name']} {s['score']}{'%' if r.get('source_kind')=='review' else '점'}" for s in r['result']['sections']))
+            if st.button('이어서 풀기' if r['status']=='active' else '결과·오답 보기',key='history_'+r['id']):_open(r['id'])
 
-def _dashboard(repo):
+def _dashboard(repo,profile):
+    # Detach list widget state while the personal detail page hides those widgets.
+    for key in ('_academy_exam_search','_academy_exam_filter','_academy_exam_people_page'):
+        if key in st.session_state:st.session_state[key]=st.session_state[key]
+    st.subheader('조직 학습 현황');st.caption('학습 참여를 확인하고 필요한 복습을 안내하세요.')
     rows=repo.call('team') or [];roster=repo.call('roster') or []
-    st.subheader('조직 학습 현황')
-    st.caption('자유학습과 모의시험의 점수·오답을 연결된 상위 관리자가 확인합니다. 최근 1,000건 기준입니다.')
-    level=st.radio('집계 단위',['team','branch','head_unit'],format_func=lambda v:{'team':'팀별','branch':'지점별','head_unit':'본부별'}[v],horizontal=True)
-    groups={g['id']:g['name'] for r in roster for g in r.get('groups',[]) if g['type']==level}
-    org=st.selectbox('조직',['all']+list(groups),format_func=lambda v:'전체' if v=='all' else groups[v])
-    members=[r for r in roster if org=='all' or any(g['id']==org for g in r.get('groups',[]))]
-    ids={r['id'] for r in members};rows=[r for r in rows if r['user_id'] in ids]
-    finished=[r for r in rows if r['status']=='submitted'];active={r['user_id'] for r in rows}
-    cols=st.columns(4)
-    for c,(label,val) in zip(cols,[('학습 대상',len(members)),('학습 참여',len(active)),('미참여',len(ids-active)),('완료 응시',len(finished))]):c.metric(label,val)
-    report=[]
-    for r in members:
-        mine=[x for x in rows if x['user_id']==r['id']];done=[x for x in mine if x['status']=='submitted']
-        scores=[s['score'] for x in done for s in (x.get('result') or {}).get('sections',[])]
-        report.append({'이름':r['display_name'],'조직':r.get('organization_name'),'응시':len(mine),'완료':len(done),'평균 점수':round(sum(scores)/len(scores),1) if scores else None,'합격 응시':sum(bool(x['result']['passed']) for x in done)})
-    st.dataframe(report,width='stretch',hide_index=True)
-    if rows:
-        selected=st.selectbox('개인별 응시 상세',rows,format_func=lambda r:f"{r['display_name']} · {r['title']} · {'자유학습' if r['mode']=='practice' else '모의시험'} · {r['started_at'][:10]}")
-        if st.button('점수·오답 열기'):
-            a=repo.call('get',id=selected['id'])
-            if a['status']!='submitted':st.info('진행 중인 시험입니다. 제출 후 점수와 오답을 확인할 수 있습니다.')
-            else:st.session_state['_academy_exam_review']=a
-        a=st.session_state.get('_academy_exam_review')
-        if a and a['id']==selected['id']:
-            # Recheck current permissions rather than trusting a previously cached result.
-            _result(repo.call('get',id=a['id']),manager=True)
+    if len(rows)>=10000:st.warning('최근 10,000건 조회 한도에 도달했습니다. 아래 집계는 조회된 기록 기준이며 전체 통계가 아닙니다.')
+    today=datetime.now(KST).date();x,y=st.columns(2)
+    dates=x.date_input('조회 기간',(today-timedelta(days=29),today),max_value=today,key='_academy_exam_dates')
+    if len(dates)!=2:st.info('시작일과 종료일을 선택해 주세요.');return
+    groups={g['id']:g for r in roster for g in r.get('groups',[])}
+    org=y.selectbox('조직',['all']+list(groups),format_func=lambda v:'관리 가능한 전체 조직' if v=='all' else groups[v]['name'],key='_academy_exam_org')
+    members=[m for m in roster if org=='all' or any(g['id']==org for g in m.get('groups',[]))]
+    filtered=[r for r in rows if in_window(r,*dates)]
+    people,subjects=summarize(members,filtered)
+    participant=sum(bool(p['attempts']) for p in people)
+    for c,(label,val) in zip(st.columns(3),[('학습 대상',len(people)),('참여 인원',participant),('미참여',len(people)-participant)]):c.metric(label,val)
+    st.markdown('**과목별 최근 모의시험 합격률**')
+    if subjects:
+        for c,(name,v) in zip(st.columns(len(subjects)),subjects.items()):c.metric(name,f"{v['passed']/v['total']:.0%}",f"{v['passed']} / {v['total']}명")
+    else:st.caption('선택 기간에 완료한 모의시험이 없습니다. 미응시를 0점으로 계산하지 않습니다.')
+    st.caption('참여: 기간 내 완료 또는 마지막 저장 기록 · 합격률: 기간 내 완료한 모의시험의 개인·과목별 최신 결과. 자유학습과 복습 제외.')
+    detail=st.session_state.get('_academy_exam_person')
+    person=next((p for p in people if p['id']==detail),None)
+    if detail and not person:st.session_state.pop('_academy_exam_person',None);st.session_state.pop('_academy_exam_review',None)
+    if person:
+        if st.button('← 학습자 목록',key='person_back'):st.session_state['_academy_exam_restore_list']=True;st.session_state.pop('_academy_exam_person',None);st.session_state.pop('_academy_exam_review',None);st.rerun()
+        st.subheader(person['display_name']);st.caption(person.get('organization_name') or '소속 미지정')
+        mine=person['attempts']
+        graph=[{'날짜':stamp(r['submitted_at']),'과목':s['name'],'점수':s['score']} for r in mine if r['mode']=='exam' and r['status']=='submitted' for s in (r.get('result') or {}).get('sections',[])]
+        if graph:st.line_chart(pd.DataFrame(graph),x='날짜',y='점수',color='과목')
+        st.caption('아래 이력은 선택한 조회 기간 기준입니다.')
+        pno=st.number_input('개인 기록 페이지',min_value=1,max_value=max(1,(len(mine)+9)//10),value=1,key='_academy_exam_person_page_'+detail)
+        for r in mine[(pno-1)*10:pno*10]:
+            cols=st.columns([4,1]);cols[0].write(f"{r['title']} · {mode_label(r)}");cols[0].caption(stamp(r['started_at']).strftime('%Y.%m.%d %H:%M'))
+            if cols[1].button('결과 보기',key='manager_'+r['id'],disabled=r['status']!='submitted'):st.session_state['_academy_exam_review']=r['id']
+        aid=st.session_state.get('_academy_exam_review')
+        if aid and any(r['id']==aid for r in mine):_result(repo,repo.call('get',id=aid),manager=True)
+        return
+    position=profile.get('position_code')
+    level='head_unit' if profile.get('role')=='super_admin' or position=='chief_representative' else 'branch' if position=='division_head' else 'team'
+    if org!='all':level={'root':'head_unit','head_unit':'branch','branch':'team','team':'team'}.get(groups[org]['type'],'team')
+    if position!='team_leader' or profile.get('role')=='super_admin':
+        with st.expander('조직별 비교',expanded=True):
+            comparison=[]
+            for gid,g in groups.items():
+                if g['type']!=level:continue
+                subset=[p for p in members if any(x['id']==gid for x in p.get('groups',[]))]
+                if not subset:continue
+                pp,ss=summarize(subset,filtered);participated=sum(bool(p['attempts']) for p in pp)
+                comparison.append({'조직':g['name'],'대상':len(pp),'참여':participated,'참여율':participated/len(pp),**{name+' 합격률':round(100*v['passed']/v['total']) for name,v in ss.items()}})
+            if comparison:st.dataframe(comparison,hide_index=True,width='stretch',column_config={'참여율':st.column_config.ProgressColumn(format='percent',min_value=0,max_value=1)})
+            else:st.caption('비교할 하위 조직이 없습니다. 아래 학습자 목록을 확인해 주세요.')
+    pending=sum(p['below'] for p in people)
+    st.info(f"미참여 {len(people)-participant}명 · 최근 모의시험 기준 미달 {pending}명")
+    x,y=st.columns([2,1]);query=x.text_input('이름 검색',key='_academy_exam_search');status=y.selectbox('학습 상태',['전체','미참여','학습 중','합격 기준 미달'],key='_academy_exam_filter')
+    visible=[p for p in people if query.casefold() in p['display_name'].casefold() and (status=='전체' or status=='합격 기준 미달' and p['below'] or status==p['state'])]
+    if not visible:st.info('조건에 맞는 학습자가 없습니다. 검색어나 필터를 변경해 주세요.');return
+    # Stable pagination resets when query context changes.
+    context=(query,status,org,str(dates));old=st.session_state.get('_academy_exam_page_context')
+    if old!=context:st.session_state['_academy_exam_people_page']=1;st.session_state['_academy_exam_page_context']=context
+    page=st.number_input('학습자 페이지',min_value=1,max_value=max(1,(len(visible)+9)//10),key='_academy_exam_people_page')
+    from .list_position import remember
+    remember(st.session_state.pop('_academy_exam_restore_list',False))
+    for p in visible[(page-1)*10:page*10]:
+        with st.container(border=True,key='exam_person_'+p['id']):
+            left,right=st.columns([3,1])
+            if left.button(p['display_name']+' →',key='person_'+p['id']):st.session_state['_academy_exam_person']=p['id'];st.rerun()
+            left.caption((p.get('organization_name') or '소속 미지정')+' · '+p['state'])
+            right.caption('최근 활동 '+(stamp(p['last']).strftime('%m.%d %H:%M') if p['last'] else '없음'))
+            st.write(' · '.join(f"{s['name']} {s['score']}점{' · 기준 미달' if not s['passed'] else ''}" for s in p['scores']) or '모의시험 성적 없음')
+            if p['state']=='학습 중' and p['last'] and datetime.now(KST)-stamp(p['last'])>timedelta(days=1):st.caption('마지막 활동 후 24시간 이상 · 학습 중단으로 단정하지 않고 확인이 필요합니다.')
 
 def render(auth,owner,permissions,profile):
     st.title('보험시험 CBT')
     if 'academy.assessment' not in permissions:st.warning('시험·평가 이용 권한이 필요합니다.');return
-    st.markdown('''<style>.exam-text{font-size:18px;line-height:1.9;white-space:normal;overflow-wrap:anywhere;margin:14px 0}div[data-testid="stRadio"] label p{font-size:17px;line-height:1.8}@media(max-width:700px){.exam-text{font-size:17px}}</style>''',unsafe_allow_html=True)
+    st.markdown('<style>.exam-prose{font-size:18px;line-height:1.85;overflow-wrap:anywhere;margin:12px 0}</style>',unsafe_allow_html=True)
     repo=Repository(auth,owner)
     try:
         aid=st.session_state.get('_academy_exam_id')
         if aid:
-            a=repo.call('get',id=aid);st.session_state['_academy_exam_attempt']=a
-            if a['status']=='submitted':_result(a)
-            else:_active(repo,a)
+            a=repo.call('get',id=aid)
+            if a['status']=='submitted':_result(repo,a)
+            else:
+                st.markdown('<style>[data-testid="stSidebar"]{display:none}</style>',unsafe_allow_html=True)
+                if st.button('← 시험 목록',help='저장된 시험은 이어 풀 수 있으며 제한시간은 계속 흐릅니다.'):_close()
+                active(repo,a)
             return
         tabs=['시험 시작','나의 응시 기록']
         if profile.get('role')=='super_admin' or profile.get('position_code') in MANAGERS:tabs.append('조직 학습 현황')
-        page=st.radio('메뉴',tabs,horizontal=True,label_visibility='collapsed')
-        if page=='조직 학습 현황':_dashboard(repo);return
+        page=st.radio('메뉴',tabs,horizontal=True,label_visibility='collapsed',key='_academy_exam_page')
+        if page=='조직 학습 현황':_dashboard(repo,profile);return
         rows=repo.call('list') or []
-        if page=='나의 응시 기록':
-            if not rows:st.info('아직 응시 기록이 없습니다.')
-            for r in rows:
-                label=f"{r['title']} · {'자유학습' if r['mode']=='practice' else '모의시험'} · {'진행 중' if r['status']=='active' else '완료'} · {r['started_at'][:10]}"
-                if st.button(label,key='exam_history_'+r['id']):st.session_state['_academy_exam_id']=r['id'];st.rerun()
-            return
-        active=next((r for r in rows if r['status']=='active'),None)
-        if active:
-            st.info('진행 중인 응시가 있습니다.')
-            if st.button('이어서 풀기',type='primary'):st.session_state['_academy_exam_id']=active['id'];st.rerun()
+        if page=='나의 응시 기록':_history(rows);return
+        existing=next((r for r in rows if r['status']=='active'),None)
+        if existing:
+            st.info('진행 중인 응시가 있습니다. '+existing['title'])
+            if st.button('이어서 풀기',type='primary'):_open(existing['id'])
             return
         catalog=repo.call('catalog') or []
         if not catalog:st.info('시험 자료를 준비하고 있습니다.');return
-        family=st.radio('문제집 구분',['손해보험','생명보험'],horizontal=True)
-        choices=[e for e in catalog if e['family']==('life' if family=='생명보험' else 'nonlife')]
-        picked=st.selectbox('모의고사',choices,format_func=lambda e:e['title'])
-        track=st.radio('응시 과목',['main','third','combined'],format_func=lambda v:{'main':family,'third':'제3보험','combined':family+' + 제3보험 (통합)'}[v],horizontal=True)
-        mode=st.radio('풀이 방식',['exam','practice'],format_func=lambda v:'모의시험 · 50분' if v=='exam' else '자유학습 · 시간 제한 없음',horizontal=True)
-        st.info('원본 문제·보기 순서로 응시합니다. 합격기준은 과목별 60점입니다. 제출 후 원본 정답과 해설을 확인할 수 있습니다.')
-        st.caption('자유학습을 포함한 점수·오답은 연결된 팀장·부지점장·지점장·본부장·총괄이 확인할 수 있습니다.')
-        if st.button('시작하기',type='primary'):
-            # Retain the request ID if the response is lost.
-            rid=st.session_state.setdefault('_academy_exam_start_request',str(uuid4()))
-            a=repo.call('start',id=rid,exam_id=picked['id'],track=track,mode=mode)
-            st.session_state['_academy_exam_id']=a['id'];st.session_state.pop('_academy_exam_start_request',None);st.rerun()
+        with st.container(border=True):
+            family=st.radio('보험 구분',['손해보험','생명보험'],horizontal=True)
+            family_code='life' if family=='생명보험' else 'nonlife'
+            choices=[{'id':'random','title':'🎲 랜덤 출제'}]+[e for e in catalog if e['family']==family_code]
+            picked=st.selectbox('모의고사',choices,index=1,format_func=lambda e:e['title'])
+            track=st.radio('응시 과목',['main','third','combined'],format_func=lambda v:{'main':family,'third':'제3보험','combined':family+' + 제3보험 (통합)'}[v],horizontal=True)
+            mode=st.radio('풀이 방식',['exam','practice'],format_func=lambda v:'모의시험 · 50분' if v=='exam' else '자유학습 · 시간 제한 없음',horizontal=True)
+            st.caption('과목별 60점 이상 · 원문 문제와 해설 사용 · 랜덤 출제는 동일 문제 중복 제외')
+            if st.button('시작하기',type='primary'):
+                rid=st.session_state.setdefault('_academy_exam_start_request',str(uuid4()))
+                a=repo.call('random_start' if picked['id']=='random' else 'start',id=rid,exam_id=picked['id'],family=family_code,track=track,mode=mode)
+                st.session_state.pop('_academy_exam_start_request',None);_open(a['id'])
+        st.caption('자유학습을 포함한 점수·오답은 연결된 상위 관리자가 확인할 수 있습니다.')
     except Exception:
-        st.error('시험 저장소에 연결하지 못했습니다. 연결과 시험 기능 설정을 확인한 후 다시 시도해 주세요.')
-        st.button('다시 확인',key='exam_retry')
+        st.error('자료를 불러오거나 저장하지 못했습니다. 입력 상태를 유지하고 다시 시도해 주세요.')
+        st.button('다시 시도',key='exam_retry')
