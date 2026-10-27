@@ -4,6 +4,7 @@ from datetime import datetime,timedelta
 import html
 import streamlit as st
 import pandas as pd
+import altair as alt
 from .repository import Repository
 from .component import active
 from .analytics import KST,stamp,mode_label,in_window,summarize
@@ -90,7 +91,7 @@ def _dashboard(repo,profile):
     for c,(label,val) in zip(st.columns(3),[('학습 대상',len(people)),('참여 인원',participant),('미참여',len(people)-participant)]):c.metric(label,val)
     st.markdown('**과목별 최근 모의시험 합격률**')
     if subjects:
-        for c,(name,v) in zip(st.columns(len(subjects)),subjects.items()):c.metric(name,f"{v['passed']/v['total']:.0%}",f"{v['passed']} / {v['total']}명")
+        for c,(name,v) in zip(st.columns(len(subjects)),subjects.items()):c.metric(name,f"{v['passed']/v['total']:.0%}");c.caption(f"합격 {v['passed']} / 응시 {v['total']}명")
     else:st.caption('선택 기간에 완료한 모의시험이 없습니다. 미응시를 0점으로 계산하지 않습니다.')
     st.caption('참여: 기간 내 완료 또는 마지막 저장 기록 · 합격률: 기간 내 완료한 모의시험의 개인·과목별 최신 결과. 자유학습과 복습 제외.')
     detail=st.session_state.get('_academy_exam_person')
@@ -101,7 +102,12 @@ def _dashboard(repo,profile):
         st.subheader(person['display_name']);st.caption(person.get('organization_name') or '소속 미지정')
         mine=person['attempts']
         graph=[{'날짜':stamp(r['submitted_at']),'과목':s['name'],'점수':s['score']} for r in mine if r['mode']=='exam' and r['status']=='submitted' for s in (r.get('result') or {}).get('sections',[])]
-        if graph:st.line_chart(pd.DataFrame(graph),x='날짜',y='점수',color='과목')
+        if graph:
+            chart=alt.Chart(pd.DataFrame(graph)).mark_line(point=True).encode(
+                x=alt.X('날짜:T',axis=alt.Axis(format='%m.%d',title='응시일')),
+                y=alt.Y('점수:Q',scale=alt.Scale(domain=[0,100])),
+                color='과목:N',tooltip=[alt.Tooltip('날짜:T',format='%Y.%m.%d %H:%M'),'과목:N','점수:Q'])
+            st.altair_chart(chart,width='stretch')
         st.caption('아래 이력은 선택한 조회 기간 기준입니다.')
         pno=st.number_input('개인 기록 페이지',min_value=1,max_value=max(1,(len(mine)+9)//10),value=1,key='_academy_exam_person_page_'+detail)
         for r in mine[(pno-1)*10:pno*10]:
