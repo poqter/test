@@ -93,7 +93,7 @@ def _active(repo,initial):
     top=st.columns([3,1]);top[0].subheader(a['title'])
     seconds=a.get('remaining_seconds');top[1].metric('남은 시간',f'{int(seconds)//60:02}:{int(seconds)%60:02}' if seconds is not None else '자유학습')
     st.caption(f"{pos+1} / {len(questions)} 문항 · 응답 {len(a['answers'])}개 · 미응답 {len(questions)-len(a['answers'])}개")
-    main,side=st.columns([4,1])
+    main,side=st.columns([3,1])
     with main:
         st.markdown(f'### 문제 {number}')
         _question(q)
@@ -112,8 +112,8 @@ def _active(repo,initial):
         st.caption('답안 선택 즉시 저장 · 연결이 끊겨도 시험 시간은 계속 흐릅니다.')
     with side:
         st.markdown('**문항 이동**');st.caption('● 응답 · ★ 다시 확인')
-        for start in range(0,len(questions),4):
-            for col,item in zip(st.columns(4),questions[start:start+4]):
+        for start in range(0,len(questions),3):
+            for col,item in zip(st.columns(3),questions[start:start+3]):
                 n=item['number'];label=f'{n}'+('★' if n in a['flags'] else '●' if str(n) in a['answers'] else '')
                 if col.button(label,key=f'exam_jump_{a["id"]}_{n}',type='primary' if n==number else 'secondary'):
                     if _put(repo,a,cursor=questions.index(item)):st.rerun()
