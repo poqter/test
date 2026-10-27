@@ -206,6 +206,11 @@ def main() -> None:
     if st.session_state.get('_academy_surface')=='history' and 'academy.simulator' in feature_permissions:
         legacy_history(auth,viewer_user_id)
 
+    if st.session_state.get('_academy_surface')=='exams':
+        from hwarang_academy.exams.ui import render as render_exams
+        render_exams(auth,viewer_user_id,feature_permissions,viewer_profile)
+        return
+
     if st.session_state.get('_academy_surface') in ('courses','library','my_learning'):
         from hwarang_academy.education.ui import render as render_learning
         render_learning(auth,viewer_user_id,feature_permissions,viewer_profile,st.session_state['_academy_surface'])

@@ -24,7 +24,7 @@ def shell(profile,permissions):
     with st.sidebar:
         st.markdown('### 화랑 ACADEMY')
         st.caption('배움과 상담 연습')
-        for key,label,permission in [('academy','아카데미 홈',None),('courses','교육 과정',None),('library','교육자료실','academy.library'),('my_learning','나의 학습','academy.my_learning'),('simulator','상담 연습','academy.simulator'),('history','상담 기록','academy.simulator')]:
+        for key,label,permission in [('academy','아카데미 홈',None),('exams','보험시험 CBT','academy.assessment'),('courses','교육 과정',None),('library','교육자료실','academy.library'),('my_learning','나의 학습','academy.my_learning'),('simulator','상담 연습','academy.simulator'),('history','상담 기록','academy.simulator')]:
             if not permission or permission in permissions:
                 st.button(label,key='academy_nav_'+key,type='primary' if current==key else 'secondary',on_click=go,args=(key,),use_container_width=True)
         st.caption('Planned & Built by 박병선 팀장')
@@ -78,7 +78,7 @@ def home(auth,owner,permissions,profile,credit_status):
                 else:st.caption('이용량을 불러오지 못했습니다.')
     st.subheader('학습 바로가기')
     with st.container(key='brand_grid_academy',horizontal=True):
-        for key,title,desc,icon,permission in [('courses','교육 과정','필요한 주제를 골라 학습하세요.','▤',None),('library','교육자료실','교육 자료를 찾아 확인하세요.','▥','academy.library'),('my_learning','나의 학습','학습 진도와 완료 과정을 확인하세요.','✓','academy.my_learning'),('history','상담 기록','이전 상담과 복기 내용을 확인하세요.','◷','academy.simulator')]:
+        for key,title,desc,icon,permission in [('exams','보험시험 CBT','모의시험·자유학습과 오답 복기','▦','academy.assessment'),('courses','교육 과정','필요한 주제를 골라 학습하세요.','▤',None),('library','교육자료실','교육 자료를 찾아 확인하세요.','▥','academy.library'),('my_learning','나의 학습','학습 진도와 완료 과정을 확인하세요.','✓','academy.my_learning'),('history','상담 기록','이전 상담과 복기 내용을 확인하세요.','◷','academy.simulator')]:
             if not permission or permission in permissions:ui.card(title,desc,icon,'brand_tile_academy_'+key,go,(key,))
 
 def legacy_history(auth,owner):
