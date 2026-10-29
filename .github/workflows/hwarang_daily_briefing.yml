@@ -36,7 +36,7 @@ jobs:
       # Same model verified in the existing Streamlit generation request.
       # Repository variables remain available for an explicit override.
       BRIEFING_DISCOVERY_MODEL: ${{ vars.BRIEFING_DISCOVERY_MODEL || 'gpt-6-luna' }}
-      BRIEFING_ANALYSIS_TIMEOUT_SECONDS: ${{ vars.BRIEFING_ANALYSIS_TIMEOUT_SECONDS || '180' }}
+      BRIEFING_ANALYSIS_TIMEOUT_SECONDS: ${{ vars.BRIEFING_ANALYSIS_TIMEOUT_SECONDS || '300' }}
       BRIEFING_ROUTINE_MODEL: ${{ vars.BRIEFING_ROUTINE_MODEL || vars.BRIEFING_DISCOVERY_MODEL || 'gpt-6-luna' }}
       BRIEFING_DIRECT_SOURCES_JSON: ${{ vars.BRIEFING_DIRECT_SOURCES_JSON }}
       BRIEFING_DAY_BUDGET_USD: ${{ vars.BRIEFING_DAY_BUDGET_USD }}
@@ -72,3 +72,4 @@ jobs:
           path: briefing-operation-status.json
           retention-days: 14
           if-no-files-found: ignore
+

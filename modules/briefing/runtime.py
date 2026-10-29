@@ -549,6 +549,8 @@ def generate_and_store_briefings(
         search_status = record.get("search_status_counts") or {}
         uncertain_search = discovery and any(search_status.get(state, 0) for state in ("nonfinal", "unknown"))
         record["usage_logged"] = False
+        degraded = bool(discovery and record.get('direct_feed_fallback') and record.get('status') == 'completed'
+                        and record.get('usage_available'))
         record["charge_uncertain"] = not bool(record.get("usage_available")) or uncertain_search
         repo.log_api_usage({
             "job_id": jobs[owner]["id"], "profile_code": owner, "provider": "openai",
@@ -570,7 +572,7 @@ def generate_and_store_briefings(
         if discovery and before_request:
             repo._request("POST", "/rest/v1/rpc/hwarang_observe_briefing_search", json={"p_date":date_text,"p_actions":int(usage.get("search_actions") or 0)})
         record["usage_logged"] = True
-        if record['charge_uncertain']:
+        if record['charge_uncertain'] and not degraded:
             saved['charge_uncertain']=True
             saved['last_request_failure']={k:record.get(k) for k in ('profile_code','status','failure_message','http_status','error_class','provider_error_code','provider_error_type','response_id')}
             save()
@@ -578,7 +580,9 @@ def generate_and_store_briefings(
                 'engine_version': ENGINE_VERSION, 'shared_run': True, 'partial_diagnostics': progress}})
             message = record.get('failure_message') or 'API 사용량 또는 검색 완료 상태가 확인되지 않았습니다.'
             raise BriefingRunError(message + ' 추가 유료 호출을 중단했습니다.', {'request_failure': saved['last_request_failure']})
-        if record.get("usage_available") and not record["charge_uncertain"]:
+        if degraded:
+            saved['search_degraded_to_direct'] = True
+        if record.get("usage_available") and (not record["charge_uncertain"] or degraded):
             if not discovery and record.get("output_text_sample"):
                 saved.setdefault("analysis_responses", {})[code] = dict(record)
             saved.pop("pending_request", None); save()
@@ -673,6 +677,13 @@ def generate_and_store_briefings(
                     # diagnostics rather than in the daily checkpoint.
                     cached = repo.analysis_recovery_response(date_text, code)
                     if not isinstance(cached, dict): cached = None
+                from .execution_policy import bounded_analysis_recovery
+                recovery_limit = bounded_analysis_recovery(saved, code, cached,
+                    allowed=before_request is not None and not saved_material_only)
+                if recovery_limit:
+                    client.max_output_tokens = recovery_limit
+                    cached = None
+                    save()
                 if cached is not None:
                     client.cached_response = cached
                     progress["reused_analysis_profiles"].append(code)
@@ -705,7 +716,7 @@ def generate_and_store_briefings(
             from .costs import estimate_cost
             from .execution_policy import budget_notice
             cost=repo.cost_status()
-            estimate=estimate_cost({'model_name':os.getenv('BRIEFING_ROUTINE_MODEL',''), 'input_tokens':100000, 'output_tokens':12000})
+            estimate=estimate_cost({'model_name':os.getenv('BRIEFING_ROUTINE_MODEL',''), 'input_tokens':100000, 'output_tokens':24000})
             limits=[budget_notice(cost.get('today' if period=='day' else period,{}),period) for period in ('day','month')]
             # Extra calls require known prices, complete accounting and configured
             # monetary headroom; the original daily atomic request cap also applies.
@@ -849,6 +860,7 @@ def generate_and_store_briefings(
             except Exception:
                 cleanup_failures.append(str(job["id"]))
         details["job_cleanup_failures"] = cleanup_failures
-        saved["charge_uncertain"] = bool(saved.get("pending_request")) or any(r.get("charge_uncertain") for group in (progress["discovery_requests"], progress["analysis_requests"]) for r in group)
+        saved["charge_uncertain"] = bool(saved.get("pending_request")) or any(r.get("charge_uncertain") and not r.get("direct_feed_fallback") for group in (progress["discovery_requests"], progress["analysis_requests"]) for r in group)
         if save_checkpoint: save_checkpoint(saved)
         raise BriefingRunError(str(exc), details) from exc
+

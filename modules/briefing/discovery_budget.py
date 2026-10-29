@@ -20,9 +20,10 @@ class DiscoveryBudget:
         self.search_actions = 0
         self.web_tool_calls = 0
         self.on_response = on_response
+        self.paused = False
 
     def can_request(self) -> bool:
-        return (len(self.requests) < DISCOVERY_REQUEST_HARD_LIMIT
+        return (not self.paused and len(self.requests) < DISCOVERY_REQUEST_HARD_LIMIT
                 and self.search_actions + REQUEST_TOOL_CALL_LIMIT <= SHARED_DISCOVERY_HARD_LIMIT)
 
     def begin(self, lane_code: str, profile_code: str, *, retry: bool) -> dict[str, Any]:
@@ -61,3 +62,4 @@ class DiscoveryBudget:
                 "budget_counting_policy": "All returned search actions count toward the cap, including nonfinal/unknown records. These are not confirmed billable calls.",
                 "usage_unknown_requests": sum(not r.get("usage_available") for r in self.requests),
                 "requests": deepcopy(self.requests)}
+

@@ -8,7 +8,7 @@ from modules.briefing.costs import usage_summary
 @pytest.fixture
 def repo(monkeypatch):
     monkeypatch.setattr('requests.sessions.Session.request',Mock(side_effect=AssertionError('No network in UI test')))
-    monkeypatch.setattr('modules.briefing.weather.get_weather', lambda region, day: {'status':'unavailable','region_name':'서울특별시','date':day})
+    monkeypatch.setattr('modules.briefing.weather.get_weather', lambda region, day, **kwargs: {'status':'unavailable','region_name':'서울특별시','date':day})
     saved={code:bundle(code) for code in ('MARKET','NEWS','INSURANCE')}
     r=Mock()
     r._snapshot_for_revision.side_effect=lambda rid:next(x['snapshot'] for x in saved.values() if x['revision']['id']==rid)
@@ -72,3 +72,4 @@ def test_history_reading_routes_share_to_same_day(repo):
     assert next(r for r in a.radio if r.key=='hw_briefing_page').value=='지난 브리핑'
     assert any(c.label=='보험업계' and c.value is False for c in a.checkbox)
     repo.reserve_request.assert_not_called()
+

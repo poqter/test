@@ -44,3 +44,4 @@ def phase_b(value):
 def phase_c(value):
     return PhaseCResult(analyses=[ProfileEventAnalysis(**r) for r in value['analyses']],eligible_analyses=[ProfileEventAnalysis(**r) for r in value.get('eligible_analyses',[])],
       usage_by_profile={k:AnalysisUsage(**r) for k,r in value['usage_by_profile'].items()},omitted_by_profile=value['omitted_by_profile'])
+

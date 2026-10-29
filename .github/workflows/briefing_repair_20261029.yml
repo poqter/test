@@ -1,0 +1,52 @@
+name: Approved Briefing Repair 2026-10-29
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/briefing_repair_20261029.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: hwarang-daily-briefing
+  cancel-in-progress: false
+jobs:
+  briefing:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      # Same model verified in the existing Streamlit generation request.
+      # Repository variables remain available for an explicit override.
+      BRIEFING_DISCOVERY_MODEL: ${{ vars.BRIEFING_DISCOVERY_MODEL || 'gpt-6-luna' }}
+      BRIEFING_ANALYSIS_TIMEOUT_SECONDS: '300'
+      BRIEFING_ROUTINE_MODEL: ${{ vars.BRIEFING_ROUTINE_MODEL || vars.BRIEFING_DISCOVERY_MODEL || 'gpt-6-luna' }}
+      BRIEFING_DIRECT_SOURCES_JSON: ${{ vars.BRIEFING_DIRECT_SOURCES_JSON }}
+      BRIEFING_DAY_BUDGET_USD: ${{ vars.BRIEFING_DAY_BUDGET_USD }}
+      BRIEFING_MONTH_BUDGET_USD: ${{ vars.BRIEFING_MONTH_BUDGET_USD }}
+      BRIEFING_PRICE_TABLE_JSON: ${{ vars.BRIEFING_PRICE_TABLE_JSON }}
+      BRIEFING_EXTRA_HOLIDAYS_JSON: ${{ vars.BRIEFING_EXTRA_HOLIDAYS_JSON }}
+      BRIEFING_DEFAULT_NEWS_FEEDS: ${{ vars.BRIEFING_DEFAULT_NEWS_FEEDS }}
+      BRIEFING_ENABLE_RESEARCH: ${{ vars.BRIEFING_ENABLE_RESEARCH }}
+      BRIEFING_MARKET_OBSERVATIONS_JSON: ${{ vars.BRIEFING_MARKET_OBSERVATIONS_JSON }}
+      BRIEFING_MARKET_OBSERVATIONS_URL: ${{ vars.BRIEFING_MARKET_OBSERVATIONS_URL }}
+      SCHEDULE: ${{ github.event.schedule }}
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: python -m pip install requests==2.34.2 jsonschema==4.26.0 holidays==0.106
+      - name: Repair the two missing editions once
+        run: python .github/scripts/repair_briefing_20261029.py
+      - name: Save operation diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: briefing-repair-status-${{ github.run_id }}
+          path: briefing-repair-status.json
+          retention-days: 14
+          if-no-files-found: ignore
+

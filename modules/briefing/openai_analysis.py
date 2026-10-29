@@ -97,6 +97,8 @@ class OpenAIAnalysisClient:
         self.market_flow = []
         self.previous_news = []
         self.cached_response = None
+        from .execution_policy import ANALYSIS_OUTPUT_TOKENS
+        self.max_output_tokens = ANALYSIS_OUTPUT_TOKENS
         if not self.api_key:
             raise BriefingAnalysisError("OPENAI_API_KEY is not configured")
         if not self.model:
@@ -229,7 +231,7 @@ class OpenAIAnalysisClient:
                     "schema": schema,
                 }
             },
-            "max_output_tokens": 12000,
+            "max_output_tokens": self.max_output_tokens,
         }
         record = {"profile_code": profile_code, "input_identity": input_identity, "status": "started", "usage": None,
                   "usage_available": False, "requested_event_keys": [e.event_key for e in events],
@@ -273,6 +275,7 @@ class OpenAIAnalysisClient:
         usage = self._usage(data)
         record.update({"status": str(data.get("status") or "completed"),
                        "provider_status": str(data.get("status") or "completed"), "usage": asdict(usage),
+                       "incomplete_details": data.get("incomplete_details"),
                        "usage_available": isinstance(data.get("usage"), dict),
                        "response_id": str(data.get("id") or "")[:160] or None})
         output_text = data.get("output_text")
@@ -335,3 +338,4 @@ class OpenAIAnalysisClient:
         self.market_flow=[r for r in parsed['market_flow'] if profile_code=='MARKET' and r['text'].strip()
                           and r['fact_refs'] and set(r['fact_refs'])<=valid_refs]
         return rows
+

@@ -233,9 +233,31 @@ class OpenAIWebDiscoveryClient:
         except BriefingDiscoveryError as exc:
             budget.finish(record, {**exc.diagnostics, "status": "request_failed", "failure_message": str(exc)[:500]})
             raise
+        # Re-read the same stored response once; never POST another search to settle it.
+        initial_actions = self._search_count(data)
+        initial_calls = len(self._web_items(data))
+        counts = self._search_status_counts(data)
+        if any(counts.get(k,0) for k in ('nonfinal','unknown')):
+            response_id = data.get('id')
+            if isinstance(response_id,str) and response_id.startswith('resp_') and response_id.replace('_','').isalnum():
+                try:
+                    check=self.http.get('https://api.openai.com/v1/responses/'+response_id,
+                        headers={'Authorization': f'Bearer {self.api_key}'},timeout=(5,15))
+                    if check.status_code == 200:
+                        settled=check.json()
+                        if isinstance(settled,dict) and settled.get('id')==response_id and isinstance(settled.get('usage'),dict):
+                            data=settled
+                except (requests.RequestException,ValueError):pass
+        counts=self._search_status_counts(data)
+        degraded=(data.get('status')=='completed' and isinstance(data.get('usage'),dict)
+                  and any(counts.get(k,0) for k in ('nonfinal','unknown')))
+        if degraded:
+            # Keep accounting for every observed action, discard ambiguous web results,
+            # and continue with independently verified publisher feeds only.
+            budget.paused=True
         usage = self._usage(data)
-        usage.web_tool_calls = len(self._web_items(data))
-        usage.search_actions = self._search_count(data)
+        usage.web_tool_calls = max(initial_calls,len(self._web_items(data)))
+        usage.search_actions = max(initial_actions,self._search_count(data))
         usage.search_retry_count = int(retry)
         items = self._web_items(data)
         parse_error = None
@@ -246,6 +268,7 @@ class OpenAIWebDiscoveryClient:
             parse_error = type(exc).__name__
         budget.finish(record, {
             "status": str(data.get("status") or "completed"),
+            "direct_feed_fallback": degraded,
             "response_id": str(data.get("id") or "")[:160] or None,
             "returned_max_tool_calls": data.get("max_tool_calls") if isinstance(data.get("max_tool_calls"), int) else None,
             "usage": asdict(usage), "usage_available": isinstance(data.get("usage"), dict),
@@ -262,6 +285,8 @@ class OpenAIWebDiscoveryClient:
                                   for row in candidates[:40]],
             "candidate_parse_error": parse_error,
         })
+        if degraded:
+            data=dict(data, _direct_feed_fallback=True)
         if parse_error:
             raise BriefingDiscoveryError("OpenAI discovery source metadata could not be parsed")
         if data.get("status") in {"failed", "incomplete", "cancelled", "queued", "in_progress"}:
@@ -295,10 +320,11 @@ class OpenAIWebDiscoveryClient:
         return DiscoveryLaneResult(
             lane_code=lane.lane_code,
             profile_code=lane.profile_code,
-            candidates=self._candidates(data, lane) if self._search_performed(data) else [],
+            candidates=self._candidates(data, lane) if self._search_performed(data) and not data.get("_direct_feed_fallback") else [],
             usage=usage,
             search_performed=self._search_performed(data),
             retry_used=retry_used,
             raw_response_id=str(data.get("id") or "") or None,
             request_diagnostics=budget.snapshot()["requests"][start:],
         )
+
