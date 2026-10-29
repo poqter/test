@@ -51,7 +51,8 @@ def parse_forecast(document, region, day, *, now=None):
     pm=_plain(pm.group(1)) if pm else ''
     condition=pm or am
     rain=any(x in am+pm for x in ('비','눈','소나기'))
-    return {'status':'ok','region_code':region,'region_name':region_name(region),'date':day,
+    from .weather_detail import periods
+    return {'periods':periods(document,day),'status':'ok','region_code':region,'region_name':region_name(region),'date':day,
         'condition':condition,'morning':am,'afternoon':pm,'low':low,'high':high,
         'guidance':'비·눈 예보가 있어 외출 시 대비해 주세요.' if rain else '',
         'issued_at':issued_at.isoformat(),'retrieved_at':now.isoformat(),
@@ -79,10 +80,14 @@ def _fetch(region, day, bucket):
     except (requests.RequestException,ValueError,UnicodeError):
         return {**unavailable,'reason':'fetch_failed'}
 
-def get_weather(region=DEFAULT_REGION, day=None):
+def get_weather(region=DEFAULT_REGION, day=None, *, detailed=False):
     region=checked_region(region)
     day=str(day or datetime.now(KST).date())
-    return dict(_fetch(region,day,int(time.time()//900)))
+    result=dict(_fetch(region,day,int(time.time()//900)))
+    if detailed:
+        from .weather_detail import observation
+        result.update(observation(region,day,int(time.time()//900)))
+    return result
 
 
 def weather_html(weather):
@@ -93,6 +98,16 @@ def weather_html(weather):
         message='이 날짜의 저장된 예보가 없습니다.' if weather.get('reason')=='historical' else '예보를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.'
         return f'<section class="hw-weather unavailable"><div><b>{region} 날씨</b><div class="weather-note">{date} · {message}</div></div></section>'
     condition=str(weather.get('condition') or '')
+    icon=weather_icon(condition)
+    def degree(v):return '—' if v is None else f'{float(v):g}°'
+    periods=' · '.join(label+' '+str(weather[key]) for key,label in (('morning','오전'),('afternoon','오후')) if weather.get(key))
+    return (f'<section class="hw-weather" data-weather-date="{date}">'+icon+'<div><div class="weather-head"><span>오늘의 날씨</span><span>'+region+'</span></div><strong>'+e(condition)+'</strong>'
+        +'<div class="temps">최저 <span class="low">'+degree(weather.get('low'))+'</span> / 최고 <span class="high">'+degree(weather.get('high'))+'</span></div>'
+        +'<div>'+e(periods)+'</div><div>'+e(weather.get('guidance'))+'</div></div></section>')
+
+
+def weather_icon(condition):
+    condition=str(condition or "")
     snow='눈' in condition
     rain=any(x in condition for x in ('비','소나기'))
     cloud=any(x in condition for x in ('구름','흐림','비','눈','소나기'))
@@ -101,8 +116,4 @@ def weather_html(weather):
     drops='<path d="M35 78l-3 7m20-7l-3 7m20-7l-3 7" stroke="#428DC6" stroke-width="4" stroke-linecap="round"/>' if rain else ''
     if snow:drops='<g fill="#75A7D0"><circle cx="32" cy="82" r="3"/><circle cx="49" cy="86" r="3"/><circle cx="66" cy="81" r="3"/></g>'
     icon='<svg viewBox="0 0 96 96" aria-hidden="true" focusable="false">'+sun+clouds+drops+'</svg>'
-    def degree(v):return '—' if v is None else f'{float(v):g}°'
-    periods=' · '.join(label+' '+str(weather[key]) for key,label in (('morning','오전'),('afternoon','오후')) if weather.get(key))
-    return (f'<section class="hw-weather" data-weather-date="{date}">'+icon+'<div><div class="weather-head"><span>오늘의 날씨</span><span>'+region+'</span></div><strong>'+e(condition)+'</strong>'
-        +'<div class="temps">최저 <span class="low">'+degree(weather.get('low'))+'</span> / 최고 <span class="high">'+degree(weather.get('high'))+'</span></div>'
-        +'<div>'+e(periods)+'</div><div>'+e(weather.get('guidance'))+'</div></div></section>')
+    return icon

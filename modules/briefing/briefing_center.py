@@ -488,16 +488,17 @@ def run():
                 st.session_state['hw_briefing_page'] = pages[0]
             current = st.session_state['hw_briefing_page']
             title = {'오늘 브리핑':'오늘의 브리핑','지난 브리핑':'지난 브리핑','고객에게 공유':'고객에게 공유','운영 관리':'운영 관리'}[current]
-            from .weather import REGIONS, DEFAULT_REGION, checked_region, region_name, get_weather, weather_html
+            from .weather_detail import detailed_html
+            from .weather import REGIONS, DEFAULT_REGION, checked_region, region_name, get_weather
             options = [r['code'] for r in REGIONS]
             preferred = checked_region(st.session_state.get('hw_weather_region', DEFAULT_REGION))
             region = checked_region(st.session_state.get('hw_header_weather_region', preferred))
             with st.container(key='hw_briefing_header'):
-                heading, weather_column = st.columns([1.35, 1], gap='medium', vertical_alignment='center')
+                heading, weather_column = st.columns([1, 1.85], gap='medium', vertical_alignment='center')
                 with heading:
                     st.markdown('<div class="hw-briefing-hero"><span>화랑 WORKSPACE / BRIEFING CENTER</span><h1>'+html.escape(title)+'</h1></div>', unsafe_allow_html=True)
                 with weather_column:
-                    st.markdown(weather_html(get_weather(region, datetime.now(KST).date().isoformat())), unsafe_allow_html=True)
+                    st.markdown(detailed_html(get_weather(region, datetime.now(KST).date().isoformat(), detailed=True)), unsafe_allow_html=True)
             with st.container(key='hw_weather_toolbar'):
                 _, region_control = st.columns([3, 1])
                 with region_control:
