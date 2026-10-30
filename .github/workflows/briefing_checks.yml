@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    paths: ['.github/scripts/**', 'app.py', 'modules/briefing/**', 'modules/shared/**', 'public_reader/**', 'tests/**', 'requirements.txt', 'constraints.txt', 'STAGE1_CHANGED_FILES.json', '.github/workflows/**']
+    paths: ['.github/scripts/**', 'app.py', 'hwarang_academy/**', 'supabase/migrations/**', 'modules/briefing/**', 'modules/shared/**', 'public_reader/**', 'tests/**', 'requirements.txt', 'constraints.txt', 'STAGE1_CHANGED_FILES.json', '.github/workflows/**']
   workflow_dispatch:
 permissions:
   contents: read
@@ -20,6 +20,13 @@ jobs:
         run: python -m pip install -r requirements.txt pytest==8.4.2
       - name: Offline Python regression
         run: python -m pytest -q
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Academy learning authorization and persistence regression
+        run: |
+          npm ci --ignore-scripts --prefix tests/studio_db
+          node tests/studio_db/check.mjs
       - name: Customer reader HTTP regression
         run: node --test tests/test_briefing_public.mjs
   deployed-release:

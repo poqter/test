@@ -19,6 +19,7 @@ def render(auth, owner, permissions, profile, surface):
     try: items=rpc(auth,owner,'catalog') or []
     except Exception:
         st.error('교육 저장소를 연결하지 못했습니다. SQL 26 적용 및 아카데미 접근 권한을 확인해 주세요.');return
+    items.sort(key=lambda r: (0 if r.get('id')=='newhire-30-v1' else 1, r.get('title','')))
     if surface=='library':
         st.caption('자료를 검색하고 기준일을 확인하세요. 법령·약관은 최신 원본을 별도로 확인합니다.')
         query=st.text_input('자료 검색',placeholder='제목, 설명, 분류 검색')
@@ -41,14 +42,30 @@ def render(auth, owner, permissions, profile, surface):
         return
     courses=[r for r in items if r['kind']=='course' and r.get('published') and r.get('permission') in permissions]
     if surface=='my_learning':
-        st.caption('교육 진도는 본인만 조회합니다. AI 상담 기록은 시뮬레이터에서 확인할 수 있습니다.')
+        st.caption('신입 공통 과정의 실습과 진도는 연결된 상위 관리자도 확인할 수 있습니다. AI 상담 기록은 시뮬레이터에서 확인하세요.')
         for course in courses:
+            if course.get('learning_mode')=='practice':
+                from .onboarding import completion
+                try:
+                    works=rpc(auth,owner,'work_get',p_id=course['id']) or []
+                    done,approved,graduated=completion(course,works)
+                    st.subheader(course['title']);st.progress(done/len(course['lessons']),text=f'{done}/30 학습 · {approved}/4 주간 검토')
+                    st.success('수료') if graduated else st.caption('실습과 주간 검토를 완료하면 수료로 표시됩니다.')
+                    if st.button('학습 이어하기',key='resume_'+course['id']):
+                        from hwarang_academy.shell import course_open
+                        course_open(course['id']);st.rerun()
+                except Exception:st.warning('신입 과정 기록을 불러오지 못했습니다.')
+                continue
             done=len((course.get('progress') or {}).get('completed_lessons') or [])
             total=len(course['lessons']);st.subheader(course['title']);st.progress(done/total if total else 0,text=f'{done}/{total} 학습 완료')
         if not courses:st.info('이용 가능한 교육 과정이 없습니다.')
         return
     if not courses:st.info('이용 가능한 교육 과정이 없습니다. 교육 메뉴 권한을 확인해 주세요.');return
     selected=st.selectbox('교육 과정',courses,index=next((i for i,c in enumerate(courses) if c['id']==st.session_state.get('_academy_course_id')),0),format_func=lambda c:c['title'])
+    if selected.get('learning_mode')=='practice':
+        from .onboarding import render as render_onboarding
+        render_onboarding(auth,owner,permissions,profile,selected,rpc)
+        return
     st.caption(selected['summary']+' · 자체 기초 학습 콘텐츠 / 자격 인증 과정 아님')
     done=set((selected.get('progress') or {}).get('completed_lessons') or [])
     st.progress(len(done)/len(selected['lessons']),text=f"{len(done)}/{len(selected['lessons'])} 완료")
