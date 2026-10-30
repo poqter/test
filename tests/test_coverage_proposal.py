@@ -46,6 +46,12 @@ def test_menu_available_to_all_standard_roles():
     assert all('coverage_proposal' in ROLE_PERMISSIONS[role] for role in ('Admin','Manager1','Basic','Crew','Dream'))
 
 
+def test_default_organization_allows_proposal_menu():
+    from modules.shared.organization import active_profile, permitted_tools
+    assert 'coverage_proposal' in active_profile(db_path='', state={})['allowed_tools']
+    assert 'coverage_proposal' in permitted_tools(['coverage_proposal'])
+
+
 def test_multiple_contracts_preserve_unknowns_and_keep_conditions_visible():
     from modules.consultation.coverage_proposal import _combine
     a={'premium':100000, '일반암':30000000, '유사암':None, '뇌혈관질환':10000000, '허혈성심장질환':0, 'notes':'첫 계약의 조건'}
