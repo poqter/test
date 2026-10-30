@@ -336,6 +336,10 @@ def run() -> None:
                 key="analyzer_v2_download",
             )
 
+            if not is_pdf:
+                from modules.consultation.coverage_customer_briefing import render_briefing
+                render_briefing(parsed)
+
         elif not error or error.get("signature") != signature:
             st.info("원본 파일을 업로드하면 결과를 확인할 수 있습니다." if not uploaded_main else "출력할 보장항목을 확인하고 보장 분석을 시작하세요.")
 

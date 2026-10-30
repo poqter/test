@@ -58,6 +58,7 @@ WORKSPACE_APP_PERMISSION: Final[dict[str, str]] = {
     "remodeling": "workspace.remodeling",
     "silson_generation_comparison": "workspace.coverage_analysis",
     "comparison_builder": "workspace.customer_materials",
+    "coverage_proposal": "workspace.customer_materials",
     "insurance_claim_guide": "workspace.customer_materials",
     "insurer_portal": "workspace.official_resources",
     "convention": "workspace.performance_basic",
