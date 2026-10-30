@@ -57,19 +57,8 @@ def create_pdf(title, subtitle, sections):
     return out.getvalue()
 
 def briefing_pdf(parsed):
-    contracts=parsed['contracts']; coverages=parsed['coverages']
-    policies=[[str(c.get('company') or '확인 필요'),str(c.get('product') or '확인 필요'),str(c.get('coverage_period') or '확인 필요'),format_won(c.get('monthly'))] for c in contracts]
-    coverage=[]
-    for row in coverages:
-        vals=row.get('values',[])
-        # The established analyzer parser maps blanks to 0; do not infer absence.
-        present=[v for v in vals if isinstance(v,(int,float)) and v>0]
-        if present:
-            coverage.append([str(row.get('display') or row.get('label')), ' / '.join(format_coverage(v) for v in present[:5]), '세부 조건 확인'])
-    sections=[('월 보험료','bars',{'items':[(str(c.get('company') or '확인 필요'),c.get('monthly') if c.get('monthly') else None) for c in contracts], 'format':format_won}), ('가입 보험','table',{'headers':['보험사','상품','보장기간','월 보험료'],'rows':policies,'widths':[80,180,100,160]}),
-      ('주요 보장 내용','table',{'headers':['보장','계약별 기재 금액','안내'],'rows':coverage[:32] or [['기재된 보장 없음','확인 필요','원본 확인']], 'widths':[160,230,130]}),
-      ('상담 시 확인','text','특약에 따라 보장 범위, 지급 횟수와 조건이 다릅니다. 공란이나 0원은 자료만으로 미가입이라고 단정하지 않습니다.')]
-    return create_pdf('현재 보험 보장 브리핑',f"{parsed.get('customer_name','고객')}님 | 첨부한 보장분석 엑셀 기준",sections)
+    from modules.consultation.coverage_current_briefing import current_brief_pdf
+    return current_brief_pdf(parsed)
 
 def comparison_pdf(current,plans,recommended,reason,caution):
     sections=[('추천 제안','text',f'{recommended or "추천안 미선택"}\n{reason or "추천 이유를 입력해 주세요."}')]

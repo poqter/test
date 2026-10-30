@@ -31,7 +31,7 @@ def test_reports_generate_embedded_korean_text_and_unknowns():
     parsed = parse_source_file(sample_workbook())
     doc=PdfReader(BytesIO(briefing_pdf(parsed)))
     text=''.join(p.extract_text() or '' for p in doc.pages)
-    assert '현재 보험 보장 브리핑' in text
+    assert '가상고객 님의 현재 보장' in text
     current={'name':'현재 보험','premium':238092,'일반암':30000000,'유사암':None,'뇌혈관질환':10000000,'허혈성심장질환':10000000,'notes':''}
     plan={'name':'제안','premium':None,'일반암':30000000,'유사암':None,'뇌혈관질환':10000000,'허혈성심장질환':10000000,'notes':''}
     doc=PdfReader(BytesIO(comparison_pdf(current,[plan],'제안','보장기간 확인','')))
