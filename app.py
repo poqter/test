@@ -294,11 +294,24 @@ def main() -> None:
         if "sales_activity" not in permitted:
             st.error("영업활동 관리 이용 권한을 확인해 주세요.")
             st.stop()
-        from modules.activity.center import Records, mobile_calendar
-        db = Records()
+        import streamlit.components.v1 as components
+
         profile = st.session_state["login_profile"]
-        action = mobile_calendar(account=dict(url=db.auth.config.url, key=db.auth.config.publishable_key,
-            uid=db.uid, token=db.token, unit=db.me["unit"], branch=profile.get("position_code")=="branch_manager"),
+        token = st.session_state["hwarang_auth"]["access_token"]
+        try:
+            members = auth._request("POST", "/rest/v1/rpc/sales_members", access_token=token, json={})
+        except HwarangAuthError as exc:
+            st.error(str(exc))
+            st.stop()
+        member = next((row for row in members if row["member"] == profile["id"]), None)
+        if member is None:
+            st.error("영업활동 관리 이용 권한을 확인해 주세요.")
+            st.stop()
+        calendar = components.declare_component("workspace_mobile_calendar",
+            path=str(calendar_icon.parent))
+        action = calendar(account=dict(url=auth.config.url, key=auth.config.publishable_key,
+            uid=profile["id"], token=token, unit=member["unit"],
+            branch=profile.get("position_code") == "branch_manager"),
             key="standalone_mobile_calendar", default=None)
         if action == "logout":
             workspace_logout()
