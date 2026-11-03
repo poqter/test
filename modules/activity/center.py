@@ -1,3 +1,4 @@
+import re
 from calendar import monthrange
 from pathlib import Path
 import streamlit.components.v1 as components
@@ -10,7 +11,7 @@ from modules.shared.hwarang_auth import HwarangAuthService, HwarangAuthError, Su
 
 KST=ZoneInfo("Asia/Seoul")
 SALES_TYPES={"TA":"고객 연락","AP":"초회 상담","PC":"프레젠테이션 / 클로징","CS":"기존 고객 관리"}
-KINDS=[*SALES_TYPES,"청약","교육","회의","휴무","기타"]
+KINDS=["미분류",*SALES_TYPES,"청약","교육","회의","휴무","기타"]
 REPORT_KIND={"AP":"상담","PC":"제안"}
 COUNTS=["전화","메시지","약속 확보","상담","제안","청약"]
 DAY=timedelta(days=1)
@@ -54,23 +55,29 @@ def bounds(day,view):
 def event_editor(db,day,event=None):
     old=event or {}
     key="sales_edit_"+(old.get("id") or "new_"+str(day))+"_"+str(old.get("revision",0))
-    existing=old.get("kind","AP")
+    existing=old.get("kind","미분류")
     options=KINDS if existing in KINDS else [existing,*KINDS]
+    def infer_kind():
+        if not event and not st.session_state.get(key+"_manual"):
+            matches=set(re.findall(r"(?<![A-Za-z0-9])(AP|PC|TA|CS)(?![A-Za-z0-9])",st.session_state[key+"_title"].upper()))
+            st.session_state[key+"_kind"]=matches.pop() if len(matches)==1 else "미분류"
     def select_kind():
+        st.session_state[key+"_manual"]=True
         if st.session_state[key+"_kind"]=="휴무":
             st.session_state[key+"_all"]=True
             if not st.session_state.get(key+"_title","").strip():
                 st.session_state[key+"_title"]="휴무"
     with st.container():
         when=st.date_input("날짜",date.fromisoformat(old.get("day",str(day))),key=key+"_day")
+        title=st.text_input("고객 또는 일정명",old.get("title",""),key=key+"_title",on_change=infer_kind,max_chars=200,placeholder="예: 소개 고객 첫 상담")
         kind=st.selectbox("활동 종류",options,index=options.index(existing),key=key+"_kind",on_change=select_kind,
                           format_func=lambda k:f"{k} · {SALES_TYPES[k]}" if k in SALES_TYPES else k)
-        all_day=st.checkbox("종일 일정",value=bool(event and not old.get("start_time")),key=key+"_all")
+        all_day=st.checkbox("종일 일정",value=bool(event and not old.get("start_time") and not old.get("time_pending")),key=key+"_all")
         start=None
         if not all_day:
-            start=st.time_input("시작 시간",value=st.session_state.get(key+"_last_start") or (time.fromisoformat(old["start_time"]) if old.get("start_time") else time(9)),key=key+"_start")
+            start=st.time_input("시작 시간",value=st.session_state.get(key+"_last_start") or (time.fromisoformat(old["start_time"]) if old.get("start_time") else None),key=key+"_start")
             st.session_state[key+"_last_start"]=start
-        title=st.text_input("고객 또는 일정명",old.get("title",""),key=key+"_title",max_chars=200,placeholder="예: 소개 고객 첫 상담")
+
         with st.expander("선택 항목 · 종료 시간, 장소, 메모 등"):
             end=None
             if not all_day:
@@ -78,7 +85,10 @@ def event_editor(db,day,event=None):
                 st.session_state[key+"_last_end"]=end
             place=st.text_input("장소",old.get("place",""))
             note=st.text_area("메모",old.get("note",""))
-            help_text=st.text_input("동행·검토 요청",old.get("help",""))
+            people={r["member"]:r["label"] for r in db.request("POST","rpc/sales_branch_members",body={}) if r["member"]!=db.uid}
+            choices=list(dict.fromkeys([None,*people,*([old["companion"]] if old.get("companion") else [])]))
+            companion=st.selectbox("동행자",choices,index=choices.index(old.get("companion")),format_func=lambda u:people.get(u,"기존 동행자") if u else "선택 안 함")
+            help_text=st.text_input("지원 요청",old.get("help",""))
             repeat=1 if event else st.number_input("매주 반복 횟수",1,52,1)
             common=st.checkbox("지점 공통 일정",old.get("common",False)) if db.me["managed"] else False
         states=["예정","완료","연기","취소"]
@@ -87,9 +97,9 @@ def event_editor(db,day,event=None):
         follow=st.date_input("후속 일정 날짜 · 선택",value=None) if event else None
         proceed=st.button("일정 저장",type="primary",key=key+"_save")
     if proceed:
-        if not title.strip() or (not all_day and not start) or end and (not start or end<=start):
+        if not title.strip() or end and (not start or end<=start):
             st.warning("일정명과 시작·종료 시간을 확인해 주세요.");return
-        body=dict(day=str(when),start_time=str(start) if start else None,end_time=str(end) if end else None,
+        body=dict(companion=companion,time_pending=not all_day and start is None,day=str(when),start_time=str(start) if start else None,end_time=str(end) if end else None,
                   title=title.strip(),kind=kind,place=place,note=note,help=help_text,common=common,status=status,result=result,unit=db.me["unit"])
         if start and status=="예정":
             last=when+7*(repeat-1)*DAY
@@ -120,7 +130,7 @@ def review(db,row,target):
     for item in reviews:
         st.caption(f'{item["created_at"][:10]} · {item["message"]}'+(" · 이전 버전" if item["revision"]!=row["revision"] else ""))
     if db.me["managed"] and db.members.get(row["owner"],{}).get("managed"):
-        label="확인 완료" if target=="report" else "동행 수락"
+        label="확인 완료" if target=="report" else "일정 확인"
         with st.form("review_"+row["id"]):
             message=st.text_input("피드백 또는 변경 요청")
             if st.form_submit_button(label+" · 의견 저장"):
@@ -167,10 +177,12 @@ def calendar(db,today):
                 ids=",".join(n["id"] for n in notices)
                 db.request("PATCH","sales_notices",{"id":"in.("+ids+")"},{"seen":True})
                 st.rerun()
-    team=db.me["managed"] and st.toggle("담당 조직 일정")
+    position=st.session_state["hwarang_auth"]["profile"].get("position_code")
+    team=st.toggle("지점 일정",value=position=="branch_manager")
+    branch={r["member"]:r for r in db.request("POST","rpc/sales_branch_members",body={})}
     mobile=st.context.headers.get("User-Agent","").lower()
     compact=any(word in mobile for word in ("android","iphone","mobile"))
-    mode=st.session_state.get("sales_view","날짜별" if compact or st.query_params.get("view")=="my-calendar" else "월간")
+    mode=st.session_state.get("sales_view","월간")
     day=st.session_state.get("sales_anchor",today)
     start,end=bounds(day,mode)
     fetch_start,fetch_end=bounds(day,"주간") if mode=="날짜별" else (start,end)
@@ -178,13 +190,38 @@ def calendar(db,today):
         fetch_start-=7*DAY
         fetch_end+=7*DAY
     events=db.period("sales_events",fetch_start,fetch_end,order="day.asc,start_time.asc.nullsfirst")
-    accepted=set()
-    if db.me["managed"] and events:
-        accepted={r["event"] for r in db.request("GET","sales_reviews",{"reviewer":"eq."+db.uid,"message":"eq.동행 수락","select":"event","event":"not.is.null"})}
-    if not team:events=[x for x in events if x["owner"]==db.uid or x["common"] or x["id"] in accepted]
+    details={r["id"]:r for r in events}
+    def calendar_rows(a,b):
+        return db.request("POST","rpc/sales_calendar_days",body={"first_day":str(a),"last_day":str(b)})
+    summary=calendar_rows(fetch_start,fetch_end)
+    events=[details.get(r["id"],r) for r in summary if team or r["owner"]==db.uid or r["companion"]==db.uid or r["common"]]
+    events.sort(key=lambda r:(r["day"],r["start_time"] or ""))
+    todays=summary if fetch_start<=today<=fetch_end else calendar_rows(today,today)
+    todays=[r for r in todays if r["day"]==str(today) and not r["common"]]
+    confirmations={r["owner"] for r in db.request("GET","sales_empty_days",{"day":"eq."+str(today),"select":"owner"})}
+    def day_state(uid):
+        personal=[r for r in todays if uid in (r["owner"],r["companion"])]
+        active=[r for r in personal if r["status"] not in ("취소","연기")]
+        if any(r["kind"]!="휴무" or r["start_time"] for r in active):return "일정 있음"
+        if active:return "휴무"
+        if uid in confirmations:return "일정 없음"
+        if personal and all(r["status"]=="취소" for r in personal):return "모두 취소"
+        return "미등록"
+    if db.me["managed"]:
+        groups={}
+        for uid in branch.keys() & db.members.keys():
+            groups.setdefault(day_state(uid),[]).append(branch[uid]["label"])
+        with st.expander(("오늘의 팀" if position=="team_leader" else "오늘의 지점")+" · 미등록 "+str(len(groups.get("미등록",[])))+"명 · 일정 없음 "+str(len(groups.get("일정 없음",[])))+"명"):
+            for state,names in groups.items():st.write(state+" "+str(len(names))+"명 · "+", ".join(sorted(names)))
+    if day_state(db.uid) in ("미등록","일정 없음","모두 취소"):
+        checked=db.uid in confirmations
+        if st.button("오늘 일정 없음 · 되돌리기" if checked else "오늘 일정 없음"):
+            if checked:db.request("DELETE","sales_empty_days",{"owner":"eq."+db.uid,"day":"eq."+str(today)})
+            else:db.request("POST","sales_empty_days",body={"day":str(today)},prefer="resolution=ignore-duplicates")
+            st.rerun()
     if mode=="주간" and team:
         members=[]
-        for uid,person in db.members.items():
+        for uid,person in branch.items():
             line={"구성원":person["label"]}
             for i,label in enumerate("월화수목금토일"):
                 target=str(start+i*DAY)
@@ -202,16 +239,16 @@ def calendar(db,today):
         if soon:st.info("30분 이내 시작 · "+" / ".join(soon))
     cards=[]
     for row in events:
-        owner=db.members.get(row["owner"],{}).get("label","지점 공통")
-        stamp=(row["start_time"] or "종일")[:5]
+        owner=branch.get(row["owner"],{}).get("label","지점 공통")
+        stamp=(row["start_time"] or ("시간 미정" if row.get("time_pending") else "종일"))[:5]
         status=row["status"]
         if status=="예정" and (row["day"]<str(today) or row["day"]==str(today) and row["start_time"] and row["start_time"]<datetime.now(KST).strftime("%H:%M:%S")):
             status="결과 미입력"
         label=f'{stamp} · {row["kind"]} · {owner} · {status}'
-        if row["id"] in accepted:label+=" · 동행"
-        if row["help"]:label+=" · 지원 요청"
-        cards.append(dict(id=row["id"],day=row["day"],kind=row["kind"],member=row["owner"],allDay=not row["start_time"],short=f'{stamp} {row["kind"]}'+(f' · {owner}' if team else ''),label=label,done=status=="완료"))
-    action=calendar_view(mode=mode,day=str(day),today=str(today),events=cards,roster={uid:p["label"] for uid,p in db.members.items()} if team else {},rangeStart=str(fetch_start),rangeEnd=str(fetch_end),key="sales_interactive_calendar",default=None)
+        if row.get("companion"):label+=" · 동행 "+branch.get(row["companion"],{}).get("label","")
+        if row.get("help"):label+=" · 지원 요청"
+        cards.append(dict(id=row["id"],day=row["day"],kind=row["kind"],member=row["owner"],allDay=not row["start_time"],short=(row.get('title') or row['kind'])+(f' · {owner}' if team else ''),label=label,done=status=="완료"))
+    action=calendar_view(mode=mode,day=str(day),today=str(today),events=cards,roster={uid:p["label"] for uid,p in branch.items()} if team else {},rangeStart=str(fetch_start),rangeEnd=str(fetch_end),key="sales_interactive_calendar",default=None)
     if isinstance(action,dict) and action.get("nonce")!=st.session_state.get("sales_calendar_action"):
         st.session_state["sales_calendar_action"]=action.get("nonce")
         command,value=action.get("action"),action.get("value")
@@ -230,7 +267,8 @@ def calendar(db,today):
             except (TypeError,ValueError):pass
         if command=="event":
             found=next((r for r in events if r["id"]==value),None)
-            if found:detail_dialog(db,found)
+            if found and found["id"] in details:detail_dialog(db,found)
+            elif found:st.info(next(c["label"] for c in cards if c["id"]==value))
     st.markdown("[화랑 내 일정 바로가기](https://hwarang-workspace.streamlit.app/?view=my-calendar)")
     st.caption("휴대폰에서 바로가기를 열고 브라우저 메뉴에서 ‘홈 화면에 추가’를 선택해 주세요.")
 
