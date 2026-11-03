@@ -9,7 +9,9 @@ import streamlit as st
 from modules.shared.hwarang_auth import HwarangAuthService, HwarangAuthError, SupabaseConfig
 
 KST=ZoneInfo("Asia/Seoul")
-KINDS=["전화","상담","제안","청약","고객관리","교육","회의","휴무","기타"]
+SALES_TYPES={"TA":"고객 연락","AP":"초회 상담","PC":"프레젠테이션 / 클로징","CS":"기존 고객 관리"}
+KINDS=[*SALES_TYPES,"청약","교육","회의","휴무","기타"]
+REPORT_KIND={"AP":"상담","PC":"제안"}
 COUNTS=["전화","메시지","약속 확보","상담","제안","청약"]
 DAY=timedelta(days=1)
 
@@ -53,13 +55,16 @@ def event_editor(db,day,event=None):
     old=event or {}
     key="sales_edit_"+(old.get("id") or "new_"+str(day))+"_"+str(old.get("revision",0))
     with st.form(key):
-        title=st.text_input("고객 또는 일정명",old.get("title",""),max_chars=200)
-        kind=st.selectbox("활동 종류",KINDS,index=KINDS.index(old.get("kind","상담")))
+        st.markdown("**기본 일정**")
         when=st.date_input("날짜",date.fromisoformat(old.get("day",str(day))))
-        a,b=st.columns(2)
-        start=a.time_input("시작 · 종일이면 비우기",value=time.fromisoformat(old["start_time"]) if old.get("start_time") else (None if event else time(9)))
-        end=b.time_input("종료 · 선택",value=time.fromisoformat(old["end_time"]) if old.get("end_time") else None)
-        with st.expander("장소 · 반복 · 지원 요청"):
+        start=st.time_input("시작 시간",value=time.fromisoformat(old["start_time"]) if old.get("start_time") else (None if event else time(9)),help="시간을 비우면 종일 일정으로 등록합니다.")
+        existing=old.get("kind","AP")
+        options=KINDS if existing in KINDS else [existing,*KINDS]
+        kind=st.selectbox("활동 종류",options,index=options.index(existing),
+                          format_func=lambda k:f"{k} · {SALES_TYPES[k]}" if k in SALES_TYPES else k)
+        title=st.text_input("고객 또는 일정명",old.get("title",""),max_chars=200,placeholder="예: 소개 고객 첫 상담")
+        with st.expander("선택 항목 · 종료 시간, 장소, 메모 등"):
+            end=st.time_input("종료 시간",value=time.fromisoformat(old["end_time"]) if old.get("end_time") else None)
             place=st.text_input("장소",old.get("place",""))
             note=st.text_area("메모",old.get("note",""))
             help_text=st.text_input("동행·검토 요청",old.get("help",""))
@@ -179,7 +184,7 @@ def calendar(db,today):
         label=f'{stamp} · {row["kind"]} · {owner} · {status}'
         if row["id"] in accepted:label+=" · 동행"
         if row["help"]:label+=" · 지원 요청"
-        cards.append(dict(id=row["id"],day=row["day"],short=f'{stamp} {row["kind"]}',label=label,done=status=="완료"))
+        cards.append(dict(id=row["id"],day=row["day"],kind=row["kind"],short=f'{row["kind"]} {stamp}',label=label,done=status=="완료"))
     action=calendar_view(mode=mode,day=str(day),today=str(today),events=cards,key="sales_interactive_calendar",default=None)
     if isinstance(action,dict) and action.get("nonce")!=st.session_state.get("sales_calendar_action"):
         st.session_state["sales_calendar_action"]=action.get("nonce")
@@ -217,10 +222,11 @@ def reports(db,today,period):
             events=db.period("sales_events",day,day,owner="eq."+db.uid,status="eq.완료")
             current=st.session_state.get(key+".sources",sources).copy()
             for row in events:
-                if row["id"] not in current and row["kind"] in COUNTS:
-                    field=key+row["kind"]
-                    st.session_state[field]=st.session_state.get(field,totals.get(row["kind"],0))+1
-                    current[row["id"]]=row["kind"]
+                metric=REPORT_KIND.get(row["kind"],row["kind"])
+                if row["id"] not in current and metric in COUNTS:
+                    field=key+metric
+                    st.session_state[field]=st.session_state.get(field,totals.get(metric,0))+1
+                    current[row["id"]]=metric
             st.session_state[key+".sources"]=current
         sources=st.session_state.get(key+".sources",sources)
     elif not old or st.button("제출된 일일 기록으로 다시 집계"):
