@@ -1,4 +1,4 @@
-from modules.activity.contracts import contract_editor, performance
+from modules.activity.contracts import contract_editor, performance, conversions
 import re
 from calendar import monthrange
 from pathlib import Path
@@ -14,7 +14,7 @@ KST=ZoneInfo("Asia/Seoul")
 SALES_TYPES={"TA":"고객 연락","AP":"초회 상담","PC":"프레젠테이션 / 클로징","CS":"기존 고객 관리"}
 KINDS=["미분류",*SALES_TYPES,"청약","교육","회의","휴무","기타"]
 REPORT_KIND={"AP":"상담","PC":"제안"}
-COUNTS=["전화","메시지","약속 확보","상담","제안","청약"]
+COUNTS=["TA","CS","전화","메시지","약속 확보","상담","제안","청약"]
 DAY=timedelta(days=1)
 
 class Records:
@@ -53,13 +53,13 @@ def bounds(day,view):
     if view=="월간":return day.replace(day=1),day.replace(day=monthrange(day.year,day.month)[1])
     return day,day
 
-def event_editor(db,day,event=None):
+def event_editor(db,day,event=None,parent=None):
     old=event or {}
     key="sales_edit_"+(old.get("id") or "new_"+str(day))+"_"+str(old.get("revision",0))
-    existing=old.get("kind","미분류")
+    existing=old.get("kind",{"TA":"AP","AP":"PC"}.get(parent["kind"],"미분류") if parent else "미분류")
     options=KINDS if existing in KINDS else [existing,*KINDS]
     def infer_kind():
-        if not event and not st.session_state.get(key+"_manual"):
+        if not event and not parent and not st.session_state.get(key+"_manual"):
             matches=set(re.findall(r"(?<![A-Za-z0-9])(AP|PC|TA|CS)(?![A-Za-z0-9])",st.session_state[key+"_title"].upper()))
             st.session_state[key+"_kind"]=matches.pop() if len(matches)==1 else "미분류"
     def select_kind():
@@ -70,7 +70,7 @@ def event_editor(db,day,event=None):
                 st.session_state[key+"_title"]="휴무"
     with st.container():
         when=st.date_input("날짜",date.fromisoformat(old.get("day",str(day))),key=key+"_day")
-        title=st.text_input("고객 또는 일정명",old.get("title",""),key=key+"_title",on_change=infer_kind,max_chars=200,placeholder="예: 소개 고객 첫 상담")
+        title=st.text_input("고객 또는 일정명",old.get("title",parent["title"] if parent else ""),key=key+"_title",on_change=infer_kind,max_chars=200,placeholder="예: 소개 고객 첫 상담")
         kind=st.selectbox("활동 종류",options,index=options.index(existing),key=key+"_kind",on_change=select_kind,
                           format_func=lambda k:f"{k} · {SALES_TYPES[k]}" if k in SALES_TYPES else k)
         all_day=st.checkbox("종일 일정",value=bool(event and not old.get("start_time") and not old.get("time_pending")),key=key+"_all")
@@ -121,7 +121,7 @@ def event_editor(db,day,event=None):
         else:
             # One atomic insert for the series; retry the same IDs after a lost response.
             seed=st.session_state.setdefault(key+"_seed",str(uuid4()))
-            rows=[{**body,"day":str(when+i*7*DAY),"id":str(uuid5(NAMESPACE_URL,seed+str(i)))} for i in range(repeat)]
+            rows=[{**body,"previous_event":parent["id"] if parent else None,"day":str(when+i*7*DAY),"id":str(uuid5(NAMESPACE_URL,seed+str(i)))} for i in range(repeat)]
             db.request("POST","sales_events",body=rows,prefer="resolution=ignore-duplicates")
             st.session_state.pop(key+"_seed")
         saved()
@@ -152,8 +152,12 @@ def detail_dialog(db,row):
     for field in ("place","note","result","help"):
         if row[field]:st.text(row[field])
     if row["owner"]==db.uid:
-        with st.expander("일정 수정 · 완료"):event_editor(db,date.fromisoformat(row["day"]),row)
-    if row["owner"]==db.uid:contract_editor(db,date.fromisoformat(row["day"]),row["id"])
+        linked=row["kind"] in ("TA","AP") and st.toggle("다음 활동 연결")
+        if linked:
+            event_editor(db,date.fromisoformat(row["day"]),parent=row)
+        else:
+            with st.expander("일정 수정 · 완료"):event_editor(db,date.fromisoformat(row["day"]),row)
+        contract_editor(db,date.fromisoformat(row["day"]),row["id"])
     review(db,row,"event")
 
 def calendar(db,today):
@@ -275,7 +279,7 @@ def calendar(db,today):
     st.caption("휴대폰에서 바로가기를 열고 브라우저 메뉴에서 ‘홈 화면에 추가’를 선택해 주세요.")
 
 def reports(db,today,period):
-    st.caption("완료한 일정을 불러온 뒤, 일정 없이 진행한 활동만 더해 주세요." if period=="일일" else "제출된 일일 기록을 바탕으로 이번 주 성과와 다음 주 계획을 정리하세요.")
+    st.caption("완료 일정과 접수한 청약을 집계합니다. 캘린더 밖에서 진행한 활동만 더해 주세요." if period=="일일" else "제출된 일일 기록을 바탕으로 이번 주 성과와 다음 주 계획을 정리하세요.")
     selected=st.date_input("기록 날짜",today,max_value=today,key="sales_day_"+period)
     day=selected if period=="일일" else bounds(selected,"주간")[0]
     if period=="일일":contract_editor(db,day)
@@ -288,17 +292,27 @@ def reports(db,today,period):
     coverage=data.get("coverage",[])
     if period=="일일":
         st.caption("전화는 발신 시도, 메시지는 당일 고객 수, 약속은 신규 확정, 상담·제안은 진행 횟수, 청약은 접수 건수입니다.")
-        if st.button("완료 일정 불러오기"):
+        if not old.get("submitted") or st.button("최신 일정으로 수정 초안 만들기"):
             events=db.period("sales_events",day,day,owner="eq."+db.uid,status="eq.완료")
-            current=st.session_state.get(key+".sources",sources).copy()
+            contracts=db.period("sales_contracts",day,day,owner="eq."+db.uid)
+            linked={r["event"] for r in contracts}
+            current={}
             for row in events:
                 metric=REPORT_KIND.get(row["kind"],row["kind"])
-                if row["id"] not in current and metric in COUNTS:
-                    field=key+metric
-                    st.session_state[field]=st.session_state.get(field,totals.get(metric,0))+1
+                if metric in COUNTS and not (metric=="청약" and row["id"] in linked):
                     current[row["id"]]=metric
+            current.update({r["id"]:"청약" for r in contracts})
+            previous=st.session_state.get(key+".sources",sources)
+            for metric in COUNTS:
+                field=key+metric
+                base=st.session_state.get(field,totals.get(metric,0))
+                st.session_state[field]=max(0,base-list(previous.values()).count(metric)+list(current.values()).count(metric))
             st.session_state[key+".sources"]=current
+            st.session_state[key+".contracts"]=contracts
+            st.session_state[key+".results"]=[{"결과":e["result"],"지원 요청":e["help"]} for e in events if e["result"] or e["help"]]
         sources=st.session_state.get(key+".sources",sources)
+        if st.session_state.get(key+".results",data.get("results")):
+            st.write(st.session_state.get(key+".results",data.get("results")))
     elif not old or st.button("제출된 일일 기록으로 다시 집계"):
         daily=db.period("sales_reports",day,day+6*DAY,owner="eq."+db.uid,period="eq.일일",submitted="eq.true")
         totals={c:sum(r["data"]["counts"].get(c,0) for r in daily) for c in COUNTS}
@@ -319,6 +333,7 @@ def reports(db,today,period):
         submit=st.form_submit_button("수정 제출" if old.get("submitted") else "제출",type="primary")
     if submit or draft:
         payload={"counts":totals,"note":note,"plan":plan,"help":help_text,"sources":sources,"coverage":coverage}
+        if period=="일일":payload.update(contracts=st.session_state.get(key+".contracts",data.get("contracts",[])),results=st.session_state.get(key+".results",data.get("results",[])))
         body={"period":period,"day":str(day),"submitted":submit,"data":payload}
         if not old:body["id"]=str(uuid5(NAMESPACE_URL,db.uid+period+str(day)))
         db.save("sales_reports",body,old)
@@ -374,6 +389,7 @@ def overview(db,today):
                     return
         if unit!="all":members={uid:m for uid,m in members.items() if m["unit"]==unit}
     performance(db,day,members,bounds)
+    conversions(db,start,end,members)
     submitted=[r for r in db.period("sales_reports",start,start,period="eq."+period,submitted="eq.true") if r["owner"] in members]
     events=db.period("sales_events",start,end)
     index={r["owner"]:r for r in submitted}

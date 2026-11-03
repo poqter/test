@@ -57,3 +57,39 @@ def performance(db, day, members, bounds):
         if rows:
             with st.expander(label+" 내역"):
                 st.dataframe([{"구성원":members[r["owner"]]["label"],"날짜":r[field],"보험사":r["insurer"],"구분":r["category"],"납입":r["payment"],"보험료":r["amount"],"상태":r["status"]} for r in rows],hide_index=True)
+
+
+def conversions(db,start,end,members):
+    st.subheader("상담 전환")
+    period=db.period("sales_events",start,end,status="eq.완료")
+    cohort=[e for e in period if e["owner"] in members and e["kind"] in ("TA","AP","PC")]
+    tracked={e["case_id"] or e["id"] for e in cohort}
+    rows=[]
+    applications=[]
+    ids=sorted(tracked)
+    for pos in range(0,len(ids),40):
+        group="in.("+",".join(ids[pos:pos+40])+")"
+        rows.extend(db.request("GET","sales_events",{"case_id":group}))
+    all_events={r["id"]:r for r in [*cohort,*rows]}
+    pc=[r["id"] for r in all_events.values() if r["kind"]=="PC"]
+    for pos in range(0,len(pc),40):
+        applications.extend(db.request("GET","sales_contracts",{"event":"in.("+",".join(pc[pos:pos+40])+")"}))
+    chart=[]
+    for stage,target in [("TA","AP"),("AP","PC"),("PC","청약")]:
+        starters=[e for e in cohort if e["kind"]==stage]
+        cases={e["case_id"] or e["id"] for e in starters if e["case_id"] or any(r.get("case_id")==e["id"] for r in rows) or any(c["event"]==e["id"] for c in applications)}
+        completed=set()
+        planned=set()
+        for e in starters:
+            case=e["case_id"] or e["id"]
+            following=[r for r in rows if r["case_id"]==case and r["kind"]==target and r["day"]>=e["day"]]
+            if any(r["status"]=="완료" for r in following) or (target=="청약" and any(c["event"]==e["id"] for c in applications)):
+                completed.add(case)
+            elif any(r["status"]=="예정" for r in following):planned.add(case)
+        chart.append({"단계":stage+" → "+target,"전환율(%)":round(100*len(completed)/len(cases),1) if cases else 0})
+        with st.expander(f"{stage} → {target} · 완료 {len(completed)} / {len(cases)}건 · 예정 {len(planned-completed)}건"):
+            for e in starters:
+                case=e["case_id"] or e["id"]
+                state="완료" if case in completed else "예정" if case in planned else "후속 일정 없음" if case in cases else "연결 미확인"
+                st.write(e["day"],members[e["owner"]]["label"],e["title"],state)
+    if cohort:st.bar_chart(chart,x="단계",y="전환율(%)",horizontal=True)
