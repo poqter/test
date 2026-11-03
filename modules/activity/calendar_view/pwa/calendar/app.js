@@ -7,6 +7,16 @@ const sessionKey='hwarang.calendar.session',draftKey=()=> 'hwarang.calendar.draf
 function button(label,fn,cls){const b=document.createElement('button');b.textContent=label;b.type='button';b.className=cls||'';b.onclick=e=>{e.stopPropagation();fn()};return b}
 function gate(){session=null;$('logout').hidden=true;$('summary').hidden=true;$('empty').hidden=true;sessionStorage.removeItem(sessionKey);$('gate').hidden=false;$('grid').replaceChildren();$('restore').hidden=true}
 async function api(path,method='GET',body,prefer){const res=await fetch(session.url+'/rest/v1/'+path,{method,headers:{apikey:session.key,Authorization:'Bearer '+session.token,'Content-Type':'application/json',Prefer:prefer||'return=representation'},body:body?JSON.stringify(body):undefined});if(!res.ok){if(res.status===401){gate();throw Error('로그인이 만료되었습니다. WORKSPACE에서 다시 연결해 주세요.')}throw Error('처리하지 못했습니다. 입력 내용과 연결을 확인하고 다시 시도해 주세요.')}let t=await res.text();return t?JSON.parse(t):null}
+async function statusToday(){
+ if(!session)return;const day=dstr(today());
+ const [members,events,confirmed]=await Promise.all([api('rpc/sales_members','POST',{}),api('rpc/sales_calendar_days','POST',{first_day:day,last_day:day}),api('sales_empty_days?select=owner&day=eq.'+day)]);
+ const checked=new Set(confirmed.map(r=>r.owner));
+ function state(u){const mine=events.filter(r=>!r.common&&(r.owner===u||r.companion===u)),active=mine.filter(r=>!['취소','연기'].includes(r.status));if(active.some(r=>r.kind!=='휴무'||r.start_time))return '일정 있음';if(active.length)return '휴무';if(checked.has(u))return '일정 없음';if(mine.length&&mine.every(r=>r.status==='취소'))return '모두 취소';return '미등록'}
+ const groups={};for(const member of members.filter(r=>r.managed&&people[r.member])){const k=state(member.member);(groups[k]??=[]).push(member.label)}
+ $('summary').hidden=!Object.keys(groups).length;$('summaryTitle').textContent=(session.branch?'오늘의 지점':'오늘의 조직')+' · 미등록 '+(groups['미등록']||[]).length+'명 · 일정 없음 '+(groups['일정 없음']||[]).length+'명';$('summaryList').replaceChildren();for(const [k,v] of Object.entries(groups)){const line=document.createElement('div');line.textContent=k+' · '+v.join(', ');$('summaryList').append(line)}
+ $('empty').hidden=!['일정 없음','미등록','모두 취소'].includes(state(session.uid));$('empty').textContent=checked.has(session.uid)?'오늘 일정 없음 · 되돌리기':'오늘 일정 없음';$('empty').onclick=async()=>{try{if(checked.has(session.uid))await api('sales_empty_days?owner=eq.'+session.uid+'&day=eq.'+day,'DELETE');else await api('sales_empty_days','POST',{day},'resolution=ignore-duplicates,return=minimal');await statusToday()}catch(e){$('msg').textContent=e.message}};
+}
+
 function option(value,label){return new Option(label,value)}
 function label(r){return r.title||[people[r.owner],r.kind].filter(Boolean).join(' · ')}
 function showList(day,items){$('agenda').replaceChildren();$('listTitle').textContent=day+' · '+items.length+'건';items.forEach(r=>$('agenda').append(button((r.start_time?.slice(0,5)||(r.time_pending?'시간 미정':'종일'))+' · '+label(r)+(r.companion?' · 동행 '+(people[r.companion]||''):'')+' · '+r.status,()=>{if(r.owner===session.uid){$('list').close();openForm(day,r)}})));$('agenda').append(button('이 날짜에 일정 등록',()=>{$('list').close();openForm(day)}));$('list').showModal()}
@@ -25,22 +35,7 @@ f.kind.oninput=e=>{e.stopPropagation();draft.manual=true;if(f.kind.value==='휴�
 f.timing.onchange=()=>$('times').hidden=f.timing.value!=='시간 지정';
 $('form').onsubmit=async e=>{e.preventDefault();remember();let timed=f.timing.value==='시간 지정';if(timed&&(!f.start.value||(f.end.value&&f.end.value<=f.start.value))){$('error').textContent='시작·종료 시간을 확인해 주세요.';return}
  const body={day:f.day.value,title:f.title.value.trim(),kind:f.kind.value,status:f.status.value,companion:f.companion.value||null,place:f.place.value,note:f.note.value,time_pending:f.timing.value==='시간 미정',start_time:timed?f.start.value:null,end_time:timed?(f.end.value||null):null};if(!body.title)return;
- $('save').disabled=true;$('save').textContent='저장 중';try{if(draft.revision){async function statusToday(){
- if(!session)return;const day=dstr(today());
- const [members,events,confirmed]=await Promise.all([api('rpc/sales_members','POST',{}),api('rpc/sales_calendar_days','POST',{first_day:day,last_day:day}),api('sales_empty_days?select=owner&day=eq.'+day)]);
- const checked=new Set(confirmed.map(r=>r.owner));
- function state(u){const mine=events.filter(r=>!r.common&&(r.owner===u||r.companion===u)),active=mine.filter(r=>!['취소','연기'].includes(r.status));if(active.some(r=>r.kind!=='휴무'||r.start_time))return '일정 있음';if(active.length)return '휴무';if(checked.has(u))return '일정 없음';if(mine.length&&mine.every(r=>r.status==='취소'))return '모두 취소';return '미등록'}
- const groups={};for(const member of members.filter(r=>r.managed&&people[r.member])){const k=state(member.member);(groups[k]??=[]).push(member.label)}
- $('summary').hidden=!Object.keys(groups).length;$('summaryTitle').textContent=(session.branch?'오늘의 지점':'오늘의 조직')+' · 미등록 '+(groups['미등록']||[]).length+'명 · 일정 없음 '+(groups['일정 없음']||[]).length+'명';$('summaryList').replaceChildren();for(const [k,v] of Object.entries(groups)){const line=document.createElement('div');line.textContent=k+' · '+v.join(', ');$('summaryList').append(line)}
- $('empty').hidden=!['일정 없음','미등록','모두 취소'].includes(state(session.uid));$('empty').textContent=checked.has(session.uid)?'오늘 일정 없음 · 되돌리기':'오늘 일정 없음';$('empty').onclick=async()=>{try{if(checked.has(session.uid))await api('sales_empty_days?owner=eq.'+session.uid+'&day=eq.'+day,'DELETE');else await api('sales_empty_days','POST',{day},'resolution=ignore-duplicates,return=minimal');await statusToday()}catch(e){$('msg').textContent=e.message}};
-}
-$('logout').onclick=async()=>{if(session)await fetch(session.url+'/auth/v1/logout?scope=local',{method:'POST',headers:{apikey:session.key,Authorization:'Bearer '+session.token}}).catch(()=>{});gate()};
-if(window.opener){
- const source=window.opener;
- const receive=e=>{if(e.source===source&&e.origin===location.origin&&e.data?.type==='hwarang.calendar.session'&&e.data.session?.url?.replace(/\/$/,'')===root){removeEventListener('message',receive);window.opener=null;start(e.data.session)}};
- addEventListener('message',receive);source.postMessage({type:'hwarang.calendar.ready'},location.origin);
-}
-const saved=await api('sales_events?id=eq.'+draft.id+'&revision=eq.'+draft.revision,'PATCH',body);if(!saved.length)throw Error('다른 화면에서 먼저 변경했습니다. 최신 일정을 다시 열어 주세요.')}else await api('sales_events','POST',{...body,unit:session.unit,id:draft.id},'resolution=ignore-duplicates,return=minimal');
+ $('save').disabled=true;$('save').textContent='저장 중';try{if(draft.revision){const saved=await api('sales_events?id=eq.'+draft.id+'&revision=eq.'+draft.revision,'PATCH',body);if(!saved.length)throw Error('다른 화면에서 먼저 변경했습니다. 최신 일정을 다시 열어 주세요.')}else await api('sales_events','POST',{...body,unit:session.unit,id:draft.id},'resolution=ignore-duplicates,return=minimal');
  localStorage.removeItem(draftKey());$('restore').hidden=true;draft=null;$('sheet').close();cursor=new Date(body.day+'T12:00:00');await load()}catch(err){$('error').textContent=err.message}finally{$('save').disabled=false;$('save').textContent='저장'}};
 $('restore').onclick=()=>openForm(null,null,true);$('close').onclick=()=>$('sheet').close();$('hideList').onclick=()=>$('list').close();
 $('prev').onclick=()=>{cursor=new Date(cursor.getFullYear(),cursor.getMonth()-1,1);load()};$('next').onclick=()=>{cursor=new Date(cursor.getFullYear(),cursor.getMonth()+1,1);load()};$('now').onclick=()=>{cursor=today();load()};$('scope').onchange=render;
@@ -60,3 +55,10 @@ $('loginForm').onsubmit=async e=>{
 const saved=sessionStorage.getItem(sessionKey);if(saved)start(JSON.parse(saved));else gate();
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;$('install').hidden=false});$('install').onclick=()=>installPrompt?.prompt();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+$('logout').onclick=async()=>{if(session)await fetch(session.url+'/auth/v1/logout?scope=local',{method:'POST',headers:{apikey:session.key,Authorization:'Bearer '+session.token}}).catch(()=>{});gate()};
+if(window.opener){
+ const source=window.opener;
+ const receive=e=>{if(e.source===source&&e.origin===location.origin&&e.data?.type==='hwarang.calendar.session'&&e.data.session?.url?.replace(/\/$/,'')===root){removeEventListener('message',receive);window.opener=null;start(e.data.session)}};
+ addEventListener('message',receive);source.postMessage({type:'hwarang.calendar.ready'},location.origin);
+}
