@@ -44,10 +44,10 @@ function render(a){
  for(let i=0;i<cells;i++){let d=add(monday,i),s=iso(d),items=events.filter(e=>e.day===s),box=el('div','','cell'+(s===selected?' selected':'')+(month&&s.slice(0,7)!==day.slice(0,7)?' outside':''));
  const openDay=()=>choose(s);box.onclick=openDay;let num=button(String(d.getUTCDate()),ev=>{ev.stopPropagation();openDay()},'day'+(s===today?' today':''),s+' 일정 보기');if(mode==='주간')num.textContent=fmt(s)+' ('+'일월화수목금토'[d.getUTCDay()]+')';box.append(num);
  if(mode==='날짜별'&&items.length)box.append(el('span','•','daydot'));
- if(mode!=='날짜별'){for(let item of (month?items.slice(0,2):items)){let b=button(item.short,ev=>{ev.stopPropagation();emit('event',item.id)},'chip'+(item.done?' done':''),item.label);b.dataset.kind=item.kind;b.title=item.label;box.append(b)}if(month&&items.length>2)box.append(el('span','+'+(items.length-2)+'건','more'))}
+ if(mode!=='날짜별'){for(let item of (month?items.slice(0,2):items)){let b=button(item.short,ev=>{ev.stopPropagation();selected=item.day;emit('event',item.id)},'chip'+(item.done?' done':''),item.label);b.dataset.kind=item.kind;b.title=item.label;box.append(b)}if(month&&items.length>2)box.append(el('span','+'+(items.length-2)+'건','more'))}
  grid.append(box)}
  }
- agenda.hidden=mode==='주간';
+
  const list=events.filter(e=>e.day===selected);agenda.append(el('h3',Number(selected.slice(5,7))+'월 '+Number(selected.slice(8))+'일 일정 · '+list.length+'건'));
  for(let item of list){let row=button(item.label+'  ›',()=>emit('event',item.id),'row');row.dataset.kind=item.kind;agenda.append(row)}
  if(!list.length)agenda.append(el('p','등록된 일정이 없습니다.','hint'),button('이 날짜에 일정 등록',()=>emit('new',selected)));
