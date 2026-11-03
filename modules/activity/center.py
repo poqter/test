@@ -54,17 +54,28 @@ def bounds(day,view):
 def event_editor(db,day,event=None):
     old=event or {}
     key="sales_edit_"+(old.get("id") or "new_"+str(day))+"_"+str(old.get("revision",0))
-    with st.form(key):
-        st.markdown("**기본 일정**")
-        when=st.date_input("날짜",date.fromisoformat(old.get("day",str(day))))
-        start=st.time_input("시작 시간",value=time.fromisoformat(old["start_time"]) if old.get("start_time") else (None if event else time(9)),help="시간을 비우면 종일 일정으로 등록합니다.")
-        existing=old.get("kind","AP")
-        options=KINDS if existing in KINDS else [existing,*KINDS]
-        kind=st.selectbox("활동 종류",options,index=options.index(existing),
+    existing=old.get("kind","AP")
+    options=KINDS if existing in KINDS else [existing,*KINDS]
+    def select_kind():
+        if st.session_state[key+"_kind"]=="휴무":
+            st.session_state[key+"_all"]=True
+            if not st.session_state.get(key+"_title","").strip():
+                st.session_state[key+"_title"]="휴무"
+    with st.container():
+        when=st.date_input("날짜",date.fromisoformat(old.get("day",str(day))),key=key+"_day")
+        kind=st.selectbox("활동 종류",options,index=options.index(existing),key=key+"_kind",on_change=select_kind,
                           format_func=lambda k:f"{k} · {SALES_TYPES[k]}" if k in SALES_TYPES else k)
-        title=st.text_input("고객 또는 일정명",old.get("title",""),max_chars=200,placeholder="예: 소개 고객 첫 상담")
+        all_day=st.checkbox("종일 일정",value=bool(event and not old.get("start_time")),key=key+"_all")
+        start=None
+        if not all_day:
+            start=st.time_input("시작 시간",value=st.session_state.get(key+"_last_start") or (time.fromisoformat(old["start_time"]) if old.get("start_time") else time(9)),key=key+"_start")
+            st.session_state[key+"_last_start"]=start
+        title=st.text_input("고객 또는 일정명",old.get("title",""),key=key+"_title",max_chars=200,placeholder="예: 소개 고객 첫 상담")
         with st.expander("선택 항목 · 종료 시간, 장소, 메모 등"):
-            end=st.time_input("종료 시간",value=time.fromisoformat(old["end_time"]) if old.get("end_time") else None)
+            end=None
+            if not all_day:
+                end=st.time_input("종료 시간",value=st.session_state.get(key+"_last_end",time.fromisoformat(old["end_time"]) if old.get("end_time") else None),key=key+"_end")
+                st.session_state[key+"_last_end"]=end
             place=st.text_input("장소",old.get("place",""))
             note=st.text_area("메모",old.get("note",""))
             help_text=st.text_input("동행·검토 요청",old.get("help",""))
@@ -74,9 +85,9 @@ def event_editor(db,day,event=None):
         status=st.selectbox("처리 상태",states,index=states.index(old.get("status","예정"))) if event else "예정"
         result=st.text_input("활동 결과",old.get("result","")) if event else ""
         follow=st.date_input("후속 일정 날짜 · 선택",value=None) if event else None
-        proceed=st.form_submit_button("일정 저장",type="primary")
+        proceed=st.button("일정 저장",type="primary",key=key+"_save")
     if proceed:
-        if not title.strip() or end and (not start or end<=start):
+        if not title.strip() or (not all_day and not start) or end and (not start or end<=start):
             st.warning("일정명과 시작·종료 시간을 확인해 주세요.");return
         body=dict(day=str(when),start_time=str(start) if start else None,end_time=str(end) if end else None,
                   title=title.strip(),kind=kind,place=place,note=note,help=help_text,common=common,status=status,result=result,unit=db.me["unit"])
@@ -199,7 +210,7 @@ def calendar(db,today):
         label=f'{stamp} · {row["kind"]} · {owner} · {status}'
         if row["id"] in accepted:label+=" · 동행"
         if row["help"]:label+=" · 지원 요청"
-        cards.append(dict(id=row["id"],day=row["day"],kind=row["kind"],member=row["owner"],short=f'{stamp} {row["kind"]}'+(f' · {owner}' if team else ''),label=label,done=status=="완료"))
+        cards.append(dict(id=row["id"],day=row["day"],kind=row["kind"],member=row["owner"],allDay=not row["start_time"],short=f'{stamp} {row["kind"]}'+(f' · {owner}' if team else ''),label=label,done=status=="완료"))
     action=calendar_view(mode=mode,day=str(day),today=str(today),events=cards,roster={uid:p["label"] for uid,p in db.members.items()} if team else {},rangeStart=str(fetch_start),rangeEnd=str(fetch_end),key="sales_interactive_calendar",default=None)
     if isinstance(action,dict) and action.get("nonce")!=st.session_state.get("sales_calendar_action"):
         st.session_state["sales_calendar_action"]=action.get("nonce")
@@ -292,11 +303,40 @@ def overview(db,today):
     day=st.date_input("조회 기준일",today)
     period=st.segmented_control("보고 구분",["일일","주간"],default="일일") or "일일"
     start,end=bounds(day,"주간" if period=="주간" else "날짜별")
-    submitted=db.period("sales_reports",start,start,period="eq."+period,submitted="eq.true")
+    members=db.members.copy()
+    profile=st.session_state["hwarang_auth"]["profile"]
+    if profile.get("role")=="super_admin":
+        units={r["id"]:r["name"] for r in db.request("GET","organization_units",{"select":"id,name"})}
+        choices=list(dict.fromkeys([db.me["unit"],"all",*(r["unit"] for r in members.values())]))
+        unit=st.selectbox("조회 범위",choices,format_func=lambda u:"전체 조직" if u=="all" else units.get(u,"소속 미지정"))
+        with st.expander("QA · 권한별 미리보기 및 담당 팀원 설정"):
+            leaders=db.request("GET","profiles",{"position_code":"eq.team_leader","is_active":"eq.true","select":"id,display_name,organization_unit_id"})
+            names={r["id"]:r["display_name"] for r in leaders}
+            if names:
+                leader=st.selectbox("대상 팀장",list(names),format_func=names.get)
+                preview=st.toggle("팀장 권한으로 미리보기")
+                if not preview:
+                    candidates=[uid for uid,m in members.items() if uid!=leader and m["unit"]==members[leader]["unit"]]
+                    if candidates:
+                        member=st.selectbox("담당 팀원",candidates,format_func=lambda u:members[u]["label"])
+                        if st.button("담당 팀원 연결"):
+                            db.request("POST","sales_team_assignments",body={"leader":leader,"member":member},prefer="resolution=merge-duplicates")
+                            saved()
+                else:
+                    st.info("팀장 권한으로 미리보기 중 · 읽기 전용")
+                    snap=db.request("POST","rpc/sales_qa_snapshot",body={"subject":leader,"first_day":str(start),"last_day":str(end)})
+                    labels={m["member"]:m["label"] for m in snap["members"]}
+                    st.write("조회 가능 구성원",list(labels.values()))
+                    for e in snap["events"]:st.write(e["day"],labels[e["owner"]],e["kind"],e["title"])
+                    for r in snap["reports"]:
+                        with st.expander(labels[r["owner"]]+" · "+r["period"]+" 기록 · "+r["day"]):st.write(r["data"])
+                    return
+        if unit!="all":members={uid:m for uid,m in members.items() if m["unit"]==unit}
+    submitted=[r for r in db.period("sales_reports",start,start,period="eq."+period,submitted="eq.true") if r["owner"] in members]
     events=db.period("sales_events",start,end)
     index={r["owner"]:r for r in submitted}
     summary=[]
-    for uid,member in db.members.items():
+    for uid,member in members.items():
         row=index.get(uid)
         own=[e for e in events if e["owner"]==uid]
         overdue=sum(e["status"]=="예정" and (e["day"]<str(today) or (e["day"]==str(today) and (e["end_time"] or e["start_time"] or "23:59:59")<datetime.now(KST).strftime("%H:%M:%S"))) for e in own)

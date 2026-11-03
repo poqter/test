@@ -45,7 +45,7 @@ function render(a){
  for(let i=0;i<cells;i++){let d=add(monday,i),s=iso(d),items=events.filter(e=>e.day===s),box=el('div','','cell'+(s===selected?' selected':'')+(month&&s.slice(0,7)!==day.slice(0,7)?' outside':''));
  const openDay=()=>choose(s);box.onclick=openDay;let num=button(String(d.getUTCDate()),ev=>{ev.stopPropagation();openDay()},'day'+(s===today?' today':''),s+' 일정 보기');if(mode==='주간')num.textContent=fmt(s)+' ('+'일월화수목금토'[d.getUTCDay()]+')';box.append(num);
  if(mode==='날짜별'&&items.length)box.append(el('span','•','daydot'));
- if(mode!=='날짜별'){for(let item of items.slice(0,2)){let b=button(item.short,ev=>{ev.stopPropagation();selected=item.day;emit('event',item.id)},'chip'+(item.done?' done':''),item.label);b.dataset.kind=item.kind;b.title=item.label;box.append(b)}if(items.length>2)box.append(button('+'+(items.length-2)+'건 더보기',ev=>{
+ if(mode!=='날짜별'){for(let item of (month&&items[0]?.allDay&&items.some(e=>!e.allDay)?[items[0],items.find(e=>!e.allDay)]:items.slice(0,2))){let b=button(item.short,ev=>{ev.stopPropagation();selected=item.day;emit('event',item.id)},'chip'+(item.done?' done':''),item.label);b.dataset.kind=item.kind;b.title=item.label;box.append(b)}if(items.length>2)box.append(button('+'+(items.length-2)+'건 더보기',ev=>{
  ev.stopPropagation();choose(s);let panel=el('dialog');panel.setAttribute('aria-label',fmt(s)+' 전체 일정');document.body.append(panel);
  panel.append(button('닫기',()=>panel.close()),el('h3',fmt(s)+' 전체 일정 · '+items.length+'건'));
  for(const item of items)panel.append(button(item.label,()=>{panel.close();emit('event',item.id)},'row'));
