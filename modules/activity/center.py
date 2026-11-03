@@ -17,6 +17,8 @@ REPORT_KIND={"AP":"상담","PC":"제안"}
 COUNTS=["TA","CS","전화","메시지","약속 확보","상담","제안","청약"]
 DAY=timedelta(days=1)
 
+mobile_calendar = components.declare_component("mobile_calendar", path=str(Path(__file__).parent / "calendar_view/pwa/calendar"))
+
 class Records:
     def __init__(self):
         self.auth=HwarangAuthService(SupabaseConfig.from_mapping(st.secrets))

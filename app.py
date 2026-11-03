@@ -1,6 +1,7 @@
 """HWARANG WORKSPACE entrypoint: unified account, registry, navigation, and dispatch."""
 from __future__ import annotations
 
+from pathlib import Path
 import streamlit as st
 
 from modules.shell.app_registry import APP_DEFINITIONS, USER_PERMISSIONS
@@ -12,7 +13,9 @@ from modules.shared.workbench import render_workbench, restore_page_draft
 from modules.shell.workspace_v2 import render_home, render_sidebar
 
 
-st.set_page_config(page_title="화랑 내 일정" if st.query_params.get("view")=="my-calendar" else "화랑WORKSPACE", page_icon="📅" if st.query_params.get("view")=="my-calendar" else "H", layout="wide", initial_sidebar_state="auto")
+calendar_entry = st.query_params.get("view") in ("my-calendar","mobile-calendar")
+calendar_icon = Path(__file__).parent / "modules/activity/calendar_view/pwa/calendar/brand-192.png"
+st.set_page_config(page_title="화랑 캘린더" if calendar_entry else "화랑WORKSPACE", page_icon=str(calendar_icon) if calendar_entry else "H", layout="wide", initial_sidebar_state="auto")
 st.set_option("client.toolbarMode", "minimal")
 # Public release probe exposes code readiness only; no credentials, DB or AI calls.
 if st.query_params.get("briefing_health") == "1":
@@ -287,6 +290,20 @@ def main() -> None:
     permission_role = st.session_state.get("login_user")
     permitted = allowed_ids(permission_role)
     st.session_state["ws_allowed_ids"] = permitted
+    if st.query_params.get("view") == "mobile-calendar":
+        if "sales_activity" not in permitted:
+            st.error("영업활동 관리 이용 권한을 확인해 주세요.")
+            st.stop()
+        from modules.activity.center import Records, mobile_calendar
+        db = Records()
+        profile = st.session_state["login_profile"]
+        action = mobile_calendar(account=dict(url=db.auth.config.url, key=db.auth.config.publishable_key,
+            uid=db.uid, token=db.token, unit=db.me["unit"], branch=profile.get("position_code")=="branch_manager"),
+            key="standalone_mobile_calendar", default=None)
+        if action == "logout":
+            workspace_logout()
+            st.rerun()
+        st.stop()
     if st.query_params.get("view") == "my-calendar" and not st.session_state.get("sales_shortcut_opened"):
         st.session_state["active_app"] = "sales_activity"
         st.session_state["sales_shortcut_opened"] = True

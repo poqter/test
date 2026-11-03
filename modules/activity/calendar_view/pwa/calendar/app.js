@@ -43,20 +43,26 @@ for(const k of ['미분류','TA','AP','PC','CS','청약','교육','회의','휴�
 for(const w of '월화수목금토일'){const s=document.createElement('span');s.textContent=w;$('weekdays').append(s)}
 async function start(s){session=s;$('logout').hidden=false;sessionStorage.setItem(sessionKey,JSON.stringify(s));$('gate').hidden=true;$('scope').value=s.branch?'branch':'my';try{const members=await api('rpc/sales_branch_members','POST',{});if(!members.some(m=>m.member===s.uid)){gate();return}people=Object.fromEntries(members.map(m=>[m.member,m.label]));f.companion.replaceChildren(option('','선택 안 함'));for(const [u,n] of Object.entries(people))if(u!==s.uid)f.companion.add(option(u,n));$('restore').hidden=!localStorage.getItem(draftKey());await load()}catch(e){$('msg').textContent=e.message}}
 const root='https://zaynrfzzrtuiherbhoee.supabase.co',publicKey='sb_publishable_NdoOryxAxzTedYSewD0GGA_lHiOG2bx';
-$('loginForm').onsubmit=async e=>{
- e.preventDefault();const form=e.currentTarget,button=form.querySelector('button');button.disabled=true;
- try{const fields=Object.fromEntries(new FormData(form));
- const res=await fetch(root+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:publicKey,'Content-Type':'application/json'},body:JSON.stringify({email:fields.login,password:fields.password})});
- if(!res.ok)throw Error(res.status===429?'잠시 후 다시 시도해 주세요.':'이메일과 비밀번호를 확인해 주세요.');
- const token=await res.json(),s={url:root,key:publicKey,token:token.access_token,uid:token.user.id};
- session=s;const [members,profiles]=await Promise.all([api('rpc/sales_members','POST',{}),api('profiles?select=position_code&id=eq.'+s.uid)]);
- const me=members.find(m=>m.member===s.uid);if(!me){gate();throw Error('영업활동 이용 권한이 없습니다.')}s.unit=me.unit;s.branch=profiles[0]?.position_code==='branch_manager';
- form.reset();await start(s)}catch(err){$('msg').textContent=err.message}finally{button.disabled=false}};
-const saved=sessionStorage.getItem(sessionKey);if(saved)start(JSON.parse(saved));else gate();
+const embedded = window.parent !== window;
+function host(type, data={}) { parent.postMessage({isStreamlitMessage:true,type,...data},location.origin); }
+if(embedded){
+ let current;
+ addEventListener('message',e=>{
+  if(e.source!==parent || e.origin!==location.origin || e.data?.type!=='streamlit:render')return;
+  const account=e.data.args?.account;
+  if(account?.url?.replace(/\/$/,'')!==root || !account.token)return;
+  if(current!==account.token){current=account.token;start(account)}
+  host('streamlit:setFrameHeight',{height:Math.max(520,window.parent.innerHeight-60)});
+ });
+ host('streamlit:componentReady',{apiVersion:1});
+}else{
+ const saved=sessionStorage.getItem(sessionKey);
+ if(saved)start(JSON.parse(saved));else gate();
+}
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;$('install').hidden=false});$('install').onclick=()=>installPrompt?.prompt();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 
-$('logout').onclick=async()=>{if(session)await fetch(session.url+'/auth/v1/logout?scope=local',{method:'POST',headers:{apikey:session.key,Authorization:'Bearer '+session.token}}).catch(()=>{});gate()};
+$('logout').onclick=async()=>{if(embedded){gate();host('streamlit:setComponentValue',{value:'logout',dataType:'json'});return}if(session)await fetch(session.url+'/auth/v1/logout?scope=local',{method:'POST',headers:{apikey:session.key,Authorization:'Bearer '+session.token}}).catch(()=>{});gate()};
 if(window.opener){
  const source=window.opener;
  const receive=e=>{if(e.source===source&&e.origin===location.origin&&e.data?.type==='hwarang.calendar.session'&&e.data.session?.url?.replace(/\/$/,'')===root){removeEventListener('message',receive);window.opener=null;start(e.data.session)}};
