@@ -1,3 +1,4 @@
+from modules.activity.contracts import contract_editor, performance
 import re
 from calendar import monthrange
 from pathlib import Path
@@ -152,6 +153,7 @@ def detail_dialog(db,row):
         if row[field]:st.text(row[field])
     if row["owner"]==db.uid:
         with st.expander("일정 수정 · 완료"):event_editor(db,date.fromisoformat(row["day"]),row)
+    if row["owner"]==db.uid:contract_editor(db,date.fromisoformat(row["day"]),row["id"])
     review(db,row,"event")
 
 def calendar(db,today):
@@ -276,6 +278,7 @@ def reports(db,today,period):
     st.caption("완료한 일정을 불러온 뒤, 일정 없이 진행한 활동만 더해 주세요." if period=="일일" else "제출된 일일 기록을 바탕으로 이번 주 성과와 다음 주 계획을 정리하세요.")
     selected=st.date_input("기록 날짜",today,max_value=today,key="sales_day_"+period)
     day=selected if period=="일일" else bounds(selected,"주간")[0]
+    if period=="일일":contract_editor(db,day)
     rows=db.period("sales_reports",day,day,owner="eq."+db.uid,period="eq."+period)
     old=rows[0] if rows else {}
     data=old.get("data",{})
@@ -370,6 +373,7 @@ def overview(db,today):
                         with st.expander(labels[r["owner"]]+" · "+r["period"]+" 기록 · "+r["day"]):st.write(r["data"])
                     return
         if unit!="all":members={uid:m for uid,m in members.items() if m["unit"]==unit}
+    performance(db,day,members,bounds)
     submitted=[r for r in db.period("sales_reports",start,start,period="eq."+period,submitted="eq.true") if r["owner"] in members]
     events=db.period("sales_events",start,end)
     index={r["owner"]:r for r in submitted}
