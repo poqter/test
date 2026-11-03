@@ -145,6 +145,30 @@ def render_signup_dialog(auth: HwarangAuthService) -> None:
             st.error(str(exc))
 
 
+def submit_login(auth, login_id, password, remember, feedback):
+    try:
+        identity = auth.sign_in(login_id, password)
+        if remember:
+            from modules.activity.device import enroll
+            enroll(auth, identity)
+        _set_authenticated(auth, identity)
+        return True
+    except HwarangAuthError as exc:
+        feedback.error(str(exc))
+        return False
+
+
+def render_calendar_login(auth):
+    st.image(str(calendar_icon), width=64)
+    st.header("화랑 캘린더")
+    with st.form("calendar_sign_in"):
+        login_id = st.text_input("WORKSPACE 아이디", autocomplete="username")
+        password = st.text_input("비밀번호", type="password", autocomplete="current-password")
+        remember = st.checkbox("이 개인 기기에서 30일간 로그인 유지")
+        submitted = st.form_submit_button("캘린더 로그인", type="primary", use_container_width=True)
+    return submitted and submit_login(auth, login_id, password, remember, st.empty())
+
+
 def render_login(auth: HwarangAuthService) -> bool:
     if st.session_state.get("hwarang_auth") and st.session_state.get("password_correct"):
         return True
@@ -176,15 +200,7 @@ def render_login(auth: HwarangAuthService) -> bool:
                     unsafe_allow_html=True,
                 )
             if submitted:
-                try:
-                    identity = auth.sign_in(login_id, password)
-                    if remember:
-                        from modules.activity.device import enroll
-                        enroll(auth, identity)
-                    _set_authenticated(auth, identity)
-                    return True
-                except HwarangAuthError as exc:
-                    login_feedback.error(str(exc), icon="⚠️")
+                return submit_login(auth, login_id, password, remember, login_feedback)
         st.markdown('<div class="hw-auth-footer">Planned &amp; Built by 박병선 팀장</div>', unsafe_allow_html=True)
     return False
 
@@ -278,7 +294,8 @@ def main() -> None:
             notice_slot = st.empty()
             if flash:
                 notice_slot.success(flash)
-            if not render_login(auth):
+            login_screen = render_calendar_login if st.query_params.get("view") == "mobile-calendar" else render_login
+            if not login_screen(auth):
                 st.stop()
         # Clear before requesting another run, not only after it starts.
         login_slot.empty()
