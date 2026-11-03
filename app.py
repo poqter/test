@@ -12,7 +12,7 @@ from modules.shared.workbench import render_workbench, restore_page_draft
 from modules.shell.workspace_v2 import render_home, render_sidebar
 
 
-st.set_page_config(page_title="화랑WORKSPACE", page_icon="H", layout="wide", initial_sidebar_state="auto")
+st.set_page_config(page_title="화랑 내 일정" if st.query_params.get("view")=="my-calendar" else "화랑WORKSPACE", page_icon="📅" if st.query_params.get("view")=="my-calendar" else "H", layout="wide", initial_sidebar_state="auto")
 st.set_option("client.toolbarMode", "minimal")
 # Public release probe exposes code readiness only; no credentials, DB or AI calls.
 if st.query_params.get("briefing_health") == "1":
@@ -159,6 +159,7 @@ def render_login(auth: HwarangAuthService) -> bool:
                 with st.form("login_form", clear_on_submit=False):
                     login_id = st.text_input("아이디", placeholder="")
                     password = st.text_input("비밀번호", type="password", placeholder="")
+                    remember = st.checkbox("이 개인 기기에서 30일간 로그인 유지", value=False)
                     submitted = st.form_submit_button("로그인", type="primary", use_container_width=True)
                 login_feedback = st.empty()
                 with st.container(key="hw_auth_secondary", horizontal=True):
@@ -173,7 +174,11 @@ def render_login(auth: HwarangAuthService) -> bool:
                 )
             if submitted:
                 try:
-                    _set_authenticated(auth, auth.sign_in(login_id, password))
+                    identity = auth.sign_in(login_id, password)
+                    if remember:
+                        from modules.activity.device import enroll
+                        enroll(auth, identity)
+                    _set_authenticated(auth, identity)
                     return True
                 except HwarangAuthError as exc:
                     login_feedback.error(str(exc), icon="⚠️")
@@ -190,12 +195,16 @@ def workspace_logout() -> None:
     state = st.session_state.get("hwarang_auth")
     auth = auth_service()
     try:
+        from modules.activity.device import revoke
+        revoke(auth)
         auth.sign_out(state)
-    except HwarangAuthError:
-        pass
+    except HwarangAuthError as exc:
+        st.error("로그아웃을 완료하지 못했습니다. 다시 시도해 주세요. "+str(exc))
+        return
 
     # Normal-user telemetry is login-only. Streamlit supplies the callback rerun.
     clear_workspace_session(state=st.session_state, rerun=lambda: None)
+    st.session_state["device_action"] = "clear"
     st.session_state["hw_platform_session_id"] = None
     st.session_state["hw_admin_center_open"] = False
     st.session_state["hw_admin_center_page"] = "dashboard"
@@ -227,11 +236,20 @@ def main() -> None:
 
     if render_recovery_entry(auth):
         st.stop()
+    from modules.activity import device
+    try:
+        device.synchronize(auth, _set_authenticated)
+    except HwarangAuthError as exc:
+        st.error(str(exc))
+        st.stop()
     flash = st.session_state.get("hw_account_flash", "")
     state = st.session_state.get("hwarang_auth")
     if state:
         try:
+            previous_token = state.get("refresh_token")
             state = auth.refresh(state)
+            if st.session_state.get("device_handle") and previous_token != state.get("refresh_token"):
+                device.save_rotation(auth,st.session_state["device_handle"],state)
             st.session_state["hwarang_auth"] = state
             # Periodic profile revalidation can change role/organization while
             # the user is signed in. Keep the UI and permission bridge in sync.
@@ -269,6 +287,9 @@ def main() -> None:
     permission_role = st.session_state.get("login_user")
     permitted = allowed_ids(permission_role)
     st.session_state["ws_allowed_ids"] = permitted
+    if st.query_params.get("view") == "my-calendar" and not st.session_state.get("sales_shortcut_opened"):
+        st.session_state["active_app"] = "sales_activity"
+        st.session_state["sales_shortcut_opened"] = True
     active = normalize_route(st.session_state.get("active_app"), permission_role, allowed=permitted)
     st.session_state["active_app"] = active
 
@@ -283,6 +304,21 @@ def main() -> None:
             render_sidebar as render_admin_sidebar,
         )
 
+        if st.session_state.get("device_restored"):
+            with st.form("sales_admin_verify"):
+                pwd = st.text_input("관리자 센터 이용을 위해 비밀번호를 확인해 주세요.", type="password")
+                verify = st.form_submit_button("재인증")
+            if verify:
+                try:
+                    auth.sign_in(profile["login_id"],pwd)
+                    st.session_state["device_restored"] = False
+                    st.rerun()
+                except HwarangAuthError as exc:
+                    st.error(str(exc))
+            if st.button("홈으로"):
+                st.session_state["hw_admin_center_open"] = False
+                st.rerun()
+            return
         render_admin_sidebar()
         render_admin_center(auth)
         return

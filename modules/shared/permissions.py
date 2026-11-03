@@ -17,6 +17,7 @@ class PermissionSpec:
 
 
 PERMISSIONS: Final[tuple[PermissionSpec, ...]] = (
+    PermissionSpec("workspace.sales_activity","workspace","영업활동","영업활동 관리","캘린더와 일일·주간 활동 기록",7,True),
     PermissionSpec("workspace.briefing", "workspace", "브리핑", "브리핑 조회", "경제·보험·국내뉴스 브리핑 조회", 5, True),
     PermissionSpec("workspace.briefing_manage", "workspace", "브리핑", "브리핑 콘텐츠 관리", "브리핑 생성·검수·공개 관리", 6, False),
     PermissionSpec("workspace.consultation", "workspace", "상담", "상담 지원", "상담 질문지 제작 등 상담 준비 기능", 10, True),
@@ -49,6 +50,7 @@ PERMISSIONS: Final[tuple[PermissionSpec, ...]] = (
 PERMISSION_BY_CODE: Final = {item.code: item for item in PERMISSIONS}
 
 WORKSPACE_APP_PERMISSION: Final[dict[str, str]] = {
+    "sales_activity": "workspace.sales_activity",
     "briefing": "workspace.briefing",
     "consultation_helper": "workspace.consultation",
     "deposit_vs_shortpay": "workspace.comparison_tools",

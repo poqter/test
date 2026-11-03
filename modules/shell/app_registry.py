@@ -47,6 +47,7 @@ GROUPS: Final[tuple[GroupSpec, ...]] = (
 
 
 APPS: Final[tuple[AppSpec, ...]] = (
+    AppSpec("sales_activity", "영업활동 관리", "performance", "일정과 일일·주간 활동 기록을 확인합니다.", ("일정","일일","주간"), "modules.activity.center", icon_key="performance", order=4),
     AppSpec("briefing", "브리핑 센터", "briefing", "경제·보험·국내뉴스의 핵심 변화와 오늘의 Action을 확인합니다.", ("브리핑", "뉴스", "경제", "시장", "보험업계", "오늘의 이슈"), "modules.briefing.briefing_center", icon_key="official", order=5, source_status="v1.6"),
     AppSpec("consultation_helper", "상담 질문지 제작기", "consultation", "필요한 질문을 골라 고객 맞춤 상담 질문지를 만듭니다.", ("상담", "질문지", "질문", "메모", "상담 준비", "PDF"), "modules.consultation.consultation_helper", icon_key="consultation", order=10, source_status="stage3"),
     AppSpec("quick_calculators", "종합 계산기 센터 (88개)", "calculators", "보험·생활자금·연금·재무·세금·상속·법인 실무 계산을 한곳에서 제공합니다.", ("보험나이", "상령일", "총납입", "비상자금", "납입면제", "교육자금", "은퇴", "저축", "물가", "부채", "세금", "상속", "증여", "승계", "법인", "연금"), "modules.calculators.quick_calculators", icon_key="calculator", order=20, source_status="standalone", external_app_key="calculator_url"),
@@ -75,9 +76,9 @@ _ALL = frozenset(APP_IDS)
 ROLE_PERMISSIONS: Final[Mapping[str, frozenset[str]]] = MappingProxyType({
     "Admin": _ALL,
     "Manager1": _ALL,
-    "Basic": frozenset({"briefing", "analyzer", "insurer_portal", "insurance_claim_guide", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "coverage_proposal", "academy"}),
-    "Crew": frozenset({"briefing", "analyzer", "deposit_vs_shortpay", "renewal_vs_nonrenewal", "insurer_portal", "insurance_claim_guide", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "coverage_proposal", "academy"}),
-    "Dream": frozenset({"briefing", "analyzer", "remodeling", "deposit_vs_shortpay", "renewal_vs_nonrenewal", "inheritance_tax", "insurer_portal", "insurance_claim_guide", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "coverage_proposal", "academy"}),
+    "Basic": frozenset({"sales_activity", "briefing", "analyzer", "insurer_portal", "insurance_claim_guide", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "coverage_proposal", "academy"}),
+    "Crew": frozenset({"sales_activity", "briefing", "analyzer", "deposit_vs_shortpay", "renewal_vs_nonrenewal", "insurer_portal", "insurance_claim_guide", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "coverage_proposal", "academy"}),
+    "Dream": frozenset({"sales_activity", "briefing", "analyzer", "remodeling", "deposit_vs_shortpay", "renewal_vs_nonrenewal", "inheritance_tax", "insurer_portal", "insurance_claim_guide", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "coverage_proposal", "academy"}),
 })
 
 # Search aliases are static public labels only. Customer input never enters this index.

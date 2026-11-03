@@ -800,7 +800,7 @@ class HwarangAuthService:
         if not token:
             return
         try:
-            self._request("POST", "/auth/v1/logout", access_token=token)
+            self._request("POST", "/auth/v1/logout", access_token=token, params={"scope":"local"})
         except HwarangAuthError:
             pass
 

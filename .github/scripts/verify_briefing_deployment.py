@@ -54,5 +54,7 @@ with sync_playwright() as p:
     heading=frame.locator('.hw-auth-copy h1')
     if not heading.is_visible():
         raise SystemExit('Login heading is not visible.')
-    print('WORKSPACE_ENTRY_OK;LINE_SEED_LOADED')
+    remember=frame.get_by_text('이 개인 기기에서 30일간 로그인 유지',exact=True)
+    remember.wait_for(state='visible',timeout=45000)
+    print('WORKSPACE_ENTRY_OK;LINE_SEED_LOADED;SALES_LOGIN_OPTION_OK')
     browser.close()

@@ -1,0 +1,22 @@
+<!doctype html><meta charset="utf-8"><script>
+const key="hwarang.workspace.personal-device.v1";
+let lastValue;
+function send(type,data){parent.postMessage({isStreamlitMessage:true,type,...data},location.origin)}
+addEventListener("message",e=>{
+ if(e.origin!==location.origin||e.source!==parent||e.data.type!=="streamlit:render")return;
+ let a=e.data.args, token="";
+ try{
+  if(a.action==="store")localStorage.setItem(key,a.token);
+  if(a.action==="clear")localStorage.removeItem(key);
+  token=localStorage.getItem(key)||"";
+ }catch{}
+ const value={action:a.action,token};
+ const serialized=JSON.stringify(value);
+ if(serialized!==lastValue){
+  lastValue=serialized;
+  send("streamlit:setComponentValue",{value,dataType:"json"});
+ }
+ send("streamlit:setFrameHeight",{height:0});
+});
+send("streamlit:componentReady",{apiVersion:1});
+</script>

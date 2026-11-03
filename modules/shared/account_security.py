@@ -140,6 +140,20 @@ def account_dialog(auth: HwarangAuthService) -> None:
     st.write(f"**{profile.get('display_name') or ''} · {profile.get('login_id') or ''}**")
     st.write("등록 이메일: " + str(user.get("email") or "미등록"))
     st.caption("이 이메일을 현재 사용할 수 있는지 확인해 주세요. 가입 당시 인증 완료 표시만으로 실제 수신 여부를 알 수는 없습니다.")
+    if st.button("모든 기기 로그아웃"):
+        from modules.activity.device import revoke
+        try:
+            revoke(auth, all_devices=True)
+            from datetime import datetime, timezone
+            auth._request("POST","/rest/v1/hwarang_account_security",admin=True,
+                          json={"user_id":uid,"credentials_changed_at":datetime.now(timezone.utc).isoformat()},
+                          prefer="resolution=merge-duplicates")
+            auth._request("POST","/auth/v1/logout",access_token=state["access_token"],params={"scope":"global"})
+            st.session_state.clear()
+            st.session_state["device_action"]="clear"
+            st.rerun()
+        except HwarangAuthError as exc:
+            st.error(str(exc))
     tabs = st.tabs(["비밀번호 변경", "이메일 변경"])
     with tabs[0], st.form("hw_account_password"):
         st.caption("새 비밀번호: 8~128자, 영문과 숫자를 각각 하나 이상 포함하고 현재 비밀번호와 달라야 합니다.")

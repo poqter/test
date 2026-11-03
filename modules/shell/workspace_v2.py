@@ -172,6 +172,9 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
                 type="primary" if st.session_state.get("active_app") == "home" else "secondary",
                 on_click=_navigate_once, args=(navigate, "home", None),
             )
+            if "sales_activity" in allowed:
+                st.button("영업활동 관리", icon=":material/calendar_month:", key="hw_sidebar_sales", use_container_width=True,
+                          on_click=_navigate_once,args=(navigate,"sales_activity",None))
             if "briefing" in allowed:
                 st.button(
                     "브리핑 센터", icon=":material/newspaper:", key="hw_sidebar_briefing", use_container_width=True,
@@ -282,6 +285,8 @@ def render_home(allowed_ids, navigate, notice):
         left.markdown('<h1>안녕하세요, '+html.escape(str(profile.get('display_name') or profile.get('login_id') or '사용자'))+'님</h1>',unsafe_allow_html=True)
         if 'insurer_portal' in allowed:
             with right:render_home_quick_search()
+    if 'sales_activity' in allowed:
+        ui.card("영업활동 관리","내 일정 · 일일 기록 · 주간 기록","📅","brand_tile_sales",_navigate_once,(navigate,"sales_activity"))
     if 'briefing' in allowed:
         from modules.briefing.briefing_center import _published_summaries_cached, home_briefing_summary, PROFILE_ORDER, KST
         from datetime import datetime
