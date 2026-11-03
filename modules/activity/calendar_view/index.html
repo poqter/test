@@ -19,6 +19,14 @@ function el(tag,text,cls){let x=document.createElement(tag);x.textContent=text||
 function button(label,fn,cls,aria){let b=el('button',label,cls);b.onclick=fn;if(aria)b.setAttribute('aria-label',aria);return b}
 const date=s=>new Date(s+'T12:00:00Z'), iso=d=>d.toISOString().slice(0,10), add=(d,n)=>new Date(+d+n*86400000);
 let selected,context;
+function openMobile(session){
+ const path=new URL('./pwa/calendar/index.html',location.href);
+ const child=window.open(path.href,'_blank');
+ if(!child)return;
+ const ready=e=>{if(e.origin===location.origin&&e.source===child&&e.data?.type==='hwarang.calendar.ready'){
+ child.postMessage({type:'hwarang.calendar.session',session},location.origin);removeEventListener('message',ready)}};
+ addEventListener('message',ready);setTimeout(()=>removeEventListener('message',ready),30000);
+}
 function render(a){
  const {mode,day,today,events}=a,anchor=date(day),month=mode==='월간',key=mode+day;
  if(context!==key){selected=day;context=key}
@@ -35,7 +43,7 @@ function render(a){
  const move=sign=>{let d=anchor;if(month){d=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+sign,1,12))}else d=add(mode==='날짜별'?date(selected):d,sign*(mode==='주간'?7:1));choose(iso(d))};
  nav.append(el('h2',month?anchor.getUTCFullYear()+'년 '+(anchor.getUTCMonth()+1)+'월':mode==='주간'?fmt(iso(weekStart))+' – '+fmt(iso(weekEnd)):fmt(selected)+' ('+'일월화수목금토'[date(selected).getUTCDay()]+')'),button('‹',()=>move(-1),'','이전 기간'),button('오늘',()=>choose(today)),button('›',()=>move(1),'','다음 기간'));
  let sw=el('div','','switch');for(let m of ['날짜별','주간','월간']){let b=button(m,()=>emit('mode',m),mode===m?'active':'');b.setAttribute('aria-pressed',String(mode===m));sw.append(b)}
- tools.append(sw,button('＋ 일정 등록',()=>emit('new',selected),'primary'));
+ tools.append(button('모바일 앱 열기',()=>openMobile(a.mobileSession)),sw,button('＋ 일정 등록',()=>emit('new',selected),'primary'));
  grid.hidden=mode==='날짜별';
  grid.className='grid'+(mode==='주간'?' week':'')+(mode==='날짜별'?' strip':'');
  if(!grid.hidden){

@@ -1,5 +1,5 @@
 import json
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from uuid import uuid4
 
@@ -57,6 +57,23 @@ def performance(db, day, members, bounds):
         if rows:
             with st.expander(label+" 내역"):
                 st.dataframe([{"구성원":members[r["owner"]]["label"],"날짜":r[field],"보험사":r["insurer"],"구분":r["category"],"납입":r["payment"],"보험료":r["amount"],"상태":r["status"]} for r in rows],hide_index=True)
+
+    with st.expander("최근 8주 청약·성립 추이",expanded=True):
+        unit=st.selectbox("그래프 단위",["건수","월납 보험료","연납 보험료","일시납 보험료"])
+        first=day-timedelta(days=day.weekday()+49)
+        weeks=[{"주 시작일":str(first+timedelta(weeks=i)),"청약":0,"성립":0} for i in range(8)]
+        for label,field in [("청약","day"),("성립","effective")]:
+            offset=0
+            while members:
+                params={"and":f"({field}.gte.{first},{field}.lte.{day})","order":"id.asc","limit":"500","offset":str(offset),"select":"owner,"+field+",payment,amount"}
+                if member:params["owner"]="eq."+member
+                batch=db.request("GET","sales_contracts",params)
+                for row in batch:
+                    if row["owner"] in members and (unit=="건수" or unit.startswith(row["payment"])):
+                        weeks[(date.fromisoformat(row[field])-first).days//7][label]+=1 if unit=="건수" else row["amount"]
+                if len(batch)<500:break
+                offset+=len(batch)
+        st.bar_chart(weeks,x="주 시작일",y=["청약","성립"],stack=False)
 
 
 def conversions(db,start,end,members):

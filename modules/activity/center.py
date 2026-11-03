@@ -157,6 +157,15 @@ def detail_dialog(db,row):
             event_editor(db,date.fromisoformat(row["day"]),parent=row)
         else:
             with st.expander("일정 수정 · 완료"):event_editor(db,date.fromisoformat(row["day"]),row)
+        with st.expander("후속 할 일 추가"):
+            with st.form("follow_task_"+row["id"]):
+                task_name=st.text_input("할 일",placeholder="예: 상담 후 재연락",max_chars=200)
+                due=st.date_input("할 일 기한",max(date.fromisoformat(row["day"]),datetime.now(KST).date()))
+                if st.form_submit_button("할 일 추가") and task_name.strip():
+                    seed="task_seed_"+row["id"]
+                    db.request("POST","sales_followups",body={"id":st.session_state.setdefault(seed,str(uuid4())),"source":row["id"],"due":str(due),"title":task_name.strip()},prefer="resolution=ignore-duplicates")
+                    st.session_state.pop(seed)
+                    saved()
         contract_editor(db,date.fromisoformat(row["day"]),row["id"])
     review(db,row,"event")
 
@@ -254,7 +263,7 @@ def calendar(db,today):
         if row.get("companion"):label+=" · 동행 "+branch.get(row["companion"],{}).get("label","")
         if row.get("help"):label+=" · 지원 요청"
         cards.append(dict(id=row["id"],day=row["day"],kind=row["kind"],member=row["owner"],allDay=not row["start_time"],short=(row.get('title') or row['kind'])+(f' · {owner}' if team else ''),label=label,done=status=="완료"))
-    action=calendar_view(mode=mode,day=str(day),today=str(today),events=cards,roster={uid:p["label"] for uid,p in branch.items()} if team else {},rangeStart=str(fetch_start),rangeEnd=str(fetch_end),key="sales_interactive_calendar",default=None)
+    action=calendar_view(mobileSession=dict(url=db.auth.config.url,key=db.auth.config.publishable_key,token=db.token,uid=db.uid,unit=db.me["unit"],branch=position=="branch_manager"),mode=mode,day=str(day),today=str(today),events=cards,roster={uid:p["label"] for uid,p in branch.items()} if team else {},rangeStart=str(fetch_start),rangeEnd=str(fetch_end),key="sales_interactive_calendar",default=None)
     if isinstance(action,dict) and action.get("nonce")!=st.session_state.get("sales_calendar_action"):
         st.session_state["sales_calendar_action"]=action.get("nonce")
         command,value=action.get("action"),action.get("value")
@@ -275,8 +284,19 @@ def calendar(db,today):
             found=next((r for r in events if r["id"]==value),None)
             if found and found["id"] in details:detail_dialog(db,found)
             elif found:st.info(next(c["label"] for c in cards if c["id"]==value))
-    st.markdown("[화랑 내 일정 바로가기](https://hwarang-workspace.streamlit.app/?view=my-calendar)")
-    st.caption("휴대폰에서 바로가기를 열고 브라우저 메뉴에서 ‘홈 화면에 추가’를 선택해 주세요.")
+    st.caption("모바일 앱 열기로 캘린더에 접속한 뒤 홈 화면에 추가할 수 있습니다.")
+    with st.expander("내 후속 할 일"):
+        tasks=db.request("GET","sales_followups",{"owner":"eq."+db.uid,"scheduled":"is.null","order":"due.asc"})
+        if not tasks:st.caption("예정된 후속 할 일이 없습니다.")
+        for task in tasks:
+            st.write(task["due"],task["title"])
+            with st.form("schedule_task_"+task["id"]):
+                target=st.date_input("일정 날짜",max(today,date.fromisoformat(task["due"])))
+                kind=st.selectbox("활동 종류",KINDS)
+                if st.form_submit_button("내 일정으로 전환"):
+                    db.request("POST","rpc/schedule_sales_followup",body={"task":task["id"],"schedule_day":str(target),"activity":kind})
+                    saved()
+
 
 def reports(db,today,period):
     st.caption("완료 일정과 접수한 청약을 집계합니다. 캘린더 밖에서 진행한 활동만 더해 주세요." if period=="일일" else "제출된 일일 기록을 바탕으로 이번 주 성과와 다음 주 계획을 정리하세요.")
