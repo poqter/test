@@ -1,5 +1,6 @@
 from calendar import monthrange
-from collections import Counter
+from pathlib import Path
+import streamlit.components.v1 as components
 from datetime import date, datetime, time, timedelta
 from uuid import uuid4, uuid5, NAMESPACE_URL
 from zoneinfo import ZoneInfo
@@ -111,6 +112,22 @@ def review(db,row,target):
                 db.request("POST","sales_reviews",body={"id":str(uuid5(NAMESPACE_URL,row["id"]+db.uid+str(row["revision"])+text)),target:row["id"],"revision":row["revision"],"message":text},prefer="resolution=ignore-duplicates")
                 saved()
 
+calendar_view=components.declare_component("sales_calendar_view",path=str(Path(__file__).with_name("calendar_view")))
+
+@st.dialog("일정 등록",width="large")
+def create_dialog(db,day):
+    event_editor(db,day)
+
+@st.dialog("일정 상세",width="large")
+def detail_dialog(db,row):
+    st.subheader(row["title"])
+    st.caption(f'{row["day"]} · {(row["start_time"] or "종일")[:5]} · {row["kind"]} · {row["status"]}')
+    for field in ("place","note","result","help"):
+        if row[field]:st.text(row[field])
+    if row["owner"]==db.uid:
+        with st.expander("일정 수정 · 완료"):event_editor(db,date.fromisoformat(row["day"]),row)
+    review(db,row,"event")
+
 def calendar(db,today):
     notices=db.request("GET","sales_notices",{"seen":"eq.false","order":"created_at.desc","limit":"20","select":"id,message,sales_events(day,kind)"})
     if notices:
@@ -125,31 +142,15 @@ def calendar(db,today):
     team=db.me["managed"] and st.toggle("담당 조직 일정")
     mobile=st.context.headers.get("User-Agent","").lower()
     compact=any(word in mobile for word in ("android","iphone","mobile"))
-    mode=st.radio("보기",["날짜별","주간","월간"],index=0 if compact or st.query_params.get("view")=="my-calendar" else 1,horizontal=True)
-    day=st.date_input("기준 날짜",today,key="sales_calendar_date")
+    mode=st.session_state.get("sales_view","날짜별" if compact or st.query_params.get("view")=="my-calendar" else "월간")
+    day=st.session_state.get("sales_anchor",today)
     start,end=bounds(day,mode)
-    events=db.period("sales_events",start,end,order="day.asc,start_time.asc.nullsfirst")
+    fetch_start,fetch_end=bounds(day,"주간") if mode=="날짜별" else (start,end)
+    events=db.period("sales_events",fetch_start,fetch_end,order="day.asc,start_time.asc.nullsfirst")
     accepted=set()
     if db.me["managed"] and events:
         accepted={r["event"] for r in db.request("GET","sales_reviews",{"reviewer":"eq."+db.uid,"message":"eq.동행 수락","select":"event","event":"not.is.null"})}
     if not team:events=[x for x in events if x["owner"]==db.uid or x["common"] or x["id"] in accepted]
-    if mode=="날짜별":
-        monday=day-DAY*day.weekday()
-        def set_day(value):
-            st.session_state["sales_calendar_date"]=value
-        with st.container(horizontal=True):
-            for i,label in enumerate("월화수목금토일"):
-                choice=monday+i*DAY
-                st.button(f"{label} {choice.day}",key="sales_date_"+str(choice),on_click=set_day,args=(choice,),type="primary" if day==choice else "secondary")
-    with st.expander("＋ 일정 등록"):event_editor(db,day)
-    if mode!="날짜별":
-        counts=Counter(x["day"] for x in events)
-        grid=[]
-        monday=start-DAY*start.weekday()
-        while monday<=end:
-            grid.append({label:(f"{d.day}일 · {counts[str(d)]}건" if start<=d<=end else "") for i,label in enumerate("월화수목금토일") for d in [monday+i*DAY]})
-            monday+=7*DAY
-        st.dataframe(grid,hide_index=True,width="stretch")
     if mode=="주간" and team:
         members=[]
         for uid,person in db.members.items():
@@ -168,31 +169,39 @@ def calendar(db,today):
                 if 0<=(at-now).total_seconds()<=1800:
                     soon.append(item["start_time"][:5]+" "+item["kind"])
         if soon:st.info("30분 이내 시작 · "+" / ".join(soon))
-    if not events:st.info("이 기간에 등록된 일정이 없습니다.")
-    labels={}
+    cards=[]
     for row in events:
         owner=db.members.get(row["owner"],{}).get("label","지점 공통")
         stamp=(row["start_time"] or "종일")[:5]
-        overdue=row["status"]=="예정" and (row["day"]<str(today) or row["day"]==str(today) and row["start_time"] and row["start_time"]<datetime.now(KST).strftime("%H:%M:%S"))
-        status="결과 미입력" if overdue else row["status"]
-        labels[row["id"]]=f'{row["day"][5:]} {stamp} · {owner} · {row["kind"]} · {status}'
-        if row["id"] in accepted:labels[row["id"]]+=" · 동행"
-        if row["help"]:labels[row["id"]]+=" · 지원 요청"
-    if events:
-        selected=st.radio("일정 선택",list(labels),format_func=labels.get,index=None)
-        if selected:
-            row=next(r for r in events if r["id"]==selected)
-            with st.container(border=True):
-                st.subheader(row["title"])
-                for field in ("place","note","result","help"):
-                    if row[field]:st.text(row[field])
-                if row["owner"]==db.uid:
-                    with st.expander("일정 수정 · 완료"):event_editor(db,day,row)
-                review(db,row,"event")
+        status=row["status"]
+        if status=="예정" and (row["day"]<str(today) or row["day"]==str(today) and row["start_time"] and row["start_time"]<datetime.now(KST).strftime("%H:%M:%S")):
+            status="결과 미입력"
+        label=f'{stamp} · {row["kind"]} · {owner} · {status}'
+        if row["id"] in accepted:label+=" · 동행"
+        if row["help"]:label+=" · 지원 요청"
+        cards.append(dict(id=row["id"],day=row["day"],short=f'{stamp} {row["kind"]}',label=label,done=status=="완료"))
+    action=calendar_view(mode=mode,day=str(day),today=str(today),events=cards,key="sales_interactive_calendar",default=None)
+    if isinstance(action,dict) and action.get("nonce")!=st.session_state.get("sales_calendar_action"):
+        st.session_state["sales_calendar_action"]=action.get("nonce")
+        command,value=action.get("action"),action.get("value")
+        if command=="mode" and value in ("날짜별","주간","월간"):
+            st.session_state["sales_view"]=value
+            st.rerun()
+        if command in ("new","date"):
+            try:target=date.fromisoformat(value)
+            except (TypeError,ValueError):return
+            if command=="new":create_dialog(db,target)
+            else:
+                st.session_state["sales_anchor"]=target
+                st.rerun()
+        if command=="event":
+            found=next((r for r in events if r["id"]==value),None)
+            if found:detail_dialog(db,found)
     st.markdown("[화랑 내 일정 바로가기](https://hwarang-workspace.streamlit.app/?view=my-calendar)")
     st.caption("휴대폰에서 바로가기를 열고 브라우저 메뉴에서 ‘홈 화면에 추가’를 선택해 주세요.")
 
 def reports(db,today,period):
+    st.caption("완료한 일정을 불러온 뒤, 일정 없이 진행한 활동만 더해 주세요." if period=="일일" else "제출된 일일 기록을 바탕으로 이번 주 성과와 다음 주 계획을 정리하세요.")
     selected=st.date_input("기록 날짜",today,max_value=today,key="sales_day_"+period)
     day=selected if period=="일일" else bounds(selected,"주간")[0]
     rows=db.period("sales_reports",day,day,owner="eq."+db.uid,period="eq."+period)
@@ -257,7 +266,7 @@ def report_detail(db,row):
 
 def overview(db,today):
     day=st.date_input("조회 기준일",today)
-    period=st.radio("보고 구분",["일일","주간"],horizontal=True)
+    period=st.segmented_control("보고 구분",["일일","주간"],default="일일") or "일일"
     start,end=bounds(day,"주간" if period=="주간" else "날짜별")
     submitted=db.period("sales_reports",start,start,period="eq."+period,submitted="eq.true")
     events=db.period("sales_events",start,end)
@@ -279,10 +288,13 @@ def run():
     try:
         db=Records()
         choices=["캘린더","일일 기록","주간 기록"]+(["구성원 현황"] if db.me["managed"] else [])
-        mode=st.radio("메뉴",choices,horizontal=True,label_visibility="collapsed")
+        tabs=st.tabs(choices,key="sales_menu",on_change="rerun")
         today=datetime.now(KST).date()
-        if mode=="캘린더":calendar(db,today)
-        elif mode=="구성원 현황":overview(db,today)
-        else:reports(db,today,mode[:2])
+        for mode,tab in zip(choices,tabs):
+            if tab.open:
+                with tab:
+                    if mode=="캘린더":calendar(db,today)
+                    elif mode=="구성원 현황":overview(db,today)
+                    else:reports(db,today,mode[:2])
     except HwarangAuthError as exc:
         st.error("요청을 완료하지 못했습니다. 입력 내용을 확인하고 다시 시도해 주세요. "+str(exc))
