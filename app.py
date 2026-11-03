@@ -326,10 +326,30 @@ def main() -> None:
             st.stop()
         calendar = components.declare_component("workspace_mobile_calendar",
             path=str(calendar_icon.parent))
-        action = calendar(account=dict(url=auth.config.url, key=auth.config.publishable_key,
-            uid=profile["id"], token=token, unit=member["unit"],
-            branch=profile.get("position_code") == "branch_manager"),
-            key="standalone_mobile_calendar", default=None)
+        st.markdown("""
+        <style>
+        @media (max-width: 800px) {
+            .st-key-mobile_calendar_viewport {
+                position: fixed;
+                inset: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+                z-index: 10;
+                background: white;
+            }
+            .st-key-mobile_calendar_viewport iframe {
+                display: block;
+                width: 100%;
+                height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+                border: 0;
+            }
+            [data-testid="stHeader"] { display: none; }
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        with st.container(key="mobile_calendar_viewport"):
+            action = calendar(account=dict(url=auth.config.url, key=auth.config.publishable_key,
+                uid=profile["id"], token=token, unit=member["unit"],
+                branch=profile.get("position_code") == "branch_manager"),
+                key="standalone_mobile_calendar", default=None)
         if action == "logout":
             workspace_logout()
             st.rerun()
