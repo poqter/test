@@ -134,6 +134,18 @@ def detail_dialog(db,row):
     review(db,row,"event")
 
 def calendar(db,today):
+    # The component value is available at the start of the widget rerun.
+    # Resolve navigation before querying the period, avoiding a second full run.
+    nav=st.session_state.get("sales_interactive_calendar")
+    if isinstance(nav,dict) and nav.get("action") in ("date","mode") and nav.get("nonce")!=st.session_state.get("sales_calendar_action"):
+        st.session_state["sales_calendar_action"]=nav.get("nonce")
+        try:
+            target=date.fromisoformat(nav.get("value") if nav["action"]=="date" else nav.get("anchor"))
+        except (TypeError,ValueError):
+            target=None
+        if target:st.session_state["sales_anchor"]=target
+        if nav["action"]=="mode" and nav.get("value") in ("날짜별","주간","월간"):
+            st.session_state["sales_view"]=nav["value"]
     notices=db.request("GET","sales_notices",{"seen":"eq.false","order":"created_at.desc","limit":"20","select":"id,message,sales_events(day,kind)"})
     if notices:
         with st.expander(f"일정 알림 {len(notices)}건",expanded=True):
@@ -151,6 +163,9 @@ def calendar(db,today):
     day=st.session_state.get("sales_anchor",today)
     start,end=bounds(day,mode)
     fetch_start,fetch_end=bounds(day,"주간") if mode=="날짜별" else (start,end)
+    if mode=="날짜별":
+        fetch_start-=7*DAY
+        fetch_end+=7*DAY
     events=db.period("sales_events",fetch_start,fetch_end,order="day.asc,start_time.asc.nullsfirst")
     accepted=set()
     if db.me["managed"] and events:
@@ -185,7 +200,7 @@ def calendar(db,today):
         if row["id"] in accepted:label+=" · 동행"
         if row["help"]:label+=" · 지원 요청"
         cards.append(dict(id=row["id"],day=row["day"],kind=row["kind"],short=f'{row["kind"]} {stamp}',label=label,done=status=="완료"))
-    action=calendar_view(mode=mode,day=str(day),today=str(today),events=cards,key="sales_interactive_calendar",default=None)
+    action=calendar_view(mode=mode,day=str(day),today=str(today),events=cards,rangeStart=str(fetch_start),rangeEnd=str(fetch_end),key="sales_interactive_calendar",default=None)
     if isinstance(action,dict) and action.get("nonce")!=st.session_state.get("sales_calendar_action"):
         st.session_state["sales_calendar_action"]=action.get("nonce")
         command,value=action.get("action"),action.get("value")
@@ -199,6 +214,9 @@ def calendar(db,today):
             else:
                 st.session_state["sales_anchor"]=target
                 st.rerun()
+        if command in ("event","new") and action.get("anchor"):
+            try:st.session_state["sales_anchor"]=date.fromisoformat(action["anchor"])
+            except (TypeError,ValueError):pass
         if command=="event":
             found=next((r for r in events if r["id"]==value),None)
             if found:detail_dialog(db,found)

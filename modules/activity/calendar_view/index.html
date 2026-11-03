@@ -9,9 +9,11 @@
 .chip.done:before{content:"✓ "}.row[data-kind]{border-left:3px solid var(--stripe,#8090a3);padding-left:9px}
 .legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:0 0 10px;font-size:12px;color:#475569}
 .legend span:before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--stripe);margin-right:5px}
+.week .day{font-size:12px}.week .cell{min-height:120px}
+@media(max-width:650px){.week{grid-template-columns:1fr}.week .weekday{display:none}.week .cell{min-height:44px;padding:5px 10px}.week .chip{font-size:13px;min-height:32px}}
 </style><header><div class="nav" id="nav"></div><div class="tools" id="tools"></div></header><div class="legend" aria-label="활동 종류별 색상"><span data-kind="TA">TA 고객 연락</span><span data-kind="AP">AP 초회 상담</span><span data-kind="PC">PC 프레젠테이션 / 클로징</span><span data-kind="CS">CS 고객 관리</span></div><div id="grid" class="grid"></div><section class="agenda" id="agenda"></section><script>
 const post=(type,data)=>parent.postMessage({isStreamlitMessage:true,type,...data},location.origin);
-const emit=(action,value)=>post('streamlit:setComponentValue',{value:{action,value,nonce:crypto.randomUUID()},dataType:'json'});
+const emit=(action,value)=>post('streamlit:setComponentValue',{value:{action,value,anchor:selected,nonce:crypto.randomUUID()},dataType:'json'});
 function el(tag,text,cls){let x=document.createElement(tag);x.textContent=text||'';x.className=cls||'';return x}
 function button(label,fn,cls,aria){let b=el('button',label,cls);b.onclick=fn;if(aria)b.setAttribute('aria-label',aria);return b}
 const date=s=>new Date(s+'T12:00:00Z'), iso=d=>d.toISOString().slice(0,10), add=(d,n)=>new Date(+d+n*86400000);
@@ -21,20 +23,27 @@ function render(a){
  if(context!==key){selected=day;context=key}
  const nav=document.querySelector('#nav'),tools=document.querySelector('#tools'),grid=document.querySelector('#grid'),agenda=document.querySelector('#agenda');
  for(let n of [nav,tools,grid,agenda])n.replaceChildren();
- const move=sign=>{let d=anchor;if(month){d=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+sign,1,12))}else d=add(d,sign*(mode==='주간'?7:1));emit('date',iso(d))};
- nav.append(el('h2',anchor.getUTCFullYear()+'년 '+(anchor.getUTCMonth()+1)+'월'),button('‹',()=>move(-1),'','이전 기간'),button('오늘',()=>emit('date',today)),button('›',()=>move(1),'','다음 기간'));
+ const weekStart=add(anchor,-((anchor.getUTCDay()+6)%7)),weekEnd=add(weekStart,6);
+ const fmt=s=>Number(s.slice(5,7))+'월 '+Number(s.slice(8))+'일';
+ const choose=s=>{
+   const local=month?s.slice(0,7)===day.slice(0,7):s>=(a.rangeStart||iso(weekStart))&&s<=(a.rangeEnd||iso(weekEnd));
+   if(!local){emit('date',s);return}
+   selected=s;render(mode==='날짜별'?{...a,day:s}:a);
+ };
+ const move=sign=>{let d=anchor;if(month){d=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+sign,1,12))}else d=add(mode==='날짜별'?date(selected):d,sign*(mode==='주간'?7:1));choose(iso(d))};
+ nav.append(el('h2',month?anchor.getUTCFullYear()+'년 '+(anchor.getUTCMonth()+1)+'월':mode==='주간'?fmt(iso(weekStart))+' – '+fmt(iso(weekEnd)):fmt(selected)+' ('+'일월화수목금토'[date(selected).getUTCDay()]+')'),button('‹',()=>move(-1),'','이전 기간'),button('오늘',()=>choose(today)),button('›',()=>move(1),'','다음 기간'));
  let sw=el('div','','switch');for(let m of ['날짜별','주간','월간']){let b=button(m,()=>emit('mode',m),mode===m?'active':'');b.setAttribute('aria-pressed',String(mode===m));sw.append(b)}
  tools.append(sw,button('＋ 일정 등록',()=>emit('new',selected),'primary'));
- grid.className='grid'+(mode==='날짜별'?' strip':'');
+ grid.className='grid'+(mode==='주간'?' week':'')+(mode==='날짜별'?' strip':'');
  for(let w of '월화수목금토일')grid.append(el('div',w,'weekday'));
  const first=month?date(day.slice(0,7)+'-01'):anchor, monday=add(first,-((first.getUTCDay()+6)%7)),last=new Date(Date.UTC(anchor.getUTCFullYear(),anchor.getUTCMonth()+1,0,12));
  let cells=month?Math.ceil(((first.getUTCDay()+6)%7+last.getUTCDate())/7)*7:7;
- const choose=s=>{if(s.slice(0,7)!==day.slice(0,7)&&month||mode==='날짜별'&&s!==day){emit('date',s);return}selected=s;render(a)};
  for(let i=0;i<cells;i++){let d=add(monday,i),s=iso(d),items=events.filter(e=>e.day===s),box=el('div','','cell'+(s===selected?' selected':'')+(month&&s.slice(0,7)!==day.slice(0,7)?' outside':''));
- box.onclick=()=>choose(s);let num=button(String(d.getUTCDate()),ev=>{ev.stopPropagation();choose(s)},'day'+(s===today?' today':''),s+' 일정 보기');box.append(num);
+ const openDay=()=>{if(mode==='주간'){selected=s;emit('mode','날짜별')}else choose(s)};box.onclick=openDay;let num=button(String(d.getUTCDate()),ev=>{ev.stopPropagation();openDay()},'day'+(s===today?' today':''),s+' 일정 보기');if(mode==='주간')num.textContent=fmt(s)+' ('+'일월화수목금토'[d.getUTCDay()]+')';box.append(num);
  if(mode==='날짜별'&&items.length)box.append(el('span','•','daydot'));
- if(mode!=='날짜별'){for(let item of items.slice(0,2)){let b=button(item.short,ev=>{ev.stopPropagation();emit('event',item.id)},'chip'+(item.done?' done':''),item.label);b.dataset.kind=item.kind;b.title=item.label;box.append(b)}if(items.length>2)box.append(el('span','+'+(items.length-2)+'건','more'))}
+ if(mode!=='날짜별'){for(let item of (month?items.slice(0,2):items)){let b=button(item.short,ev=>{ev.stopPropagation();emit('event',item.id)},'chip'+(item.done?' done':''),item.label);b.dataset.kind=item.kind;b.title=item.label;box.append(b)}if(month&&items.length>2)box.append(el('span','+'+(items.length-2)+'건','more'))}
  grid.append(box)}
+ agenda.hidden=mode==='주간';
  const list=events.filter(e=>e.day===selected);agenda.append(el('h3',Number(selected.slice(5,7))+'월 '+Number(selected.slice(8))+'일 일정 · '+list.length+'건'));
  for(let item of list){let row=button(item.label+'  ›',()=>emit('event',item.id),'row');row.dataset.kind=item.kind;agenda.append(row)}
  if(!list.length)agenda.append(el('p','등록된 일정이 없습니다.','hint'),button('이 날짜에 일정 등록',()=>emit('new',selected)));
