@@ -199,8 +199,8 @@ def calendar(db,today):
         label=f'{stamp} · {row["kind"]} · {owner} · {status}'
         if row["id"] in accepted:label+=" · 동행"
         if row["help"]:label+=" · 지원 요청"
-        cards.append(dict(id=row["id"],day=row["day"],kind=row["kind"],short=f'{row["kind"]} {stamp}',label=label,done=status=="완료"))
-    action=calendar_view(mode=mode,day=str(day),today=str(today),events=cards,rangeStart=str(fetch_start),rangeEnd=str(fetch_end),key="sales_interactive_calendar",default=None)
+        cards.append(dict(id=row["id"],day=row["day"],kind=row["kind"],member=row["owner"],short=f'{stamp} {row["kind"]}'+(f' · {owner}' if team else ''),label=label,done=status=="완료"))
+    action=calendar_view(mode=mode,day=str(day),today=str(today),events=cards,roster={uid:p["label"] for uid,p in db.members.items()} if team else {},rangeStart=str(fetch_start),rangeEnd=str(fetch_end),key="sales_interactive_calendar",default=None)
     if isinstance(action,dict) and action.get("nonce")!=st.session_state.get("sales_calendar_action"):
         st.session_state["sales_calendar_action"]=action.get("nonce")
         command,value=action.get("action"),action.get("value")
