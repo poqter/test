@@ -10,7 +10,7 @@ import streamlit.components.v1 as components
 from cryptography.fernet import Fernet, InvalidToken
 from modules.shared.hwarang_auth import HwarangAuthError
 
-bridge = components.declare_component("workspace_device", path=str(Path(__file__).with_name("device_bridge")))
+DEVICE_FRONTEND = Path(__file__).with_name("device_bridge")
 PATH = "/rest/v1/sales_devices"
 
 def cipher(auth):
@@ -41,7 +41,11 @@ def revoke(auth, all_devices=False):
 def synchronize(auth, authenticate):
     session = st.session_state
     action = session.get("device_action","read")
-    result = bridge(action=action, token=session.get("device_handle","") if action=="store" else "", key="hw_device_bridge", default=None)
+    restoring = not session.get("password_correct")
+    result = None
+    if restoring or action in ("store", "clear"):
+        bridge = components.declare_component("workspace_device", path=str(DEVICE_FRONTEND))
+        result = bridge(action=action, token=session.get("device_handle","") if action=="store" else "", key="hw_device_bridge", default=None)
     if action in ("store","clear"):
         if result and result.get("action")==action:
             session.pop("device_action",None)
@@ -49,7 +53,6 @@ def synchronize(auth, authenticate):
                 st.warning("이 브라우저에서는 로그인 유지 정보를 저장할 수 없습니다.")
         return
     handle = session.get("device_handle")
-    restoring = not session.get("password_correct")
     if restoring:
         if not result or result.get("action")!="read":return
         handle = result.get("token")
