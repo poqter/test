@@ -184,16 +184,7 @@ def calendar(db,today):
         if target:st.session_state["sales_anchor"]=target
         if nav["action"]=="mode" and nav.get("value") in ("날짜별","주간","월간"):
             st.session_state["sales_view"]=nav["value"]
-    notices=db.request("GET","sales_notices",{"seen":"eq.false","order":"created_at.desc","limit":"20","select":"id,message,sales_events(day,kind)"})
-    if notices:
-        with st.expander(f"일정 알림 {len(notices)}건",expanded=True):
-            for notice in notices:
-                event=notice.get("sales_events") or {}
-                st.write(f'{event.get("day","")} · {event.get("kind","")} · {notice["message"]}')
-            if st.button("표시된 알림 확인"):
-                ids=",".join(n["id"] for n in notices)
-                db.request("PATCH","sales_notices",{"id":"in.("+ids+")"},{"seen":True})
-                st.rerun()
+    notices_slot = st.container()
     position=st.session_state["hwarang_auth"]["profile"].get("position_code")
     team=st.toggle("지점 일정",value=position=="branch_manager")
     branch={r["member"]:r for r in db.request("POST","rpc/sales_branch_members",body={})}
@@ -213,29 +204,7 @@ def calendar(db,today):
     summary=calendar_rows(fetch_start,fetch_end)
     events=[details.get(r["id"],r) for r in summary if team or r["owner"]==db.uid or r["companion"]==db.uid or r["common"]]
     events.sort(key=lambda r:(r["day"],r["start_time"] or ""))
-    todays=summary if fetch_start<=today<=fetch_end else calendar_rows(today,today)
-    todays=[r for r in todays if r["day"]==str(today) and not r["common"]]
-    confirmations={r["owner"] for r in db.request("GET","sales_empty_days",{"day":"eq."+str(today),"select":"owner"})}
-    def day_state(uid):
-        personal=[r for r in todays if uid in (r["owner"],r["companion"])]
-        active=[r for r in personal if r["status"] not in ("취소","연기")]
-        if any(r["kind"]!="휴무" or r["start_time"] for r in active):return "일정 있음"
-        if active:return "휴무"
-        if uid in confirmations:return "일정 없음"
-        if personal and all(r["status"]=="취소" for r in personal):return "모두 취소"
-        return "미등록"
-    if db.me["managed"]:
-        groups={}
-        for uid in branch.keys() & db.members.keys():
-            groups.setdefault(day_state(uid),[]).append(branch[uid]["label"])
-        with st.expander(("오늘의 팀" if position=="team_leader" else "오늘의 지점")+" · 미등록 "+str(len(groups.get("미등록",[])))+"명 · 일정 없음 "+str(len(groups.get("일정 없음",[])))+"명"):
-            for state,names in groups.items():st.write(state+" "+str(len(names))+"명 · "+", ".join(sorted(names)))
-    if day_state(db.uid) in ("미등록","일정 없음","모두 취소"):
-        checked=db.uid in confirmations
-        if st.button("오늘 일정 없음 · 되돌리기" if checked else "오늘 일정 없음"):
-            if checked:db.request("DELETE","sales_empty_days",{"owner":"eq."+db.uid,"day":"eq."+str(today)})
-            else:db.request("POST","sales_empty_days",body={"day":str(today)},prefer="resolution=ignore-duplicates")
-            st.rerun()
+    status_slot = st.container()
     if mode=="주간" and team:
         members=[]
         for uid,person in branch.items():
@@ -286,6 +255,41 @@ def calendar(db,today):
             found=next((r for r in events if r["id"]==value),None)
             if found and found["id"] in details:detail_dialog(db,found)
             elif found:st.info(next(c["label"] for c in cards if c["id"]==value))
+    with notices_slot:
+        notices=db.request("GET","sales_notices",{"seen":"eq.false","order":"created_at.desc","limit":"20","select":"id,message,sales_events(day,kind)"})
+        if notices:
+            with st.expander(f"일정 알림 {len(notices)}건",expanded=True):
+                for notice in notices:
+                    event=notice.get("sales_events") or {}
+                    st.write(f'{event.get("day","")} · {event.get("kind","")} · {notice["message"]}')
+                if st.button("표시된 알림 확인"):
+                    ids=",".join(n["id"] for n in notices)
+                    db.request("PATCH","sales_notices",{"id":"in.("+ids+")"},{"seen":True})
+                    st.rerun()
+    with status_slot:
+        todays=summary if fetch_start<=today<=fetch_end else calendar_rows(today,today)
+        todays=[r for r in todays if r["day"]==str(today) and not r["common"]]
+        confirmations={r["owner"] for r in db.request("GET","sales_empty_days",{"day":"eq."+str(today),"select":"owner"})}
+        def day_state(uid):
+            personal=[r for r in todays if uid in (r["owner"],r["companion"])]
+            active=[r for r in personal if r["status"] not in ("취소","연기")]
+            if any(r["kind"]!="휴무" or r["start_time"] for r in active):return "일정 있음"
+            if active:return "휴무"
+            if uid in confirmations:return "일정 없음"
+            if personal and all(r["status"]=="취소" for r in personal):return "모두 취소"
+            return "미등록"
+        if db.me["managed"]:
+            groups={}
+            for uid in branch.keys() & db.members.keys():
+                groups.setdefault(day_state(uid),[]).append(branch[uid]["label"])
+            with st.expander(("오늘의 팀" if position=="team_leader" else "오늘의 지점")+" · 미등록 "+str(len(groups.get("미등록",[])))+"명 · 일정 없음 "+str(len(groups.get("일정 없음",[])))+"명"):
+                for state,names in groups.items():st.write(state+" "+str(len(names))+"명 · "+", ".join(sorted(names)))
+        if day_state(db.uid) in ("미등록","일정 없음","모두 취소"):
+            checked=db.uid in confirmations
+            if st.button("오늘 일정 없음 · 되돌리기" if checked else "오늘 일정 없음"):
+                if checked:db.request("DELETE","sales_empty_days",{"owner":"eq."+db.uid,"day":"eq."+str(today)})
+                else:db.request("POST","sales_empty_days",body={"day":str(today)},prefer="resolution=ignore-duplicates")
+                st.rerun()
     st.caption("모바일 앱 열기로 캘린더에 접속한 뒤 홈 화면에 추가할 수 있습니다.")
     with st.expander("내 후속 할 일"):
         tasks=db.request("GET","sales_followups",{"owner":"eq."+db.uid,"scheduled":"is.null","order":"due.asc"})

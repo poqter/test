@@ -10,6 +10,7 @@ baseFontSize = 16
 gatherUsageStats = false
 
 [server]
+enableStaticServing = true
 enableCORS = true
 enableXsrfProtection = true
 

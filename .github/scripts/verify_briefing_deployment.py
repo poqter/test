@@ -33,17 +33,22 @@ with sync_playwright() as p:
     if not ready:
         browser.close()
         raise SystemExit('Expected deployed release was not observed. Check Streamlit deployment logs.')
+    # Start an independent visit so a still-mounted health screen cannot be selected.
+    page.close()
+    page=browser.new_page()
+    started=time.monotonic()
     page.goto('https://hwarang-workspace.streamlit.app/',wait_until='domcontentloaded',timeout=45000)
-    for _ in range(30):
-        if any(frame.get_by_test_id('stAppViewContainer').count() for frame in page.frames):
+    deadline=time.monotonic()+90
+    while time.monotonic()<deadline:
+        frame=next((f for f in page.frames if f.locator('.hw-auth-copy h1').is_visible()), None)
+        if frame:
             break
-        page.wait_for_timeout(1000)
+        if any(f.get_by_test_id('stException').count() for f in page.frames):
+            raise SystemExit('Workspace login view contains a Streamlit exception.')
+        page.wait_for_timeout(500)
     else:
-        raise SystemExit('Workspace app frame did not load.')
-    page.wait_for_timeout(3000)
-    if any(frame.get_by_test_id('stException').count() for frame in page.frames):
-        raise SystemExit('Workspace login view contains a Streamlit exception.')
-    frame=next(frame for frame in page.frames if frame.get_by_test_id('stAppViewContainer').count())
+        raise SystemExit('Workspace login form did not appear.')
+    print(f'LOGIN_SCREEN_SECONDS={time.monotonic()-started:.2f}')
     frame.locator('.hw-design-2026').wait_for(state='attached', timeout=15000)
     loaded=frame.evaluate("""async () => {
         const faces = await document.fonts.load('700 16px "HW LINE Seed"', '화랑');
