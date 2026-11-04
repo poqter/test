@@ -47,6 +47,13 @@ with sync_playwright() as p:
             raise SystemExit('Workspace login view contains a Streamlit exception.')
         page.wait_for_timeout(500)
     else:
+        from urllib.parse import urlsplit
+        for f in page.frames:
+            try:
+                print('ENTRY_FRAME', urlsplit(f.url).hostname, 'TITLE', f.title()[:120],
+                      'PUBLIC_ENTRY_TEXT', f.locator('body').inner_text(timeout=2500)[:400], flush=True)
+            except Exception:
+                pass
         raise SystemExit('Workspace login form did not appear.')
     print(f'LOGIN_SCREEN_SECONDS={time.monotonic()-started:.2f}')
     frame.locator('.hw-design-2026').wait_for(state='attached', timeout=15000)
