@@ -25,6 +25,29 @@ def _open(aid):
 def _close():
     st.session_state.pop('_academy_exam_id',None);st.rerun()
 
+def _abort_dialog(repo, aid):
+    st.subheader('시험을 중단할까요?')
+    st.write('이 시험은 채점 없이 종료되며 새 시험을 시작할 수 있습니다. 중단한 시험은 이어 풀 수 없습니다.')
+    st.caption('서버에 저장된 답안은 중단 기록에 보존됩니다. 아직 저장되지 않은 답안은 반영되지 않을 수 있습니다.')
+    left,right=st.columns(2)
+    if left.button('계속 풀기',key='abort_keep'):
+        st.session_state.pop('_academy_exam_abort',None);st.rerun()
+    if right.button('시험 중단 확정',type='primary',key='abort_confirm'):
+        try:
+            current=repo.call('get',id=aid)
+            result=repo.call('abort',id=aid,revision=current['revision'])
+            if result['status']=='submitted':
+                st.session_state['_academy_exam_id']=aid
+            else:
+                st.session_state.pop('_academy_exam_id',None)
+                st.session_state['_academy_exam_notice']='시험을 중단했습니다. 새 시험을 시작할 수 있습니다.'
+            st.session_state.pop('_academy_exam_abort',None)
+            st.session_state.pop('_academy_exam_wire_'+aid,None)
+            st.session_state.pop('_academy_exam_start_request',None)
+            st.rerun()
+        except Exception:
+            st.error('중단을 확인하지 못했습니다. 다시 시도해 주세요.')
+
 def _result(repo,a,manager=False):
     review=a.get('source_kind')=='review'
     st.subheader('오답 복습 결과' if review else mode_label(a)+' 결과')
@@ -68,9 +91,9 @@ def _history(rows):
     page=st.number_input('기록 페이지',min_value=1,max_value=max(1,(len(rows)+9)//10),value=1,step=1,key='_academy_exam_history_page')
     for r in rows[(page-1)*10:page*10]:
         with st.container(border=True):
-            st.write(r['title']);st.caption(f"{mode_label(r)} · {stamp(r['started_at']).strftime('%Y.%m.%d %H:%M')} · {'진행 중' if r['status']=='active' else '완료'}")
+            st.write(r['title']);st.caption(f"{mode_label(r)} · {stamp(r['started_at']).strftime('%Y.%m.%d %H:%M')} · {dict(active='진행 중',submitted='완료',aborted='중단').get(r['status'],r['status'])}")
             if r.get('result'):st.write(' / '.join(f"{s['name']} {s['score']}{'%' if r.get('source_kind')=='review' else '점'}" for s in r['result']['sections']))
-            if st.button('이어서 풀기' if r['status']=='active' else '결과·오답 보기',key='history_'+r['id']):_open(r['id'])
+            if r['status']!='aborted' and st.button('이어서 풀기' if r['status']=='active' else '결과·오답 보기',key='history_'+r['id']):_open(r['id'])
 
 def _dashboard(repo,profile):
     # Detach list widget state while the personal detail page hides those widgets.
@@ -156,25 +179,38 @@ def render(auth,owner,permissions,profile):
     st.markdown('<style>.exam-prose{font-size:18px;line-height:1.85;overflow-wrap:anywhere;margin:12px 0}</style>',unsafe_allow_html=True)
     repo=Repository(auth,owner)
     try:
+        if notice:=st.session_state.pop('_academy_exam_notice',None):st.success(notice)
+        if pending:=st.session_state.get('_academy_exam_abort'):
+            with st.container(border=True):_abort_dialog(repo,pending)
+            return
         aid=st.session_state.get('_academy_exam_id')
         if aid:
             a=repo.call('get',id=aid)
             if a['status']=='submitted':_result(repo,a)
+            elif a['status']=='aborted':
+                st.info('중단한 시험입니다. 새 시험을 시작할 수 있습니다.')
+                if st.button('시험 목록으로',key='aborted_back'):_close()
             else:
                 st.markdown('<style>[data-testid="stSidebar"]{display:none}</style>',unsafe_allow_html=True)
                 if st.button('← 시험 목록',help='저장된 시험은 이어 풀 수 있으며 제한시간은 계속 흐릅니다.'):_close()
+                if st.button('시험 중단',key='abort_active'):
+                    st.session_state['_academy_exam_abort']=aid;st.rerun()
                 active(repo,a)
             return
         tabs=['시험 시작','나의 응시 기록']
         if profile.get('role')=='super_admin' or profile.get('position_code') in MANAGERS:tabs.append('조직 학습 현황')
-        page=st.radio('메뉴',tabs,horizontal=True,label_visibility='collapsed',key='_academy_exam_page')
+        panels=st.tabs(tabs,key='_academy_exam_tabs',on_change='rerun')
+        page=next((label for label,panel in zip(tabs,panels) if panel.open),tabs[0])
         if page=='조직 학습 현황':_dashboard(repo,profile);return
         rows=repo.call('list') or []
         if page=='나의 응시 기록':_history(rows);return
         existing=next((r for r in rows if r['status']=='active'),None)
         if existing:
             st.info('진행 중인 응시가 있습니다. '+existing['title'])
-            if st.button('이어서 풀기',type='primary'):_open(existing['id'])
+            left,right=st.columns(2)
+            if left.button('이어서 풀기',type='primary'):_open(existing['id'])
+            if right.button('시험 중단 · 새 시험 선택',key='abort_existing'):
+                st.session_state['_academy_exam_abort']=existing['id'];st.rerun()
             return
         catalog=repo.call('catalog') or []
         if not catalog:st.info('시험 자료를 준비하고 있습니다.');return

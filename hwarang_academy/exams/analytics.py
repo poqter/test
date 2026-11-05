@@ -27,7 +27,7 @@ def summarize(members,rows):
     for m in members:
         mine=[r for r in rows if r['user_id']==m['id']]
         scores=[s for (uid,_),s in latest.items() if uid==m['id']]
-        state='미참여' if not mine else '학습 중' if any(r['status']=='active' for r in mine) else '학습 완료'
+        state='미참여' if not mine else '학습 중' if any(r['status']=='active' for r in mine) else '학습 완료' if any(r['status']=='submitted' for r in mine) else '중단'
         below=any(not s['passed'] for s in scores)
         people.append({**m,'attempts':mine,'scores':scores,'state':state,'below':below,
                        'last':max((r.get('updated_at') or r['started_at'] for r in mine),default=None)})

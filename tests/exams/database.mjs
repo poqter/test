@@ -16,6 +16,7 @@ create function private.is_org_descendant(a uuid,b uuid) returns boolean languag
 const platform=fs.readFileSync('supabase/migrations/06_Platform_Update.sql','utf8');
 await db.exec(platform.slice(platform.indexOf('create or replace function private.can_user_view('),platform.indexOf('revoke all on function private.can_user_view')));
 await db.exec(sql);await db.exec(sql);await db.exec(fs.readFileSync('supabase/operations/UPGRADE_CBT_UX_V2.sql','utf8'));await db.exec(fs.readFileSync('supabase/operations/UPGRADE_CBT_UX_V2.sql','utf8')); // repeatable schema
+await db.exec(fs.readFileSync('supabase/migrations/20261105021857_cbt_abort_attempt.sql','utf8'));
 for(const b of bank) await db.query('insert into hwarang_exam_bank(id,title,family,revision,data) values($1,$2,$3,$4,$5)',[b.id,b.title,b.family,b.revision,b.data]);
 const uid=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const orgs=[['root','총괄',null],['head_unit','본부',100],['branch','지점',101],['team','1팀',102],['team','2팀',102]];
@@ -84,4 +85,17 @@ await db.exec('grant usage on schema public,private to service_role; grant selec
 ok((await call(8,'roster')).length>0);ok((await call(8,'team')).length>0);await db.exec('reset role');
 ok((await db.query("select private.exam_fingerprint($1::jsonb)=private.exam_fingerprint($2::jsonb) equal",[JSON.stringify({question:'가 나',choices:[{number:1,text:'보 기'}]}),JSON.stringify({question:'가\n나',choices:[{number:1,text:'보기'}]})])).rows[0].equal);
 ok(!(await db.query("select private.exam_fingerprint($1::jsonb)=private.exam_fingerprint($2::jsonb) equal",[JSON.stringify({question:'100만원'}),JSON.stringify({question:'10만원'})])).rows[0].equal);
+// Abort preserves answers, permits a fresh attempt, and cannot mutate a completed result.
+let stopped=await call(8,'start',{id:uid(serial++),exam_id:bank[0].id,track:'main',mode:'practice'});
+stopped=await call(8,'save',{id:stopped.id,revision:stopped.revision,answers:{1:1},flags:[],cursor:0});
+await denied(()=>call(3,'abort',{id:stopped.id,revision:stopped.revision}),'EXAM_ACCESS_DENIED');
+await denied(()=>call(8,'abort',{id:stopped.id,revision:0}),'EXAM_CONFLICT_RELOAD');
+stopped=await call(8,'abort',{id:stopped.id,revision:stopped.revision});
+ok(stopped.status==='aborted'&&stopped.result===null&&stopped.answers['1']===1);
+ok((await call(8,'abort',{id:stopped.id,revision:0})).status==='aborted');
+ok((await call(8,'save',{id:stopped.id,revision:stopped.revision,answers:{},flags:[],cursor:0})).status==='aborted');
+const fresh=await call(8,'start',{id:uid(serial++),exam_id:bank[0].id,track:'main',mode:'practice'});
+ok(fresh.id!==stopped.id&&fresh.status==='active');
+const done=await call(8,'submit',{id:fresh.id,revision:fresh.revision});
+ok(stable(await call(8,'abort',{id:done.id,revision:done.revision}))===stable(done));
 const report={checks,examTrackCombinations:108,engine:'PGlite PostgreSQL',productionDatabaseChanged:false,status:'passed'};console.log(JSON.stringify(report));await db.close();

@@ -12,7 +12,7 @@ def process(repo, event, attempt):
     if action not in ('save', 'submit', 'poll', 'check'):
         raise ValueError('INVALID_ACTION')
     current = repo.call('get', id=attempt['id'])
-    if action == 'poll' or current['status'] == 'submitted':
+    if action == 'poll' or current['status'] != 'active':
         return current
     payload = event.get('payload') or {}
     revision = payload.get('revision')
@@ -46,7 +46,7 @@ def active(repo, initial):
     try:
         state['attempt'] = process(repo, event, state['attempt'])
         state['error'] = ''
-        if state['attempt']['status'] == 'submitted':
+        if state['attempt']['status'] != 'active':
             st.session_state.pop(key, None)
             st.rerun()
     except Exception as exc:
