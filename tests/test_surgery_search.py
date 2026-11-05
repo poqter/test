@@ -27,19 +27,26 @@ def test_page_search_resets_pagination():
     from streamlit.testing.v1 import AppTest
     app = AppTest.from_string('from modules.resources.surgery_search import run\nrun()').run()
     assert not app.exception
-    assert len(app.dataframe[0].value) == 50
+    assert not app.selectbox and not app.button and not app.dataframe
+    assert any('찾으실 수술명' in x.value for x in app.caption)
+    app.text_input[0].set_value('수술').run()
     app.button(key='surgery_next').click().run()
     assert app.session_state['surgery_page'] == 2
     app.text_input[0].set_value('백내장').run()
     assert not app.exception
     assert app.session_state['surgery_page'] == 1
-    assert all('백내장' in x for x in app.dataframe[0].value['수술명'])
+    assert any('<article class="hw-surgery-row">' in x.value for x in app.markdown)
     app.text_input[0].set_value('존재하지않는수술').run()
-    assert not app.exception
-    assert len(app.dataframe) == 0
-    assert len(app.info) == 1
+    assert not app.exception and len(app.info) == 1
+    app.text_input[0].set_value('').run()
+    assert not app.exception and not app.button
+    assert not any('<article class="hw-surgery-row">' in x.value for x in app.markdown)
 
-    app.button(key='surgery_reset').click().run()
-    assert not app.exception
-    assert app.text_input[0].value == ''
-    assert len(app.dataframe[0].value) == 50
+
+def test_result_markup_escapes_names_and_keeps_both_classifications():
+    from modules.resources.surgery_search import render_results
+    output = render_results([{'name': '<script>test</script>', 'class3': '2종', 'class5': '비해당'}])
+    assert '<script>' not in output
+    assert '&lt;script&gt;' in output
+    assert '1~3종 기준' in output and '1~5종 기준' in output
+    assert 'hw-surgery-c2' in output and 'hw-surgery-na' in output
