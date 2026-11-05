@@ -295,9 +295,10 @@ def calendar(db,today):
             if personal and all(r["status"]=="취소" for r in personal):return "모두 취소"
             return "미등록"
         if db.me["managed"]:
-            groups={}
-            for uid in branch.keys() & db.members.keys():
-                groups.setdefault(day_state(uid),[]).append(branch[uid]["label"])
+            from modules.activity.status_policy import unregistered_exclusions, summary_groups
+            states={uid:day_state(uid) for uid in branch.keys() & db.members.keys()}
+            excluded=unregistered_exclusions(db.auth, [uid for uid,state in states.items() if state=="미등록"])
+            groups=summary_groups(states, {uid:branch[uid]["label"] for uid in states}, excluded)
             with st.expander(("오늘의 팀" if position=="team_leader" else "오늘의 지점")+" · 미등록 "+str(len(groups.get("미등록",[])))+"명 · 일정 없음 "+str(len(groups.get("일정 없음",[])))+"명"):
                 for state,names in groups.items():st.write(state+" "+str(len(names))+"명 · "+", ".join(sorted(names)))
         if day_state(db.uid) in ("미등록","일정 없음","모두 취소"):
