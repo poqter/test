@@ -6,7 +6,38 @@ import html
 import streamlit as st
 
 
+def _hide_mobile_host_manage_button() -> None:
+    """Hide Cloud host chrome only on narrow screens, including the outer shell."""
+    import streamlit.components.v1 as components
+
+    components.html("""
+<script>
+(() => {
+  const id = "hw-mobile-manage-app-style";
+  const css = '@media (max-width: 768px) { [data-testid="manage-app-button"] { display: none !important; } }';
+  let target = window;
+  for (let depth = 0; depth < 4; depth++) {
+    try {
+      const doc = target.document;
+      if (!doc.getElementById(id)) {
+        const style = doc.createElement("style");
+        style.id = id;
+        style.textContent = css;
+        doc.head.appendChild(style);
+      }
+      if (target === target.parent) break;
+      target = target.parent;
+    } catch (_) {
+      break; // Never attempt to cross a browser origin boundary.
+    }
+  }
+})();
+</script>
+""", height=0, scrolling=False)
+
+
 def inject_global_styles() -> None:
+    _hide_mobile_host_manage_button()
     from modules.shared.signature_theme import inject_signature_styles
     inject_signature_styles()
     from modules.shared.task_theme import inject_task_styles
