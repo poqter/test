@@ -62,6 +62,7 @@ WORKSPACE_APP_PERMISSION: Final[dict[str, str]] = {
     "comparison_builder": "workspace.customer_materials",
     "coverage_proposal": "workspace.customer_materials",
     "insurance_claim_guide": "workspace.customer_materials",
+    "surgery_search": "workspace.customer_materials",
     "insurer_portal": "workspace.official_resources",
     "convention": "workspace.performance_basic",
     "summer": "workspace.performance_basic",
