@@ -28,12 +28,18 @@ def test_page_search_resets_pagination():
     app = AppTest.from_string('from modules.resources.surgery_search import run\nrun()').run()
     assert not app.exception
     assert len(app.dataframe[0].value) == 50
-    app.number_input[0].set_value(2).run()
+    app.button(key='surgery_next').click().run()
+    assert app.session_state['surgery_page'] == 2
     app.text_input[0].set_value('백내장').run()
     assert not app.exception
-    assert app.number_input[0].value == 1
+    assert app.session_state['surgery_page'] == 1
     assert all('백내장' in x for x in app.dataframe[0].value['수술명'])
     app.text_input[0].set_value('존재하지않는수술').run()
     assert not app.exception
     assert len(app.dataframe) == 0
     assert len(app.info) == 1
+
+    app.button(key='surgery_reset').click().run()
+    assert not app.exception
+    assert app.text_input[0].value == ''
+    assert len(app.dataframe[0].value) == 50
