@@ -41,6 +41,8 @@ def _reload(owner):
     st.rerun()
 
 def render(auth,owner,permissions,profile,course,rpc):
+    from modules.shared.maintenance import guard
+    if guard(course['id'],profile):return
     _styles()
     flash=st.session_state.pop('edu_flash_'+str(owner),None)
     if flash:st.success(flash)

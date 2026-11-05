@@ -4,6 +4,7 @@ from uuid import uuid4
 from pathlib import Path
 import base64
 import streamlit as st
+from modules.shared.maintenance import blocked
 
 NAV = {'courses': ('교육 과정', None), 'library': ('교육자료실', 'academy.library'), 'my_learning': ('나의 학습', 'academy.my_learning')}
 CATEGORIES = {'new_hire':'신입교육','consultation':'상담교육','insurance_practice':'보험실무','assessment':'시험·평가'}
@@ -61,7 +62,7 @@ def render(auth, owner, permissions, profile, surface):
         if not courses:st.info('이용 가능한 교육 과정이 없습니다.')
         return
     if not courses:st.info('이용 가능한 교육 과정이 없습니다. 교육 메뉴 권한을 확인해 주세요.');return
-    selected=st.selectbox('교육 과정',courses,index=next((i for i,c in enumerate(courses) if c['id']==st.session_state.get('_academy_course_id')),0),format_func=lambda c:c['title'])
+    selected=st.selectbox('교육 과정',courses,index=next((i for i,c in enumerate(courses) if c['id']==st.session_state.get('_academy_course_id')),0),format_func=lambda c:('🔒 '+c['title']+' · 기능 정비 중') if blocked(c['id'],profile) else c['title'])
     if selected.get('learning_mode')=='practice':
         from .onboarding import render as render_onboarding
         render_onboarding(auth,owner,permissions,profile,selected,rpc)

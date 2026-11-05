@@ -104,6 +104,9 @@ def dispatch(page_id: str, *, role: str | None = None, allowed: list[str] | None
     if page_id not in permitted:
         st.session_state["active_app"] = "home"
         return None
+    from modules.shared.maintenance import guard
+    if guard(page_id):
+        return None
     spec = APP_BY_ID[page_id]
     if spec.external_app_key:
         st.session_state["active_app"] = "home"

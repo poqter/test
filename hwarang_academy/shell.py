@@ -32,6 +32,11 @@ def shell(profile,permissions):
 def home(auth,owner,permissions,profile,credit_status):
     from hwarang_academy.education.ui import rpc
     from hwarang_academy.studio.repository import Repository
+    catalog = None
+    def home_catalog():
+        nonlocal catalog
+        if catalog is None:catalog = rpc(auth,owner,'catalog') or []
+        return catalog
     st.title('오늘의 배움을 상담으로 이어가세요')
     st.caption('교육과 상담 연습을 한곳에서 시작하세요.')
     if 'academy.new_hire' in permissions:
@@ -40,19 +45,21 @@ def home(auth,owner,permissions,profile,credit_status):
             st.write('하루 30분 학습부터 실습 제출, 선배 피드백까지 이어갑니다.')
             try:
                 from hwarang_academy.education.onboarding import completion
-                new_course=next((c for c in (rpc(auth,owner,'catalog') or []) if c.get('id')=='newhire-30-v1'),None)
+                new_course=next((c for c in home_catalog() if c.get('id')=='newhire-30-v1'),None)
                 if new_course:
                     work=rpc(auth,owner,'work_get',p_id=new_course['id']) or []
                     done,reviewed,graduated=completion(new_course,work)
                     st.progress(done/30,text=f'{done}/30 학습 · {reviewed}/4 주간 검토'+(' · 수료' if graduated else ''))
             except Exception:st.caption('진도는 과정 안에서 다시 확인할 수 있습니다.')
-            st.button('30일 과정 열기 →',key='onboarding_home',on_click=course_open,args=('newhire-30-v1',),type='primary')
+            from modules.shared.maintenance import blocked
+            locked=blocked('newhire-30-v1',profile)
+            st.button('🔒 기능 정비 중' if locked else '30일 과정 열기 →',key='onboarding_home',on_click=course_open,args=('newhire-30-v1',),type='primary',disabled=locked)
     with st.container(key='brand_pair_wrap'):
         left,right=st.columns(2)
         with left, st.container(key='brand_feature_learning'):
             st.subheader('나의 교육')
             try:
-                courses=[c for c in (rpc(auth,owner,'catalog') or []) if c.get('kind')=='course' and c.get('id')!='newhire-30-v1' and c.get('published') and c.get('permission') in permissions]
+                courses=[c for c in home_catalog() if c.get('kind')=='course' and c.get('id')!='newhire-30-v1' and c.get('published') and c.get('permission') in permissions]
                 active=next((c for c in courses if 0<len((c.get('progress') or {}).get('completed_lessons') or [])<len(c.get('lessons') or [])),None)
                 if active:
                     done=set((active.get('progress') or {}).get('completed_lessons') or [])

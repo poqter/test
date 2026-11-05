@@ -1,5 +1,7 @@
 from modules.activity.contracts import contract_editor, performance, conversions
 import re
+import json
+from copy import deepcopy
 from calendar import monthrange
 from pathlib import Path
 import streamlit.components.v1 as components
@@ -21,6 +23,7 @@ mobile_calendar = components.declare_component("mobile_calendar", path=str(Path(
 
 class Records:
     def __init__(self):
+        self._reads={}
         self.auth=HwarangAuthService(SupabaseConfig.from_mapping(st.secrets))
         identity=st.session_state["hwarang_auth"]
         self.token=identity["access_token"]
@@ -32,7 +35,20 @@ class Records:
         self.me=self.members[self.uid]
 
     def request(self,method,table,params=None,body=None,prefer=None):
-        return self.auth._request(method,"/rest/v1/"+table,access_token=self.token,params=params,json=body,prefer=prefer)
+        readonly = method == "GET" or (method == "POST" and table in {"rpc/sales_members", "rpc/sales_branch_members", "rpc/sales_calendar_days"})
+        if not readonly:self._reads.clear()
+        def fetch(query):
+            key=json.dumps([method,table,query,body,prefer],sort_keys=True)
+            if readonly and key in self._reads:return deepcopy(self._reads[key])
+            value=self.auth._request(method,"/rest/v1/"+table,access_token=self.token,params=query,json=body,prefer=prefer)
+            if readonly:self._reads[key]=deepcopy(value)
+            return value
+        if not readonly or "limit" in (params or {}):
+            return fetch(params)
+        from modules.shared.collection_pages import collect_pages
+        keys={"sales_empty_days":("owner","day"), "sales_report_history":("report","revision"), "sales_team_assignments":("member",), "rpc/sales_members":("member",), "rpc/sales_branch_members":("member",)}.get(table,("id",))
+        return collect_pages(fetch, params, keys)
+
 
     def period(self,table,start,end,**params):
         return self.request("GET",table,{"and":f"(day.gte.{start},day.lte.{end})","order":"day.asc",**params})

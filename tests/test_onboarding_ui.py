@@ -17,7 +17,7 @@ def rpc(auth,owner,name,**kw):
   if kw['p_submit'] and not passed:return {'passed':False,'score':0}
   st.session_state.test_works=[dict(lesson_id=kw['p_lesson'],revision=1,version=kw['p_version']+1,practice=kw['p_practice'],answers=kw['p_answers'],status='submitted' if kw['p_submit'] else 'draft')]
   return {'passed':kw['p_submit']}
-render(None,'learner',{'academy.new_hire'},{'role':'user','position_code':'fp'},course,rpc)
+render(None,'learner',{'academy.new_hire'},{'role':'super_admin','position_code':'fp'},course,rpc)
 '''
 
 def test_draft_resume_wrong_answer_and_submit(monkeypatch):
@@ -46,3 +46,12 @@ def test_all_lessons_render(monkeypatch):
   next(s for s in app.selectbox if s.label=='학습할 일차').set_value(f'd{day:02}').run()
   assert not app.exception,day
   assert len(app.text_area)==1
+
+
+def test_locked_learner_cannot_submit(monkeypatch):
+ monkeypatch.chdir(ROOT)
+ app=AppTest.from_string(APP.replace("'role':'super_admin'", "'role':'user'")).run()
+ assert not app.exception
+ assert any('기능 정비 중' in item.value for item in app.info)
+ assert not app.text_area
+ assert not app.button

@@ -14,7 +14,8 @@ def _combine(items, name):
     out={'name':name, 'notes':' / '.join(x['notes'] for x in items if x['notes'])}
     for k in ('premium',)+METRICS:
         vals=[x.get(k) for x in items]
-        out[k]=sum(vals) if vals and all(v is not None for v in vals) else None
+        out[k]=(sum(v for v in vals if isinstance(v,(int,float))) if k=='premium' else
+                sum(vals) if vals and all(v is not None for v in vals) else None)
     return out
 
 
@@ -84,7 +85,7 @@ def _current_excel(file):
     aliases={'일반암':['일반암'],'유사암':['유사암'],'뇌혈관질환':['뇌혈관'],'허혈성심장질환':['허혈성심장질환']}
     out={'name':'현재 보험', 'notes':'엑셀의 치료·수술·간병 내용은 원본 확인 필요'}
     premiums=[x.get('monthly') for x in parsed['contracts']]
-    out['premium']=sum(premiums) if premiums and all(isinstance(x,(int,float)) and x>0 for x in premiums) else None
+    out['premium']=sum(x for x in premiums if isinstance(x,(int,float)))
     from modules.consultation.coverage_comparison_data import _classify
     summaries=[]
     for section in ('암 치료','뇌·심장 치료','수술','간병','기타 보장'):
@@ -102,6 +103,8 @@ def _current_excel(file):
 
 
 def run():
+    from modules.shared.maintenance import guard
+    if guard('coverage_proposal'):return
     page_header('고객 상담','보험 보장비교 제안 보고서','현재 보험과 제안 보험을 비교하고 추천 이유를 정리합니다.','▤')
     st.caption('고객 자료는 현재 작업에서만 사용합니다. 추출된 금액과 지급 조건은 원본과 비교해 확인해 주세요.')
     a,b=st.columns(2)

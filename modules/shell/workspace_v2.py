@@ -110,6 +110,11 @@ def _launch_widget(
     mode: str | None = None,
 ) -> bool:
     """Render navigation; prepare a protected-app ticket only when requested."""
+    from modules.shared.maintenance import blocked
+    profile = (st.session_state.get("hwarang_auth") or {}).get("profile") or {}
+    if blocked(app.id, profile):
+        st.button("🔒 " + label + " · 기능 정비 중", key=key, disabled=True, use_container_width=True)
+        return False
     if app.external_app_key:
         from modules.shared.one_click_launch import launch_button
         launch_button(label + " ↗", key=key, primary=primary,
@@ -306,6 +311,13 @@ def render_home(allowed_ids, navigate, notice):
             with action:_launch_widget(APP_BY_ID['briefing'],'브리핑 보기 →',key='brand_briefing_open',navigate=navigate)
     def tile(key):
         app=APP_BY_ID[key];copy=_HOME_SHORT_COPY.get(key,app.description);icon=_PREMIUM_EMOJI.get(key,'📁')
+        from modules.shared.maintenance import blocked
+        if blocked(key, profile):
+            with st.container(key='brand_locked_'+key, border=True):
+                st.markdown('**🔒 '+app.label+'**')
+                st.caption('기능 정비 중')
+                st.button('이용 준비 중', key='locked_'+key, disabled=True)
+            return
         if app.external_app_key:
             from modules.shared.one_click_launch import launch_button
             with st.container(key='brand_external_'+key):
