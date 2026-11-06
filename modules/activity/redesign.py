@@ -101,7 +101,8 @@ def event_editor(db,day,event=None,parent=None,copy=None):
             ux.field(d,"status",st.selectbox,"처리 상태",options=["예정","완료","연기","취소"])
             ux.field(d,"result",st.text_area,"활동 결과",height=80)
             ux.field(d,"follow",st.date_input,"후속 일정 날짜 · 선택")
-    invalid=not title.strip() or v["mode"]=="시간 지정" and (not v["start"] or v["end"] and v["end"]<=v["start"])
+            if v["follow"] and v["follow"]<v["day"]:st.error("후속 일정 날짜는 현재 일정 날짜 이후로 선택해 주세요.")
+    invalid=not title.strip() or (v["follow"] and v["follow"]<v["day"]) or v["mode"]=="시간 지정" and (not v["start"] or v["end"] and v["end"]<=v["start"])
     if st.button("변경 저장" if event else "일정 등록",type="primary",disabled=bool(invalid),key=key+"save"):
         body=event_body(v)
         repeat=v["repeats"] if v["repeat"] and not event else 1
@@ -131,7 +132,7 @@ def quick_result(db,row):
     ux.conflict_recovery(d,key)
     ux.field(d,"status",st.segmented_control,"처리 결과",options=["완료","연기","취소"],required=True)
     ux.field(d,"result",st.text_area,"활동 결과 · 선택",height=80)
-    if d["values"]["status"]=="연기": ux.field(d,"follow",st.date_input,"새 일정 날짜")
+    if d["values"]["status"]=="연기": ux.field(d,"follow",st.date_input,"새 일정 날짜",min_value=date.fromisoformat(row["day"]))
     if st.button("결과 저장",type="primary"):
         old=d["old"];v=d["values"];body={k:old.get(k) for k in ux.EVENT_FIELDS}
         body.update(status=v["status"],result=v["result"])
@@ -328,6 +329,8 @@ def member_detail(db,uid,day,period):
     member=db.members[uid]
     st.subheader(member["label"])
     period=st.segmented_control("보기",["일일","주간"],default=period,key="member_period_"+uid,required=True)
+    if st.session_state.get("sales_route",{}).get("type")=="member":
+        st.session_state["sales_route"]["period"]=period
     start,end=bounds(day,"주간" if period=="주간" else "날짜별")
     events=db.period("sales_events",start,end,owner="eq."+uid,order="day.asc,start_time.asc.nullsfirst")
     records=db.period("sales_reports",start,end,owner="eq."+uid)
