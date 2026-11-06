@@ -122,3 +122,10 @@ body:has(.hw-design-2026) [data-stale="true"]{opacity:1!important;transition:non
    display:none!important;
  }
 }
+
+/* One desktop sidebar width across home, tools and administration. */
+@media(min-width:768px){
+ body:has(.hw-design-2026) [data-testid="stSidebar"][aria-expanded="true"]{
+   width:260px!important;min-width:260px!important;max-width:260px!important;flex:0 0 260px!important;
+ }
+}
