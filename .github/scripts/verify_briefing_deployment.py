@@ -12,6 +12,7 @@ ENGINE_VERSION = json.loads(
 expected=f'HWARANG_BRIEFING_RELEASE={ENGINE_VERSION};READY=true'
 activity_root=Path(__file__).resolve().parents[2]/'modules/activity'
 activity_expected='HWARANG_ACTIVITY_RELEASE='+hashlib.sha256(b''.join((activity_root/name).read_bytes() for name in ('center.py','redesign.py','ux.py','contracts.py','calendar_view/index.html','mobile.py'))).hexdigest()[:16]
+login_expected='HWARANG_LOGIN_RELEASE='+hashlib.sha256((activity_root.parents[1]/'app.py').read_bytes()).hexdigest()[:16]
 with sync_playwright() as p:
     browser=p.chromium.launch(headless=True)
     page=browser.new_page()
@@ -21,7 +22,7 @@ with sync_playwright() as p:
         try:
             page.goto('https://hwarang-workspace.streamlit.app/?briefing_health=1',wait_until='domcontentloaded',timeout=45000)
             for _ in range(20):
-                if any(expected in (body:=frame.locator('body').inner_text(timeout=2000)) and activity_expected in body
+                if any(expected in (body:=frame.locator('body').inner_text(timeout=2000)) and activity_expected in body and login_expected in body
                        for frame in page.frames):
                     break
                 page.wait_for_timeout(1000)

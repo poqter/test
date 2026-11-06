@@ -27,6 +27,7 @@ if st.query_params.get("briefing_health") == "1":
     activity_files=("center.py","redesign.py","ux.py","contracts.py","calendar_view/index.html","mobile.py")
     activity_hash=hashlib.sha256(b"".join((Path(__file__).parent / "modules/activity" / name).read_bytes() for name in activity_files)).hexdigest()[:16]
     st.code("HWARANG_ACTIVITY_RELEASE="+activity_hash)
+    st.code("HWARANG_LOGIN_RELEASE="+hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:16])
     st.stop()
 inject_global_styles()
 from modules.shared.workspace_design import apply_workspace_design
@@ -46,7 +47,7 @@ NOTICE = {
 }
 
 
-@st.cache_resource(show_spinner=False)
+# Do not retain authentication instances across module reloads during deployment.
 def auth_service() -> HwarangAuthService:
     return HwarangAuthService(SupabaseConfig.from_mapping(st.secrets))
 
@@ -157,7 +158,15 @@ def submit_login(auth, login_id, password, remember, feedback):
             enroll(auth, identity)
         _set_authenticated(auth, identity)
         return True
-    except HwarangAuthError as exc:
+    except RuntimeError as exc:
+        # Streamlit hot reload can leave a previous class generation in an
+        # existing session. Match only our user-safe authentication exception;
+        # unrelated programming errors must still surface for diagnosis.
+        cls=type(exc)
+        if not isinstance(exc,HwarangAuthError) and not (
+            cls.__module__=="modules.shared.hwarang_auth" and cls.__name__=="HwarangAuthError"
+        ):
+            raise
         feedback.error(str(exc))
         return False
 
