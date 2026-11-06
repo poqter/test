@@ -15,6 +15,8 @@ workspace.apply_workspace_design()
 from modules.shared.brand_ui import apply
 apply()
 with st.sidebar:st.button('메뉴 항목')
+from modules.shared.brand_ui import identity
+identity('WORKSPACE',{{'display_name':'Test'}})
 st.session_state['shell_runs']=st.session_state.get('shell_runs',0)+1
 st.caption('SHELL_RUNS='+str(st.session_state['shell_runs']))
 def tool(*args,**kwargs):
@@ -42,6 +44,8 @@ workspace.render_task_content('synthetic','user',['synthetic'])
                 expect(page.get_by_test_id('stSidebar')).to_have_attribute('aria-expanded','false')
                 if width==390:
                     expect(page.get_by_test_id('stMainBlockContainer')).to_have_css('padding-top','52px')
+                    expect(page.locator('.brand-header')).to_be_visible()
+                    assert page.locator('.brand-header').bounding_box()['y']<=80
                 opener=page.get_by_test_id('stExpandSidebarButton')
                 expect(opener).to_be_visible();opener.click()
                 expect(page.get_by_test_id('stSidebar')).to_have_attribute('aria-expanded','true')

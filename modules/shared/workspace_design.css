@@ -114,3 +114,11 @@ body:has(.hw-design-2026) [data-stale="true"]{opacity:1!important;transition:non
  body:has(.hw-design-2026) [data-testid="stMain"] h1{font-size:26px!important;padding:4px 0 12px!important;margin:0!important}
  body:has(.hw-design-2026) .st-key-hw_task_page{gap:12px!important}
 }
+
+/* Remove layout gaps from nonvisual stylesheet/marker nodes, not just their contents. */
+@media(max-width:767px){
+ body:has(.hw-design-2026) [data-testid="stElementContainer"]:has(>.stMarkdown [data-testid="stMarkdownContainer"]>style:only-child),
+ body:has(.hw-design-2026) [data-testid="stElementContainer"]:has(>.stMarkdown [data-testid="stMarkdownContainer"]>:is(.hw-design-2026,.hw-brand-ui,.hw-task-marker,.hw-dashboard-marker)){
+   display:none!important;
+ }
+}
