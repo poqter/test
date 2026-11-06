@@ -213,7 +213,8 @@ def calendar(db,today):
     with notices_slot:
         notices=db.request("GET","sales_notices",{"seen":"eq.false","order":"created_at.desc","limit":"20","select":"id,message,sales_events(day,kind)"})
         if notices:
-            with st.expander(f"일정 알림 {len(notices)}건",expanded=True):
+            with st.expander("일정 알림",expanded=True,key="sales_notice_panel",on_change="rerun"):
+                st.caption(f"새 알림 {len(notices)}건")
                 for notice in notices:
                     event=notice.get("sales_events") or {}
                     st.write(f'{event.get("day","")} · {event.get("kind","")} · {notice["message"]}')
@@ -238,7 +239,8 @@ def calendar(db,today):
             states={uid:day_state(uid) for uid in branch.keys() & db.members.keys()}
             excluded=unregistered_exclusions(db.auth, [uid for uid,state in states.items() if state=="미등록"])
             groups=summary_groups(states, {uid:branch[uid]["label"] for uid in states}, excluded)
-            with st.expander(("오늘의 팀" if position=="team_leader" else "오늘의 지점")+" · 미등록 "+str(len(groups.get("미등록",[])))+"명 · 일정 없음 "+str(len(groups.get("일정 없음",[])))+"명"):
+            with st.expander("오늘의 팀" if position=="team_leader" else "오늘의 지점",key="sales_team_panel",on_change="rerun"):
+                st.caption("미등록 "+str(len(groups.get("미등록",[])))+"명 · 일정 없음 "+str(len(groups.get("일정 없음",[])))+"명")
                 for state,names in groups.items():st.write(state+" "+str(len(names))+"명 · "+", ".join(sorted(names)))
         if day_state(db.uid) in ("미등록","일정 없음","모두 취소"):
             checked=db.uid in confirmations

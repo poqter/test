@@ -85,7 +85,7 @@ def event_editor(db,day,event=None,parent=None,copy=None):
         if not v["start"]: st.caption("시작 시간을 입력하거나 ‘시간 미정’을 선택해 주세요.")
     ux.field(d,"place",st.text_input,"장소 · 선택",placeholder="예: 지점 상담실, 고객 방문, 전화 상담")
     populated=any((v["note"],v["companion"],v["support"],v["repeat"],v["common"]))
-    extra=st.expander("추가 정보"+(" · 입력됨" if populated else " · 선택"),key=d["epoch"]+"extra",on_change="rerun")
+    extra=st.expander("추가 정보 · 선택",key=d["epoch"]+"extra",on_change="rerun")
     if extra.open:
         with extra:
             ux.field(d,"note",st.text_area,"메모",height=90)
@@ -98,8 +98,9 @@ def event_editor(db,day,event=None,parent=None,copy=None):
                 ux.field(d,"repeat",st.toggle,"매주 반복")
                 if v["repeat"]: ux.field(d,"repeats",st.number_input,"총 등록 횟수 · 이번 일정 포함",min_value=1,max_value=52)
             if db.me["managed"]: ux.field(d,"common",st.checkbox,"지점 공통 일정")
+    if populated:st.caption("추가 정보 · 입력됨")
     if event:
-        with st.expander("처리 상태 · 활동 결과",expanded=v["status"]!="예정"):
+        with st.expander("처리 상태 · 활동 결과",expanded=d["baseline"]["status"]!="예정",key=d["epoch"]+"state",on_change="rerun"):
             ux.field(d,"status",st.selectbox,"처리 상태",options=["예정","완료","연기","취소"])
             ux.field(d,"result",st.text_area,"활동 결과",height=80)
             ux.field(d,"follow",st.date_input,"후속 일정 날짜 · 선택")
@@ -295,8 +296,9 @@ def reports(db,today,period,fixed_day=None):
                                 v.update(proposed);v["coverage"]=[r["day"] for r in daily if r["submitted"]];d.pop("week_check",None);st.rerun()
             ux.field(d,"note",st.text_area,"주요 성과 · 진행사항",height=120,placeholder="주요 활동과 진행 내용을 적어 주세요.")
             if period=="주간":ux.field(d,"plan",st.text_area,"다음 주 계획",height=110,placeholder="다음 주 진행할 활동과 계획을 적어 주세요.")
-            with st.expander("지원 요청"+(" · 입력됨" if v["help"] else " · 선택")):
+            with st.expander("지원 요청 · 선택",key=d["epoch"]+"help_panel",on_change="rerun"):
                 ux.field(d,"help",st.text_input,"지원받을 내용")
+            if v["help"]:st.caption("지원 요청 · 입력됨")
             st.caption("조회 권한이 있는 관리자에게 제출 기록이 공유됩니다.")
             a,b=st.columns(2)
             save_draft=a.button("임시 저장",disabled=bool(old.get("submitted")),key=key+"draft",width="stretch")
@@ -361,16 +363,24 @@ def member_detail(db,uid,day,period):
                 st.caption("예정" if target>datetime.now(KST).date() else "제출된 기록이 없습니다.")
     if period=="일일":one(day)
     else:
-        with st.expander("일일 기록 합계",expanded=True):count_grid(ux.report_totals(submitted,COUNTS))
+        with st.expander("일일 기록 합계",key="member_week_totals_"+uid,on_change="rerun"):
+            count_grid(ux.report_totals(submitted,COUNTS))
         from modules.activity.center import KST
-        for i in range(7):
-            target=start+i*DAY
-            own=[e for e in events if e["day"]==str(target)]
-            row=next((r for r in submitted if r["day"]==str(target)),None)
-            state="제출" if row else "예정" if target>datetime.now(KST).date() else "미제출"
-            day_panel=st.expander(f'{target:%m.%d} {"월화수목금토일"[i]} · 일정 {len(own)}건 · {state}',expanded=target==datetime.now(KST).date(),key="member_day_"+uid+str(target),on_change="rerun")
-            if day_panel.open:
-                with day_panel:one(target)
+        days=[start+i*DAY for i in range(7)]
+        route=st.session_state.get("sales_route",{})
+        selection_key="member_week_day_"+uid+str(start)
+        remembered=route.get("selected_day")
+        fallback=datetime.now(KST).date() if datetime.now(KST).date() in days else day
+        if selection_key not in st.session_state:
+            st.session_state[selection_key]=next((d for d in days if str(d)==remembered),fallback if fallback in days else start)
+        target=st.segmented_control("날짜 선택",days,key=selection_key,required=True,
+            format_func=lambda d:f'{"월화수목금토일"[d.weekday()]} {d:%m/%d}',width="stretch")
+        if route.get("type")=="member":route["selected_day"]=str(target)
+        own=[e for e in events if e["day"]==str(target)]
+        row=next((r for r in submitted if r["day"]==str(target)),None)
+        state="제출 완료" if row else "예정" if target>datetime.now(KST).date() else "미제출"
+        st.caption(f'{target:%m월 %d일} · 일정 {len(own)}건 · {state}')
+        one(target)
         with st.expander("주간 제출 기록"):
             weekly=next((r for r in records if r["period"]=="주간" and r["day"]==str(start)),None)
             if weekly:report_detail(db,weekly)
@@ -458,6 +468,9 @@ def admin_settings(db,start,end):
 @st.dialog("영업활동",width="large",dismissible=False)
 def dialog(db):
     st.html('<span class="sales-dialog-marker"></span>')
+    with st.container(key="sales_close_corner",horizontal=True,horizontal_alignment="right"):
+        close_top=st.button("✕",help="팝업 닫기",key="sales_close_top",type="tertiary")
+    close_feedback=st.container()
     db._reads.clear() # Dialog fragments must not retain a stale Records read snapshot.
     route=st.session_state.get("sales_route",{})
     key=None
@@ -484,4 +497,4 @@ def dialog(db):
         st.error("저장하지 못했습니다. 입력 내용은 유지됩니다. "+str(exc))
         # Preserve dirty-close handling after an unsuccessful save.
         key=next((k for k in st.session_state.get("sales_drafts",{}) if ux.dirty(k)),None)
-    ux.close_control(key)
+    ux.close_control(key,requested=close_top,top_container=close_feedback)

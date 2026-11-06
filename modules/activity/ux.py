@@ -38,7 +38,7 @@ def styles():
     .st-key-sales_workspace input,.st-key-sales_workspace textarea,[data-testid="stDialog"]:has(.sales-dialog-marker) input,[data-testid="stDialog"]:has(.sales-dialog-marker) textarea {border:1px solid #dbe3ed!important;border-radius:8px!important}
     .st-key-sales_workspace input::placeholder,.st-key-sales_workspace textarea::placeholder,[data-testid="stDialog"]:has(.sales-dialog-marker) input::placeholder {color:#8d9caf!important;opacity:1}
     .sales-summary{display:flex;gap:10px;flex-wrap:wrap;margin:5px 0 16px}.sales-summary span{padding:6px 10px;background:#eef3f9;border-radius:7px;color:#334e6b;font-size:13px}
-    .sales-details{display:grid;grid-template-columns:85px 1fr;gap:10px 14px;margin:18px 0}.sales-details dt{color:#718197;font-size:13px}.sales-details dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.sales-dialog-marker{display:none}
+    .sales-details{display:grid;grid-template-columns:85px 1fr;gap:10px 14px;margin:18px 0}.sales-details dt{color:#718197;font-size:13px}.sales-details dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.sales-dialog-marker{display:none}.st-key-sales_close_corner{margin-bottom:-12px}.st-key-sales_close_corner button{min-width:44px;min-height:44px;font-size:22px}
     [data-testid="stDialog"]:has(.sales-dialog-marker) [role="dialog"]{max-width:880px}
     @media(max-width:700px){.st-key-sales_workspace input,.st-key-sales_workspace textarea,[data-testid="stDialog"]:has(.sales-dialog-marker) input{font-size:16px!important}[data-testid="stDialog"]:has(.sales-dialog-marker) [role="dialog"]{width:calc(100% - 16px);max-height:95dvh}.sales-details{grid-template-columns:65px 1fr;gap:8px}[data-testid="stPopoverBody"]:has(.sales-reference){position:fixed!important;bottom:0!important;top:auto!important;left:0!important;width:100%!important;max-height:75dvh;overflow:auto;border-radius:16px 16px 0 0}}
     </style>''')
@@ -86,16 +86,21 @@ def back():
     st.session_state.pop("sales_close_check",None)
     st.rerun()
 
-def close_control(key=None):
-    if st.button("이전 화면으로" if st.session_state.get("sales_route_stack") else "닫기",key="sales_close"):
-        if key and dirty(key): st.session_state["sales_close_check"]=True
+def close_control(key=None,requested=False,top_container=None):
+    bottom=st.button("이전 화면으로" if st.session_state.get("sales_route_stack") else "닫기",key="sales_close")
+    if requested or bottom:
+        if key and dirty(key):
+            st.session_state["sales_close_check"]=True
+            st.session_state["sales_close_at_top"]=requested
         else: back()
     if st.session_state.get("sales_close_check"):
-        st.warning("저장하지 않은 변경이 있습니다. 작성 내용을 유지한 채 닫을까요?")
-        a,b=st.columns(2)
-        if a.button("계속 작성",key="sales_keep"):
-            st.session_state.pop("sales_close_check",None);st.rerun()
-        if b.button("내용 유지하고 닫기",key="sales_leave"): back()
+        target=top_container if top_container is not None and st.session_state.get("sales_close_at_top") else st.container()
+        with target:
+            st.warning("저장하지 않은 변경이 있습니다. 작성 내용을 유지한 채 닫을까요?")
+            a,b=st.columns(2)
+            if a.button("계속 작성",key="sales_keep"):
+                st.session_state.pop("sales_close_check",None);st.rerun()
+            if b.button("내용 유지하고 닫기",key="sales_leave"): back()
 
 def conflict_recovery(d,key):
     if not d.get("conflict"):return

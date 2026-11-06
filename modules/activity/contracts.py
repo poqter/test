@@ -116,7 +116,8 @@ def conversions(db,start,end,members):
                 completed.add(case)
             elif any(r["status"]=="예정" for r in following):planned.add(case)
         chart.append({"단계":stage+" → "+target,"전환율(%)":round(100*len(completed)/len(cases),1) if cases else 0})
-        with st.expander(f"{stage} → {target} · 완료 {len(completed)} / {len(cases)}건 · 예정 {len(planned-completed)}건"):
+        with st.expander(f"{stage} → {target}"):
+            st.caption(f"완료 {len(completed)} / {len(cases)}건 · 예정 {len(planned-completed)}건")
             for e in starters:
                 case=e["case_id"] or e["id"]
                 state="완료" if case in completed else "예정" if case in planned else "후속 일정 없음" if case in cases else "연결 미확인"
