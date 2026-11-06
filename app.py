@@ -13,9 +13,15 @@ from modules.shared.workbench import render_workbench, restore_page_draft
 from modules.shell.workspace_v2 import render_home, render_sidebar
 
 
+def sidebar_default():
+    agent=st.context.headers.get("User-Agent", "").lower()
+    mobile=any(word in agent for word in ("android", "iphone", "ipad", "mobile"))
+    return "collapsed" if mobile or st.query_params.get("view")=="mobile-calendar" else "expanded"
+
+
 calendar_entry = st.query_params.get("view") in ("my-calendar","mobile-calendar")
 calendar_icon = Path(__file__).parent / "modules/activity/calendar_view/pwa/calendar/brand-192.png"
-st.set_page_config(page_title="화랑 캘린더" if calendar_entry else "화랑WORKSPACE", page_icon=str(calendar_icon) if calendar_entry else "H", layout="wide", initial_sidebar_state="auto")
+st.set_page_config(page_title="화랑 캘린더" if calendar_entry else "화랑WORKSPACE", page_icon=str(calendar_icon) if calendar_entry else "H", layout="wide", initial_sidebar_state=sidebar_default() if st.session_state.get("password_correct") else "collapsed")
 st.set_option("client.toolbarMode", "minimal")
 # Public release probe exposes code readiness only; no credentials, DB or AI calls.
 if st.query_params.get("briefing_health") == "1":
@@ -323,6 +329,7 @@ def main() -> None:
     login_slot.empty()
 
 
+    st.set_page_config(initial_sidebar_state=sidebar_default())
     permission_role = st.session_state.get("login_user")
     permitted = allowed_ids(permission_role)
     st.session_state["ws_allowed_ids"] = permitted
