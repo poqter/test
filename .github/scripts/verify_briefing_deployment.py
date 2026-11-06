@@ -3,12 +3,15 @@ import time
 from playwright.sync_api import sync_playwright
 from pathlib import Path
 import json
+import hashlib
 # Read release metadata without importing the app's optional runtime dependencies.
 ENGINE_VERSION = json.loads(
     (Path(__file__).resolve().parents[2] / 'STAGE1_CHANGED_FILES.json').read_text()
 )['engine_version']
 
 expected=f'HWARANG_BRIEFING_RELEASE={ENGINE_VERSION};READY=true'
+activity_root=Path(__file__).resolve().parents[2]/'modules/activity'
+activity_expected='HWARANG_ACTIVITY_RELEASE='+hashlib.sha256(b''.join((activity_root/name).read_bytes() for name in ('center.py','redesign.py','ux.py','contracts.py'))).hexdigest()[:16]
 with sync_playwright() as p:
     browser=p.chromium.launch(headless=True)
     page=browser.new_page()
@@ -18,14 +21,14 @@ with sync_playwright() as p:
         try:
             page.goto('https://hwarang-workspace.streamlit.app/?briefing_health=1',wait_until='domcontentloaded',timeout=45000)
             for _ in range(20):
-                if any(expected in frame.locator('body').inner_text(timeout=2000)
+                if any(expected in (body:=frame.locator('body').inner_text(timeout=2000)) and activity_expected in body
                        for frame in page.frames):
                     break
                 page.wait_for_timeout(1000)
             else:
                 raise RuntimeError('Release not ready in app frame')
             ready=True
-            print('DEPLOYED_RELEASE_OK '+ENGINE_VERSION)
+            print('DEPLOYED_RELEASE_OK '+ENGINE_VERSION+';'+activity_expected)
             break
         except Exception:
             print('Waiting for Streamlit main deployment',flush=True)

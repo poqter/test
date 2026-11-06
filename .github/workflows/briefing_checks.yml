@@ -27,6 +27,7 @@ jobs:
         run: |
           npm ci --ignore-scripts --prefix tests/studio_db
           node tests/studio_db/check.mjs
+          node tests/activity_db.mjs
       - name: Customer reader HTTP regression
         run: node --test tests/test_briefing_public.mjs
   deployed-release:

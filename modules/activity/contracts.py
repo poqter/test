@@ -44,11 +44,15 @@ def contract_editor(db, day, event=None):
             st.rerun()
 
 
-def performance(db, day, members, bounds):
+def performance(db, day, members, bounds, selected_member=None, key="performance", period_range=None):
     st.subheader("청약·계약 실적")
-    view=st.segmented_control("집계 기간",["날짜별","주간","월간"],default="월간") or "월간"
-    start,end=bounds(day,view)
-    member=st.selectbox("실적 조회 구성원",[None,*members],format_func=lambda u:members[u]["label"] if u else "전체 구성원")
+    if period_range:
+        start,end=period_range
+    else:
+        view=st.segmented_control("집계 기간",["날짜별","주간","월간"],default="월간",key=key+"period") or "월간"
+        start,end=bounds(day,view)
+    member=selected_member if selected_member is not None else st.selectbox("실적 조회 구성원",[None,*members],format_func=lambda u:members[u]["label"] if u else "전체 구성원",key=key+"member")
+    if member is False:member=None
     for label,field in [("청약 접수","day"),("계약 성립","effective")]:
         rows=db.request("GET","sales_contracts",{"and":f"({field}.gte.{start},{field}.lte.{end})","order":field+".asc"})
         rows=[r for r in rows if r["owner"] in members and (member is None or r["owner"]==member)]
@@ -58,23 +62,24 @@ def performance(db, day, members, bounds):
             with st.expander(label+" 내역"):
                 st.dataframe([{"구성원":members[r["owner"]]["label"],"날짜":r[field],"보험사":r["insurer"],"구분":r["category"],"납입":r["payment"],"보험료":r["amount"],"상태":r["status"]} for r in rows],hide_index=True)
 
-    with st.expander("최근 8주 청약·성립 추이",expanded=True):
-        unit=st.selectbox("그래프 단위",["건수","월납 보험료","연납 보험료","일시납 보험료"])
-        first=day-timedelta(days=day.weekday()+49)
-        weeks=[{"주 시작일":str(first+timedelta(weeks=i)),"청약":0,"성립":0} for i in range(8)]
-        for label,field in [("청약","day"),("성립","effective")]:
-            offset=0
-            while members:
-                params={"and":f"({field}.gte.{first},{field}.lte.{day})","order":"id.asc","limit":"500","offset":str(offset),"select":"owner,"+field+",payment,amount"}
-                if member:params["owner"]="eq."+member
-                batch=db.request("GET","sales_contracts",params)
-                for row in batch:
-                    if row["owner"] in members and (unit=="건수" or unit.startswith(row["payment"])):
-                        weeks[(date.fromisoformat(row[field])-first).days//7][label]+=1 if unit=="건수" else row["amount"]
-                if len(batch)<500:break
-                offset+=len(batch)
-        st.bar_chart(weeks,x="주 시작일",y=["청약","성립"],stack=False)
-
+    trend=st.expander("최근 8주 청약·성립 추이",expanded=False,key=key+"trend",on_change="rerun")
+    if trend.open:
+      with trend:
+          unit=st.selectbox("그래프 단위",["건수","월납 보험료","연납 보험료","일시납 보험료"],key=key+"unit")
+          first=day-timedelta(days=day.weekday()+49)
+          weeks=[{"주 시작일":str(first+timedelta(weeks=i)),"청약":0,"성립":0} for i in range(8)]
+          for label,field in [("청약","day"),("성립","effective")]:
+              offset=0
+              while members:
+                  params={"and":f"({field}.gte.{first},{field}.lte.{day})","order":"id.asc","limit":"500","offset":str(offset),"select":"owner,"+field+",payment,amount"}
+                  if member:params["owner"]="eq."+member
+                  batch=db.request("GET","sales_contracts",params)
+                  for row in batch:
+                      if row["owner"] in members and (unit=="건수" or unit.startswith(row["payment"])):
+                          weeks[(date.fromisoformat(row[field])-first).days//7][label]+=1 if unit=="건수" else row["amount"]
+                  if len(batch)<500:break
+                  offset+=len(batch)
+          st.bar_chart(weeks,x="주 시작일",y=["청약","성립"],stack=False)
 
 def conversions(db,start,end,members):
     st.subheader("상담 전환")
