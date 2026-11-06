@@ -34,6 +34,7 @@ try:
         dlg.get_by_role('button',name='저장하지 않고 닫기',exact=True).click()
         expect(dlg).not_to_be_visible()
         cal.locator('.cell[data-key="2026-11-06"] .chip').first.click()
+        expect(dlg.get_by_role('button',name='일정 삭제',exact=True)).to_have_css('color','rgb(180, 35, 24)')
         dlg.get_by_role('button',name='일정 수정',exact=True).click()
         dlg.get_by_label('고객 또는 일정명',exact=True).fill('브라우저 저장한 제목')
         dlg.get_by_label('고객 또는 일정명',exact=True).press('Tab')
@@ -42,7 +43,9 @@ try:
         expect(cal.locator('.cell[data-key="2026-11-06"] .chip').first).to_have_text('브라우저 저장한 제목')
         expect(page.get_by_text('전체 실행 횟수 2',exact=True)).to_be_visible()
         # Visible delete action, confirmation, calendar removal and restore.
+        expect(dlg.get_by_role('button',name='일정 삭제',exact=True)).to_have_css('background-color','rgb(255, 241, 240)')
         dlg.get_by_role('button',name='일정 삭제',exact=True).click()
+        expect(dlg.get_by_role('button',name='일정 삭제 확인',exact=True)).to_have_css('color','rgb(180, 35, 24)')
         dlg.get_by_role('button',name='일정 삭제 확인',exact=True).click()
         expect(dlg.get_by_role('heading',name='삭제한 일정',exact=True)).to_be_visible()
         expect(cal.locator('.chip').filter(has_text='브라우저 저장한 제목')).to_have_count(0)

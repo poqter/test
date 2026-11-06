@@ -558,6 +558,7 @@ def dialog(db):
 
 def delete_control(db,row):
     if row['owner']!=db.uid:return
+    ux.delete_styles()
     key='delete_'+row['id']
     if st.button('일정 삭제',key=key+'_open',type='secondary'):
         st.session_state[key+'_visible']=not st.session_state.get(key+'_visible',False)
