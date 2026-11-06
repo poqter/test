@@ -16,7 +16,7 @@ KST=ZoneInfo("Asia/Seoul")
 SALES_TYPES={"TA":"고객 연락","AP":"초회 상담","PC":"프레젠테이션 / 클로징","CS":"기존 고객 관리"}
 KINDS=["미분류",*SALES_TYPES,"청약","교육","회의","휴무","기타"]
 REPORT_KIND={"AP":"상담","PC":"제안"}
-COUNTS=["TA","CS","전화","메시지","약속 확보","상담","제안","청약"]
+from modules.activity.daily import COUNTS
 DAY=timedelta(days=1)
 
 mobile_calendar = components.declare_component("mobile_calendar", path=str(Path(__file__).parent / "calendar_view/pwa/calendar"))
@@ -301,6 +301,7 @@ def reports(db,today,period):
 
 def report_detail(db,row,show_content=True):
     with st.expander("제출 내용 · 확인 및 피드백",expanded=True):
+        if row["data"].get("no_activity"):st.caption("활동 없는 날로 제출한 기록입니다.")
         if show_content:
             from modules.activity.redesign import count_grid
             from modules.activity.ux import details

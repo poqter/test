@@ -11,7 +11,7 @@ from modules.activity.contracts import contract_editor, performance, conversions
 from modules.shared.hwarang_auth import HwarangAuthError
 
 DAY=timedelta(days=1)
-COUNTS=["TA","CS","전화","메시지","약속 확보","상담","제안","청약"]
+from modules.activity.daily import COUNTS
 KINDS=["미분류","TA","AP","PC","CS","청약","교육","회의","휴무","기타"]
 TYPES={code:code for code in ("TA","AP","PC","CS")}
 
@@ -253,9 +253,12 @@ def report_reference(db,day,period,events,daily):
 
 def count_grid(values):
     columns=st.columns(2)
-    for i,c in enumerate(COUNTS): columns[i%2].write(f'{ux.LABELS.get(c,c)} **{values.get(c,0):,}**')
+    for i,c in enumerate([*COUNTS,*[c for c in ("전화","메시지") if values.get(c)]]): columns[i%2].write(f'{ux.LABELS.get(c,c)} **{values.get(c,0):,}**')
 
 def reports(db,today,period,fixed_day=None):
+    if period=="일일":
+        from modules.activity.daily import render
+        return render(db,today,fixed_day)
     from modules.activity.center import bounds, report_detail
     if fixed_day is None:
         selected=st.date_input("기록 날짜" if period=="일일" else "조회 주간",today,max_value=today,key="sales_day_"+period)
@@ -360,7 +363,7 @@ def reports(db,today,period,fixed_day=None):
             if save_draft or submit:
                 # Preserve unknown legacy data keys as well as all known input fields.
                 payload=deepcopy((d["old"] or {}).get("data",{}))
-                payload.update(counts={c:v[c] for c in COUNTS},**{k:v[k] for k in ("note","plan","help","sources","coverage","contracts","results")})
+                payload.update(counts={**payload.get("counts",{}),**{c:v[c] for c in COUNTS}},**{k:v[k] for k in ("note","plan","help","sources","coverage","contracts","results")})
                 body={"period":period,"day":str(day),"submitted":bool(submit),"data":payload}
                 if not d["old"]:body["id"]=str(uuid5(NAMESPACE_URL,db.uid+period+str(day)))
                 (submit_slot if submit else draft_slot).button("저장 중…",disabled=True,key=key+"busy")

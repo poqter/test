@@ -1,0 +1,42 @@
+<!doctype html><html><body><script>
+/* Same-origin layout bridge. Keeps scroll positions only in this browser tab. */
+(()=>{
+ const w=window.parent,doc=w.document;
+ if(w.__hwarangDailyLayout)return;
+ const positions=new Map();let context='',tab='',hadDialog=false,returnPoint=null,queued=false;
+ const root=()=>doc.querySelector('.st-key-daily_record');
+ const scroller=()=>doc.querySelector('[data-testid="stMain"]');
+ const current=()=>root()?.querySelector('.daily-context')?.dataset.context||'';
+ const selected=()=>root()?.querySelector('[role="radiogroup"] [aria-checked="true"]')?.textContent.trim()||'기록 작성';
+ const restore=(point)=>w.requestAnimationFrame(()=>w.requestAnimationFrame(()=>{
+   if(current()===point.context && scroller())scroller().scrollTop=point.top;
+ }));
+ const viewport=()=>{
+   const gap=Math.max(0,w.innerHeight-(w.visualViewport?.height||w.innerHeight)-(w.visualViewport?.offsetTop||0));
+   doc.documentElement.style.setProperty('--daily-keyboard-inset',gap>100?gap+'px':'0px');
+ };
+ const sync=()=>{
+   queued=false;viewport();
+   if(!root())return;
+   const nextContext=current(),nextTab=selected(),dialog=!!doc.querySelector('[role="dialog"]');
+   if(context!==nextContext){context=nextContext;tab=nextTab;returnPoint=null;}
+   else if(tab!==nextTab){
+     const point=positions.get(context+'|'+nextTab);
+     if(point)restore(point);
+     tab=nextTab;
+   }
+   if(hadDialog&&!dialog&&returnPoint){restore(returnPoint);returnPoint=null;}
+   hadDialog=dialog;
+ };
+ doc.addEventListener('pointerdown',event=>{
+   const button=event.target.closest('button');if(!button||!root()?.contains(button))return;
+   const point={context:current(),top:scroller()?.scrollTop||0};
+   if(button.getAttribute('role')==='radio')positions.set(point.context+'|'+selected(),point);
+   if(button.closest('[class*="st-key-daily_reference_"]'))returnPoint=point;
+ },true);
+ const observer=new w.MutationObserver(()=>{if(!queued){queued=true;w.requestAnimationFrame(sync);}});
+ observer.observe(doc.body,{childList:true,subtree:true,attributes:true,attributeFilter:['aria-checked']});
+ w.visualViewport?.addEventListener('resize',viewport);w.visualViewport?.addEventListener('scroll',viewport);
+ w.addEventListener('resize',viewport);w.__hwarangDailyLayout=observer;sync();
+})();
+</script></body></html>

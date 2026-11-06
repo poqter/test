@@ -104,13 +104,13 @@ def test_dirty_date_switch_keeps_previous_until_confirmed():
 
 def test_daily_submit_requires_confirmation():
     at=app('redesign.reports(FakeRecords(),date(2026,11,6),"일일")')
-    button(at,"기록 제출").click().run()
+    button(at,"제출하기").click().run()
     assert not at.session_state["fixture_writes"]
-    button(at,"제출 확인").click().run()
+    button(at,"활동 없는 날로 제출").click().run()
     assert not at.exception and at.session_state["fixture_reports"][0]["submitted"]
 
 def test_mobile_reference_path_and_fields_render():
     at=app('original=redesign.ux.compact\nredesign.ux.compact=lambda:True\ntry: redesign.reports(FakeRecords(),date(2026,11,6),"일일")\nfinally: redesign.ux.compact=original')
     assert not at.exception
     assert len(at.number_input)>=8
-    assert any(e.proto.popover.label=="오늘 일정 참고" for e in at.get("popover"))
+    assert any(s.label=="일일 기록 화면" for s in at.segmented_control)

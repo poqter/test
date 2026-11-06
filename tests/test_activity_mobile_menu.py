@@ -9,7 +9,7 @@ def test_mobile_default_and_management_menus():
     at=app(TAIL)
     assert not at.exception
     assert any(b.label=='구성원 현황' for b in at.button)
-    assert not any(b.label.startswith('오늘 일정 ') for b in at.button)
+    assert not any(__import__('re').match(r'오늘 일정 \d',b.label) for b in at.button)
 
 
 def test_staff_cannot_open_manager_page():
