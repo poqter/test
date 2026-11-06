@@ -384,55 +384,93 @@ def reports(db,today,period,fixed_day=None):
 
 def member_detail(db,uid,day,period):
     from modules.activity.center import bounds, report_detail
+    from modules.activity.manager import required_days, styles
     if uid not in db.members: st.error("조회 권한이 없는 구성원입니다.");return
+    styles()
     member=db.members[uid]
+    today=datetime.now(KST).date()
+    route=st.session_state.get("sales_route",{})
+    anchor_key="member_anchor_"+uid
+    if anchor_key not in st.session_state or route.get("type")=="member" and not route.get("anchor_initialized"):
+        st.session_state[anchor_key]=day
+        if route.get("type")=="member":route["anchor_initialized"]=True
     st.subheader(member["label"])
-    period=st.segmented_control("보기",["일일","주간"],default=period,key="member_period_"+uid,required=True)
-    if st.session_state.get("sales_route",{}).get("type")=="member":
-        st.session_state["sales_route"]["period"]=period
+    period=st.segmented_control("보기",["일일","주간"],default=period,key="member_period_"+uid,required=True,label_visibility="collapsed")
+    def shift(amount):
+        st.session_state[anchor_key]+=DAY*amount
+        route.pop("selected_day",None)
+    def current():
+        st.session_state[anchor_key]=today
+        route.pop("selected_day",None)
+    with st.container(key="member_navigation",horizontal=True,vertical_alignment="bottom"):
+        st.button("‹",help="이전 주" if period=="주간" else "이전 날",key="member_previous",on_click=shift,args=(-7 if period=="주간" else -1,))
+        day=st.date_input("조회 기준일",key=anchor_key,label_visibility="collapsed")
+        st.button("›",help="다음 주" if period=="주간" else "다음 날",key="member_next",on_click=shift,args=(7 if period=="주간" else 1,))
+        st.button("이번 주" if period=="주간" else "오늘",key="member_current",on_click=current)
+    if route.get("type")=="member":route.update(period=period,day=str(day))
     start,end=bounds(day,"주간" if period=="주간" else "날짜별")
     events=db.period("sales_events",start,end,owner="eq."+uid,order="day.asc,start_time.asc.nullsfirst")
     records=db.period("sales_reports",start,end,owner="eq."+uid)
     submitted=[r for r in records if r["period"]=="일일" and r["submitted"]]
-    ux.summary([f"{start} – {end}" if period=="주간" else str(day),f"일정 {len(events)}건",f'완료 {sum(e["status"]=="완료" for e in events)}건'])
+    due={str(d) for d in required_days(start,end,today)}
+    done=len({r["day"] for r in submitted}&due)
+    ux.summary([f'일정 {len(events)}건 · 완료 {sum(e["status"]=="완료" for e in events)}건',f"일일 기록 {done}/{len(due)}일 제출" if due else "기록 제출 예정"])
+    if period=="주간":st.caption(f"{start:%m/%d} – {end:%m/%d} · 제출 집계: 오늘까지 평일")
+    support=[(e["day"],e["help"],e["id"]) for e in events if e.get("help") and e["status"] not in ("취소","연기")]
+    support += [(r["day"],r["data"]["help"],None) for r in records if r["submitted"] and r["data"].get("help")]
+    if support:
+        with st.expander(f"지원 요청 {len(support)}건"):
+            for i,(request_day,message,event_id) in enumerate(support):
+                st.write(f"**{request_day}** · {message}")
+                if event_id and st.button("일정 확인",key=f"member_support_{uid}_{i}"):ux.navigate({"type":"event","id":event_id})
+    tasks=db.request("GET","sales_followups",{"owner":"eq."+uid,"and":f"(due.gte.{start},due.lte.{end})","scheduled":"is.null","order":"due.asc"})
+    if tasks:
+        with st.expander(f"후속 할 일 {len(tasks)}건"):
+            for task in tasks:
+                st.write(f"**{task['due']}** · {task['title']}"+(" · 지연" if task["due"]<str(today) else ""))
+                if st.button("연결된 일정 확인",key="member_task_"+task["id"]):ux.navigate({"type":"event","id":task["source"]})
     def one(target):
-        a,b=st.columns([1.1,1]) if not ux.compact() else (st.container(),st.container())
-        with a:
-            st.markdown("**일정**")
-            event_list(db,[e for e in events if e["day"]==str(target)],"member_"+str(target))
-        with b:
-            st.markdown("**일일 활동 기록**")
-            row=next((r for r in records if r["day"]==str(target) and r["period"]=="일일"),None)
-            if row:
-                count_grid(row["data"].get("counts",{}))
-                ux.details([("진행사항",row["data"].get("note")),("지원 요청",row["data"].get("help"))])
-                report_detail(db,row,show_content=False)
-            else:
-                from modules.activity.center import KST
-                st.caption("예정" if target>datetime.now(KST).date() else "제출된 기록이 없습니다.")
+        mobile=ux.compact()
+        tab=st.segmented_control("상세 내용",["일정","활동 기록"],default="일정",required=True,key="member_content_"+uid,label_visibility="collapsed") if mobile else None
+        a,b=st.columns([1.1,1]) if not mobile else (st.container(),st.container())
+        if not mobile or tab=="일정":
+            with a:
+                st.markdown("**일정**")
+                event_list(db,[e for e in events if e["day"]==str(target)],"member_"+str(target))
+        if not mobile or tab=="활동 기록":
+            with b:
+                st.markdown("**일일 활동 기록**")
+                row=next((r for r in records if r["day"]==str(target) and r["period"]=="일일"),None)
+                if row:
+                    count_grid(row["data"].get("counts",{}))
+                    ux.details([("진행사항",row["data"].get("note")),("지원 요청",row["data"].get("help"))])
+                    if row["submitted"]:report_detail(db,row,show_content=False)
+                    else:st.caption("임시 저장된 기록입니다.")
+                else:st.caption("예정" if target>today else "제출된 기록이 없습니다.")
+                if uid==db.uid and target<=today and not (row and row["submitted"]):
+                    if st.button("일일 기록 작성",key="member_write_daily"):ux.navigate({"type":"daily","day":str(target)})
     if period=="일일":one(day)
     else:
-        with st.expander("일일 기록 합계",key="member_week_totals_"+uid,on_change="rerun"):
-            count_grid(ux.report_totals(submitted,COUNTS))
-        from modules.activity.center import KST
-        days=[start+i*DAY for i in range(7)]
-        route=st.session_state.get("sales_route",{})
+        weekend=st.toggle("주말 포함",value=False,key="member_weekends_"+uid,help="주말 표시를 바꿔도 주간 합계는 유지됩니다.")
+        days=[start+i*DAY for i in range(7 if weekend else 5)]
         selection_key="member_week_day_"+uid+str(start)
         remembered=route.get("selected_day")
-        fallback=datetime.now(KST).date() if datetime.now(KST).date() in days else day
-        if selection_key not in st.session_state:
-            st.session_state[selection_key]=next((d for d in days if str(d)==remembered),fallback if fallback in days else start)
-        target=st.segmented_control("날짜 선택",days,key=selection_key,required=True,
-            format_func=lambda d: f'{"월화수목금토일"[d.weekday()]} {d:%m/%d} · {sum(e["day"]==str(d) for e in events)}건 · '+
-                ("제출" if any(r["day"]==str(d) for r in submitted) else "임시 저장" if any(r["day"]==str(d) and r["period"]=="일일" for r in records) else "예정" if d>datetime.now(KST).date() else "미제출"),width="stretch")
+        fallback=today if today in days else day if day in days else days[0]
+        if st.session_state.get(selection_key) not in days:
+            st.session_state[selection_key]=next((d for d in days if str(d)==remembered),fallback)
+        with st.container(key="member_date_strip"):
+            target=st.segmented_control("날짜 선택",days,key=selection_key,required=True,label_visibility="collapsed",
+                format_func=lambda d:f'{"월화수목금토일"[d.weekday()]} {d:%m/%d}  \n{sum(e["day"]==str(d) for e in events)}건 · '+
+                    ("제출" if any(r["day"]==str(d) for r in submitted) else "임시 저장" if any(r["day"]==str(d) and r["period"]=="일일" for r in records) else "예정" if d>today else "미제출"),width="stretch")
         if route.get("type")=="member":route["selected_day"]=str(target)
-        own=[e for e in events if e["day"]==str(target)]
-        row=next((r for r in submitted if r["day"]==str(target)),None)
-        state="제출 완료" if row else "예정" if target>datetime.now(KST).date() else "미제출"
-        st.caption(f'{target:%m월 %d일} · 일정 {len(own)}건 · {state}')
+        row=next((r for r in records if r["period"]=="일일" and r["day"]==str(target)),None)
+        state="제출 완료" if row and row["submitted"] else "임시 저장" if row else "예정" if target>today else "미제출"
+        st.caption(f'{target:%m월 %d일} · {state}')
         one(target)
+        with st.expander("일일 기록 합계",key="member_week_totals_"+uid,on_change="rerun"):
+            count_grid(ux.report_totals(submitted,COUNTS))
         with st.expander("주간 제출 기록"):
-            weekly=next((r for r in records if r["period"]=="주간" and r["day"]==str(start)),None)
+            weekly=next((r for r in records if r["period"]=="주간" and r["day"]==str(start) and r["submitted"]),None)
             if weekly:report_detail(db,weekly)
             else:st.caption("제출된 주간 기록이 없습니다.")
     perf=st.expander("개인 청약·계약 실적",key="member_perf_open",on_change="rerun")
@@ -443,55 +481,9 @@ def member_detail(db,uid,day,period):
         with conv:conversions(db,start,end,{uid:member})
 
 def overview(db,today):
-    ux.feedback()
-    from modules.activity.center import bounds, KST
-    a,b,c=st.columns([1,1,1.3])
-    day=a.date_input("조회 기준일",today,key="sales_overview_day")
-    period=b.segmented_control("기록 구분",["일일","주간"],default="일일",required=True,key="sales_overview_period")
-    start,end=bounds(day,"주간" if period=="주간" else "날짜별")
-    members=db.members.copy()
-    admin=st.session_state["hwarang_auth"]["profile"].get("role")=="super_admin"
-    if admin:
-        units={r["id"]:r["name"] for r in db.request("GET","organization_units",{"select":"id,name"})}
-        choices=list(dict.fromkeys([db.me["unit"],"all",*(r["unit"] for r in members.values())]))
-        unit=c.selectbox("조회 범위",choices,format_func=lambda u:"전체 조직" if u=="all" else units.get(u,"소속 미지정"),key="sales_overview_unit")
-        if unit!="all":members={uid:m for uid,m in members.items() if m["unit"]==unit}
-    reports=db.period("sales_reports",start,start,period="eq."+period,submitted="eq.true")
-    index={r["owner"]:r for r in reports if r["owner"] in members}
-    events=[r for r in db.period("sales_events",start,end) if r["owner"] in members]
-    now=datetime.now(KST)
-    summary=[]
-    for uid,m in members.items():
-        own=[e for e in events if e["owner"]==uid];row=index.get(uid)
-        overdue=sum(e["status"]=="예정" and (e["day"]<str(today) or e["day"]==str(today) and (e.get("end_time") or e.get("start_time") or "23:59:59")<now.strftime("%H:%M:%S")) for e in own)
-        summary.append(dict(uid=uid,name=m["label"],submitted=bool(row),missing=overdue,events=len(own),done=sum(e["status"]=="완료" for e in own),help=sum(bool(e.get("help")) for e in own)+int(bool(row and row["data"].get("help"))),cancelled=sum(e["status"] in ("취소","연기") for e in own)))
-    left,right=st.columns([2.2,1],gap="large")
-    with left:
-        with st.container(border=True):
-            st.subheader("구성원 현황")
-            query=st.text_input("직원 이름 검색",placeholder="이름을 입력하세요",key="sales_member_search").strip().casefold()
-            status=st.segmented_control("표시",["전체","미제출","결과 미입력","지원 요청"],default="전체",required=True,key="sales_member_status")
-            visible=[r for r in summary if query in r["name"].casefold() and (status=="전체" or status=="미제출" and not r["submitted"] and day<=today or status=="결과 미입력" and r["missing"] or status=="지원 요청" and r["help"])]
-            st.caption(f"검색 결과 {len(visible)}명 / 조회 범위 {len(summary)}명")
-            if not visible:st.info("조건에 맞는 구성원이 없습니다.")
-            for r in visible:
-                with st.container(border=True):
-                    a,b=st.columns([1.3,2])
-                    if a.button(r["name"]+" ›",key="member_open_"+r["uid"],width="stretch"):
-                        ux.navigate({"type":"member","uid":r["uid"],"day":str(day),"period":period})
-                    b.caption(("제출 완료" if r["submitted"] else "예정" if day>today else "미제출")+f' · 일정 {r["events"]} · 완료 {r["done"]}')
-                    flags=[f'결과 미입력 {r["missing"]}' if r["missing"] else "",f'지원 요청 {r["help"]}' if r["help"] else "",f'취소·연기 {r["cancelled"]}' if r["cancelled"] else ""]
-                    if any(flags):st.caption(" · ".join(x for x in flags if x))
-    with right:
-        with st.container(border=True):
-            st.subheader("조직 요약")
-            st.caption("선택한 조직·기간 전체 기준")
-            ux.summary([f"구성원 {len(summary)}명",f"제출 {len(index)}명",f"일정 {len(events)}건",f'완료 {sum(r["done"] for r in summary)}건'])
-            with st.expander("청약·계약 실적",expanded=True):performance(db,day,members,bounds,selected_member=False,key="overview_perf",period_range=(start,end))
-            conv=st.expander("상담 전환",key="overview_conv_open",on_change="rerun")
-            if conv.open:
-                with conv:conversions(db,start,end,members)
-    if admin:admin_settings(db,start,end)
+    from modules.activity.manager import render
+    return render(db,today)
+
 
 def admin_settings(db,start,end):
     with st.expander("관리 설정 · 담당 팀원 및 권한 미리보기"):

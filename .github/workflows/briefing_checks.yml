@@ -26,6 +26,7 @@ jobs:
           python -m playwright install --with-deps chromium
           python tests/activity_ui/check_calendar.py
           python tests/activity_ui/check_workspace.py
+          python tests/activity_ui/check_manager.py
           python tests/activity_ui/check_mobile.py
           python tests/activity_ui/check_shell.py
           python tests/activity_ui/check_legacy_calendar.py

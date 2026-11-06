@@ -62,7 +62,7 @@ redesign.dialog(FakeRecords())
 ''')
     assert not at.exception
     selector=next(s for s in at.segmented_control if s.label=="날짜 선택")
-    assert len(selector.options)==7
+    assert len(selector.options)==5
     assert not any(" · 일정 " in e.label for e in at.expander)
     selector.set_value(date(2026,11,3)).run()
     assert not at.exception
