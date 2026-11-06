@@ -10,7 +10,10 @@ import streamlit.components.v1 as components
 from cryptography.fernet import Fernet, InvalidToken
 from modules.shared.hwarang_auth import HwarangAuthError
 
-DEVICE_FRONTEND = Path(__file__).with_name("device_bridge")
+DEVICE_FRONTEND = Path(__file__).resolve().with_name("device_bridge")
+# Register while this module is present in sys.modules, not from a retained
+# callback after Streamlit has invalidated modules during a deployment.
+_bridge = components.declare_component("workspace_device", path=str(DEVICE_FRONTEND))
 PATH = "/rest/v1/sales_devices"
 
 def cipher(auth):
@@ -44,8 +47,7 @@ def synchronize(auth, authenticate):
     restoring = not session.get("password_correct")
     result = None
     if restoring or action in ("store", "clear"):
-        bridge = components.declare_component("workspace_device", path=str(DEVICE_FRONTEND))
-        result = bridge(action=action, token=session.get("device_handle","") if action=="store" else "", key="hw_device_bridge", default=None)
+        result = _bridge(action=action, token=session.get("device_handle","") if action=="store" else "", key="hw_device_bridge", default=None)
     if action in ("store","clear"):
         if result and result.get("action")==action:
             session.pop("device_action",None)
