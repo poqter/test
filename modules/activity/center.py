@@ -100,17 +100,23 @@ def review(db,row,target):
 calendar_view=components.declare_component("sales_calendar_view",path=str(Path(__file__).with_name("calendar_view")))
 
 def create_dialog(db,day):
-    from modules.activity.ux import navigate
-    navigate({"type":"new","day":str(day)})
+    st.session_state["sales_route"]={"type":"new","day":str(day)}
+    st.session_state["sales_route_stack"]=[]
+    st.session_state["sales_calendar_open"]=True
 
 def detail_dialog(db,row):
-    from modules.activity.ux import navigate
-    navigate({"type":"event","id":row["id"]})
+    st.session_state["sales_route"]={"type":"event","id":row["id"]}
+    st.session_state["sales_route_stack"]=[]
+    st.session_state["sales_calendar_open"]=True
 
 @st.fragment(run_every="30s")
 def calendar(db,today):
-    db._reads.clear()
     from modules.activity import ux
+    pending=st.session_state.get("sales_interactive_calendar")
+    opening=isinstance(pending,dict) and pending.get("action") in ("new","event") and pending.get("nonce")!=st.session_state.get("sales_calendar_action")
+    # Reuse only this already-visible calendar frame when opening a modal.
+    # Normal navigation and the 30-second refresh always read current data.
+    if not opening:db._reads.clear()
     # The component value is available at the start of the widget rerun.
     # Resolve navigation before querying the period, avoiding a second full run.
     nav=st.session_state.get("sales_interactive_calendar")
@@ -142,7 +148,8 @@ def calendar(db,today):
     if mode=="날짜별":
         fetch_start-=7*DAY
         fetch_end+=7*DAY
-    events=db.period("sales_events",fetch_start,fetch_end,order="day.asc,start_time.asc.nullsfirst")
+    detail_scope={"owner":"eq."+selected_member} if selected_member else {"unit":"eq."+db.me["unit"]}
+    events=db.period("sales_events",fetch_start,fetch_end,order="day.asc,start_time.asc.nullsfirst",**detail_scope)
     details={r["id"]:r for r in events}
     def calendar_rows(a,b):
         return db.request("POST","rpc/sales_calendar_days",body={"first_day":str(a),"last_day":str(b)})
@@ -240,17 +247,24 @@ def calendar(db,today):
                 else:db.request("POST","sales_empty_days",body={"day":str(today)},prefer="resolution=ignore-duplicates")
                 st.rerun()
     st.caption("모바일 앱 열기로 캘린더에 접속한 뒤 홈 화면에 추가할 수 있습니다.")
-    with st.expander("내 후속 할 일"):
-        tasks=db.request("GET","sales_followups",{"owner":"eq."+db.uid,"scheduled":"is.null","order":"due.asc"})
-        if not tasks:st.caption("예정된 후속 할 일이 없습니다.")
-        for task in tasks:
-            st.write(task["due"],task["title"])
-            with st.form("schedule_task_"+task["id"]):
-                target=st.date_input("일정 날짜",max(today,date.fromisoformat(task["due"])))
-                kind=st.selectbox("활동 종류",KINDS)
-                if st.form_submit_button("내 일정으로 전환"):
-                    db.request("POST","rpc/schedule_sales_followup",body={"task":task["id"],"schedule_day":str(target),"activity":kind})
-                    saved()
+    tasks_panel=st.expander("내 후속 할 일",key="sales_tasks_panel",on_change="rerun")
+    if tasks_panel.open:
+        with tasks_panel:
+            tasks=db.request("GET","sales_followups",{"owner":"eq."+db.uid,"scheduled":"is.null","order":"due.asc"})
+            if not tasks:st.caption("예정된 후속 할 일이 없습니다.")
+            for task in tasks:
+                st.write(task["due"],task["title"])
+                with st.form("schedule_task_"+task["id"]):
+                    target=st.date_input("일정 날짜",max(today,date.fromisoformat(task["due"])))
+                    kind=st.selectbox("활동 종류",KINDS)
+                    if st.form_submit_button("내 일정으로 전환"):
+                        db.request("POST","rpc/schedule_sales_followup",body={"task":task["id"],"schedule_day":str(target),"activity":kind})
+                        saved()
+    if st.session_state.pop("sales_calendar_open",False):
+        from modules.activity.redesign import dialog
+        st.session_state["sales_dialog_rendered"]=True
+        dialog(db)
+
 
 
 def reports(db,today,period):
@@ -276,6 +290,7 @@ def overview(db,today):
 
 def run():
     from modules.activity import ux, redesign
+    st.session_state["sales_dialog_rendered"]=False
     ux.styles()
     st.title("영업활동 관리")
     if notice:=st.session_state.pop("sales_notice",None):st.success(notice)
@@ -310,6 +325,6 @@ def run():
                         if mode=="캘린더":calendar(db,today)
                         elif mode=="구성원 현황":overview(db,today)
                         else:reports(db,today,mode[:2])
-        if st.session_state.get("sales_route"):redesign.dialog(db)
+        if st.session_state.get("sales_route") and not st.session_state.get("sales_dialog_rendered"):redesign.dialog(db)
     except HwarangAuthError as exc:
         st.error("요청을 완료하지 못했습니다. 입력 내용은 유지됩니다. "+str(exc))

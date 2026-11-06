@@ -17,6 +17,7 @@ class FakeRecords:
         st.session_state.setdefault("fixture_reports",[])
         st.session_state.setdefault("fixture_writes",[])
     def request(self,method,table,params=None,body=None,prefer=None):
+        st.session_state.setdefault("fixture_reads",[]).append((method,table))
         if method=="POST" and table in ("rpc/sales_members","rpc/sales_branch_members"):return list(self.members.values())
         if method=="POST" and table=="rpc/sales_calendar_days":return deepcopy(st.session_state["fixture_events"])
         if method=="POST" and table=="rpc/sales_edit_event":

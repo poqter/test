@@ -102,4 +102,6 @@ def conflict_recovery(d,key):
     st.warning("저장이 확인되지 않았습니다. 현재 입력을 유지해 다시 저장하거나, 최신 기록으로 다시 시작할 수 있습니다.")
     discard=st.checkbox("현재 입력 대신 최신 저장 내용을 불러오겠습니다",key=d["epoch"]+"reload_check")
     if st.button("최신 기록 불러오기",disabled=not discard,key=d["epoch"]+"reload"):
-        clear_draft(key);st.rerun()
+        clear_draft(key)
+        st.session_state.get("sales_route",{}).pop("editing_snapshot",None)
+        st.rerun()

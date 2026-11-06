@@ -85,17 +85,19 @@ def event_editor(db,day,event=None,parent=None,copy=None):
         if not v["start"]: st.caption("시작 시간을 입력하거나 ‘시간 미정’을 선택해 주세요.")
     ux.field(d,"place",st.text_input,"장소 · 선택",placeholder="예: 지점 상담실, 고객 방문, 전화 상담")
     populated=any((v["note"],v["companion"],v["support"],v["repeat"],v["common"]))
-    with st.expander("추가 정보"+(" · 입력됨" if populated else " · 선택")):
-        ux.field(d,"note",st.text_area,"메모",height=90)
-        people={r["member"]:r["label"] for r in db.request("POST","rpc/sales_branch_members",body={}) if r["member"]!=db.uid}
-        choices=list(dict.fromkeys([None,*people,*([v["companion"]] if v["companion"] else [])]))
-        ux.field(d,"companion",st.selectbox,"동행자",options=choices,format_func=lambda u:people.get(u,"기존 동행자") if u else "선택 안 함")
-        ux.field(d,"support",st.toggle,"지원 요청")
-        if v["support"]: ux.field(d,"help",st.text_input,"지원받을 내용")
-        if not event:
-            ux.field(d,"repeat",st.toggle,"매주 반복")
-            if v["repeat"]: ux.field(d,"repeats",st.number_input,"총 등록 횟수 · 이번 일정 포함",min_value=1,max_value=52)
-        if db.me["managed"]: ux.field(d,"common",st.checkbox,"지점 공통 일정")
+    extra=st.expander("추가 정보"+(" · 입력됨" if populated else " · 선택"),key=d["epoch"]+"extra",on_change="rerun")
+    if extra.open:
+        with extra:
+            ux.field(d,"note",st.text_area,"메모",height=90)
+            people={r["member"]:r["label"] for r in db.request("POST","rpc/sales_branch_members",body={}) if r["member"]!=db.uid}
+            choices=list(dict.fromkeys([None,*people,*([v["companion"]] if v["companion"] else [])]))
+            ux.field(d,"companion",st.selectbox,"동행자",options=choices,format_func=lambda u:people.get(u,"기존 동행자") if u else "선택 안 함")
+            ux.field(d,"support",st.toggle,"지원 요청")
+            if v["support"]: ux.field(d,"help",st.text_input,"지원받을 내용")
+            if not event:
+                ux.field(d,"repeat",st.toggle,"매주 반복")
+                if v["repeat"]: ux.field(d,"repeats",st.number_input,"총 등록 횟수 · 이번 일정 포함",min_value=1,max_value=52)
+            if db.me["managed"]: ux.field(d,"common",st.checkbox,"지점 공통 일정")
     if event:
         with st.expander("처리 상태 · 활동 결과",expanded=v["status"]!="예정"):
             ux.field(d,"status",st.selectbox,"처리 상태",options=["예정","완료","연기","취소"])
@@ -147,7 +149,7 @@ def event_detail(db,row):
     from modules.activity.center import review
     st.subheader(row["title"])
     ux.summary([row["day"],ux.schedule_time(row),TYPES.get(row["kind"],row["kind"]),row["status"]])
-    people={r["member"]:r["label"] for r in db.request("POST","rpc/sales_branch_members",body={})}
+    people={r["member"]:r["label"] for r in db.request("POST","rpc/sales_branch_members",body={})} if row.get("companion") else {}
     ux.details([("장소",row.get("place") or "미입력"),("동행자",people.get(row.get("companion"))), ("메모",row.get("note")),("활동 결과",row.get("result")),("지원 요청",row.get("help"))])
     if row["owner"]==db.uid:
         a,b,c=st.columns(3)
@@ -169,7 +171,9 @@ def event_detail(db,row):
                             db.request("POST","sales_followups",body={"id":st.session_state.setdefault(seed,str(uuid4())),"source":row["id"],"due":str(due),"title":title.strip()},prefer="resolution=ignore-duplicates")
                             st.session_state.pop(seed);notify();st.rerun()
         contract_editor(db,date.fromisoformat(row["day"]),row["id"])
-    with st.expander("확인 · 피드백"): review(db,row,"event")
+    feedback=st.expander("확인 · 피드백",key="event_feedback_"+row["id"],on_change="rerun")
+    if feedback.open:
+        with feedback:review(db,row,"event")
 
 def event_list(db,events,prefix):
     if not events: st.caption("등록된 일정이 없습니다.")
@@ -259,17 +263,19 @@ def reports(db,today,period,fixed_day=None):
             st.subheader("오늘의 활동 기록" if period=="일일" else "이번 주 돌아보기")
             if period=="일일":
                 st.caption("실제 진행한 활동을 입력하세요. 일정 완료와 실적은 별도로 관리합니다.")
-                with st.expander("완료 일정 · 청약에서 집계 초안 확인"):
-                    contracts=db.period("sales_contracts",day,day,owner="eq."+db.uid)
-                    linked={r["event"] for r in contracts}
-                    completed=[r for r in events if r["status"]=="완료"]
-                    current={r["id"]:{"AP":"상담","PC":"제안"}.get(r["kind"],r["kind"]) for r in completed if {"AP":"상담","PC":"제안"}.get(r["kind"],r["kind"]) in COUNTS and not(r["kind"]=="청약" and r["id"] in linked)}
-                    current.update({r["id"]:"청약" for r in contracts})
-                    proposed=ux.refreshed_counts(v,v["sources"],current,COUNTS)
-                    st.dataframe([{"항목":ux.LABELS.get(c,c),"현재 입력":v[c],"반영 후":proposed[c]} for c in COUNTS],hide_index=True,width="stretch")
-                    st.caption("반영 후 값을 확인해 주세요. 이미 반영한 원천은 중복 합산하지 않습니다.")
-                    if st.button("이 집계 초안 반영",key=key+"import"):
-                        ux.set_values(d,{**proposed,"sources":current,"contracts":contracts,"results":[{"결과":e["result"],"지원 요청":e["help"]} for e in completed if e["result"] or e["help"]]})
+                source_panel=st.expander("완료 일정 · 청약에서 집계 초안 확인",key=key+"source_panel",on_change="rerun")
+                if source_panel.open:
+                    with source_panel:
+                        contracts=db.period("sales_contracts",day,day,owner="eq."+db.uid)
+                        linked={r["event"] for r in contracts}
+                        completed=[r for r in events if r["status"]=="완료"]
+                        current={r["id"]:{"AP":"상담","PC":"제안"}.get(r["kind"],r["kind"]) for r in completed if {"AP":"상담","PC":"제안"}.get(r["kind"],r["kind"]) in COUNTS and not(r["kind"]=="청약" and r["id"] in linked)}
+                        current.update({r["id"]:"청약" for r in contracts})
+                        proposed=ux.refreshed_counts(v,v["sources"],current,COUNTS)
+                        st.dataframe([{"항목":ux.LABELS.get(c,c),"현재 입력":v[c],"반영 후":proposed[c]} for c in COUNTS],hide_index=True,width="stretch")
+                        st.caption("반영 후 값을 확인해 주세요. 이미 반영한 원천은 중복 합산하지 않습니다.")
+                        if st.button("이 집계 초안 반영",key=key+"import"):
+                            ux.set_values(d,{**proposed,"sources":current,"contracts":contracts,"results":[{"결과":e["result"],"지원 요청":e["help"]} for e in completed if e["result"] or e["help"]]})
                 for label,metrics in [("연락 활동",COUNTS[:4]),("상담 · 계약 활동",COUNTS[4:])]:
                     st.markdown("**"+label+"**")
                     cols=st.columns(2 if mobile else 4)
@@ -316,8 +322,10 @@ def reports(db,today,period,fixed_day=None):
                 st.rerun()
         if period=="일일":contract_editor(db,day)
         if old:
-            with st.expander("기존 제출 내용 · 수정 이력 · 피드백"):
-                report_detail(db,old)
+            history_panel=st.expander("기존 제출 내용 · 수정 이력 · 피드백",key=key+"history_panel",on_change="rerun")
+            if history_panel.open:
+                with history_panel:
+                    report_detail(db,old)
     if right is not None:
         with right:
             with st.container(border=True):report_reference(db,day,period,events,daily)
@@ -360,7 +368,9 @@ def member_detail(db,uid,day,period):
             own=[e for e in events if e["day"]==str(target)]
             row=next((r for r in submitted if r["day"]==str(target)),None)
             state="제출" if row else "예정" if target>datetime.now(KST).date() else "미제출"
-            with st.expander(f'{target:%m.%d} {"월화수목금토일"[i]} · 일정 {len(own)}건 · {state}',expanded=target==datetime.now(KST).date()):one(target)
+            day_panel=st.expander(f'{target:%m.%d} {"월화수목금토일"[i]} · 일정 {len(own)}건 · {state}',expanded=target==datetime.now(KST).date(),key="member_day_"+uid+str(target),on_change="rerun")
+            if day_panel.open:
+                with day_panel:one(target)
         with st.expander("주간 제출 기록"):
             weekly=next((r for r in records if r["period"]=="주간" and r["day"]==str(start)),None)
             if weekly:report_detail(db,weekly)
@@ -457,7 +467,10 @@ def dialog(db):
         elif kind=="member":member_detail(db,route["uid"],date.fromisoformat(route["day"]),route["period"])
         elif kind=="daily":key=reports(db,date.fromisoformat(route["day"]),"일일",date.fromisoformat(route["day"]))
         else:
-            rows=db.request("GET","sales_events",{"id":"eq."+route.get("id","")})
+            editing=kind in ("edit","copy","follow","result")
+            cached=route.get("editing_snapshot") if editing else None
+            rows=[cached] if cached else db.request("GET","sales_events",{"id":"eq."+route.get("id",""),"limit":"1"})
+            if rows and editing:route["editing_snapshot"]=deepcopy(rows[0])
             if not rows:st.info("일정을 조회할 수 없습니다.")
             else:
                 row=rows[0]
