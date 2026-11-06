@@ -40,6 +40,8 @@ workspace.render_task_content('synthetic','user',['synthetic'])
                 page.set_viewport_size({'width':width,'height':844})
                 page.reload()
                 expect(page.get_by_test_id('stSidebar')).to_have_attribute('aria-expanded','false')
+                if width==390:
+                    expect(page.get_by_test_id('stMainBlockContainer')).to_have_css('padding-top','52px')
                 opener=page.get_by_test_id('stExpandSidebarButton')
                 expect(opener).to_be_visible();opener.click()
                 expect(page.get_by_test_id('stSidebar')).to_have_attribute('aria-expanded','true')
