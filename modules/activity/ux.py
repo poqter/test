@@ -1,5 +1,7 @@
 """Shared presentation and session-only drafts. Existing RLS remains authoritative."""
 from copy import deepcopy
+import json
+from streamlit.errors import StreamlitAPIException
 from datetime import datetime
 from html import escape
 from uuid import uuid4
@@ -40,8 +42,16 @@ def styles():
     .sales-summary{display:flex;gap:10px;flex-wrap:wrap;margin:5px 0 16px}.sales-summary span{padding:6px 10px;background:#eef3f9;border-radius:7px;color:#334e6b;font-size:13px}
     .sales-details{display:grid;grid-template-columns:85px 1fr;gap:10px 14px;margin:18px 0}.sales-details dt{color:#718197;font-size:13px}.sales-details dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.sales-dialog-marker{display:none}.st-key-sales_close_corner{margin-bottom:-12px}.st-key-sales_close_corner button{min-width:44px;min-height:44px;font-size:22px}
     [data-testid="stDialog"]:has(.sales-dialog-marker) [role="dialog"]{max-width:880px}
-    @media(max-width:700px){.st-key-sales_workspace input,.st-key-sales_workspace textarea,[data-testid="stDialog"]:has(.sales-dialog-marker) input{font-size:16px!important}[data-testid="stDialog"]:has(.sales-dialog-marker) [role="dialog"]{width:calc(100% - 16px);max-height:95dvh}.sales-details{grid-template-columns:65px 1fr;gap:8px}[data-testid="stPopoverBody"]:has(.sales-reference){position:fixed!important;bottom:0!important;top:auto!important;left:0!important;width:100%!important;max-height:75dvh;overflow:auto;border-radius:16px 16px 0 0}}
+    @media(max-width:700px){.st-key-sales_workspace input,.st-key-sales_workspace textarea,[data-testid="stDialog"]:has(.sales-dialog-marker) input{font-size:16px!important}[data-testid="stDialog"]:has(.sales-dialog-marker) [role="dialog"]{width:calc(100% - 16px);max-height:calc(var(--sales-viewport, 100dvh) - 16px);overflow-y:auto;scroll-padding-bottom:80px;padding-bottom:env(safe-area-inset-bottom, 0px)}.sales-details{grid-template-columns:65px 1fr;gap:8px}[data-testid="stPopoverBody"]:has(.sales-reference){position:fixed!important;bottom:0!important;top:auto!important;left:0!important;width:100%!important;max-height:75dvh;overflow:auto;border-radius:16px 16px 0 0}}
+    [data-testid="stDialog"]:has(.sales-dialog-marker) input,[data-testid="stDialog"]:has(.sales-dialog-marker) textarea {scroll-margin:80px 0}
     </style>''')
+    st.html('''<script>
+    if(!window.hwarangActivityViewport){
+      window.hwarangActivityViewport=true;
+      const resize=()=>{document.documentElement.style.setProperty('--sales-viewport',(window.visualViewport?.height||innerHeight)+'px');};
+      window.visualViewport?.addEventListener('resize',resize);resize();
+    }
+    </script>''',unsafe_allow_javascript=True)
 
 def summary(items):
     st.html('<div class="sales-summary">'+''.join('<span>'+escape(str(x))+'</span>' for x in items)+'</div>')
@@ -72,19 +82,54 @@ def set_values(d,values):
     d["values"].update(deepcopy(values))
     for name,value in values.items(): st.session_state["sales_input_"+d["epoch"]+"_"+name]=value
 
+def refresh():
+    """Keep interactions inside their current fragment; full run only outside one."""
+    try: st.rerun(scope="fragment")
+    except StreamlitAPIException: st.rerun()
+
+
+def saved_event(key,event_id):
+    st.session_state.pop("sales_write_in_progress",None)
+    clear_draft(key)
+    stack=st.session_state.get("sales_route_stack",[])
+    # Editing returns to the saved detail without accumulating duplicate routes.
+    if stack and stack[-1].get("type")=="event" and stack[-1].get("id")==event_id:
+        stack.pop()
+    st.session_state["sales_route"]={"type":"event","id":event_id}
+    st.session_state["sales_dialog_notice"]="저장했습니다. 최신 일정입니다."
+    st.session_state["sales_calendar_refresh"]=str(uuid4())
+    refresh()
+
+
+def feedback():
+    if message:=st.session_state.pop("sales_dialog_notice",None):st.success(message)
+    if nonce:=st.session_state.pop("sales_calendar_refresh",None):
+        # Trusted same-origin signal only; no records or tokens travel through HTML.
+        st.html("<script>document.querySelectorAll('iframe').forEach(f=>f.contentWindow.postMessage({type:'hwarang.activity.changed',nonce:"
+                +json.dumps(nonce)+"},location.origin));</script>",unsafe_allow_javascript=True)
+
+
+def focus_field(d,name):
+    selector=".st-key-sales_input_"+d["epoch"]+"_"+name+" input"
+    st.html("<script>requestAnimationFrame(()=>{const e=document.querySelector("+json.dumps(selector)+");if(e){e.focus({preventScroll:true});e.scrollIntoView({block:'center',behavior:'smooth'});}});</script>",unsafe_allow_javascript=True)
+
+
 def navigate(route,push=False):
+    already_open=bool(st.session_state.get("sales_route"))
     if push and st.session_state.get("sales_route"): st.session_state.setdefault("sales_route_stack",[]).append(st.session_state["sales_route"])
     elif not push: st.session_state["sales_route_stack"]=[]
     st.session_state["sales_route"]=route
     st.session_state.pop("sales_close_check",None)
-    st.rerun()
+    if already_open:refresh()
+    else:st.rerun()
 
 def back():
     stack=st.session_state.get("sales_route_stack",[])
     if stack: st.session_state["sales_route"]=stack.pop()
     else: st.session_state.pop("sales_route",None)
     st.session_state.pop("sales_close_check",None)
-    st.rerun()
+    if st.session_state.get("sales_route"): refresh()
+    else: st.rerun() # Streamlit requires a full run to remove the modal itself.
 
 def close_control(key=None,requested=False,top_container=None):
     bottom=st.button("이전 화면으로" if st.session_state.get("sales_route_stack") else "닫기",key="sales_close")
@@ -96,11 +141,16 @@ def close_control(key=None,requested=False,top_container=None):
     if st.session_state.get("sales_close_check"):
         target=top_container if top_container is not None and st.session_state.get("sales_close_at_top") else st.container()
         with target:
-            st.warning("저장하지 않은 변경이 있습니다. 작성 내용을 유지한 채 닫을까요?")
-            a,b=st.columns(2)
+            st.warning("저장하지 않은 변경이 있습니다. 닫는 방법을 선택해 주세요.")
+            st.caption("내용 유지는 현재 접속 중에만 보관됩니다. 이미 저장된 일정·기록은 삭제되지 않습니다.")
+            a,b,c=st.columns(3)
             if a.button("계속 작성",key="sales_keep"):
-                st.session_state.pop("sales_close_check",None);st.rerun()
+                st.session_state.pop("sales_close_check",None);refresh()
             if b.button("내용 유지하고 닫기",key="sales_leave"): back()
+            if c.button("저장하지 않고 닫기",key="sales_discard"):
+                clear_draft(key)
+                # Source rows and other drafts are deliberately untouched.
+                back()
 
 def conflict_recovery(d,key):
     if not d.get("conflict"):return
@@ -109,4 +159,4 @@ def conflict_recovery(d,key):
     if st.button("최신 기록 불러오기",disabled=not discard,key=d["epoch"]+"reload"):
         clear_draft(key)
         st.session_state.get("sales_route",{}).pop("editing_snapshot",None)
-        st.rerun()
+        refresh()

@@ -32,6 +32,11 @@ class FakeRecords:
             for k,v in (params or {}).items():
                 if str(v).startswith("eq."):rows=[r for r in rows if str(r.get(k)).lower()==str(v)[3:].lower()]
             return deepcopy(rows)
+        if method=="POST" and table=="sales_events":
+            existing={r["id"] for r in st.session_state["fixture_events"]}
+            for row in body if isinstance(body,list) else [body]:
+                if row["id"] not in existing:
+                    st.session_state["fixture_events"].append({**deepcopy(row),"owner":UID,"revision":1,"case_id":None})
         st.session_state["fixture_writes"].append(deepcopy(body))
         return []
     def period(self,table,start,end,**params):

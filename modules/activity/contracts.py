@@ -48,7 +48,9 @@ def contract_editor(db, day, event=None):
                 body["id"]=st.session_state.setdefault(key+"seed",str(uuid4()))
                 db.request("POST","sales_contracts",body=body,prefer="resolution=ignore-duplicates")
                 del st.session_state[key+"seed"]
-            st.rerun()
+            from modules.activity import ux
+            st.session_state["sales_dialog_notice"]="청약을 저장했습니다."
+            ux.refresh()
 
 
 def performance(db, day, members, bounds, selected_member=None, key="performance", period_range=None):

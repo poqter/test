@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    paths: ['.github/scripts/**', 'app.py', 'hwarang_academy/**', 'supabase/migrations/**', 'modules/briefing/**', 'modules/shared/**', 'public_reader/**', 'tests/**', 'requirements.txt', 'constraints.txt', 'STAGE1_CHANGED_FILES.json', '.github/workflows/**']
+    paths: ['.github/scripts/**', 'app.py', 'hwarang_academy/**', 'supabase/migrations/**', 'modules/briefing/**', 'modules/shared/**', 'modules/activity/**', 'public_reader/**', 'tests/**', 'requirements.txt', 'constraints.txt', 'STAGE1_CHANGED_FILES.json', '.github/workflows/**']
   workflow_dispatch:
 permissions:
   contents: read
@@ -20,6 +20,12 @@ jobs:
         run: python -m pip install -r requirements.txt pytest==8.4.2
       - name: Offline Python regression
         run: python -m pytest -q
+      - name: Activity browser regression (synthetic data only)
+        run: |
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+          python tests/activity_ui/check_calendar.py
+          python tests/activity_ui/check_workspace.py
       - uses: actions/setup-node@v6
         with:
           node-version: 22

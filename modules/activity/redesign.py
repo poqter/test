@@ -16,7 +16,7 @@ KINDS=["미분류","TA","AP","PC","CS","청약","교육","회의","휴무","기�
 TYPES={code:code for code in ("TA","AP","PC","CS")}
 
 def notify():
-    st.session_state["sales_notice"]="저장했습니다."
+    st.session_state["sales_dialog_notice"]="저장했습니다."
 
 def write_event(db,old,body,follow=None):
     follow_id=str(uuid5(NAMESPACE_URL,old["id"]+str(follow))) if follow else None
@@ -40,6 +40,16 @@ def event_body(values):
                 time_pending=values["mode"]=="시간 미정",title=values["title"].strip(),kind=values["kind"],place=values["place"],
                 note=values["note"],help=values["help"] if values["support"] else "",common=values["common"],
                 companion=values["companion"],status=values["status"],result=values["result"])
+
+def event_errors(v):
+    errors={}
+    if not v["title"].strip():errors["title"]="고객 또는 일정명을 입력해 주세요."
+    if v["mode"]=="시간 지정":
+        if not v["start"]:errors["start"]="시작 시간을 입력해 주세요."
+        elif v["end"] and v["end"]<=v["start"]:errors["end"]="종료 시간은 시작 시간보다 늦어야 합니다."
+    if v["follow"] and v["follow"]<v["day"]:errors["follow"]="후속 일정 날짜를 확인해 주세요."
+    return errors
+
 
 def event_editor(db,day,event=None,parent=None,copy=None):
     old=event or copy or {}
@@ -66,7 +76,9 @@ def event_editor(db,day,event=None,parent=None,copy=None):
             updates={"mode":"종일"}
             if not v["title"].strip():updates["title"]="휴무"
             ux.set_values(d,updates)
-    title=ux.field(d,"title",st.text_input,"고객 또는 일정명",max_chars=200,placeholder="예: 소개 고객 첫 상담",after_change=infer_kind)
+    errors=event_errors(v) if d.get("attempted") else {}
+    ux.field(d,"title",st.text_input,"고객 또는 일정명",max_chars=200,placeholder="예: 소개 고객 첫 상담",after_change=infer_kind)
+    if "title" in errors:st.error(errors["title"])
     a,b=st.columns(2)
     ux.field(d,"day",a.date_input,"날짜")
     options=list(dict.fromkeys([*KINDS,v["kind"]]))
@@ -82,6 +94,7 @@ def event_editor(db,day,event=None,parent=None,copy=None):
         ux.field(d,"start",a.time_input,"시작 시간")
         ux.field(d,"end",b.time_input,"종료 시간 · 선택")
         if v["end"] and (not v["start"] or v["end"]<=v["start"]): st.error("종료 시간은 시작 시간보다 늦어야 합니다.")
+        if "start" in errors:st.error(errors["start"])
         if not v["start"]: st.caption("시작 시간을 입력하거나 ‘시간 미정’을 선택해 주세요.")
     ux.field(d,"place",st.text_input,"장소 · 선택",placeholder="예: 지점 상담실, 고객 방문, 전화 상담")
     populated=any((v["note"],v["companion"],v["support"],v["repeat"],v["common"]))
@@ -105,8 +118,12 @@ def event_editor(db,day,event=None,parent=None,copy=None):
             ux.field(d,"result",st.text_area,"활동 결과",height=80)
             ux.field(d,"follow",st.date_input,"후속 일정 날짜 · 선택")
             if v["follow"] and v["follow"]<v["day"]:st.error("후속 일정 날짜는 현재 일정 날짜 이후로 선택해 주세요.")
-    invalid=not title.strip() or (v["follow"] and v["follow"]<v["day"]) or v["mode"]=="시간 지정" and (not v["start"] or v["end"] and v["end"]<=v["start"])
-    if st.button("변경 저장" if event else "일정 등록",type="primary",disabled=bool(invalid),key=key+"save"):
+    save_slot=st.empty()
+    if save_slot.button("변경 저장" if event else "일정 등록",type="primary",key=key+"save",on_click=lambda:d.update(attempted=True)):
+        errors=event_errors(v)
+        if errors:
+            ux.focus_field(d,next(iter(errors)))
+            return key
         body=event_body(v)
         repeat=v["repeats"] if v["repeat"] and not event else 1
         if body["start_time"] and body["status"]=="예정":
@@ -117,6 +134,8 @@ def event_editor(db,day,event=None,parent=None,copy=None):
             signature=(str(v["day"]),body["start_time"],body["end_time"],repeat,tuple(r["id"] for r in overlap))
             if overlap and d.get("overlap")!=signature:
                 d["overlap"]=signature;st.warning("기존 일정과 시간이 겹칩니다. 그대로 등록하려면 저장 버튼을 한 번 더 눌러 주세요.");return key
+        save_slot.button("저장 중…",disabled=True,key=key+"busy")
+        st.session_state["sales_write_in_progress"]=True
         if event:
             snapshot=d["old"]
             try:write_event(db,snapshot,body,v["follow"])
@@ -125,8 +144,10 @@ def event_editor(db,day,event=None,parent=None,copy=None):
         else:
             seed=d.setdefault("seed",str(uuid4()))
             rows=[{**body,"unit":db.me["unit"],"previous_event":parent["id"] if parent else None,"day":str(v["day"]+i*7*DAY),"id":str(uuid5(NAMESPACE_URL,seed+str(i)))} for i in range(repeat)]
-            db.request("POST","sales_events",body=rows,prefer="resolution=ignore-duplicates")
-        ux.clear_draft(key);notify();ux.back()
+            try:db.request("POST","sales_events",body=rows,prefer="resolution=ignore-duplicates")
+            except HwarangAuthError:
+                d["conflict"]=True;raise
+        ux.saved_event(key,event["id"] if event else rows[0]["id"])
     return key
 
 def quick_result(db,row):
@@ -136,14 +157,17 @@ def quick_result(db,row):
     ux.field(d,"status",st.segmented_control,"처리 결과",options=["완료","연기","취소"],required=True)
     ux.field(d,"result",st.text_area,"활동 결과 · 선택",height=80)
     if d["values"]["status"]=="연기": ux.field(d,"follow",st.date_input,"새 일정 날짜",min_value=date.fromisoformat(row["day"]))
-    if st.button("결과 저장",type="primary"):
+    save_slot=st.empty()
+    if save_slot.button("결과 저장",type="primary"):
+        save_slot.button("저장 중…",disabled=True,key=key+"busy")
+        st.session_state["sales_write_in_progress"]=True
         old=d["old"];v=d["values"];body={k:old.get(k) for k in ux.EVENT_FIELDS}
         body.update(status=v["status"],result=v["result"])
         follow=v["follow"] if v["status"]=="연기" else None
         try:write_event(db,old,body,follow)
         except HwarangAuthError:
             d["conflict"]=True;raise
-        ux.clear_draft(key);notify();ux.back()
+        ux.saved_event(key,row["id"])
     return key
 
 def event_detail(db,row):
@@ -170,7 +194,7 @@ def event_detail(db,row):
                         else:
                             seed="task_seed_"+row["id"]
                             db.request("POST","sales_followups",body={"id":st.session_state.setdefault(seed,str(uuid4())),"source":row["id"],"due":str(due),"title":title.strip()},prefer="resolution=ignore-duplicates")
-                            st.session_state.pop(seed);notify();st.rerun()
+                            st.session_state.pop(seed);notify();ux.refresh()
         contract_editor(db,date.fromisoformat(row["day"]),row["id"])
     feedback=st.expander("확인 · 피드백",key="event_feedback_"+row["id"],on_change="rerun")
     if feedback.open:
@@ -223,9 +247,12 @@ def reports(db,today,period,fixed_day=None):
         previous=st.session_state.get("sales_report_active_"+period)
         if previous and previous!=str(day) and ux.dirty(report_key(db,previous,period)):
             st.warning("이전 날짜에 저장하지 않은 내용이 있습니다. 내용을 유지한 채 날짜를 변경할까요?")
-            a,b=st.columns(2)
+            a,b,c=st.columns(3)
+            if c.button("내용 버리고 날짜 변경",key="discard_date_"+period):
+                ux.clear_draft(report_key(db,previous,period))
+                st.session_state["sales_report_active_"+period]=str(day);ux.refresh()
             if a.button("날짜 변경",key="change_date_"+period):
-                st.session_state["sales_report_active_"+period]=str(day);st.rerun()
+                st.session_state["sales_report_active_"+period]=str(day);ux.refresh()
             def stay(): st.session_state["sales_day_"+period]=date.fromisoformat(previous)
             b.button("계속 작성",key="keep_date_"+period,on_click=stay)
             day=date.fromisoformat(previous)
@@ -246,11 +273,13 @@ def reports(db,today,period,fixed_day=None):
     d=ux.draft(key,initial,old)
     ux.conflict_recovery(d,key)
     v=d["values"]
+    if message:=d.pop("save_error",None):st.error(message)
     # New weekly drafts reflect saved daily records without overwriting legacy weekly snapshots.
     if period=="주간" and not old:
         v.update(ux.report_totals(daily,COUNTS));v["coverage"]=[r["day"] for r in daily if r["submitted"]]
         d["baseline"].update({c:v[c] for c in COUNTS});d["baseline"]["coverage"]=v["coverage"][:]
     st.subheader(str(day)+(f" – {day+6*DAY}" if period=="주간" else " · "+"월화수목금토일"[day.weekday()]))
+    ux.feedback()
     ux.summary(["수정 중" if old.get("submitted") and ux.dirty(key) else "제출 완료" if old.get("submitted") else "임시 저장" if old else "작성 중",db.me["label"]])
     mobile=ux.compact()
     if mobile:
@@ -293,7 +322,7 @@ def reports(db,today,period,fixed_day=None):
                             proposed=ux.report_totals(daily,COUNTS)
                             count_grid(proposed)
                             if st.button("확인한 합계 반영",key=key+"apply_week"):
-                                v.update(proposed);v["coverage"]=[r["day"] for r in daily if r["submitted"]];d.pop("week_check",None);st.rerun()
+                                v.update(proposed);v["coverage"]=[r["day"] for r in daily if r["submitted"]];d.pop("week_check",None);ux.refresh()
             ux.field(d,"note",st.text_area,"주요 성과 · 진행사항",height=120,placeholder="주요 활동과 진행 내용을 적어 주세요.")
             if period=="주간":ux.field(d,"plan",st.text_area,"다음 주 계획",height=110,placeholder="다음 주 진행할 활동과 계획을 적어 주세요.")
             with st.expander("지원 요청 · 선택",key=d["epoch"]+"help_panel",on_change="rerun"):
@@ -301,27 +330,31 @@ def reports(db,today,period,fixed_day=None):
             if v["help"]:st.caption("지원 요청 · 입력됨")
             st.caption("조회 권한이 있는 관리자에게 제출 기록이 공유됩니다.")
             a,b=st.columns(2)
-            save_draft=a.button("임시 저장",disabled=bool(old.get("submitted")),key=key+"draft",width="stretch")
+            draft_slot=a.empty()
+            save_draft=draft_slot.button("임시 저장",disabled=bool(old.get("submitted")),key=key+"draft",width="stretch")
             if b.button("수정 제출" if old.get("submitted") else "기록 제출",type="primary",key=key+"submit",width="stretch"):
                 d["confirm"]=True
             submit=False
             if d.get("confirm"):
                 st.info("입력한 내용으로 기록을 제출할까요?")
                 a,b=st.columns(2)
-                submit=a.button("제출 확인",type="primary",key=key+"confirm")
-                if b.button("계속 작성",key=key+"cancel_submit"):d.pop("confirm",None);st.rerun()
+                submit_slot=a.empty()
+                submit=submit_slot.button("제출 확인",type="primary",key=key+"confirm")
+                if b.button("계속 작성",key=key+"cancel_submit"):d.pop("confirm",None);ux.refresh()
             if save_draft or submit:
                 # Preserve unknown legacy data keys as well as all known input fields.
                 payload=deepcopy((d["old"] or {}).get("data",{}))
                 payload.update(counts={c:v[c] for c in COUNTS},**{k:v[k] for k in ("note","plan","help","sources","coverage","contracts","results")})
                 body={"period":period,"day":str(day),"submitted":bool(submit),"data":payload}
                 if not d["old"]:body["id"]=str(uuid5(NAMESPACE_URL,db.uid+period+str(day)))
+                (submit_slot if submit else draft_slot).button("저장 중…",disabled=True,key=key+"busy")
                 try:db.save("sales_reports",body,d["old"])
-                except HwarangAuthError:
-                    d["conflict"]=True;raise
-                ux.clear_draft(key);notify()
+                except HwarangAuthError as exc:
+                    d["conflict"]=True;d["save_error"]="저장하지 못했습니다. 입력 내용은 유지됩니다. "+str(exc);ux.refresh()
+                ux.clear_draft(key)
+                st.session_state["sales_dialog_notice"]="기록을 제출했습니다." if submit else "임시 저장했습니다. 서버에 보관된 기록입니다."
                 if fixed_day is not None:ux.back()
-                st.rerun()
+                ux.refresh()
         if period=="일일":contract_editor(db,day)
         if old:
             history_panel=st.expander("기존 제출 내용 · 수정 이력 · 피드백",key=key+"history_panel",on_change="rerun")
@@ -374,7 +407,8 @@ def member_detail(db,uid,day,period):
         if selection_key not in st.session_state:
             st.session_state[selection_key]=next((d for d in days if str(d)==remembered),fallback if fallback in days else start)
         target=st.segmented_control("날짜 선택",days,key=selection_key,required=True,
-            format_func=lambda d:f'{"월화수목금토일"[d.weekday()]} {d:%m/%d}',width="stretch")
+            format_func=lambda d: f'{"월화수목금토일"[d.weekday()]} {d:%m/%d} · {sum(e["day"]==str(d) for e in events)}건 · '+
+                ("제출" if any(r["day"]==str(d) for r in submitted) else "임시 저장" if any(r["day"]==str(d) and r["period"]=="일일" for r in records) else "예정" if d>datetime.now(KST).date() else "미제출"),width="stretch")
         if route.get("type")=="member":route["selected_day"]=str(target)
         own=[e for e in events if e["day"]==str(target)]
         row=next((r for r in submitted if r["day"]==str(target)),None)
@@ -393,6 +427,7 @@ def member_detail(db,uid,day,period):
         with conv:conversions(db,start,end,{uid:member})
 
 def overview(db,today):
+    ux.feedback()
     from modules.activity.center import bounds, KST
     a,b,c=st.columns([1,1,1.3])
     day=a.date_input("조회 기준일",today,key="sales_overview_day")
@@ -455,7 +490,7 @@ def admin_settings(db,start,end):
             if candidates:
                 member=st.selectbox("담당 팀원",candidates,format_func=lambda u:members[u]["label"])
                 if st.button("담당 팀원 연결"):
-                    db.request("POST","sales_team_assignments",body={"leader":leader,"member":member},prefer="resolution=merge-duplicates");notify();st.rerun()
+                    db.request("POST","sales_team_assignments",body={"leader":leader,"member":member},prefer="resolution=merge-duplicates");notify();ux.refresh()
         else:
             st.info("팀장 권한으로 미리보기 중 · 읽기 전용")
             snap=db.request("POST","rpc/sales_qa_snapshot",body={"subject":leader,"first_day":str(start),"last_day":str(end)})
@@ -471,6 +506,8 @@ def dialog(db):
     with st.container(key="sales_close_corner",horizontal=True,horizontal_alignment="right"):
         close_top=st.button("✕",help="팝업 닫기",key="sales_close_top",type="tertiary")
     close_feedback=st.container()
+    ux.feedback()
+    if message:=st.session_state.pop("sales_dialog_error",None):st.error(message)
     db._reads.clear() # Dialog fragments must not retain a stale Records read snapshot.
     route=st.session_state.get("sales_route",{})
     key=None
@@ -494,7 +531,9 @@ def dialog(db):
                 elif kind=="copy":key=event_editor(db,date.fromisoformat(row["day"]),copy={**ux.copy_event(row),"id":row["id"]})
                 elif kind=="follow":key=event_editor(db,date.fromisoformat(row["day"]),parent=row)
     except HwarangAuthError as exc:
-        st.error("저장하지 못했습니다. 입력 내용은 유지됩니다. "+str(exc))
-        # Preserve dirty-close handling after an unsuccessful save.
+        st.session_state["sales_dialog_error"]="요청을 완료하지 못했습니다. 입력 내용은 유지됩니다. "+str(exc)
+        # Only retry rendering after a failed write, never retry a failed read.
+        if st.session_state.pop("sales_write_in_progress",False):ux.refresh()
+        st.error(st.session_state.pop("sales_dialog_error"))
         key=next((k for k in st.session_state.get("sales_drafts",{}) if ux.dirty(k)),None)
     ux.close_control(key,requested=close_top,top_container=close_feedback)
