@@ -56,7 +56,11 @@ function openMobile(session){
 function render(a){
  latest=a;
  const {mode,day,today,events}=a,hide=a.hideWeekends!==false,anchor=date(day),month=mode==='월간',key=mode+day;
- if(context!==key){selected=day;context=key}
+ if(context!==key){
+   selected=day;
+   if(!context){try{const saved=JSON.parse(sessionStorage.getItem('hwarang.calendar.selection.'+a.mobileSession?.uid)||'null');if(saved?.context===key&&/^\d{4}-\d{2}-\d{2}$/.test(saved.selected))selected=saved.selected}catch{}}
+   context=key;
+ }
  if(hide&&isWeekend(selected)){const candidate=weekday(selected,-1);selected=month&&candidate.slice(0,7)!==day.slice(0,7)?weekday(selected):candidate}
  const signature=JSON.stringify([mode,day,today,events,a.roster,hide,selected]);
  document.querySelector('#refreshing').textContent='';
@@ -70,13 +74,14 @@ function render(a){
    if(hide)s=weekday(s);
    const local=month?s.slice(0,7)===day.slice(0,7):s>=(a.rangeStart||iso(weekStart))&&s<=(a.rangeEnd||iso(weekEnd));
    if(!local){emit('date',s);return}
-   selected=s;render(a);
+   selected=s;try{sessionStorage.setItem('hwarang.calendar.selection.'+a.mobileSession?.uid,JSON.stringify({context,selected}))}catch{}render(a);
  };
  const move=sign=>{let d=anchor;if(month){d=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+sign,1,12))}else d=add(mode==='날짜별'?date(selected):d,sign*(mode==='주간'?7:1));choose(hide&&mode==='날짜별'?weekday(iso(d),sign):iso(d))};
  nav.append(el('h2',month?anchor.getUTCFullYear()+'년 '+(anchor.getUTCMonth()+1)+'월':mode==='주간'?fmt(iso(weekStart))+' – '+fmt(iso(weekEnd)):fmt(selected)+' ('+'일월화수목금토'[date(selected).getUTCDay()]+')'),button('‹',()=>move(-1),'','이전 기간'),button('오늘',()=>{if(hide&&isWeekend(today)){selected=today;emit('weekends',false)}else choose(today)}),button('›',()=>move(1),'','다음 기간'));
  let sw=el('div','','switch');for(let m of ['날짜별','주간','월간']){let b=button(m,()=>emit('mode',m),mode===m?'active':'');b.setAttribute('aria-pressed',String(mode===m));sw.append(b)}
  let weekend=button('주말 제외',()=>{const updated={...a,hideWeekends:!hide};render(updated);emit('weekends',!hide)},'weekend-toggle');weekend.setAttribute('aria-pressed',String(hide));weekend.title='토요일·일요일 표시를 켜거나 끕니다. 일정은 삭제되지 않습니다.';
- tools.append(button('모바일 앱 열기',()=>openMobile(latest.mobileSession)),sw,weekend,button('＋ 일정 등록',()=>emit('new',selected),'primary'));
+ if(!a.hideMobileApp)tools.append(button('모바일 앱 열기',()=>openMobile(latest.mobileSession)));
+ tools.append(sw,weekend,button('＋ 일정 등록',()=>emit('new',selected),'primary'));
  grid.hidden=mode==='날짜별';
  grid.className='grid'+(hide?' weekends-off':'')+(mode==='주간'?' week':'')+(mode==='날짜별'?' strip':'');
  if(!grid.hidden){
@@ -85,7 +90,7 @@ function render(a){
  let cells=month?Math.ceil(((first.getUTCDay()+6)%7+last.getUTCDate())/7)*7:7;
  for(let i=0;i<cells;i++){let d=add(monday,i),s=iso(d);if(hide&&isWeekend(s))continue;let items=events.filter(e=>e.day===s),box=el('div','','cell'+(s===selected?' selected':'')+(month&&s.slice(0,7)!==day.slice(0,7)?' outside':''));
  box.dataset.key=s;
- const openDay=()=>{if(month&&matchMedia("(max-width:650px)").matches){selected=s;emit("new",s)}else choose(s)};box.onclick=openDay;let num=button(String(d.getUTCDate()),ev=>{ev.stopPropagation();openDay()},'day'+(s===today?' today':''),s+' 일정 보기');if(mode==='주간')num.textContent=fmt(s)+' ('+'일월화수목금토'[d.getUTCDay()]+')';box.append(num);
+ const openDay=()=>{if(month&&!a.hideMobileApp&&matchMedia("(max-width:650px)").matches){selected=s;emit("new",s)}else choose(s)};box.onclick=openDay;let num=button(String(d.getUTCDate()),ev=>{ev.stopPropagation();openDay()},'day'+(s===today?' today':''),s+' 일정 보기');if(mode==='주간')num.textContent=fmt(s)+' ('+'일월화수목금토'[d.getUTCDay()]+')';box.append(num);
  if(mode==='날짜별'&&items.length)box.append(el('span','•','daydot'));
  if(mode!=='날짜별'){for(let item of (month&&items[0]?.allDay&&items.some(e=>!e.allDay)?[items[0],items.find(e=>!e.allDay)]:items.slice(0,2))){let b=button(item.short,ev=>{ev.stopPropagation();selected=item.day;emit('event',item.id)},'chip'+(item.done?' done':''),item.label);b.dataset.key=item.id;b.dataset.kind=item.kind;b.title=item.label;box.append(b)}if(items.length>2)box.append(button('+'+(items.length-2)+'건 더보기',ev=>{
  ev.stopPropagation();choose(s);let panel=el('dialog');panel.setAttribute('aria-label',fmt(s)+' 전체 일정');document.body.append(panel);

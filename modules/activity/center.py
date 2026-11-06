@@ -132,19 +132,22 @@ def calendar(db,today):
         if target:st.session_state["sales_anchor"]=target
         if nav["action"]=="mode" and nav.get("value") in ("날짜별","주간","월간"):
             st.session_state["sales_view"]=nav["value"]
-    notices_slot = st.container()
+    mobile_shell=st.query_params.get("view")=="mobile-calendar"
+    notices_slot = None if mobile_shell else st.container()
     position=st.session_state["hwarang_auth"]["profile"].get("position_code")
-    team=st.toggle("지점 일정",value=position=="branch_manager")
-    branch={r["member"]:r for r in db.request("POST","rpc/sales_branch_members",body={})}
-    selected_member=None
-    if db.me["managed"]:
-        a,b,c=st.columns([3,1,1])
-        selected_member=a.selectbox("직원 이름 검색 · 선택",[None,*db.members],format_func=lambda u:db.members[u]["label"] if u else "전체 · 기존 조회 범위",key="sales_calendar_member")
-        if selected_member:c.button("전체 보기",key="calendar_clear_member",on_click=lambda:st.session_state.update(sales_calendar_member=None))
-        if selected_member and b.button("일정 · 활동 기록",key="calendar_member_detail"):
-            st.session_state["sales_route"]={"type":"member","uid":selected_member,"day":str(st.session_state.get("sales_anchor",today)),"period":"주간" if st.session_state.get("sales_view")=="주간" else "일일"}
-            st.session_state["sales_route_stack"]=[]
-            st.session_state["sales_calendar_open"]=True
+    filters=st.expander("직원·지점 일정 조회",key="mobile_calendar_filters") if mobile_shell else st.container()
+    with filters:
+        team=st.toggle("지점 일정",value=position=="branch_manager")
+        branch={r["member"]:r for r in db.request("POST","rpc/sales_branch_members",body={})}
+        selected_member=None
+        if db.me["managed"]:
+            a,b,c=st.columns([3,1,1])
+            selected_member=a.selectbox("직원 이름 검색 · 선택",[None,*db.members],format_func=lambda u:db.members[u]["label"] if u else "전체 · 기존 조회 범위",key="sales_calendar_member")
+            if selected_member:c.button("전체 보기",key="calendar_clear_member",on_click=lambda:st.session_state.update(sales_calendar_member=None))
+            if selected_member and b.button("일정 · 활동 기록",key="calendar_member_detail"):
+                st.session_state["sales_route"]={"type":"member","uid":selected_member,"day":str(st.session_state.get("sales_anchor",today)),"period":"주간" if st.session_state.get("sales_view")=="주간" else "일일"}
+                st.session_state["sales_route_stack"]=[]
+                st.session_state["sales_calendar_open"]=True
     mobile=st.context.headers.get("User-Agent","").lower()
     compact=any(word in mobile for word in ("android","iphone","mobile"))
     mode=st.session_state.get("sales_view","월간")
@@ -165,7 +168,7 @@ def calendar(db,today):
         # Detailed records are already restricted by the existing sales_scope RLS.
         events=[r for r in details.values() if r["owner"]==selected_member]
     events.sort(key=lambda r:(r["day"],r["start_time"] or ""))
-    status_slot = st.container()
+    status_slot = None if mobile_shell else st.container()
     if mode=="주간" and team and not selected_member:
         members=[]
         for uid,person in branch.items():
@@ -195,7 +198,7 @@ def calendar(db,today):
         if row.get("companion"):label+=" · 동행 "+branch.get(row["companion"],{}).get("label","")
         if row.get("help"):label+=" · 지원 요청"
         cards.append(dict(id=row["id"],day=row["day"],kind=row["kind"],member=row["owner"],allDay=not row["start_time"],short=(row.get('title') or row['kind'])+(f' · {owner}' if team else ''),label=label,done=status=="완료"))
-    action=calendar_view(hideWeekends=st.session_state.get("sales_hide_weekends",True),mobileSession=dict(url=db.auth.config.url,key=db.auth.config.publishable_key,token=db.token,uid=db.uid,unit=db.me["unit"],branch=position=="branch_manager"),mode=mode,day=str(day),today=str(today),events=cards,roster={uid:p["label"] for uid,p in branch.items() if not selected_member or uid==selected_member} if team else {},rangeStart=str(fetch_start),rangeEnd=str(fetch_end),key="sales_interactive_calendar",default=None)
+    action=calendar_view(hideMobileApp=st.query_params.get("view")=="mobile-calendar",hideWeekends=st.session_state.get("sales_hide_weekends",True),mobileSession=dict(url=db.auth.config.url,key=db.auth.config.publishable_key,token=db.token,uid=db.uid,unit=db.me["unit"],branch=position=="branch_manager"),mode=mode,day=str(day),today=str(today),events=cards,roster={uid:p["label"] for uid,p in branch.items() if not selected_member or uid==selected_member} if team else {},rangeStart=str(fetch_start),rangeEnd=str(fetch_end),key="sales_interactive_calendar",default=None)
     if isinstance(action,dict) and action.get("nonce")!=st.session_state.get("sales_calendar_action"):
         st.session_state["sales_calendar_action"]=action.get("nonce")
         command,value=action.get("action"),action.get("value")
@@ -216,7 +219,7 @@ def calendar(db,today):
             found=next((r for r in events if r["id"]==value),None)
             if found and found["id"] in details:detail_dialog(db,found)
             elif found:st.info(next(c["label"] for c in cards if c["id"]==value))
-    with notices_slot:
+    with notices_slot if notices_slot is not None else st.container():
         notices=db.request("GET","sales_notices",{"seen":"eq.false","order":"created_at.desc","limit":"20","select":"id,message,sales_events(day,kind)"})
         if notices:
             with st.expander("일정 알림",expanded=True,key="sales_notice_panel",on_change="rerun"):
@@ -228,7 +231,7 @@ def calendar(db,today):
                     ids=",".join(n["id"] for n in notices)
                     db.request("PATCH","sales_notices",{"id":"in.("+ids+")"},{"seen":True})
                     ux.refresh()
-    with status_slot:
+    with status_slot if status_slot is not None else st.container():
         todays=summary if fetch_start<=today<=fetch_end else calendar_rows(today,today)
         todays=[r for r in todays if r["day"]==str(today) and not r["common"]]
         confirmations={r["owner"] for r in db.request("GET","sales_empty_days",{"day":"eq."+str(today),"select":"owner"})}
@@ -254,20 +257,21 @@ def calendar(db,today):
                 if checked:db.request("DELETE","sales_empty_days",{"owner":"eq."+db.uid,"day":"eq."+str(today)})
                 else:db.request("POST","sales_empty_days",body={"day":str(today)},prefer="resolution=ignore-duplicates")
                 ux.refresh()
-    st.caption("모바일 앱 열기로 캘린더에 접속한 뒤 홈 화면에 추가할 수 있습니다.")
-    tasks_panel=st.expander("내 후속 할 일",key="sales_tasks_panel",on_change="rerun")
-    if tasks_panel.open:
-        with tasks_panel:
-            tasks=db.request("GET","sales_followups",{"owner":"eq."+db.uid,"scheduled":"is.null","order":"due.asc"})
-            if not tasks:st.caption("예정된 후속 할 일이 없습니다.")
-            for task in tasks:
-                st.write(task["due"],task["title"])
-                with st.form("schedule_task_"+task["id"]):
-                    target=st.date_input("일정 날짜",max(today,date.fromisoformat(task["due"])))
-                    kind=st.selectbox("활동 종류",KINDS)
-                    if st.form_submit_button("내 일정으로 전환"):
-                        db.request("POST","rpc/schedule_sales_followup",body={"task":task["id"],"schedule_day":str(target),"activity":kind})
-                        saved()
+    if st.query_params.get("view")!="mobile-calendar":st.caption("모바일 앱 열기로 캘린더에 접속한 뒤 홈 화면에 추가할 수 있습니다.")
+    if st.query_params.get("view")!="mobile-calendar":
+        tasks_panel=st.expander("내 후속 할 일",key="sales_tasks_panel",on_change="rerun")
+        if tasks_panel.open:
+            with tasks_panel:
+                tasks=db.request("GET","sales_followups",{"owner":"eq."+db.uid,"scheduled":"is.null","order":"due.asc"})
+                if not tasks:st.caption("예정된 후속 할 일이 없습니다.")
+                for task in tasks:
+                    st.write(task["due"],task["title"])
+                    with st.form("schedule_task_"+task["id"]):
+                        target=st.date_input("일정 날짜",max(today,date.fromisoformat(task["due"])))
+                        kind=st.selectbox("활동 종류",KINDS)
+                        if st.form_submit_button("내 일정으로 전환"):
+                            db.request("POST","rpc/schedule_sales_followup",body={"task":task["id"],"schedule_day":str(target),"activity":kind})
+                            saved()
     # A dialog opened inside this fragment must be re-registered when its
     # calendar refreshes; otherwise Streamlit removes its widget callbacks.
     if st.session_state.pop("sales_calendar_open",False) or st.session_state.get("sales_route"):

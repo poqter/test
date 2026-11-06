@@ -26,6 +26,7 @@ jobs:
           python -m playwright install --with-deps chromium
           python tests/activity_ui/check_calendar.py
           python tests/activity_ui/check_workspace.py
+          python tests/activity_ui/check_mobile.py
       - uses: actions/setup-node@v6
         with:
           node-version: 22

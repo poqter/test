@@ -24,7 +24,7 @@ if st.query_params.get("briefing_health") == "1":
     st.code("HWARANG_BRIEFING_RELEASE=" + release['engine_version'] +
             ";READY=" + str(release['code_matches_release']).lower())
     import hashlib
-    activity_files=("center.py","redesign.py","ux.py","contracts.py","calendar_view/index.html")
+    activity_files=("center.py","redesign.py","ux.py","contracts.py","calendar_view/index.html","mobile.py")
     activity_hash=hashlib.sha256(b"".join((Path(__file__).parent / "modules/activity" / name).read_bytes() for name in activity_files)).hexdigest()[:16]
     st.code("HWARANG_ACTIVITY_RELEASE="+activity_hash)
     st.stop()
@@ -315,48 +315,11 @@ def main() -> None:
         if "sales_activity" not in permitted:
             st.error("영업활동 관리 이용 권한을 확인해 주세요.")
             st.stop()
-        import streamlit.components.v1 as components
-
-        profile = st.session_state["login_profile"]
-        token = st.session_state["hwarang_auth"]["access_token"]
+        from modules.activity.mobile import run as render_mobile_workspace
         try:
-            members = auth._request("POST", "/rest/v1/rpc/sales_members", access_token=token, json={})
+            render_mobile_workspace(workspace_logout)
         except HwarangAuthError as exc:
-            st.error(str(exc))
-            st.stop()
-        member = next((row for row in members if row["member"] == profile["id"]), None)
-        if member is None:
-            st.error("영업활동 관리 이용 권한을 확인해 주세요.")
-            st.stop()
-        calendar = components.declare_component("workspace_mobile_calendar",
-            path=str(calendar_icon.parent))
-        st.markdown("""
-        <style>
-        @media (max-width: 800px) {
-            .st-key-mobile_calendar_viewport {
-                position: fixed;
-                inset: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
-                z-index: 10;
-                background: white;
-            }
-            .st-key-mobile_calendar_viewport iframe {
-                display: block;
-                width: 100%;
-                height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
-                border: 0;
-            }
-            [data-testid="stHeader"] { display: none; }
-        }
-        </style>
-        """, unsafe_allow_html=True)
-        with st.container(key="mobile_calendar_viewport"):
-            action = calendar(account=dict(url=auth.config.url, key=auth.config.publishable_key,
-                uid=profile["id"], token=token, unit=member["unit"],
-                branch=profile.get("position_code") == "branch_manager"),
-                key="standalone_mobile_calendar", default=None)
-        if action == "logout":
-            workspace_logout()
-            st.rerun()
+            st.error("요청을 완료하지 못했습니다. 입력 내용은 유지됩니다. "+str(exc))
         st.stop()
     if st.query_params.get("view") == "my-calendar" and not st.session_state.get("sales_shortcut_opened"):
         st.session_state["active_app"] = "sales_activity"
