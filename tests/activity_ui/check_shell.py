@@ -9,6 +9,9 @@ with tempfile.TemporaryDirectory() as tmp:
 sys.path.insert(0,{str(root)!r})
 import streamlit as st
 import app as workspace
+st.set_page_config(initial_sidebar_state="collapsed")
+workspace.inject_global_styles()
+workspace.apply_workspace_design()
 from modules.shared.brand_ui import apply
 apply()
 with st.sidebar:st.button('메뉴 항목')
@@ -35,11 +38,13 @@ workspace.render_task_content('synthetic','user',['synthetic'])
             expect(page.get_by_test_id('stException')).to_have_count(0)
             for width in (1280,390):
                 page.set_viewport_size({'width':width,'height':844})
-                if page.get_by_test_id('stSidebar').get_attribute('aria-expanded')=='true':
-                    page.get_by_test_id('stSidebarCollapseButton').locator('button').click()
+                page.reload()
+                expect(page.get_by_test_id('stSidebar')).to_have_attribute('aria-expanded','false')
                 opener=page.get_by_test_id('stExpandSidebarButton')
                 expect(opener).to_be_visible();opener.click()
                 expect(page.get_by_test_id('stSidebar')).to_have_attribute('aria-expanded','true')
+                page.get_by_test_id('stSidebarCollapseButton').locator('button').click()
+                expect(opener).to_be_visible()
             b.close()
     finally:process.terminate();process.wait(timeout=10)
 print('PASS common workspace shell stays mounted during tool input')
