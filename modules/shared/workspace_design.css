@@ -116,12 +116,10 @@ body:has(.hw-design-2026) [data-stale="true"]{opacity:1!important;transition:non
 }
 
 /* Remove layout gaps from nonvisual stylesheet/marker nodes, not just their contents. */
-@media(max-width:767px){
  body:has(.hw-design-2026) [data-testid="stElementContainer"]:has(>.stMarkdown [data-testid="stMarkdownContainer"]>style:only-child),
  body:has(.hw-design-2026) [data-testid="stElementContainer"]:has(>.stMarkdown [data-testid="stMarkdownContainer"]>:is(.hw-design-2026,.hw-brand-ui,.hw-task-marker,.hw-dashboard-marker)){
    display:none!important;
  }
-}
 
 /* One desktop sidebar width across home, tools and administration. */
 @media(min-width:768px){
@@ -129,3 +127,11 @@ body:has(.hw-design-2026) [data-stale="true"]{opacity:1!important;transition:non
    width:260px!important;min-width:260px!important;max-width:260px!important;flex:0 0 260px!important;
  }
 }
+
+/* Compact shared top spacing on desktop and mobile, including invisible host bridge. */
+body:has(.hw-design-2026) [data-testid="stLayoutWrapper"]:has(>[data-testid="stVerticalBlock"]>[data-testid="stElementContainer"]>.stHtml>.hw-host-chrome-bridge){display:none!important}
+body:has(.hw-design-2026) [data-testid="stMain"] [data-testid="stMainBlockContainer"]{padding-top:48px!important}
+body:has(.hw-design-2026) .st-key-hw_task_toolbar{padding:0!important;margin:0!important;min-height:40px;gap:8px!important}
+body:has(.hw-design-2026) .hw-page-head{padding:0 0 8px!important;margin:0 0 8px!important}
+body:has(.hw-design-2026) .brand-header{padding-bottom:12px!important;margin-bottom:4px!important}
+body:has(.hw-design-2026) .st-key-brand_welcome h1{padding-top:0!important;margin-top:0!important}
