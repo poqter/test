@@ -35,7 +35,22 @@ try:
         expect(dlg).not_to_be_visible()
         cal.locator('.cell[data-key="2026-11-06"] .chip').first.click()
         expect(dlg.get_by_role('button',name='일정 삭제',exact=True)).to_have_css('color','rgb(180, 35, 24)')
+        expect(dlg).to_have_css('width','880px')
+        assert abs(dlg.bounding_box()['width']-dlg.evaluate('e=>e.parentElement.getBoundingClientRect().width'))<1
+        header=dlg.locator('.st-key-sales_dialog_header')
+        body=dlg.locator('.st-key-sales_dialog_body')
+        expect(body).to_have_css('overflow-y','auto')
+        assert body.bounding_box()['y']-header.bounding_box()['y']<80
+
         dlg.get_by_role('button',name='일정 수정',exact=True).click()
+        page.set_viewport_size({'width':1280,'height':600})
+        expect(dlg.get_by_role('button',name='변경 저장',exact=True)).to_be_visible()
+        y=header.bounding_box()['y']
+        body.evaluate('e=>e.scrollTop=e.scrollHeight')
+        assert body.evaluate('e=>e.scrollTop')>0
+        assert abs(header.bounding_box()['y']-y)<1
+        expect(dlg.get_by_role('button',name='✕',exact=True)).to_be_visible()
+        page.set_viewport_size({'width':1280,'height':900})
         dlg.get_by_label('고객 또는 일정명',exact=True).fill('브라우저 저장한 제목')
         dlg.get_by_label('고객 또는 일정명',exact=True).press('Tab')
         dlg.get_by_role('button',name='변경 저장',exact=True).click()

@@ -518,42 +518,47 @@ def admin_settings(db,start,end):
 
 @st.dialog("영업활동",width="large",dismissible=False)
 def dialog(db):
+    ux.dialog_styles()
     st.html('<span class="sales-dialog-marker"></span>')
-    with st.container(key="sales_close_corner",horizontal=True,horizontal_alignment="right"):
+    kind=st.session_state.get("sales_route",{}).get("type")
+    title={"new":"일정 등록","edit":"일정 수정","event":"일정 상세","copy":"일정 복사","follow":"다음 활동 추가","result":"완료 · 결과 처리","member":"직원 활동 기록","daily":"일일 기록","trash":"삭제한 일정"}.get(kind,"영업활동")
+    with st.container(key="sales_dialog_header",horizontal=True,vertical_alignment="center"):
+        st.markdown("**"+title+"**")
         close_top=st.button("✕",help="팝업 닫기",key="sales_close_top",type="tertiary")
-    close_feedback=st.container()
-    ux.feedback()
-    if message:=st.session_state.pop("sales_dialog_error",None):st.error(message)
-    db._reads.clear() # Dialog fragments must not retain a stale Records read snapshot.
-    route=st.session_state.get("sales_route",{})
-    key=None
-    try:
-        kind=route.get("type")
-        if kind=="new":key=event_editor(db,date.fromisoformat(route["day"]))
-        elif kind=="member":member_detail(db,route["uid"],date.fromisoformat(route["day"]),route["period"])
-        elif kind=="trash":trash(db)
-        elif kind=="daily":key=reports(db,date.fromisoformat(route["day"]),"일일",date.fromisoformat(route["day"]))
-        else:
-            editing=kind in ("edit","copy","follow","result")
-            cached=route.get("editing_snapshot") if editing else None
-            rows=[cached] if cached else db.request("GET","sales_events",{"id":"eq."+route.get("id",""),"limit":"1"})
-            if rows and editing:route["editing_snapshot"]=deepcopy(rows[0])
-            if not rows:st.info("일정을 조회할 수 없습니다.")
+    with st.container(key="sales_dialog_body"):
+        close_feedback=st.container()
+        ux.feedback()
+        if message:=st.session_state.pop("sales_dialog_error",None):st.error(message)
+        db._reads.clear() # Dialog fragments must not retain a stale Records read snapshot.
+        route=st.session_state.get("sales_route",{})
+        key=None
+        try:
+            kind=route.get("type")
+            if kind=="new":key=event_editor(db,date.fromisoformat(route["day"]))
+            elif kind=="member":member_detail(db,route["uid"],date.fromisoformat(route["day"]),route["period"])
+            elif kind=="trash":trash(db)
+            elif kind=="daily":key=reports(db,date.fromisoformat(route["day"]),"일일",date.fromisoformat(route["day"]))
             else:
-                row=rows[0]
-                if kind=="event":event_detail(db,row)
-                elif row["owner"]!=db.uid:st.error("본인의 일정만 변경할 수 있습니다.")
-                elif kind=="result":key=quick_result(db,row)
-                elif kind=="edit":key=event_editor(db,date.fromisoformat(row["day"]),event=row)
-                elif kind=="copy":key=event_editor(db,date.fromisoformat(row["day"]),copy={**ux.copy_event(row),"id":row["id"]})
-                elif kind=="follow":key=event_editor(db,date.fromisoformat(row["day"]),parent=row)
-    except HwarangAuthError as exc:
-        st.session_state["sales_dialog_error"]="요청을 완료하지 못했습니다. 입력 내용은 유지됩니다. "+str(exc)
-        # Only retry rendering after a failed write, never retry a failed read.
-        if st.session_state.pop("sales_write_in_progress",False):ux.refresh()
-        st.error(st.session_state.pop("sales_dialog_error"))
-        key=next((k for k in st.session_state.get("sales_drafts",{}) if ux.dirty(k)),None)
-    ux.close_control(key,requested=close_top,top_container=close_feedback)
+                editing=kind in ("edit","copy","follow","result")
+                cached=route.get("editing_snapshot") if editing else None
+                rows=[cached] if cached else db.request("GET","sales_events",{"id":"eq."+route.get("id",""),"limit":"1"})
+                if rows and editing:route["editing_snapshot"]=deepcopy(rows[0])
+                if not rows:st.info("일정을 조회할 수 없습니다.")
+                else:
+                    row=rows[0]
+                    if kind=="event":event_detail(db,row)
+                    elif row["owner"]!=db.uid:st.error("본인의 일정만 변경할 수 있습니다.")
+                    elif kind=="result":key=quick_result(db,row)
+                    elif kind=="edit":key=event_editor(db,date.fromisoformat(row["day"]),event=row)
+                    elif kind=="copy":key=event_editor(db,date.fromisoformat(row["day"]),copy={**ux.copy_event(row),"id":row["id"]})
+                    elif kind=="follow":key=event_editor(db,date.fromisoformat(row["day"]),parent=row)
+        except HwarangAuthError as exc:
+            st.session_state["sales_dialog_error"]="요청을 완료하지 못했습니다. 입력 내용은 유지됩니다. "+str(exc)
+            # Only retry rendering after a failed write, never retry a failed read.
+            if st.session_state.pop("sales_write_in_progress",False):ux.refresh()
+            st.error(st.session_state.pop("sales_dialog_error"))
+            key=next((k for k in st.session_state.get("sales_drafts",{}) if ux.dirty(k)),None)
+        ux.close_control(key,requested=close_top,top_container=close_feedback)
 
 
 def delete_control(db,row):

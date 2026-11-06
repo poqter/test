@@ -42,9 +42,8 @@ def styles():
     .st-key-sales_workspace input,.st-key-sales_workspace textarea,[data-testid="stDialog"]:has(.sales-dialog-marker) input,[data-testid="stDialog"]:has(.sales-dialog-marker) textarea {border:1px solid #dbe3ed!important;border-radius:8px!important}
     .st-key-sales_workspace input::placeholder,.st-key-sales_workspace textarea::placeholder,[data-testid="stDialog"]:has(.sales-dialog-marker) input::placeholder {color:#8d9caf!important;opacity:1}
     .sales-summary{display:flex;gap:10px;flex-wrap:wrap;margin:5px 0 16px}.sales-summary span{padding:6px 10px;background:#eef3f9;border-radius:7px;color:#334e6b;font-size:13px}
-    .sales-details{display:grid;grid-template-columns:85px 1fr;gap:10px 14px;margin:18px 0}.sales-details dt{color:#718197;font-size:13px}.sales-details dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.sales-dialog-marker{display:none}.st-key-sales_close_corner{margin-bottom:-12px}.st-key-sales_close_corner button{min-width:44px;min-height:44px;font-size:22px}
-    [data-testid="stDialog"]:has(.sales-dialog-marker) [role="dialog"]{max-width:880px}
-    @media(max-width:700px){.st-key-sales_workspace input,.st-key-sales_workspace textarea,[data-testid="stDialog"]:has(.sales-dialog-marker) input{font-size:16px!important}[data-testid="stDialog"]:has(.sales-dialog-marker) [role="dialog"]{width:calc(100% - 16px);max-height:calc(var(--sales-viewport, 100dvh) - 16px);overflow-y:auto;scroll-padding-bottom:80px;padding-bottom:env(safe-area-inset-bottom, 0px)}.sales-details{grid-template-columns:65px 1fr;gap:8px}[data-testid="stPopoverBody"]:has(.sales-reference){position:fixed!important;bottom:0!important;top:auto!important;left:0!important;width:100%!important;max-height:75dvh;overflow:auto;border-radius:16px 16px 0 0}}
+    .sales-details{display:grid;grid-template-columns:85px 1fr;gap:10px 14px;margin:18px 0}.sales-details dt{color:#718197;font-size:13px}.sales-details dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.sales-dialog-marker{display:none}
+    @media(max-width:700px){.st-key-sales_workspace input,.st-key-sales_workspace textarea,[data-testid="stDialog"]:has(.sales-dialog-marker) input{font-size:16px!important}.sales-details{grid-template-columns:65px 1fr;gap:8px}[data-testid="stPopoverBody"]:has(.sales-reference){position:fixed!important;bottom:0!important;top:auto!important;left:0!important;width:100%!important;max-height:75dvh;overflow:auto;border-radius:16px 16px 0 0}}
     [data-testid="stDialog"]:has(.sales-dialog-marker) input,[data-testid="stDialog"]:has(.sales-dialog-marker) textarea {scroll-margin:80px 0}
     </style>''')
     st.html('''<script>
@@ -173,4 +172,26 @@ def delete_styles():
     body [class*="st-key-delete_"][data-testid] button :is(p,span){color:inherit!important}
     body [class*="st-key-delete_"][data-testid] button:hover{background:#ffe4e1!important;border-color:#b42318!important}
     body [class*="st-key-delete_"][data-testid] button:focus-visible{outline:3px solid #d92d20!important;outline-offset:2px}
+    </style>''')
+
+
+def dialog_styles():
+    st.html('''<style>
+    [data-testid="stDialog"] div:has(>[role="dialog"]):has(.sales-dialog-marker){width:min(880px,calc(100vw - 32px))!important;max-width:880px!important;min-width:0!important;flex:0 1 880px!important;background:#fff!important;overflow:hidden!important;border-radius:20px}
+    [role="dialog"]:has(.sales-dialog-marker){width:100%!important;max-width:none!important;max-height:calc(100dvh - 32px)!important;padding:0!important;overflow:hidden!important;background:#fff!important}
+    [role="dialog"]:has(.sales-dialog-marker)>[slot="title"]{display:none}
+    [role="dialog"]:has(.sales-dialog-marker)>div{padding:0!important;overflow:hidden!important}
+    [role="dialog"] [data-testid="stElementContainer"]:has(>.stHtml>.sales-dialog-marker){display:none}
+    [role="dialog"] [data-testid="stVerticalBlock"]:has(>[data-testid="stLayoutWrapper"]>.st-key-sales_dialog_header){gap:0!important}
+    .st-key-sales_dialog_header{padding:10px 20px!important;gap:12px!important;min-height:64px;background:#fff;border-bottom:1px solid #e6ebf1}
+    .st-key-sales_dialog_header .st-key-sales_close_top{margin-left:auto;flex:0 0 auto!important}
+    .st-key-sales_dialog_header button{min-width:44px;min-height:44px}
+    .st-key-sales_dialog_header p{margin:0!important}
+    .st-key-sales_dialog_body{max-height:calc(100dvh - 110px)!important;overflow-y:auto!important;overflow-x:hidden!important;min-height:0;padding:16px 24px 24px!important;scrollbar-gutter:stable;overscroll-behavior:contain;scroll-padding:20px}
+    .st-key-sales_dialog_body h3{padding-top:0!important}
+    @media(max-width:700px){
+      [data-testid="stDialog"] div:has(>[role="dialog"]):has(.sales-dialog-marker){width:calc(100vw - 16px)!important}
+      .st-key-sales_dialog_header{padding:8px 12px!important}
+      .st-key-sales_dialog_body{padding:12px 16px max(20px,env(safe-area-inset-bottom))!important;max-height:calc(var(--sales-viewport,100dvh) - 100px)!important}
+    }
     </style>''')
