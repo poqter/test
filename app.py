@@ -247,6 +247,12 @@ def _open_admin_center() -> None:
     st.session_state["hw_admin_center_page"] = "dashboard"
 
 
+@st.fragment
+def render_task_content(active, permission_role, permitted):
+    # Input changes rerun the active tool, keeping the shell/sidebar mounted.
+    dispatch(active, role=permission_role, allowed=permitted)
+
+
 def main() -> None:
     initialize_state()
     try:
@@ -386,7 +392,7 @@ def main() -> None:
     with st.container(key="hw_task_page"):
         st.markdown('<div class="hw-task-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
         render_workbench(active, permitted, navigate)
-        dispatch(active, role=permission_role, allowed=permitted)
+        render_task_content(active, permission_role, permitted)
 
 
 if __name__ == "__main__":

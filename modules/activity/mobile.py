@@ -157,7 +157,10 @@ def alerts(db):
 def run(logout):
     ux.styles()
     st.html('''<style>
-    [data-testid="stHeader"]{display:none}.block-container{padding-top:1rem!important;padding-bottom:2rem!important;max-width:1200px}
+    [data-testid="stHeader"]{display:none}.block-container{padding-top:.4rem!important;padding-bottom:2rem!important;max-width:1200px}
+    body:has(.st-key-mobile_header) [data-testid="stMainBlockContainer"]{padding-top:8px!important}
+    body:has(.st-key-mobile_header) [data-testid="stElementContainer"]:has(iframe[title="modules.activity.device.workspace_device"]){display:none}
+    body:has(.st-key-mobile_header) [data-testid="stMainBlockContainer"]>[data-testid="stVerticalBlock"]{gap:.4rem!important}
     .st-key-mobile_header h3{margin:0;padding:0;font-size:1.15rem;white-space:nowrap}
     .st-key-mobile_header [data-testid="stHorizontalBlock"],.st-key-mobile_work_counts [data-testid="stHorizontalBlock"]{flex-wrap:nowrap!important;gap:6px!important}
     .st-key-mobile_header [data-testid="stColumn"],.st-key-mobile_work_counts [data-testid="stColumn"]{min-width:0!important;flex:1 1 0!important;width:0!important}
@@ -182,15 +185,15 @@ def run(logout):
     with st.container(key='mobile_header'):
         a,b,c=st.columns([1,3,1])
         with a.container(key='mobile_menu_toggle'):
-            with st.popover('☰ 메뉴',key='mobile_drawer_'+page+str(bool(st.session_state.get('mobile_pending')))):
+            with st.popover('☰',key='mobile_drawer_'+page+str(bool(st.session_state.get('mobile_pending')))):
                 st.html('<span class="mobile-drawer"></span>');menu_items(db,logout,'drawer')
         b.subheader('화랑 캘린더')
         unread=db.request('GET','sales_notices',{'seen':'eq.false','select':'id','limit':'50'})
-        c.button('🔔 '+(str(len(unread))+'+' if len(unread)==50 else str(len(unread))) if unread else '🔔 알림',on_click=choose,args=('알림·피드백',),key='mobile_alerts')
+        c.button('🔔 '+(str(len(unread))+'+' if len(unread)==50 else str(len(unread))) if unread else '🔔',on_click=choose,args=('알림·피드백',),key='mobile_alerts')
     pending_navigation()
     with st.container(key='mobile_content'):
         if page=='캘린더':
-            summary(db,today)
+            st.html("""<button class="mobile-new-event" aria-label="일정 등록" title="일정 등록">＋</button><style>.mobile-new-event{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));width:52px;height:52px;border:0;border-radius:50%;background:#155461;color:white;font-size:28px;z-index:40;box-shadow:0 3px 12px #1234;cursor:pointer}</style><script>document.querySelector('.mobile-new-event').onclick=()=>document.querySelectorAll('iframe').forEach(f=>f.contentWindow.postMessage({type:'hwarang.activity.new'},location.origin));</script>""",unsafe_allow_javascript=True)
             center.calendar(db,today)
         elif page=='오늘의 업무':today_view(db,today)
         elif page=='후속 할 일':tasks_view(db,today)

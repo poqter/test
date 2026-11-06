@@ -48,6 +48,8 @@ def styles():
     st.html('''<script>
     if(!window.hwarangActivityViewport){
       window.hwarangActivityViewport=true;
+      const visibility=()=>document.querySelectorAll('iframe').forEach(f=>f.contentWindow.postMessage({type:'hwarang.activity.visibility',visible:!document.hidden},location.origin));
+      document.addEventListener('visibilitychange',visibility);window.addEventListener('online',visibility);
       const resize=()=>{document.documentElement.style.setProperty('--sales-viewport',(window.visualViewport?.height||innerHeight)+'px');};
       window.visualViewport?.addEventListener('resize',resize);resize();
     }

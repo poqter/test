@@ -1,0 +1,35 @@
+"""Verify the real workspace tool wrapper keeps shell state mounted on input."""
+from pathlib import Path
+import subprocess, sys, tempfile, time, socket
+from playwright.sync_api import sync_playwright, expect
+root=Path(__file__).resolve().parents[2]
+with tempfile.TemporaryDirectory() as tmp:
+    script=Path(tmp)/'shell.py'
+    script.write_text(f'''import sys
+sys.path.insert(0,{str(root)!r})
+import streamlit as st
+import app as workspace
+st.session_state['shell_runs']=st.session_state.get('shell_runs',0)+1
+st.caption('SHELL_RUNS='+str(st.session_state['shell_runs']))
+def tool(*args,**kwargs):
+    text=st.text_input('도구 입력',key='tool_input')
+    st.write('입력값: '+text)
+workspace.dispatch=tool
+workspace.render_task_content('synthetic','user',['synthetic'])
+''')
+    process=subprocess.Popen([sys.executable,'-m','streamlit','run',str(script),'--server.headless=true','--server.port=8505','--server.address=127.0.0.1','--browser.gatherUsageStats=false'],cwd=root,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    try:
+        for _ in range(100):
+            try:
+                with socket.create_connection(('127.0.0.1',8505),timeout=.2):break
+            except OSError:time.sleep(.2)
+        with sync_playwright() as p:
+            b=p.chromium.launch(headless=True);page=b.new_page();page.goto('http://127.0.0.1:8505')
+            expect(page.get_by_text('SHELL_RUNS=1',exact=True)).to_be_visible()
+            page.get_by_label('도구 입력').fill('입력 유지');page.get_by_label('도구 입력').press('Tab')
+            expect(page.get_by_text('입력값: 입력 유지',exact=True)).to_be_visible()
+            expect(page.get_by_text('SHELL_RUNS=1',exact=True)).to_be_visible()
+            expect(page.get_by_test_id('stException')).to_have_count(0)
+            b.close()
+    finally:process.terminate();process.wait(timeout=10)
+print('PASS common workspace shell stays mounted during tool input')

@@ -89,3 +89,8 @@ body:has(.hw-design-2026) .st-key-hw_auth_card [data-testid="stTextInputRootElem
  body:has(.hw-design-2026) .st-key-hw_auth_card [data-testid="stFormSubmitButton"] button:hover{translate:0 -2px}
  body:has(.hw-design-2026) .st-key-hw_auth_card [data-testid="stFormSubmitButton"] button:active{translate:0 0}
 }
+
+/* Stable surfaces across input/save reruns, including legacy workspace tools. */
+body:has(.hw-design-2026) :is(.hw-auth-copy,.brand-header,.hw-page-head,.hw-news,.st-key-hw_auth_card,.st-key-brand_welcome,.st-key-brand_briefing,.st-key-hw_briefing_header),
+body:has(.hw-design-2026) [data-testid="stVerticalBlock"]:is([class*="st-key-brand_tile_"],[class*="st-key-brand_feature_"],[class*="st-key-brand_external_"]){animation:none!important}
+body:has(.hw-design-2026) [data-stale="true"]{opacity:1!important;transition:none!important}

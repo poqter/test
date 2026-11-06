@@ -9,7 +9,7 @@ def test_mobile_default_and_management_menus():
     at=app(TAIL)
     assert not at.exception
     assert any(b.label=='구성원 현황' for b in at.button)
-    assert any(b.label.startswith('오늘 일정 ') for b in at.button)
+    assert not any(b.label.startswith('오늘 일정 ') for b in at.button)
 
 
 def test_staff_cannot_open_manager_page():
@@ -56,6 +56,6 @@ def test_weekly_and_alerts_empty_state():
     button(at,'주간 기록').click().run()
     assert not at.exception
     assert any(s.value=='이번 주 돌아보기' for s in at.subheader)
-    button(at,'🔔 알림').click().run()
+    button(at,'🔔').click().run()
     assert not at.exception
     assert any(i.value=='일정 알림이 없습니다.' for i in at.info)

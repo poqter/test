@@ -18,6 +18,7 @@ class FakeRecords:
         st.session_state.setdefault("fixture_writes",[])
     def request(self,method,table,params=None,body=None,prefer=None):
         st.session_state.setdefault("fixture_reads",[]).append((method,table))
+        if table=="rpc/sales_calendar_stamp":return "fixture-stamp"
         if method=="POST" and table in ("rpc/sales_members","rpc/sales_branch_members"):return list(self.members.values())
         if method=="POST" and table=="rpc/sales_calendar_days":return deepcopy(st.session_state["fixture_events"])
         if method=="POST" and table=="rpc/sales_edit_event":
@@ -31,7 +32,15 @@ class FakeRecords:
             rows=st.session_state["fixture_events"] if table=="sales_events" else st.session_state["fixture_reports"] if table=="sales_reports" else []
             for k,v in (params or {}).items():
                 if str(v).startswith("eq."):rows=[r for r in rows if str(r.get(k)).lower()==str(v)[3:].lower()]
+            if table=="sales_events":
+                trash=(params or {}).get("deleted_at", "is.null")!="is.null"
+                rows=[r for r in rows if bool(r.get("deleted_at"))==trash]
             return deepcopy(rows)
+        if method=="POST" and table=="rpc/sales_archive_event":
+            for r in st.session_state["fixture_events"]:
+                if r['id']==body['p_id'] and r['owner']==self.uid:
+                    r['deleted_at']=None if body['p_restore'] else '2026-11-06T12:00:00+09:00';r['revision']+=1
+            st.session_state['fixture_writes'].append(deepcopy(body));return 1
         if method=="POST" and table=="sales_events":
             existing={r["id"] for r in st.session_state["fixture_events"]}
             for row in body if isinstance(body,list) else [body]:

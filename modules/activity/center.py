@@ -35,7 +35,9 @@ class Records:
         self.me=self.members[self.uid]
 
     def request(self,method,table,params=None,body=None,prefer=None):
-        readonly = method == "GET" or (method == "POST" and table in {"rpc/sales_members", "rpc/sales_branch_members", "rpc/sales_calendar_days"})
+        if method == "GET" and table == "sales_events":
+            params={"deleted_at":"is.null",**(params or {})}
+        readonly = method == "GET" or (method == "POST" and table in {"rpc/sales_members", "rpc/sales_branch_members", "rpc/sales_calendar_days", "rpc/sales_calendar_stamp"})
         if not readonly:self._reads.clear()
         def fetch(query):
             key=json.dumps([method,table,query,body,prefer],sort_keys=True)
@@ -43,7 +45,7 @@ class Records:
             value=self.auth._request(method,"/rest/v1/"+table,access_token=self.token,params=query,json=body,prefer=prefer)
             if readonly:self._reads[key]=deepcopy(value)
             return value
-        if not readonly or "limit" in (params or {}):
+        if table == "rpc/sales_calendar_stamp" or not readonly or "limit" in (params or {}):
             return fetch(params)
         from modules.shared.collection_pages import collect_pages
         keys={"sales_empty_days":("owner","day"), "sales_report_history":("report","revision"), "sales_team_assignments":("member",), "rpc/sales_members":("member",), "rpc/sales_branch_members":("member",)}.get(table,("id",))
@@ -110,11 +112,14 @@ def detail_dialog(db,row):
     st.session_state["sales_route_stack"]=[]
     st.session_state["sales_calendar_open"]=True
 
-@st.fragment(run_every="30s")
+@st.fragment
 def calendar(db,today):
     from modules.activity import ux
     ux.feedback()
+    if hasattr(db,"token"):db.token=st.session_state.get("hwarang_auth",{}).get("access_token",db.token)
     pending=st.session_state.get("sales_interactive_calendar")
+    if isinstance(pending,dict) and pending.get("action")=="reauth" and pending.get("nonce")!=st.session_state.get("sales_calendar_action"):
+        st.session_state["sales_calendar_action"]=pending["nonce"];st.rerun()
     opening=isinstance(pending,dict) and pending.get("action") in ("new","event") and pending.get("nonce")!=st.session_state.get("sales_calendar_action")
     # Reuse only this already-visible calendar frame when opening a modal.
     # Normal navigation and the 30-second refresh always read current data.
@@ -135,7 +140,7 @@ def calendar(db,today):
     mobile_shell=st.query_params.get("view")=="mobile-calendar"
     notices_slot = None if mobile_shell else st.container()
     position=st.session_state["hwarang_auth"]["profile"].get("position_code")
-    filters=st.expander("직원·지점 일정 조회",key="mobile_calendar_filters") if mobile_shell else st.container()
+    filters=st.popover("직원 조회" if db.me["managed"] else "조회 범위") if mobile_shell else st.container()
     with filters:
         team=st.toggle("지점 일정",value=position=="branch_manager")
         branch={r["member"]:r for r in db.request("POST","rpc/sales_branch_members",body={})}
@@ -157,6 +162,9 @@ def calendar(db,today):
     if mode=="날짜별":
         fetch_start-=7*DAY
         fetch_end+=7*DAY
+    if selected_member and mobile_shell:st.caption("조회 중 · "+db.members[selected_member]["label"])
+    sync_unit=db.members[selected_member]["unit"] if selected_member else db.me["unit"]
+    stamp=db.request("POST","rpc/sales_calendar_stamp",body={"first_day":str(fetch_start),"last_day":str(fetch_end),"p_unit":sync_unit})
     detail_scope={"owner":"eq."+selected_member} if selected_member else {"unit":"eq."+db.me["unit"]}
     events=db.period("sales_events",fetch_start,fetch_end,order="day.asc,start_time.asc.nullsfirst",**detail_scope)
     details={r["id"]:r for r in events}
@@ -198,7 +206,7 @@ def calendar(db,today):
         if row.get("companion"):label+=" · 동행 "+branch.get(row["companion"],{}).get("label","")
         if row.get("help"):label+=" · 지원 요청"
         cards.append(dict(id=row["id"],day=row["day"],kind=row["kind"],member=row["owner"],allDay=not row["start_time"],short=(row.get('title') or row['kind'])+(f' · {owner}' if team else ''),label=label,done=status=="완료"))
-    action=calendar_view(hideMobileApp=st.query_params.get("view")=="mobile-calendar",hideWeekends=st.session_state.get("sales_hide_weekends",True),mobileSession=dict(url=db.auth.config.url,key=db.auth.config.publishable_key,token=db.token,uid=db.uid,unit=db.me["unit"],branch=position=="branch_manager"),mode=mode,day=str(day),today=str(today),events=cards,roster={uid:p["label"] for uid,p in branch.items() if not selected_member or uid==selected_member} if team else {},rangeStart=str(fetch_start),rangeEnd=str(fetch_end),key="sales_interactive_calendar",default=None)
+    action=calendar_view(syncStamp=stamp,syncUnit=sync_unit,hideMobileApp=st.query_params.get("view")=="mobile-calendar",hideWeekends=st.session_state.get("sales_hide_weekends",True),mobileSession=dict(url=db.auth.config.url,key=db.auth.config.publishable_key,token=db.token,uid=db.uid,unit=db.me["unit"],branch=position=="branch_manager"),mode=mode,day=str(day),today=str(today),events=cards,roster={uid:p["label"] for uid,p in branch.items() if not selected_member or uid==selected_member} if team else {},rangeStart=str(fetch_start),rangeEnd=str(fetch_end),key="sales_interactive_calendar",default=None)
     if isinstance(action,dict) and action.get("nonce")!=st.session_state.get("sales_calendar_action"):
         st.session_state["sales_calendar_action"]=action.get("nonce")
         command,value=action.get("action"),action.get("value")
@@ -219,6 +227,10 @@ def calendar(db,today):
             found=next((r for r in events if r["id"]==value),None)
             if found and found["id"] in details:detail_dialog(db,found)
             elif found:st.info(next(c["label"] for c in cards if c["id"]==value))
+    if st.button("삭제한 일정",key="sales_trash_open",type="tertiary"):
+        st.session_state["sales_route"]={"type":"trash"}
+        st.session_state["sales_route_stack"]=[]
+        st.session_state["sales_calendar_open"]=True
     with notices_slot if notices_slot is not None else st.container():
         notices=db.request("GET","sales_notices",{"seen":"eq.false","order":"created_at.desc","limit":"20","select":"id,message,sales_events(day,kind)"})
         if notices:

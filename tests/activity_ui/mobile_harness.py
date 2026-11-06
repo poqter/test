@@ -7,6 +7,8 @@ from datetime import date
 from activity_fixture import FakeRecords, UID
 from modules.activity import center, mobile
 st.set_page_config(layout='wide')
+from modules.shared.workspace_design import apply_workspace_design
+apply_workspace_design()
 st.session_state.setdefault('hwarang_auth',{'profile':{'id':UID,'position_code':'team_leader','role':'user'}})
 st.session_state.setdefault('sales_anchor',date(2026,11,6))
 st.query_params['view']='mobile-calendar'

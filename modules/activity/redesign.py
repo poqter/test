@@ -131,9 +131,18 @@ def event_editor(db,day,event=None,parent=None,copy=None):
             days={str(v["day"]+7*i*DAY) for i in range(repeat)}
             overlap=[r for r in candidates if r["id"]!=(event or {}).get("id") and r["day"] in days and r.get("start_time") and
                 (r["start_time"]==body["start_time"] or r["start_time"]<(body["end_time"] or body["start_time"]) and (r.get("end_time") or r["start_time"])>body["start_time"])]
-            signature=(str(v["day"]),body["start_time"],body["end_time"],repeat,tuple(r["id"] for r in overlap))
+            if body['companion']:
+                # Branch summary exposes only the already-authorized time/kind fields.
+                stop=v['day']+7*(repeat-1)*DAY
+                cursor=v['day']
+                while cursor<=stop:
+                    edge=min(stop,cursor+62*DAY)
+                    summaries=db.request('POST','rpc/sales_calendar_days',body={'first_day':str(cursor),'last_day':str(edge)})
+                    overlap.extend(r for r in summaries if r['id']!=(event or {}).get('id') and r['day'] in days and r['status']=='예정' and body['companion'] in (r['owner'],r.get('companion')) and r.get('start_time')==body['start_time'])
+                    cursor=edge+DAY
+            signature=(str(v["day"]),body["start_time"],body["end_time"],body['companion'],repeat,tuple(r["id"] for r in overlap))
             if overlap and d.get("overlap")!=signature:
-                d["overlap"]=signature;st.warning("기존 일정과 시간이 겹칩니다. 그대로 등록하려면 저장 버튼을 한 번 더 눌러 주세요.");return key
+                d["overlap"]=signature;st.warning("본인 또는 동행자의 기존 일정과 시간이 겹칩니다. 그대로 등록하려면 저장 버튼을 한 번 더 눌러 주세요.");return key
         save_slot.button("저장 중…",disabled=True,key=key+"busy")
         st.session_state["sales_write_in_progress"]=True
         if event:
@@ -143,11 +152,17 @@ def event_editor(db,day,event=None,parent=None,copy=None):
                 d["conflict"]=True;raise
         else:
             seed=d.setdefault("seed",str(uuid4()))
-            rows=[{**body,"unit":db.me["unit"],"previous_event":parent["id"] if parent else None,"day":str(v["day"]+i*7*DAY),"id":str(uuid5(NAMESPACE_URL,seed+str(i)))} for i in range(repeat)]
-            try:db.request("POST","sales_events",body=rows,prefer="resolution=ignore-duplicates")
+            rows=[{**body,"unit":db.me["unit"],"previous_event":parent["id"] if parent else None,"series_id":seed if repeat>1 else None,"day":str(v["day"]+i*7*DAY),"id":str(uuid5(NAMESPACE_URL,seed+str(i)))} for i in range(repeat)]
+            try:
+                db.request("POST","sales_events",body=rows,prefer="resolution=ignore-duplicates")
+                stored=db.request("GET","sales_events",{"id":"in.("+",".join(r["id"] for r in rows)+")"})
+                indexed={r["id"]:r for r in stored}
+                if any(r["id"] not in indexed or any(indexed[r["id"]].get(k)!=value for k,value in r.items()) for r in rows):
+                    raise HwarangAuthError("같은 저장 요청의 기존 내용과 현재 입력이 다릅니다. 입력은 유지됩니다. 최신 일정을 확인해 주세요.")
             except HwarangAuthError:
                 d["conflict"]=True;raise
         ux.saved_event(key,event["id"] if event else rows[0]["id"])
+    if event:delete_control(db,event)
     return key
 
 def quick_result(db,row):
@@ -196,6 +211,7 @@ def event_detail(db,row):
                             db.request("POST","sales_followups",body={"id":st.session_state.setdefault(seed,str(uuid4())),"source":row["id"],"due":str(due),"title":title.strip()},prefer="resolution=ignore-duplicates")
                             st.session_state.pop(seed);notify();ux.refresh()
         contract_editor(db,date.fromisoformat(row["day"]),row["id"])
+        delete_control(db,row)
     feedback=st.expander("확인 · 피드백",key="event_feedback_"+row["id"],on_change="rerun")
     if feedback.open:
         with feedback:review(db,row,"event")
@@ -515,6 +531,7 @@ def dialog(db):
         kind=route.get("type")
         if kind=="new":key=event_editor(db,date.fromisoformat(route["day"]))
         elif kind=="member":member_detail(db,route["uid"],date.fromisoformat(route["day"]),route["period"])
+        elif kind=="trash":trash(db)
         elif kind=="daily":key=reports(db,date.fromisoformat(route["day"]),"일일",date.fromisoformat(route["day"]))
         else:
             editing=kind in ("edit","copy","follow","result")
@@ -537,3 +554,40 @@ def dialog(db):
         st.error(st.session_state.pop("sales_dialog_error"))
         key=next((k for k in st.session_state.get("sales_drafts",{}) if ux.dirty(k)),None)
     ux.close_control(key,requested=close_top,top_container=close_feedback)
+
+
+def delete_control(db,row):
+    if row['owner']!=db.uid:return
+    key='delete_'+row['id']
+    with st.expander('일정 삭제',key=key,on_change='rerun') as panel:
+        if not panel.open:return
+        st.write(row['day']+' · '+row['title'])
+        future=False
+        if row.get('series_id'):
+            future=st.radio('삭제 범위',['이번 일정만','이후 반복 일정까지'],key=key+'_scope')=='이후 반복 일정까지'
+        st.caption('달력과 활동 집계에서 제외됩니다. 계약·후속 활동은 보존되며, 삭제한 일정 메뉴에서 30일 동안 복구할 수 있습니다.')
+        confirm=st.checkbox('이 일정을 삭제하겠습니다',key=key+'_confirm')
+        if st.button('일정 삭제 확인',disabled=not confirm,key=key+'_submit'):
+            db.request('POST','rpc/sales_archive_event',body={'p_id':row['id'],'p_revision':row['revision'],'p_future':future,'p_restore':False})
+            st.session_state['sales_route']={'type':'trash'}
+            st.session_state['sales_route_stack']=[]
+            for k in list(st.session_state.get('sales_drafts',{})):
+                if row['id'] in k:ux.clear_draft(k)
+            st.session_state['sales_dialog_notice']='삭제했습니다. 30일 동안 복구할 수 있습니다.'
+            st.session_state['sales_calendar_refresh']=str(uuid4())
+            ux.refresh()
+
+
+def trash(db):
+    st.subheader('삭제한 일정')
+    st.caption('본인의 일정만 표시됩니다. 삭제 후 30일 동안 개별 복구할 수 있습니다. 연결된 계약·후속 기록은 삭제하지 않습니다.')
+    cutoff=(datetime.now(KST)-timedelta(days=30)).isoformat()
+    rows=db.request('GET','sales_events',{'owner':'eq.'+db.uid,'deleted_at':'gte.'+cutoff,'order':'deleted_at.desc,day.asc'})
+    if not rows:st.info('복구할 일정이 없습니다.')
+    for row in rows:
+        with st.container(border=True):
+            st.write(row['day']+' · '+row['title'])
+            if st.button('복구',key='restore_'+row['id']):
+                db.request('POST','rpc/sales_archive_event',body={'p_id':row['id'],'p_revision':row['revision'],'p_future':False,'p_restore':True})
+                st.session_state['sales_dialog_notice']='일정을 복구했습니다.'
+                st.session_state['sales_calendar_refresh']=str(uuid4());ux.refresh()

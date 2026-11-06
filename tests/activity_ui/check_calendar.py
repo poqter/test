@@ -54,6 +54,23 @@ with sync_playwright() as p:
     page.evaluate('a=>render(a)',dict(ARGS,hideWeekends=True))
     assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
     assert page.locator('#grid').evaluate('(e)=>getComputedStyle(e).gridTemplateColumns.split(" ").length')==1
+    # Stable no-change probes, coalesced change notification, hidden pause and offline retention.
+    args=dict(ARGS,hideWeekends=True,syncStamp='v1',syncUnit='unit',mobileSession=dict(uid='one',url='https://activity.test',key='public',token='fake'))
+    page.evaluate('a=>render(a)',args)
+    page.evaluate("window.syncCalls=0;window.syncChanges=0;window.fetch=async()=>{syncCalls++;return {ok:true,json:async()=>window.mockStamp||'v1'}};window.addEventListener('message',e=>{if(e.data.value?.action==='refresh')syncChanges++});window.keptCell=document.querySelector('[data-key=\"2026-11-06\"]')")
+    page.evaluate('checkSync()')
+    page.wait_for_timeout(50)
+    assert page.evaluate('syncCalls')==1 and page.evaluate('syncChanges')==0
+    page.evaluate("window.mockStamp='v2';checkSync()")
+    page.wait_for_timeout(50)
+    page.evaluate('checkSync()');page.wait_for_timeout(50)
+    assert page.evaluate('syncChanges')==1
+    assert page.evaluate('keptCell===document.querySelector(\'[data-key="2026-11-06"]\')')
+    page.evaluate('parentVisible=false;checkSync()');before=page.evaluate('syncCalls')
+    page.evaluate('checkSync()');assert page.evaluate('syncCalls')==before
+    page.evaluate("parentVisible=true;window.fetch=async()=>{throw Error('offline')};checkSync()")
+    assert '연결 확인 중' in page.locator('#refreshing').inner_text()
+    assert page.evaluate('keptCell===document.querySelector(\'[data-key="2026-11-06"]\')')
     assert not errors,errors
     browser.close()
 print('PASS calendar weekdays, toggle, weekend data retention, keyed updates, navigation and mobile layout')

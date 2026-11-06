@@ -32,4 +32,42 @@ assert.equal((await db.query('select count(*)::int as n from public.sales_events
 await db.exec('reset role');
 assert.equal((await db.query("select prosecdef from pg_proc where oid='public.sales_edit_event(uuid,integer,jsonb,date,uuid)'::regprocedure")).rows[0].prosecdef,false);
 console.log('PASS: followup context, case link, RLS isolation, stale revision, atomic rollback, repeat-safe migration');
+// Minimal live authorization fixtures for the additive calendar migration.
+await db.exec(`
+create table public.profiles(id uuid primary key,organization_unit_id uuid,display_name text,is_active boolean default true);
+create table public.sales_reports(id uuid,owner uuid,day date,submitted boolean);
+create function private.sales_enabled() returns boolean language sql as $$select auth.uid() is not null$$;
+create function private.sales_scope() returns table(member uuid,label text,unit uuid,managed boolean) language sql security definer as $$select id,display_name,organization_unit_id,true from public.profiles where id=auth.uid()$$;
+create function private.sales_branch_members() returns table(member uuid,label text) language sql security definer as $$select p.id,p.display_name from public.profiles p join public.profiles me on me.organization_unit_id=p.organization_unit_id where me.id=auth.uid()$$;
+create function private.sales_scope_for(uuid,boolean) returns table(member uuid,label text,unit uuid,managed boolean) language sql as $$select * from private.sales_scope()$$;
+create function private.sales_admin() returns boolean language sql as $$select true$$;
+grant usage on schema private to authenticated;
+insert into public.profiles values('${owner}','${owner}','owner',true),('${other}','${owner}','other',true);
+`);
+await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261106074531_sales_smooth_sync_archive.sql',import.meta.url),'utf8'));
+await db.exec(`set role authenticated;set request.jwt.claim.sub='${owner}'`);
+const stamp=async()=> (await db.query("select public.sales_calendar_stamp('2026-11-01','2026-11-30',$1) as v",[owner])).rows[0].v;
+const initial=await stamp();assert.equal(await stamp(),initial);
+const series='55555555-5555-4555-8555-555555555555';
+await db.query("insert into public.sales_events(id,unit,day,kind,title,series_id) values($1,$2,'2026-11-14','AP','repeat 1',$3),($4,$2,'2026-11-21','AP','repeat 2',$3)",['66666666-6666-4666-8666-666666666666',owner,series,'77777777-7777-4777-8777-777777777777']);
+assert.notEqual(await stamp(),initial,'creation changes stamp');
+const archive=async(id,rev,future=false,restore=false)=>(await db.query('select public.sales_archive_event($1,$2,$3,$4) as n',[id,rev,future,restore])).rows[0].n;
+await db.exec(`set request.jwt.claim.sub='${other}'`);
+await assert.rejects(()=>archive(event,2),'another owner cannot archive');
+assert.equal((await db.query("select public.sales_calendar_stamp('2026-11-01','2026-11-30',$1) as v",[other])).rows[0].v,null,'unrelated unit stamp is private');
+await db.exec(`set request.jwt.claim.sub='${owner}'`);
+await assert.rejects(()=>archive(event,1),'stale revision blocked');
+const before=await stamp();
+assert.equal(await archive('66666666-6666-4666-8666-666666666666',1,true),2);
+assert.notEqual(await stamp(),before,'deletion changes stamp');
+assert.equal((await db.query("select count(*)::int as n from private.sales_calendar_days('2026-11-01','2026-11-30')")).rows[0].n,2,'deleted events excluded from branch summaries');
+assert.equal(await archive('66666666-6666-4666-8666-666666666666',1,true),0,'lost response retry safe');
+await assert.rejects(()=>db.query("update public.sales_events set title='wrong' where id=$1",['66666666-6666-4666-8666-666666666666']),'deleted events cannot be edited');
+assert.equal(await archive('66666666-6666-4666-8666-666666666666',2,false,true),1);
+assert.equal((await db.query('select previous_event from public.sales_events where id=$1',[follow])).rows[0].previous_event,event,'linked history untouched');
+// Many independent registrations, no overwrites; duplicate request remains one row.
+await db.exec(`insert into public.sales_events(id,unit,day,kind,title) select md5('load-'||i)::uuid,'${owner}','2026-11-10','AP','load-'||i from generate_series(1,1000) i on conflict(id) do nothing`);
+await db.exec(`insert into public.sales_events(id,unit,day,kind,title) select md5('load-'||i)::uuid,'${owner}','2026-11-10','AP','load-'||i from generate_series(1,1000) i on conflict(id) do nothing`);
+assert.equal((await db.query("select count(*)::int as n from public.sales_events where title like 'load-%'")).rows[0].n,1000);
+console.log('PASS: owner-only archive/restore, stale revision, repeated request, period stamps, scope isolation, linked history, 1000 independent registrations');
 await db.close();
