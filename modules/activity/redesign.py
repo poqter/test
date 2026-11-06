@@ -196,6 +196,7 @@ def event_detail(db,row):
         if a.button("일정 수정",width="stretch"): ux.navigate({"type":"edit","id":row["id"]},True)
         if b.button("완료 · 결과 처리",type="primary",width="stretch"): ux.navigate({"type":"result","id":row["id"]},True)
         if c.button("일정 복사",width="stretch"): ux.navigate({"type":"copy","id":row["id"]},True)
+        delete_control(db,row)
         with st.expander("다음 활동 추가"):
             kind=st.radio("추가할 활동",["후속 일정","할 일"],horizontal=True,key="next_"+row["id"])
             if kind=="후속 일정":
@@ -211,7 +212,6 @@ def event_detail(db,row):
                             db.request("POST","sales_followups",body={"id":st.session_state.setdefault(seed,str(uuid4())),"source":row["id"],"due":str(due),"title":title.strip()},prefer="resolution=ignore-duplicates")
                             st.session_state.pop(seed);notify();ux.refresh()
         contract_editor(db,date.fromisoformat(row["day"]),row["id"])
-        delete_control(db,row)
     feedback=st.expander("확인 · 피드백",key="event_feedback_"+row["id"],on_change="rerun")
     if feedback.open:
         with feedback:review(db,row,"event")
@@ -559,20 +559,20 @@ def dialog(db):
 def delete_control(db,row):
     if row['owner']!=db.uid:return
     key='delete_'+row['id']
-    with st.expander('일정 삭제',key=key,on_change='rerun') as panel:
-        if not panel.open:return
+    if st.button('일정 삭제',key=key+'_open',type='secondary'):
+        st.session_state[key+'_visible']=not st.session_state.get(key+'_visible',False)
+    if st.session_state.get(key+'_visible'):
         st.write(row['day']+' · '+row['title'])
         future=False
         if row.get('series_id'):
             future=st.radio('삭제 범위',['이번 일정만','이후 반복 일정까지'],key=key+'_scope')=='이후 반복 일정까지'
         st.caption('달력과 활동 집계에서 제외됩니다. 계약·후속 활동은 보존되며, 삭제한 일정 메뉴에서 30일 동안 복구할 수 있습니다.')
-        confirm=st.checkbox('이 일정을 삭제하겠습니다',key=key+'_confirm')
-        if st.button('일정 삭제 확인',disabled=not confirm,key=key+'_submit'):
+        if st.button('일정 삭제 확인',key=key+'_submit'):
             db.request('POST','rpc/sales_archive_event',body={'p_id':row['id'],'p_revision':row['revision'],'p_future':future,'p_restore':False})
             st.session_state['sales_route']={'type':'trash'}
             st.session_state['sales_route_stack']=[]
             for k in list(st.session_state.get('sales_drafts',{})):
-                if row['id'] in k:ux.clear_draft(k)
+                if k in ('event:'+db.uid+':'+row['id'],'result:'+row['id']):ux.clear_draft(k)
             st.session_state['sales_dialog_notice']='삭제했습니다. 30일 동안 복구할 수 있습니다.'
             st.session_state['sales_calendar_refresh']=str(uuid4())
             ux.refresh()

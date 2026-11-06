@@ -20,7 +20,7 @@ class FakeRecords:
         st.session_state.setdefault("fixture_reads",[]).append((method,table))
         if table=="rpc/sales_calendar_stamp":return "fixture-stamp"
         if method=="POST" and table in ("rpc/sales_members","rpc/sales_branch_members"):return list(self.members.values())
-        if method=="POST" and table=="rpc/sales_calendar_days":return deepcopy(st.session_state["fixture_events"])
+        if method=="POST" and table=="rpc/sales_calendar_days":return deepcopy([r for r in st.session_state["fixture_events"] if not r.get("deleted_at")])
         if method=="POST" and table=="rpc/sales_edit_event":
             if st.session_state.get("fixture_conflict"):return False
             for row in st.session_state["fixture_events"]:

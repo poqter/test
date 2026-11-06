@@ -27,9 +27,9 @@ async function load(){if(!session)return;const seq=++requestNo,y=cursor.getFullY
  try{const [summary,own]=await Promise.all([api('rpc/sales_calendar_days','POST',{first_day:a,last_day:b}),api('sales_events?deleted_at=is.null&owner=eq.'+session.uid+'&day=gte.'+a+'&day=lte.'+b)]);if(seq!==requestNo)return;let byId=new Map(own.map(r=>[r.id,r]));rows=summary.map(r=>byId.get(r.id)||r).sort((a,b)=>(a.start_time||'').localeCompare(b.start_time||''));render();await statusToday();$('msg').textContent=''}catch(e){$('msg').textContent=e.message}}
 function remember(){if(!draft||!session)return;draft.values=Object.fromEntries(new FormData($('form')));localStorage.setItem(draftKey(),JSON.stringify(draft));$('restore').hidden=false}
 function openForm(day,row,restore=false){if(!session)return;let old=localStorage.getItem(draftKey());if(!restore&&old&& !confirm('작성 중인 내용이 있습니다. 새로 작성할까요?'))return;
- draft=restore?JSON.parse(old):{id:row?.id||crypto.randomUUID(),revision:row?.revision,manual:!!row,values:{day,title:row?.title||'',kind:row?.kind||'미분류',timing:row?.start_time?'시간 지정':row&&!row.time_pending?'종일':'시간 미정',start:row?.start_time?.slice(0,5)||'',end:row?.end_time?.slice(0,5)||'',companion:row?.companion||'',place:row?.place||'',note:row?.note||'',status:row?.status||'예정'}};
+ draft=restore?JSON.parse(old):{id:row?.id||crypto.randomUUID(),revision:row?.revision,series:row?.series_id,manual:!!row,values:{day,title:row?.title||'',kind:row?.kind||'미분류',timing:row?.start_time?'시간 지정':row&&!row.time_pending?'종일':'시간 미정',start:row?.start_time?.slice(0,5)||'',end:row?.end_time?.slice(0,5)||'',companion:row?.companion||'',place:row?.place||'',note:row?.note||'',status:row?.status||'예정'}};
  for(const [k,v] of Object.entries(draft.values))if(f[k])f[k].value=v;
- $('times').hidden=f.timing.value!=='시간 지정';$('heading').textContent=draft.revision?'내 일정 수정':'내 일정에 등록';$('error').textContent='';$('sheet').showModal();f.title.focus()}
+ $('deleteEvent').hidden=!draft.revision;$('times').hidden=f.timing.value!=='시간 지정';$('heading').textContent=draft.revision?'내 일정 수정':'내 일정에 등록';$('error').textContent='';$('sheet').showModal();f.title.focus()}
 $('form').oninput=()=>{if(!draft.manual){const matches=[...new Set((f.title.value.toUpperCase().match(/(?<![A-Z0-9])(TA|AP|PC|CS)(?![A-Z0-9])/g)||[]))];f.kind.value=matches.length===1?matches[0]:'미분류'}remember()};
 f.kind.oninput=e=>{e.stopPropagation();draft.manual=true;if(f.kind.value==='휴무'){f.timing.value='종일';if(!f.title.value.trim())f.title.value='휴무';$('times').hidden=true}remember()};
 f.timing.onchange=()=>$('times').hidden=f.timing.value!=='시간 지정';
@@ -68,3 +68,30 @@ if(window.opener){
  const receive=e=>{if(e.source===source&&e.origin===location.origin&&e.data?.type==='hwarang.calendar.session'&&e.data.session?.url?.replace(/\/$/,'')===root){removeEventListener('message',receive);window.opener=null;start(e.data.session)}};
  addEventListener('message',receive);source.postMessage({type:'hwarang.calendar.ready'},location.origin);
 }
+
+$('deleteEvent').onclick=async()=>{
+ if(!draft?.revision||!session)return;
+ let future=false;
+ if(draft.series)future=confirm('이후 반복 일정도 함께 삭제할까요? 취소를 누르면 이번 일정만 선택합니다.');
+ if(!confirm(f.day.value+' · '+f.title.value+'\n'+(future?'이후 반복 일정까지':'이번 일정만')+' 삭제합니다. 연결된 기록은 보존하며 30일 동안 복구할 수 있습니다.'))return;
+ $('deleteEvent').disabled=true;
+ try{
+ await api('rpc/sales_archive_event','POST',{p_id:draft.id,p_revision:draft.revision,p_future:future,p_restore:false});
+ localStorage.removeItem(draftKey());draft=null;$('restore').hidden=true;$('sheet').close();await load();
+ }catch(e){$('error').textContent=e.message}finally{$('deleteEvent').disabled=false}
+};
+$('trash').onclick=async()=>{
+ if(!session)return;
+ try{
+ const cutoff=new Date(Date.now()-30*86400000).toISOString();
+ const items=await api('sales_events?owner=eq.'+session.uid+'&deleted_at=gte.'+encodeURIComponent(cutoff)+'&order=deleted_at.desc');
+ $('listTitle').textContent='삭제한 일정 · 30일 이내 복구';$('agenda').replaceChildren();
+ if(!items.length)$('agenda').textContent='복구할 일정이 없습니다.';
+ for(const item of items){const restoreButton=button(item.day+' · '+item.title+' · 복구',async()=>{
+ restoreButton.disabled=true;
+ try{await api('rpc/sales_archive_event','POST',{p_id:item.id,p_revision:item.revision,p_future:false,p_restore:true});restoreButton.remove();await load()}
+ catch(e){$('msg').textContent=e.message;restoreButton.disabled=false}
+ });$('agenda').append(restoreButton)}
+ $('list').showModal();
+ }catch(e){$('msg').textContent=e.message}
+};

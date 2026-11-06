@@ -4,7 +4,8 @@ body:has(.hw-brand-ui) [data-testid="stMainBlockContainer"]{max-width:1420px!imp
 body:has(.hw-brand-ui) h1{font-size:28px!important;color:#172e4d!important;letter-spacing:-.7px;line-height:1.4}
 body:has(.hw-brand-ui) h2{font-size:21px!important;color:#172e4d!important}
 body:has(.hw-brand-ui) h3{font-size:16px!important;color:#172e4d;line-height:1.5}
-body:has(.hw-brand-ui) [data-testid="stToolbar"]{display:none!important}
+/* The sidebar reopen button lives inside this toolbar in current Streamlit. */
+body:has(.hw-brand-ui) [data-testid="stToolbar"]{display:flex!important}
 body:has(.hw-brand-ui) [data-testid="stSidebar"]{background:#fff!important;border-right:1px solid #e1e7ef;min-width:230px;max-width:260px}
 body:has(.hw-brand-ui) [data-testid="stSidebar"] button{background:transparent!important;border:0!important;justify-content:flex-start;box-shadow:none!important;min-height:44px;border-radius:9px!important;transform:none!important;text-align:left}
 body:has(.hw-brand-ui) [data-testid="stSidebar"] button[kind="primary"]{background:#eaf2ff!important;color:#2469cd!important}

@@ -28,6 +28,7 @@ jobs:
           python tests/activity_ui/check_workspace.py
           python tests/activity_ui/check_mobile.py
           python tests/activity_ui/check_shell.py
+          python tests/activity_ui/check_legacy_calendar.py
       - uses: actions/setup-node@v6
         with:
           node-version: 22
