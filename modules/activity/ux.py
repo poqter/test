@@ -36,6 +36,11 @@ def compact():
 def styles():
     st.html('''<style>
     .st-key-sales_workspace {color:#223950}
+    [data-testid="stDialog"] [class*="st-key-delete_"] button{color:#b42318!important;background:#fff1f0!important;border:1.5px solid #d92d20!important;font-weight:700!important}
+    [data-testid="stDialog"] [class*="st-key-delete_"] button :is(p,span){color:inherit!important}
+    [data-testid="stDialog"] [class*="st-key-delete_"] button:hover{background:#ffe4e1!important;border-color:#b42318!important}
+    [data-testid="stDialog"] [class*="st-key-delete_"] button:focus-visible{outline:3px solid #d92d20!important;outline-offset:2px}
+
     .st-key-sales_workspace [data-testid="stVerticalBlockBorderWrapper"]>div {border-radius:14px}
     .st-key-sales_workspace input,.st-key-sales_workspace textarea,[data-testid="stDialog"]:has(.sales-dialog-marker) input,[data-testid="stDialog"]:has(.sales-dialog-marker) textarea {border:1px solid #dbe3ed!important;border-radius:8px!important}
     .st-key-sales_workspace input::placeholder,.st-key-sales_workspace textarea::placeholder,[data-testid="stDialog"]:has(.sales-dialog-marker) input::placeholder {color:#8d9caf!important;opacity:1}
