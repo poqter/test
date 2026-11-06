@@ -13,7 +13,7 @@ from modules.shared.hwarang_auth import HwarangAuthError
 DAY=timedelta(days=1)
 COUNTS=["TA","CS","전화","메시지","약속 확보","상담","제안","청약"]
 KINDS=["미분류","TA","AP","PC","CS","청약","교육","회의","휴무","기타"]
-TYPES={"TA":"고객 연락","AP":"초회 상담","PC":"프레젠테이션 / 클로징","CS":"기존 고객 관리"}
+TYPES={code:code for code in ("TA","AP","PC","CS")}
 
 def notify():
     st.session_state["sales_notice"]="저장했습니다."

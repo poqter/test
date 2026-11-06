@@ -5,7 +5,7 @@ from html import escape
 from uuid import uuid4
 import streamlit as st
 
-LABELS = {"TA": "고객 연락", "CS": "고객 관리"}
+LABELS = {"TA": "TA", "CS": "CS"}
 EVENT_FIELDS = ("day", "start_time", "end_time", "time_pending", "title", "kind", "place", "note", "help", "common", "status", "result", "companion")
 
 def copy_event(row):
