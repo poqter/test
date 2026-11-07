@@ -37,7 +37,7 @@ try:
         page.get_by_text('내 일정',exact=True).click()
         page.get_by_role('button',name='적용',exact=True).click()
         cal.locator('.view-settings > summary').click()
-        expect(cal.get_by_label('주말 표시',exact=True)).to_be_checked()
+        expect(cal.get_by_label('주말 표시',exact=True)).not_to_be_checked()
         expect(cal.get_by_role('button',name='모바일 앱 열기',exact=True)).to_have_count(0)
         cal.get_by_role('button',name='보기 설정 닫기').click()
         cal.get_by_role('button',name='2026-11-05 일정 보기',exact=True).click()

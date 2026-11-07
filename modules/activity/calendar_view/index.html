@@ -28,10 +28,10 @@ function el(tag,text,cls){let x=document.createElement(tag);x.textContent=text||
 function button(label,fn,cls,aria){let b=el('button',label,cls);b.onclick=fn;if(aria)b.setAttribute('aria-label',aria);return b}
 const date=s=>new Date(s+'T12:00:00Z'), iso=d=>d.toISOString().slice(0,10), add=(d,n)=>new Date(+d+n*86400000);
 let selected,context,latest,lastRender,refreshNonce,selectedByUser=null,lastTap=0,pointerStart=null,suppressClickUntil=0;
-let prefsHydrated=false,prefsUser=null,prefs={showCompleted:true,showWeekends:true};
+let prefsHydrated=false,prefsUser=null,prefs={showCompleted:true,showWeekends:false};
 function loadPrefs(a){
  const uid=a.mobileSession?.uid||'local';if(prefsUser===uid)return;
- prefsHydrated=false;prefsUser=uid;prefs={showCompleted:true,showWeekends:true};
+ prefsHydrated=false;prefsUser=uid;prefs={showCompleted:true,showWeekends:false};
  try{const stored=JSON.parse(localStorage.getItem('hwarang.calendar.preferences.'+uid)||'null');if(stored)for(const k of Object.keys(prefs))if(typeof stored[k]==='boolean')prefs[k]=stored[k]}catch{}
 }
 function savePrefs(){try{localStorage.setItem('hwarang.calendar.preferences.'+prefsUser,JSON.stringify(prefs));return true}catch{return false}}
@@ -111,7 +111,7 @@ function render(a){
  function option(label,key){const line=el('label','','setting-option'),input=el('input');input.type='checkbox';input.checked=prefs[key];input.onchange=ev=>changePrefs({[key]:ev.currentTarget.checked});line.append(input,document.createTextNode(label));panel.append(line)}
  option('완료 일정 표시','showCompleted');option('주말 표시','showWeekends');
  const guide=el('details');guide.dataset.key='color-guide';guide.append(el('summary','활동 색상 안내'),document.querySelector('.legend').cloneNode(true));panel.append(guide);
- panel.append(button('기본값으로 되돌리기',()=>changePrefs({showCompleted:true,showWeekends:true})),el('p','변경한 설정은 자동으로 저장됩니다.','settings-save'));settings.append(panel);
+ panel.append(button('기본값으로 되돌리기',()=>changePrefs({showCompleted:true,showWeekends:false})),el('p','변경한 설정은 자동으로 저장됩니다.','settings-save'));settings.append(panel);
  if(a.hideMobileApp)tools.append(button((a.scopeLabel||'내 일정')+' ▾',()=>emit('scope',null),'scope-button','조회 대상 · '+(a.scopeLabel||'내 일정')));
  else tools.append(button('모바일 앱 열기',()=>openMobile(latest.mobileSession)));
  tools.append(sw,settings);

@@ -180,7 +180,7 @@ def calendar(db,today):
         members=[]
         for uid,person in branch.items():
             line={"구성원":person["label"]}
-            for i,label in enumerate("월화수목금" if st.session_state.get("sales_hide_weekends",False) else "월화수목금토일"):
+            for i,label in enumerate("월화수목금" if st.session_state.get("sales_hide_weekends",True) else "월화수목금토일"):
                 target=str(start+i*DAY)
                 line[label]=" · ".join((r["start_time"] or "종일")[:5]+" "+r["kind"] for r in events if r["owner"]==uid and r["day"]==target)
             members.append(line)
@@ -205,7 +205,7 @@ def calendar(db,today):
         if row.get("companion"):label+=" · 동행 "+branch.get(row["companion"],{}).get("label","")
         if row.get("help"):label+=" · 지원 요청"
         cards.append(dict(id=row["id"],day=row["day"],kind=row["kind"],member=row["owner"],allDay=not row["start_time"],short=(row.get('title') or row['kind'])+(f' · {owner}' if team else ''),label=label,done=status=="완료"))
-    action=calendar_view(scopeLabel=scope_label,syncStamp=sync_stamp,syncUnit=sync_unit,hideMobileApp=st.query_params.get("view")=="mobile-calendar",hideWeekends=st.session_state.get("sales_hide_weekends",False),mobileSession=dict(url=db.auth.config.url,key=db.auth.config.publishable_key,token=db.token,uid=db.uid,unit=db.me["unit"],branch=position=="branch_manager"),mode=mode,day=str(day),today=str(today),events=cards,roster={uid:p["label"] for uid,p in branch.items() if not selected_member or uid==selected_member} if team else {},rangeStart=str(fetch_start),rangeEnd=str(fetch_end),key="sales_interactive_calendar",default=None)
+    action=calendar_view(scopeLabel=scope_label,syncStamp=sync_stamp,syncUnit=sync_unit,hideMobileApp=st.query_params.get("view")=="mobile-calendar",hideWeekends=st.session_state.get("sales_hide_weekends",True),mobileSession=dict(url=db.auth.config.url,key=db.auth.config.publishable_key,token=db.token,uid=db.uid,unit=db.me["unit"],branch=position=="branch_manager"),mode=mode,day=str(day),today=str(today),events=cards,roster={uid:p["label"] for uid,p in branch.items() if not selected_member or uid==selected_member} if team else {},rangeStart=str(fetch_start),rangeEnd=str(fetch_end),key="sales_interactive_calendar",default=None)
     if isinstance(action,dict) and action.get("nonce")!=st.session_state.get("sales_calendar_action"):
         st.session_state["sales_calendar_action"]=action.get("nonce")
         command,value=action.get("action"),action.get("value")
