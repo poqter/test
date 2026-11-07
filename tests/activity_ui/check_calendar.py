@@ -12,7 +12,7 @@ with sync_playwright() as p:
     page=browser.new_page(viewport={'width':1100,'height':850})
     errors=[]
     page.on('pageerror',lambda e:errors.append(str(e)))
-    page.route('https://activity.test/persistent.js',lambda route:route.fulfill(path=str(ROOT/'modules/activity/calendar_view/persistent.js'),content_type='application/javascript'))
+    page.route('https://activity.test/*.js',lambda route:route.fulfill(path=str(ROOT/'modules/activity/calendar_view'/route.request.url.rsplit('/',1)[-1]),content_type='application/javascript'))
     page.route('https://activity.test/',lambda route:route.fulfill(body=HTML,content_type='text/html'))
     page.goto('https://activity.test/')
     page.evaluate("()=>{calendarBoot={uid:'one',team:false,member:null};rpc=async(op,a)=>({events:[],rangeStart:a.first,rangeEnd:a.last})}")
