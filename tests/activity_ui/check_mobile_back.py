@@ -1,0 +1,79 @@
+"""Real browser against Streamlit with synthetic records; no production access."""
+from pathlib import Path
+import socket
+import subprocess
+import sys
+import time
+from playwright.sync_api import sync_playwright, expect
+
+ROOT=Path(__file__).resolve().parents[2]
+server=subprocess.Popen([sys.executable,'-m','streamlit','run',str(ROOT/'tests/activity_ui/mobile_harness.py'),
+    '--server.headless=true','--server.port=8504','--server.address=127.0.0.1',
+    '--browser.serverAddress=localhost','--browser.gatherUsageStats=false'],
+    stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+try:
+    for _ in range(150):
+        try:
+            with socket.create_connection(('127.0.0.1',8504),timeout=.2):break
+        except OSError:time.sleep(.2)
+    with sync_playwright() as p:
+        browser=p.chromium.launch(headless=True,args=['--no-sandbox'])
+        page=browser.new_page(viewport={'width':390,'height':844},user_agent='Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148')
+        page.goto('http://127.0.0.1:8504')
+        expect(page.get_by_role('button',name='☰',exact=True)).to_be_visible()
+        cal=page.frame_locator('iframe[title="modules.activity.center.sales_calendar_view"]')
+        assert page.locator('.st-key-mobile_header').bounding_box()['y'] < 24
+        expect(page.locator('iframe[title="modules.activity.center.sales_calendar_view"]')).to_be_visible()
+        assert page.locator('iframe[title="modules.activity.center.sales_calendar_view"]').bounding_box()['y'] < 200
+        page.wait_for_function("history.state?.hwarangCalendarBack === true")
+        base=page.url
+        # Settings and drawer close before changing app pages.
+        cal.get_by_text('설정',exact=True).click()
+        page.go_back()
+        expect(cal.locator('.view-settings')).not_to_have_attribute('open','')
+        page.get_by_role('button',name='☰',exact=True).click()
+        page.wait_for_timeout(400)
+        page.go_back()
+        expect(page.locator('[data-testid="stPopoverBody"]')).to_have_count(0)
+        # Clean editor uses the same X handler.
+        page.get_by_role('button',name='일정 등록',exact=True).click()
+        expect(page.get_by_role('dialog')).to_be_visible()
+        page.wait_for_timeout(400)
+        page.go_back()
+        expect(page.get_by_role('dialog')).to_have_count(0)
+        # Dirty editor is protected, including repeated Back.
+        page.get_by_role('button',name='일정 등록',exact=True).click()
+        page.get_by_label('고객 또는 일정명',exact=True).fill('뒤로가기 보존')
+        page.get_by_label('고객 또는 일정명',exact=True).press('Tab')
+        page.wait_for_timeout(400)
+        page.go_back()
+        expect(page.get_by_role('button',name='계속 작성',exact=True)).to_be_visible()
+        page.wait_for_timeout(400)
+        page.go_back()
+        expect(page.get_by_label('고객 또는 일정명',exact=True)).to_have_value('뒤로가기 보존')
+        page.get_by_role('button',name='저장하지 않고 닫기',exact=True).click()
+        expect(page.get_by_role('dialog')).to_have_count(0)
+        # Menu history returns to the actual prior page.
+        page.get_by_role('button',name='☰',exact=True).click()
+        drawer=page.locator('[data-testid="stPopoverBody"]')
+        drawer.get_by_role('button',name='후속 할 일',exact=True).click()
+        expect(page.get_by_text('남아 있는 후속 할 일이 없습니다.',exact=False)).to_be_visible()
+        page.wait_for_timeout(400)
+        page.go_back()
+        expect(cal.get_by_role('button',name='조회 대상 · 내 일정',exact=True)).to_be_visible()
+        expect(page.locator('.mobile-navigation-state')).to_have_attribute('data-page','캘린더')
+        expect(page.locator('.mobile-navigation-state')).to_have_attribute('data-depth','0')
+        confirmations=[]
+        def reject(dialog):
+            confirmations.append(dialog.message);dialog.dismiss()
+        page.on('dialog',reject)
+        page.wait_for_timeout(400)
+        page.go_back()
+        page.wait_for_timeout(300)
+        assert confirmations==['화랑 캘린더를 나가시겠습니까?']
+        assert page.url==base
+        browser.close()
+    print('PASS browser Back: settings, drawer, clean/dirty editor, menu history, exit cancellation')
+finally:
+    server.terminate()
+    server.wait(timeout=10)

@@ -7,7 +7,7 @@
  const update=()=>{
   queued=false;
   if(!d.querySelector('.st-key-mobile_header'))return;
-  const dialog=d.querySelector('[role="dialog"]');
+  const dialog=d.querySelector('[role="dialog"]:has(.sales-dialog-marker)');
   const height=w.visualViewport?.height||w.innerHeight;
   d.documentElement.style.setProperty('--sales-viewport',height+'px');
   if(hadDialog&&!dialog&&Number.isFinite(w.__calendarReturnScroll)){
@@ -23,6 +23,48 @@
  d.addEventListener('visibilitychange',()=>{
   d.querySelectorAll('iframe').forEach(f=>f.contentWindow.postMessage({type:'hwarang.activity.visibility',visible:!d.hidden},w.location.origin));
  });
+ // A single same-document guard catches Android/browser Back without logging
+ // every date or field change. Existing dialog/draft handlers own navigation.
+ const key='hwarangCalendarBack';let exiting=false,busyUntil=0;
+ const active=()=>!!d.querySelector('.st-key-mobile_header');
+ const arm=()=>{
+  if(!exiting&&active()&&!w.history.state?.[key])w.history.pushState({...w.history.state,[key]:true},'',w.location.href);
+ };
+ const back=()=>{
+  if(exiting||!active())return;
+  arm();
+  if(Date.now()<busyUntil)return;
+  busyUntil=Date.now()+350;
+  const focused=d.activeElement;
+  if(w.visualViewport&&w.innerHeight-w.visualViewport.height>120&&focused?.matches('input,textarea,[contenteditable="true"]')){focused.blur();return;}
+  // An already-visible unsaved-change prompt is kept; Back never discards it.
+  if(d.querySelector('.st-key-sales_keep,.st-key-mobile_continue'))return;
+  const dialog=d.querySelector('[role="dialog"]:has(.sales-dialog-marker)');
+  if(dialog){dialog.querySelector('.st-key-sales_close_top button')?.click();return;}
+  const drawer=d.querySelector('[data-testid="stPopoverBody"] .mobile-drawer')&&d.querySelector('.st-key-mobile_menu_toggle button');
+  if(drawer){drawer.click();return;}
+  for(const iframe of d.querySelectorAll('iframe')){
+   try{
+    const child=iframe.contentDocument;
+    const panel=child?.querySelector('dialog[open]');
+    if(panel){panel.close();return;}
+    const settings=child?.querySelector('.view-settings[open]');
+    if(settings){settings.open=false;return;}
+   }catch{}
+  }
+  const state=d.querySelector('.mobile-navigation-state');
+  if(state&&(state.dataset.page!=='캘린더'||Number(state.dataset.depth)>0)){
+   d.querySelector('.st-key-mobile_history_back button')?.click();return;
+  }
+  if(w.confirm('화랑 캘린더를 나가시겠습니까?')){
+   exiting=true;
+   // Release the guard and return to the preceding browser entry where present.
+   w.history.go(w.history.length>2?-2:-1);
+  }
+ };
+ w.addEventListener('popstate',back);
+ new w.MutationObserver(arm).observe(d.body,{childList:true,subtree:true});
+ arm();
  update();
 })();
 </script>

@@ -11,13 +11,32 @@ def menus(db):
     return [*MENUS,*(['구성원 현황'] if db.me['managed'] else [])]
 
 
-def choose(target):
+def commit_page(target, backwards=False):
+    current=st.session_state.get('mobile_page','캘린더')
+    history=st.session_state.setdefault('mobile_back_stack',[])
+    if target!=current:
+        if backwards:
+            if history and history[-1]==target:history.pop()
+        else:
+            history.append(current)
+            del history[:-30]
+        st.session_state['mobile_page']=target
+    st.session_state.pop('sales_active_draft',None)
+
+
+def choose(target, backwards=False):
+    if target==st.session_state.get('mobile_page','캘린더'):return
     active=st.session_state.get('sales_active_draft')
     if active and ux.dirty(active):
         st.session_state['mobile_pending']=target
+        st.session_state['mobile_pending_back']=backwards
     else:
-        st.session_state['mobile_page']=target
-        st.session_state.pop('sales_active_draft',None)
+        commit_page(target,backwards)
+
+
+def previous_page():
+    history=st.session_state.get('mobile_back_stack',[])
+    choose(history[-1] if history else '캘린더',backwards=True)
 
 
 def menu_items(db,logout,prefix):
@@ -40,12 +59,12 @@ def pending_navigation():
     st.warning('저장하지 않은 기록이 있습니다. 이동 방법을 선택해 주세요.')
     a,b,c=st.columns(3)
     if a.button('계속 작성',key='mobile_continue'):
-        st.session_state.pop('mobile_pending',None);st.rerun()
+        st.session_state.pop('mobile_pending',None);st.session_state.pop('mobile_pending_back',None);st.rerun()
     retain=b.button('내용 유지하고 이동',key='mobile_retain')
     discard=c.button('내용 버리고 이동',key='mobile_discard')
     if retain or discard:
         if discard:ux.clear_draft(st.session_state.get('sales_active_draft'))
-        st.session_state['mobile_page']=target
+        commit_page(target,st.session_state.pop('mobile_pending_back',False))
         st.session_state.pop('mobile_pending',None)
         st.session_state.pop('sales_active_draft',None)
         st.rerun()
@@ -196,6 +215,9 @@ def run(logout):
         b.subheader('화랑 캘린더')
         unread=db.request('GET','sales_notices',{'seen':'eq.false','select':'id','limit':'50'})
         c.button('알림 '+(str(len(unread))+'+' if len(unread)==50 else str(len(unread))) if unread else '알림',icon=':material/notifications:',type='tertiary',on_click=choose,args=('알림·피드백',),key='mobile_alerts')
+    st.html('<span class="mobile-navigation-state" data-page="'+page+'" data-depth="'+str(len(st.session_state.get('mobile_back_stack',[])))+'"></span>')
+    st.button('이전 메뉴',key='mobile_history_back',on_click=previous_page)
+    st.html('<style>.st-key-mobile_history_back{display:none!important}.mobile-navigation-state{display:none}</style>')
     pending_navigation()
     with st.container(key='mobile_content'):
         if page=='캘린더':
