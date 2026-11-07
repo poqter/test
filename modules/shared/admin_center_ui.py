@@ -917,7 +917,13 @@ def _user_overview(auth: HwarangAuthService, uid: str, user: dict[str, Any]) -> 
 
 
 def _apply_user_changes(auth: HwarangAuthService, actor_id: str, uid: str, changes: dict[str, Any]) -> None:
-    auth.admin_apply_user_changes(actor_user_id=actor_id, target_user_id=uid, **changes)
+    updated = auth.admin_apply_user_changes(actor_user_id=actor_id, target_user_id=uid, **changes)
+    if uid == actor_id:
+        state = st.session_state.get("hwarang_auth") or {}
+        state.update(profile=updated["profile"], app_access=updated["app_access"],
+                     feature_permissions=updated["feature_permissions"], profile_checked_at=0)
+        st.session_state.update(hwarang_auth=state, login_profile=updated["profile"],
+                                hw_app_access=updated["app_access"], hw_feature_permissions=set(updated["feature_permissions"]))
     st.session_state.pop("hw_admin_reference_cache", None); _clear_admin_read_cache()
     st.success("계정과 권한을 저장했습니다.")
     st.rerun()
@@ -933,15 +939,9 @@ def _user_permissions(auth: HwarangAuthService, actor_id: str, uid: str) -> None
     positions = [r for r in refs.get("positions", []) if r.get("is_active", True)]
     orgs = [r for r in refs.get("organizations", []) if r.get("is_active", True)]
     perms = list(refs.get("permissions", []))
-    pos_codes = [str(r["code"]) for r in positions]
-    pos_labels = {str(r["code"]): str(r.get("display_name") or r["code"]) for r in positions}
-    org_ids = [str(r["id"]) for r in orgs]
-    org_labels = {
-        str(r["id"]): f"{r.get('name') or r.get('code')} · {_UNIT_LABELS.get(str(r.get('unit_type') or ''), r.get('unit_type') or '')}"
-        for r in orgs
-    }
-
     st.markdown('<div class="hw-section-head">기본 정보</div>', unsafe_allow_html=True)
+    from .organization_picker import render_affiliation, valid_affiliation
+    position_code, organization_unit_id = render_affiliation(orgs, positions, profile, 'hw_affiliation_'+uid)
     with st.form(f"hw_admin_user_permissions_v2_{uid}", clear_on_submit=False):
         c1, c2 = st.columns(2, gap="large")
         with c1:
@@ -956,20 +956,6 @@ def _user_permissions(auth: HwarangAuthService, actor_id: str, uid: str) -> None
             )
             is_active = st.toggle("계정 활성", value=bool(profile.get("is_active")))
         with c2:
-            current_org = str(profile.get("organization_unit_id") or "")
-            organization_unit_id = st.selectbox(
-                "소속",
-                org_ids,
-                index=org_ids.index(current_org) if current_org in org_ids else 0,
-                format_func=lambda x: org_labels.get(x, x),
-            ) if org_ids else None
-            current_pos = str(profile.get("position_code") or "fp")
-            position_code = st.selectbox(
-                "직책",
-                pos_codes,
-                index=pos_codes.index(current_pos) if current_pos in pos_codes else 0,
-                format_func=lambda x: pos_labels.get(x, x),
-            ) if pos_codes else current_pos
             st.text_input("로그인 ID", value=str(profile.get("login_id") or ""), disabled=True)
 
         st.markdown("##### 앱 접근")
@@ -1011,6 +997,8 @@ def _user_permissions(auth: HwarangAuthService, actor_id: str, uid: str) -> None
         submitted = st.form_submit_button("변경사항 저장", type="primary", use_container_width=True)
 
     if submitted:
+        if not valid_affiliation(position_code, organization_unit_id, orgs):
+            st.error('직책에 맞는 소속을 선택해 주세요.'); return
         changes = {
             "display_name": display_name,
             "role": role,

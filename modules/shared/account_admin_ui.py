@@ -94,20 +94,12 @@ def render(auth: HwarangAuthService) -> None:
     organizations = [row for row in refs.get("organizations", []) if row.get("is_active", True)]
     permissions = list(refs.get("permissions", []))
 
-    position_codes = [str(row["code"]) for row in positions]
-    position_labels = {str(row["code"]): str(row.get("display_name") or row["code"]) for row in positions}
-    org_ids = [str(row["id"]) for row in organizations]
-    org_labels = {
-        str(row["id"]): f"{row.get('name') or row.get('code')} · {_UNIT_LABELS.get(str(row.get('unit_type') or ''), row.get('unit_type') or '')}"
-        for row in organizations
-    }
-
     role_codes = list(_ROLE_LABELS)
     current_role = str(profile.get("role") or "user")
-    current_position = str(profile.get("position_code") or "fp")
-    current_org = str(profile.get("organization_unit_id") or "")
 
     st.markdown("---")
+    from .organization_picker import render_affiliation, valid_affiliation
+    position_code, organization_unit_id = render_affiliation(organizations, positions, profile, 'hw_legacy_affiliation_'+selected_id)
     with st.form("hw_account_permission_form", clear_on_submit=False):
         top1, top2 = st.columns(2, gap="large")
         with top1:
@@ -121,18 +113,6 @@ def render(auth: HwarangAuthService) -> None:
             )
             is_active = st.checkbox("계정 활성", value=bool(profile.get("is_active")))
         with top2:
-            organization_unit_id = st.selectbox(
-                "소속",
-                org_ids,
-                index=org_ids.index(current_org) if current_org in org_ids else 0,
-                format_func=lambda uid: org_labels.get(uid, uid),
-            ) if org_ids else None
-            position_code = st.selectbox(
-                "직책",
-                position_codes,
-                index=position_codes.index(current_position) if current_position in position_codes else 0,
-                format_func=lambda code: position_labels.get(code, code),
-            ) if position_codes else current_position
             st.text_input("로그인 ID", value=str(profile.get("login_id") or ""), disabled=True)
 
         st.markdown("#### 앱 접근권한")
@@ -174,6 +154,8 @@ def render(auth: HwarangAuthService) -> None:
         submitted = st.form_submit_button("변경사항 저장", type="primary", use_container_width=True)
 
     if submitted:
+        if not valid_affiliation(position_code, organization_unit_id, organizations):
+            st.error('직책에 맞는 소속을 선택해 주세요.'); return
         if not confirmed:
             st.info("변경 내용을 확인한 뒤 확인란을 선택해 주세요.")
             return

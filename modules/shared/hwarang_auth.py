@@ -384,6 +384,11 @@ class HwarangAuthService:
         app_access: dict[str, bool], permissions: dict[str, bool],
     ) -> dict[str, Any]:
         self._require_super_admin(actor_user_id)
+        from modules.shared.organization_picker import valid_affiliation
+        units = self._request("GET", "/rest/v1/organization_units", admin=True,
+                              params={"select": "id,code,name,unit_type,parent_id,is_active"})
+        if not valid_affiliation(position_code, organization_unit_id, units):
+            raise HwarangAuthError("직책에 맞는 소속을 선택해 주세요. 총괄대표는 화랑, 본부장은 본부, 구성원은 직할·지점에 소속됩니다.")
         self._request(
             "POST",
             "/rest/v1/rpc/admin_apply_hwarang_user",
