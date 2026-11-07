@@ -86,11 +86,11 @@ def test_overview_and_member_detail_render():
 
 def test_event_conflict_keeps_input_and_does_not_write():
     at=app('st.session_state.setdefault("fixture_conflict",True)\nst.session_state.setdefault("sales_route",{"type":"edit","id":EVENT})\ncenter.run()')
-    next(t for t in at.text_input if t.label=="고객 또는 일정명").input("수정 중인 제목").run()
+    next(t for t in at.text_input if t.label=="일정명").input("수정 중인 제목").run()
     button(at,"변경 저장").click().run()
     assert not at.exception and at.error
     at.run()
-    assert next(t for t in at.text_input if t.label=="고객 또는 일정명").value=="수정 중인 제목"
+    assert next(t for t in at.text_input if t.label=="일정명").value=="수정 중인 제목"
     assert not at.session_state["fixture_writes"]
 
 def test_dirty_date_switch_keeps_previous_until_confirmed():

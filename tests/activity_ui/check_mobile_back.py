@@ -43,14 +43,14 @@ try:
         expect(cal.get_by_role('dialog')).to_have_count(0)
         # Dirty editor is protected, including repeated Back.
         page.get_by_role('button',name='일정 등록',exact=True).click()
-        cal.get_by_label('고객 또는 일정명',exact=True).fill('뒤로가기 보존')
-        cal.get_by_label('고객 또는 일정명',exact=True).press('Tab')
+        cal.get_by_label('일정명',exact=True).fill('뒤로가기 보존')
+        cal.get_by_label('일정명',exact=True).press('Tab')
         page.wait_for_timeout(400)
         page.go_back()
         expect(cal.get_by_role('button',name='계속 작성',exact=True)).to_be_visible()
         page.wait_for_timeout(400)
         page.go_back()
-        expect(cal.get_by_label('고객 또는 일정명',exact=True)).to_have_value('뒤로가기 보존')
+        expect(cal.get_by_label('일정명',exact=True)).to_have_value('뒤로가기 보존')
         cal.get_by_role('button',name='저장하지 않고 닫기',exact=True).click()
         expect(cal.get_by_role('dialog')).to_have_count(0)
         # Menu history returns to the actual prior page.

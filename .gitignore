@@ -27,3 +27,8 @@ tests/*_results.json
 # Local QA previews and render outputs.
 /tmp/
 /ui_work/
+
+# Local calendar client build dependencies.
+scripts/calendar_client/node_modules/
+supabase/.temp/
+tests/studio_db/node_modules/

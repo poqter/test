@@ -37,12 +37,12 @@ def test_extra_panel_identity_and_open_state_survive_toggles():
 
 def test_top_close_protects_dirty_input_and_retains_draft():
     at=new_dialog()
-    next(t for t in at.text_input if t.label=="고객 또는 일정명").input("닫아도 보존할 제목").run()
+    next(t for t in at.text_input if t.label=="일정명").input("닫아도 보존할 제목").run()
     button(at,"✕").click().run()
     assert not at.exception and at.warning
     assert at.session_state["sales_route"]["type"]=="new"
     button(at,"계속 작성").click().run()
-    assert next(t for t in at.text_input if t.label=="고객 또는 일정명").value=="닫아도 보존할 제목"
+    assert next(t for t in at.text_input if t.label=="일정명").value=="닫아도 보존할 제목"
     button(at,"✕").click().run()
     button(at,"내용 유지하고 닫기").click().run()
     assert not at.session_state.get("sales_route")

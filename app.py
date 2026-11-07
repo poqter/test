@@ -32,7 +32,7 @@ if st.query_params.get("briefing_health") == "1":
     st.code("HWARANG_BRIEFING_RELEASE=" + release['engine_version'] +
             ";READY=" + str(release['code_matches_release']).lower())
     import hashlib
-    activity_files=("read_state.py","center.py","redesign.py","manager.py","daily.py","daily_bridge.html","ux.py","contracts.py","calendar_view/index.html","mobile.py","calendar_bridge.html","device.py")
+    activity_files=("read_state.py","center.py","redesign.py","manager.py","daily.py","daily_bridge.html","ux.py","contracts.py","calendar_view/index.html","mobile.py","calendar_bridge.html","device.py","calendar_service.py","calendar_view/persistent.js","calendar_view/sync.js","calendar_view/realtime.js","../shell/workspace_v2.py","../shell/home_briefing.py","../shared/workspace_design.css")
     activity_hash=hashlib.sha256(b"".join((Path(__file__).parent / "modules/activity" / name).read_bytes() for name in activity_files)).hexdigest()[:16]
     st.code("HWARANG_ACTIVITY_RELEASE="+activity_hash)
     org_files=("organization_picker.py","account_admin_ui.py","admin_center_ui.py","hwarang_auth.py")

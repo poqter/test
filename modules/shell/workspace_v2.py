@@ -292,23 +292,7 @@ def render_home(allowed_ids, navigate, notice):
             with right:render_home_quick_search()
     if 'sales_activity' in allowed:
         ui.card("영업활동 관리","내 일정 · 일일 기록 · 주간 기록","📅","brand_tile_sales",_navigate_once,(navigate,"sales_activity"))
-    if 'briefing' in allowed:
-        from modules.briefing.briefing_center import _published_summaries_cached, home_briefing_summary, PROFILE_ORDER, KST
-        from datetime import datetime
-        try:
-            items=_published_summaries_cached();today=str(datetime.now(KST).date())
-            ready=[c for c in PROFILE_ORDER if str(((items.get(c) or {}).get('briefing') or {}).get('briefing_date'))==today]
-            labels={'MARKET':'경제·금융','NEWS':'종합뉴스','INSURANCE':'보험업계'}
-            if len(ready)==3:status='오늘 자료 공개'
-            elif any(items.get(c) for c in PROFILE_ORDER):status='최신 자료 공개'
-            else:status='준비 중'
-            detail=home_briefing_summary(items)
-        except Exception:status='게시 상태 확인 중';detail='브리핑센터에서 확인해 주세요.'
-        with st.container(key='brand_briefing'):
-            info,action=st.columns([4,1.2],vertical_alignment='center')
-            info.markdown('**오늘의 브리핑 · '+status+'**')
-            if detail:info.caption(detail)
-            with action:_launch_widget(APP_BY_ID['briefing'],'브리핑 보기 →',key='brand_briefing_open',navigate=navigate)
+    briefing_slot = st.container(key='brand_briefing') if 'briefing' in allowed else None
     def tile(key):
         app=APP_BY_ID[key];copy=_HOME_SHORT_COPY.get(key,app.description);icon=_PREMIUM_EMOJI.get(key,'📁')
         from modules.shared.maintenance import blocked
@@ -344,3 +328,28 @@ def render_home(allowed_ids, navigate, notice):
             with col:
                 st.subheader(topic[0]);grid(topic[4],topic[4][0])
     st.subheader('자료·교육');grid(_HOME_TOPICS[3][4],'resources')
+
+    # All menu widgets exist before any briefing work starts.
+    if briefing_slot is not None:
+        from modules.shell.home_briefing import summary_job
+        from modules.shared.hwarang_auth import SupabaseConfig
+        try:
+            job = summary_job(SupabaseConfig.from_mapping(st.secrets))
+        except Exception:
+            job = None
+        pending = job is not None and not job.done()
+        @st.fragment(run_every=1 if pending else None)
+        def briefing_status():
+            status, detail = '게시 상태 확인 중', ''
+            if job is not None and job.done():
+                try: status, detail = job.result()
+                except Exception: detail = '브리핑센터에서 확인해 주세요.'
+                if pending:
+                    # Stop the temporary one-second timer after this one result.
+                    st.rerun()
+            info, action = st.columns([4,1.2], vertical_alignment='center')
+            info.markdown('**오늘의 브리핑 · '+status+'**')
+            if detail: info.caption(detail)
+            with action: _launch_widget(APP_BY_ID['briefing'], '브리핑 보기 →', key='brand_briefing_open', navigate=navigate)
+        with briefing_slot:
+            briefing_status()

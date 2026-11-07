@@ -57,8 +57,8 @@ def test_records_restore_cache_and_write_invalidate(monkeypatch):
     calls=[]
     def request(method,path,**kwargs):
         calls.append((method,path))
-        if path.endswith('sales_members') and kwargs.get('params',{}).get('offset','0')=='0':
-            return [{'member':'one','managed':False}]
+        if path.endswith('sales_calendar_context'):
+            return {'members':[{'member':'one','managed':False}], 'branch':[]}
         return []
     monkeypatch.setattr(center,'SupabaseConfig',SimpleNamespace(from_mapping=lambda _:None))
     monkeypatch.setattr(center,'HwarangAuthService',lambda _:SimpleNamespace(_request=request))

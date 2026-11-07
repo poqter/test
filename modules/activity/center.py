@@ -31,7 +31,10 @@ class Records:
         identity=st.session_state["hwarang_auth"]
         self.token=identity["access_token"]
         self.uid=identity["profile"]["id"]
-        rows=self.request("POST","rpc/sales_members",body={})
+        context=self.request("POST","rpc/sales_calendar_context",body={})
+        rows=context["members"]
+        self.branch={r["member"]:r for r in context["branch"]}
+        self.fast_calendar=True
         self.members={row["member"]:row for row in rows}
         if self.uid not in self.members:
             raise HwarangAuthError("영업활동 관리 이용 권한을 확인해 주세요.")
@@ -40,7 +43,7 @@ class Records:
     def request(self,method,table,params=None,body=None,prefer=None):
         if method == "GET" and table == "sales_events":
             params={"deleted_at":"is.null",**(params or {})}
-        readonly = method == "GET" or (method == "POST" and table in {"rpc/sales_members", "rpc/sales_branch_members", "rpc/sales_calendar_days", "rpc/sales_calendar_stamp"})
+        readonly = method == "GET" or (method == "POST" and table in {"rpc/sales_members", "rpc/sales_branch_members", "rpc/sales_calendar_days", "rpc/sales_calendar_stamp", "rpc/sales_calendar_context", "rpc/sales_calendar_payload"})
         if not readonly:
             self._reads.clear()
             read_state.invalidate()
@@ -50,7 +53,7 @@ class Records:
             value=self.auth._request(method,"/rest/v1/"+table,access_token=self.token,params=query,json=body,prefer=prefer)
             if readonly:self._reads[key]=deepcopy(value)
             return value
-        if table == "rpc/sales_calendar_stamp" or not readonly or "limit" in (params or {}):
+        if table in {"rpc/sales_calendar_stamp","rpc/sales_calendar_context","rpc/sales_calendar_payload"} or not readonly or "limit" in (params or {}):
             return fetch(params)
         from modules.shared.collection_pages import collect_pages
         keys={"sales_empty_days":("owner","day"), "sales_report_history":("report","revision"), "sales_team_assignments":("member",), "rpc/sales_members":("member",), "rpc/sales_branch_members":("member",)}.get(table,("id",))
@@ -147,7 +150,7 @@ def calendar(db,today):
             reply={"nonce":nonce,"ok":False,"error":"요청을 완료하지 못했습니다. 입력은 유지됩니다. 다시 시도해 주세요."}
         state["sales_persistent_reply"]=reply
         state["sales_persistent_nonce"]=nonce
-    boot_fresh = "sales_persistent_boot" not in state
+    boot_fresh = "sales_persistent_boot" not in state or state["sales_persistent_boot"].get("access") != json.dumps(db.members,sort_keys=True)
     if boot_fresh:
         position=state["hwarang_auth"]["profile"].get("position_code")
         team=state.get("sales_calendar_team",position=="branch_manager")

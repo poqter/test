@@ -5,7 +5,7 @@ from test_activity_panels import new_dialog
 
 def test_discard_new_draft_removes_only_unsaved_input():
     at=new_dialog()
-    next(t for t in at.text_input if t.label=='고객 또는 일정명').input('버릴 제목').run()
+    next(t for t in at.text_input if t.label=='일정명').input('버릴 제목').run()
     button(at,'✕').click().run()
     button(at,'저장하지 않고 닫기').click().run()
     assert not at.exception and not at.session_state.get('sales_route')
@@ -17,7 +17,7 @@ def test_discard_new_draft_removes_only_unsaved_input():
 def test_edit_discard_returns_original_detail():
     at=app('st.session_state.setdefault("sales_route",{"type":"event","id":EVENT})\ncenter.run()')
     button(at,'일정 수정').click().run()
-    next(t for t in at.text_input if t.label=='고객 또는 일정명').input('저장하지 않은 수정').run()
+    next(t for t in at.text_input if t.label=='일정명').input('저장하지 않은 수정').run()
     button(at,'이전 화면으로').click().run()
     button(at,'저장하지 않고 닫기').click().run()
     assert not at.exception
@@ -28,9 +28,9 @@ def test_edit_discard_returns_original_detail():
 
 def test_original_value_restored_closes_without_warning():
     at=new_dialog()
-    field=next(t for t in at.text_input if t.label=='고객 또는 일정명')
+    field=next(t for t in at.text_input if t.label=='일정명')
     field.input('수정').run()
-    next(t for t in at.text_input if t.label=='고객 또는 일정명').input('').run()
+    next(t for t in at.text_input if t.label=='일정명').input('').run()
     button(at,'✕').click().run()
     assert not at.exception and not at.warning
     assert not at.session_state.get('sales_route')
@@ -39,7 +39,7 @@ def test_original_value_restored_closes_without_warning():
 def test_saved_edit_stays_in_latest_detail_and_clear_draft():
     at=app('st.session_state.setdefault("sales_route",{"type":"event","id":EVENT})\ncenter.run()')
     button(at,'일정 수정').click().run()
-    next(t for t in at.text_input if t.label=='고객 또는 일정명').input('새 제목').run()
+    next(t for t in at.text_input if t.label=='일정명').input('새 제목').run()
     button(at,'변경 저장').click().run()
     assert not at.exception
     assert at.session_state['sales_route']['type']=='event'

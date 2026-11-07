@@ -43,7 +43,7 @@ def event_body(values):
 
 def event_errors(v):
     errors={}
-    if not v["title"].strip():errors["title"]="고객 또는 일정명을 입력해 주세요."
+    if not v["title"].strip():errors["title"]="일정명을 입력해 주세요."
     if v["mode"]=="시간 지정":
         if not v["start"]:errors["start"]="시작 시간을 입력해 주세요."
         elif v["end"] and v["end"]<=v["start"]:errors["end"]="종료 시간은 시작 시간보다 늦어야 합니다."
@@ -80,7 +80,7 @@ def event_editor(db,day,event=None,parent=None,copy=None):
             if not v["title"].strip():updates["title"]="휴무"
             ux.set_values(d,updates)
     errors=event_errors(v) if d.get("attempted") else {}
-    ux.field(d,"title",st.text_input,"고객 또는 일정명",max_chars=200,placeholder="예: 소개 고객 첫 상담",after_change=infer_kind)
+    ux.field(d,"title",st.text_input,"일정명",max_chars=200,placeholder="예: 소개 고객 첫 상담",after_change=infer_kind)
     if "title" in errors:st.error(errors["title"])
     a,b=st.columns(2)
     ux.field(d,"day",a.date_input,"날짜")
@@ -99,13 +99,6 @@ def event_editor(db,day,event=None,parent=None,copy=None):
         if v["end"] and (not v["start"] or v["end"]<=v["start"]): st.error("종료 시간은 시작 시간보다 늦어야 합니다.")
         if "start" in errors:st.error(errors["start"])
         if not v["start"]: st.caption("시작 시간을 입력하거나 ‘시간 미정’을 선택해 주세요.")
-    recent_places=list(dict.fromkeys((r.get("place") or "").strip() for r in d["recent"] if (r.get("place") or "").strip()))[:5]
-    if recent_places:
-        def choose_place():
-            value=st.session_state.get(d["epoch"]+"recent_place")
-            if value:ux.set_values(d,{"place":value})
-        st.selectbox("최근 장소",[None,*recent_places],format_func=lambda p:p or "최근 장소에서 선택 · 선택",key=d["epoch"]+"recent_place",on_change=choose_place)
-
     ux.field(d,"place",st.text_input,"장소 · 선택",placeholder="예: 지점 상담실, 고객 방문, 전화 상담")
     populated=any((v["note"],v["companion"],v["support"],v["repeat"],v["common"]))
     extra=st.expander("추가 정보 · 선택",key=d["epoch"]+"extra",on_change="rerun")

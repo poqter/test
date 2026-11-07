@@ -189,16 +189,17 @@ function configureSync(a){
  syncConfig=a;
  if(key!==syncKey||a.syncStamp!==syncStamp){syncKey=key;syncStamp=a.syncStamp;}
  pendingRefresh=false;
+ configureRealtime(a);
  if(!syncTimer)scheduleSync();
 }
-function scheduleSync(){clearTimeout(syncTimer);syncTimer=setTimeout(checkSync,Math.min(60000,15000*Math.pow(2,Math.min(failures,2)))+Math.random()*3000)}
+function scheduleSync(){clearTimeout(syncTimer);syncTimer=setTimeout(checkSync,Math.min(60000,(realtimeReady?60000:15000)*Math.pow(2,Math.min(failures,2)))+Math.random()*3000)}
 function requestRefresh(action='refresh'){if(pendingRefresh&&Date.now()-refreshAt<20000)return;pendingRefresh=true;refreshAt=Date.now();emit(action,null);}
 async function checkSync(){
  clearTimeout(syncTimer);syncTimer=null;
  if(syncBusy)return;
  const a=syncConfig,session=a?.mobileSession;
  if(document.hidden||!parentVisible||calendarLoading||!session?.token||!a?.syncUnit){scheduleSync();return}
- syncBusy=true;const key=syncKey;const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),10000);
+ syncBusy=true;signalPending=false;const key=syncKey;const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),10000);
  try{
  const response=await fetch(session.url+'/rest/v1/rpc/sales_calendar_stamp',{method:'POST',headers:{apikey:session.key,Authorization:'Bearer '+session.token,'Content-Type':'application/json'},body:JSON.stringify({first_day:a.rangeStart,last_day:a.rangeEnd,p_unit:a.syncUnit}),signal:controller.signal});
  if(!response.ok){if(response.status===401)requestRefresh('reauth');throw Error('connection')}
@@ -208,10 +209,10 @@ async function checkSync(){
  failures=0;syncFailed=false;if(!calendarFlight)document.querySelector('#refreshing').textContent='';
  if(stamp!==syncStamp)requestRefresh();
  }catch{failures++;syncFailed=true;document.querySelector('#refreshing').textContent='연결 확인 중 · 현재 표시된 일정은 유지됩니다';}
- finally{clearTimeout(timeout);syncBusy=false;scheduleSync()}
+ finally{clearTimeout(timeout);syncBusy=false;scheduleSync();if(signalPending&&!calendarLoading){clearTimeout(signalTimer);signalTimer=setTimeout(checkSync,250)}}
 }
 addEventListener('online',()=>checkSync());
-addEventListener('visibilitychange',()=>{if(!document.hidden)checkSync()});
+addEventListener('visibilitychange',()=>{configureRealtime(syncConfig);if(!document.hidden)checkSync()});
 let lastFrameHeight=0,frameViewport='',reportedHeight=0;
 function fitCalendar(){
  const viewport=parent.innerWidth+'x'+parent.innerHeight;
@@ -227,9 +228,9 @@ addEventListener('message',e=>{
  if(e.source!==parent||e.origin!==location.origin)return;
  if(e.data.type==='streamlit:render')receiveCalendar(e.data.args);
  if(e.data.type==='hwarang.activity.new')emit('new',selected);
- if(e.data.type==='hwarang.activity.visibility'){parentVisible=e.data.visible;if(parentVisible)checkSync();}
+ if(e.data.type==='hwarang.activity.visibility'){parentVisible=e.data.visible;configureRealtime(syncConfig);if(parentVisible)checkSync();}
  if(e.data.type==='hwarang.activity.changed'&&e.data.nonce!==refreshNonce){
    refreshNonce=e.data.nonce;requestRefresh();
  }
 });
-</script><script src="persistent.js"></script><script>post('streamlit:componentReady',{apiVersion:1});</script></html>
+</script><script src="realtime.js"></script><script src="sync.js"></script><script src="persistent.js"></script><script>post('streamlit:componentReady',{apiVersion:1});</script></html>

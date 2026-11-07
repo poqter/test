@@ -180,8 +180,7 @@ def run(logout):
             with st.popover('☰',key='mobile_drawer_'+page+str(bool(st.session_state.get('mobile_pending')))):
                 st.html('<span class="mobile-drawer"></span>');menu_items(db,logout,'drawer')
         b.subheader('화랑 캘린더')
-        unread=db.request('GET','sales_notices',{'seen':'eq.false','select':'id','limit':'50'})
-        c.button('알림 '+(str(len(unread))+'+' if len(unread)==50 else str(len(unread))) if unread else '알림',icon=':material/notifications:',type='tertiary',on_click=choose,args=('알림·피드백',),key='mobile_alerts')
+        alerts_slot=c.empty()
     st.html('<span class="mobile-navigation-state" data-page="'+page+'" data-depth="'+str(len(st.session_state.get('mobile_back_stack',[])))+'"></span>')
     st.button('이전 메뉴',key='mobile_history_back',on_click=previous_page)
     st.html('<style>.st-key-mobile_history_back{display:none!important}.mobile-navigation-state{display:none}</style>')
@@ -200,6 +199,9 @@ def run(logout):
             b.button('주간 기록',on_click=choose,args=('주간 기록',),key='mobile_weekly',type='primary' if page=='주간 기록' else 'secondary')
             center.reports(db,today,'주간' if page=='주간 기록' else '일일')
             personal_performance(db,today)
+    unread=db.request('GET','sales_notices',{'seen':'eq.false','select':'id','limit':'50'})
+    with alerts_slot.container():
+        st.button('알림 '+(str(len(unread))+'+' if len(unread)==50 else str(len(unread))) if unread else '알림',icon=':material/notifications:',type='tertiary',on_click=choose,args=('알림·피드백',),key='mobile_alerts')
     if st.session_state.get('sales_route') and not st.session_state.get('sales_dialog_rendered'):redesign.dialog(db)
 
 

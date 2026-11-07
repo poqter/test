@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@supabase/realtime-js": "2.119.0",
+    "esbuild": "0.28.2"
+  },
+  "private": true,
+  "scripts": {
+    "build": "esbuild realtime-entry.js --bundle --minify --format=iife --global-name=HwarangRealtime --outfile=../../modules/activity/calendar_view/realtime.js"
+  }
+}

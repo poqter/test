@@ -19,43 +19,43 @@ try:
    page.goto('http://127.0.0.1:8511/?surface='+('pc' if width==1440 else 'mobile'));iframe=page.locator('iframe[title="modules.activity.center.sales_calendar_view"]');expect(iframe).to_be_visible()
    f=iframe.element_handle().content_frame();expect(f.locator('.cell')).to_have_count(30)
    f.evaluate('''() => {window.__calendarTest={grid:document.querySelector('#grid'),token:crypto.randomUUID(),blank:0};function sample(){if(document.querySelector('#grid')!==window.__calendarTest.grid)window.__calendarTest.blank++;requestAnimationFrame(sample)}sample()}''')
-   f.wait_for_function('calendarLayoutReady');assert f.evaluate('calendarSeq')==0, 'Fresh boot must not repeat load';assert f.evaluate('calendarBoot.recent.length')==0;token=f.evaluate('window.__calendarTest.token');height=iframe.bounding_box()['height']
+   f.wait_for_function('calendarLayoutReady');assert f.evaluate('calendarSeq')==1, 'Empty shell starts exactly one load';token=f.evaluate('window.__calendarTest.token');height=iframe.bounding_box()['height']
    def click(name):
     try:f.get_by_role('button',name=name,exact=True).click()
     except Exception:
      page.screenshot(path='/tmp/calendar-failure.png');print('GEOMETRY',iframe.bounding_box(),f.evaluate('({inner:innerHeight,frame:lastFrameHeight,body:document.body.getBoundingClientRect().toJSON(),panel:calendarPanel.getBoundingClientRect().toJSON(),client:calendarPanel.clientHeight,scroll:calendarPanel.scrollHeight,scrollTop:calendarPanel.scrollTop})'),flush=True);raise
    def backdrop():
     box=iframe.bounding_box();page.mouse.click(box['x']+2,box['y']+2)
-   click('＋ 일정 등록');expect(f.get_by_role('dialog')).to_be_visible()
+   click('＋ 일정 등록');expect(f.get_by_role('dialog')).to_be_visible();expect(f.get_by_label('일정명',exact=True)).to_be_focused()
    geometry=f.evaluate("({b:calendarPanel.getBoundingClientRect().toJSON(),w:innerWidth,h:innerHeight})")
    assert abs(geometry['b']['x']+geometry['b']['width']/2-geometry['w']/2)<3
    assert abs(geometry['b']['y']+geometry['b']['height']/2-geometry['h']/2)<3
    f.evaluate("document.fonts.ready")
    assert f.evaluate("[...document.fonts].some(x=>x.family==='HW LINE Seed' && x.status==='loaded')")
    backdrop();expect(f.get_by_role('dialog')).to_have_count(0)
-   click('＋ 일정 등록');f.get_by_label('고객 또는 일정명',exact=True).fill('배경 클릭 작성 보존')
+   click('＋ 일정 등록');f.get_by_label('일정명',exact=True).fill('배경 클릭 작성 보존')
    backdrop();expect(f.get_by_role('button',name='계속 작성',exact=True)).to_be_visible();click('계속 작성')
    f.locator('body').press('Escape');click('내용 유지하고 닫기')
-   click('＋ 일정 등록');expect(f.get_by_label('고객 또는 일정명',exact=True)).to_have_value('배경 클릭 작성 보존')
+   click('＋ 일정 등록');expect(f.get_by_label('일정명',exact=True)).to_have_value('배경 클릭 작성 보존')
    backdrop();click('저장하지 않고 닫기')
-   click('＋ 일정 등록');expect(f.get_by_label('고객 또는 일정명',exact=True)).to_have_value('')
+   click('＋ 일정 등록');expect(f.get_by_label('일정명',exact=True)).to_have_value('')
    f.evaluate("calendarPanel.dataset.busy='true'");backdrop();expect(f.get_by_role('dialog')).to_be_visible()
    f.locator('body').press('Escape');expect(f.get_by_role('dialog')).to_be_visible()
    f.evaluate("delete calendarPanel.dataset.busy");click('팝업 닫기')
-   f.wait_for_function('calendarBoot.recentLoaded');assert f.evaluate('calendarBoot.recent[0].place')=='상담실'
+   assert f.get_by_label('최근 장소',exact=True).count()==0
    click('다음 기간');expect(f.locator('#nav h2')).to_have_text('2026년 12월')
    click('이전 기간');expect(f.locator('#nav h2')).to_have_text('2026년 11월')
    click('주간');expect(f.locator('#grid')).to_have_class('grid weekends-off week')
    click('다음 기간');expect(f.locator('#nav h2')).to_have_text('11월 9일 – 11월 13일');click('월간')
    f.get_by_role('button',name='14:00 · AP · 테스트 작성자 · 결과 미입력',exact=True).first.click()
-   click('일정 수정');f.get_by_label('고객 또는 일정명',exact=True).fill('수정 확인 '+str(width))
+   click('일정 수정');f.get_by_label('일정명',exact=True).fill('수정 확인 '+str(width))
    if width==390:
     page.evaluate('history.back()');expect(f.get_by_role('button',name='계속 작성',exact=True)).to_be_visible();click('계속 작성')
    click('팝업 닫기');click('내용 유지하고 닫기')
    f.get_by_role('button',name='14:00 · AP · 테스트 작성자 · 결과 미입력',exact=True).first.click();click('일정 수정')
-   expect(f.get_by_label('고객 또는 일정명',exact=True)).to_have_value('수정 확인 '+str(width))
+   expect(f.get_by_label('일정명',exact=True)).to_have_value('수정 확인 '+str(width))
    click('변경 저장');expect(f.get_by_role('heading',name='수정 확인 '+str(width),exact=True)).to_be_visible();click('팝업 닫기')
-   click('＋ 일정 등록');f.get_by_label('고객 또는 일정명',exact=True).fill('반복 일정 테스트')
+   click('＋ 일정 등록');f.get_by_label('일정명',exact=True).fill('반복 일정 테스트')
    f.locator('summary').filter(has_text='추가 정보 · 선택').click();f.get_by_label('매주 반복',exact=True).check();f.get_by_label('총 등록 횟수 · 이번 일정 포함',exact=True).fill('2')
    click('일정 등록');expect(f.get_by_role('heading',name='반복 일정 테스트',exact=True)).to_be_visible()
    click('일정 삭제');click('일정 삭제 확인');click('복구');expect(f.get_by_role('button',name='복구',exact=True)).to_have_count(0);click('팝업 닫기')

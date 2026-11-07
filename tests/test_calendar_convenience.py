@@ -8,10 +8,7 @@ redesign.event_editor(FakeRecords(),date(2026,11,6))
 ''')
     assert not at.exception
     assert next(t for t in at.text_input if t.label=='장소 · 선택').value==''
-    recent=next(s for s in at.selectbox if s.label=='최근 장소')
-    assert '다른 직원 장소' not in recent.options
-    recent.select('최근 상담실').run()
-    assert next(t for t in at.text_input if t.label=='장소 · 선택').value=='최근 상담실'
+    assert not any(s.label=='최근 장소' for s in at.selectbox)
     assert at.session_state.get('fixture_reads',[])==[]
 
 
@@ -36,4 +33,4 @@ try:center.calendar(FakeRecords(),date(2026,11,6))
 finally:center.calendar_view=original
 ''')
     assert not at.exception
-    assert at.session_state['captured_stamp']=='fixture-stamp'
+    assert at.session_state['captured_stamp'] is None  # Populated by the first browser payload, not a blocking boot read.
