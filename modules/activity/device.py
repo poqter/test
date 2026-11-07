@@ -46,6 +46,7 @@ def synchronize(auth, authenticate):
     action = session.get("device_action","read")
     restoring = not session.get("password_correct")
     result = None
+    session["device_check_pending"] = False
     if restoring or action in ("store", "clear"):
         result = _bridge(action=action, token=session.get("device_handle","") if action=="store" else "", key="hw_device_bridge", default=None)
     if action in ("store","clear"):
@@ -56,7 +57,9 @@ def synchronize(auth, authenticate):
         return
     handle = session.get("device_handle")
     if restoring:
-        if not result or result.get("action")!="read":return
+        if not result or result.get("action")!="read":
+            session["device_check_pending"] = True
+            return
         handle = result.get("token")
     if not isinstance(handle,str) or len(handle)!=54:return
     criteria={"digest":"eq."+digest(handle),"expires_at":"gt."+datetime.now(timezone.utc).isoformat()}

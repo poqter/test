@@ -283,6 +283,9 @@ def main() -> None:
     from modules.activity import device
     try:
         device.synchronize(auth, _set_authenticated)
+        if st.query_params.get("view") == "mobile-calendar" and st.session_state.get("device_check_pending"):
+            st.caption("캘린더를 불러오는 중…")
+            st.stop()
     except HwarangAuthError as exc:
         st.error(str(exc))
         st.stop()

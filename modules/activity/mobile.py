@@ -158,9 +158,12 @@ def run(logout):
     ux.styles()
     st.html('''<style>
     [data-testid="stHeader"]{display:none}.block-container{padding-top:.4rem!important;padding-bottom:2rem!important;max-width:1200px}
-    body:has(.st-key-mobile_header) [data-testid="stMainBlockContainer"]{padding-top:8px!important}
+    body:has(.st-key-mobile_header) [data-testid="stMain"] [data-testid="stMainBlockContainer"]{padding-top:0!important}
     body:has(.st-key-mobile_header) [data-testid="stElementContainer"]:has(iframe[title="modules.activity.device.workspace_device"]){display:none}
-    body:has(.st-key-mobile_header) [data-testid="stMainBlockContainer"]>[data-testid="stVerticalBlock"]{gap:.4rem!important}
+    body:has(.st-key-mobile_header) [data-testid="stMain"] [data-testid="stMainBlockContainer"]>[data-testid="stVerticalBlock"]{gap:.4rem!important}
+    body:has(.st-key-mobile_header) [data-testid="stElementContainer"]:has(> [data-testid="stEmpty"]){display:none!important}
+    .st-key-mobile_content [data-testid="stVerticalBlock"]{gap:6px}
+    .st-key-mobile_header button{min-height:40px!important;padding:4px 10px!important}
     .st-key-mobile_header h3{margin:0;padding:0;font-size:1.15rem;white-space:nowrap}
     .st-key-mobile_header [data-testid="stHorizontalBlock"],.st-key-mobile_work_counts [data-testid="stHorizontalBlock"]{flex-wrap:nowrap!important;gap:6px!important}
     .st-key-mobile_header [data-testid="stColumn"],.st-key-mobile_work_counts [data-testid="stColumn"]{min-width:0!important;flex:1 1 0!important;width:0!important}
@@ -169,7 +172,7 @@ def run(logout):
     @media(min-width:701px){.st-key-mobile_menu_toggle{display:none}}
     @media(max-width:700px){[data-testid="stSidebar"]{display:none!important}
     [data-testid="stPopoverBody"]:has(.mobile-drawer){position:fixed!important;inset:0 auto 0 0!important;width:min(84vw,320px)!important;max-height:100dvh!important;overflow:auto;border-radius:0!important;padding-top:env(safe-area-inset-top,12px)}
-    .st-key-mobile_header{position:sticky;top:0;z-index:20;background:#f5f7fa;padding:4px 0}
+    .st-key-mobile_header{position:sticky;top:0;z-index:20;background:#f5f7fa;padding:0}
     .st-key-mobile_content input,.st-key-mobile_content textarea{font-size:16px!important}}
     </style>''')
     db=center.Records();today=datetime.now(center.KST).date()

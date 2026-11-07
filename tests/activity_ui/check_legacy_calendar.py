@@ -23,7 +23,8 @@ with sync_playwright() as p:
             else:data=[]
             r.fulfill(json=data);return
         f=root/('index.html' if path=='/' else path.lstrip('/'))
-        if f.exists():r.fulfill(path=str(f))
+        if f.name=='entry.js':r.fulfill(body='// Test the retained embedded editor separately from the shortcut redirect.')
+        elif f.exists():r.fulfill(path=str(f))
         else:r.fulfill(status=404)
     page.route('https://calendar.test/**',route);page.goto('https://calendar.test/')
     page.evaluate("s=>start(s)",dict(uid='owner',unit='unit',url='https://calendar.test',key='fake',token='fake'))

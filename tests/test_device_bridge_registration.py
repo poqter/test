@@ -38,3 +38,20 @@ st.success("동기화 완료")
 ''',default_timeout=20).run()
     assert not at.exception
     assert at.success[0].value=='동기화 완료'
+
+
+def test_device_restore_waits_for_browser_before_showing_login():
+    at=AppTest.from_string('''
+import streamlit as st
+from modules.activity import device
+from unittest.mock import patch
+with patch.object(device,"_bridge",return_value=None):
+    device.synchronize(None,lambda *args:None)
+assert st.session_state["device_check_pending"] is True
+with patch.object(device,"_bridge",return_value={"action":"read","token":""}):
+    device.synchronize(None,lambda *args:None)
+assert st.session_state["device_check_pending"] is False
+st.success("확인 완료")
+''',default_timeout=20).run()
+    assert not at.exception
+    assert at.success[0].value=="확인 완료"

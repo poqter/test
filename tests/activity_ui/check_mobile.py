@@ -22,6 +22,8 @@ try:
         page.goto('http://127.0.0.1:8504')
         expect(page.get_by_role('button',name='☰',exact=True)).to_be_visible()
         cal=page.frame_locator('iframe[title="modules.activity.center.sales_calendar_view"]')
+        assert page.locator('.st-key-mobile_header').bounding_box()['y'] < 24
+        assert page.locator('iframe[title="modules.activity.center.sales_calendar_view"]').bounding_box()['y'] < 200
         cal.get_by_text('보기 설정',exact=True).click()
         expect(cal.get_by_role('button',name='주말 제외',exact=True)).to_have_attribute('aria-pressed','true')
         expect(cal.get_by_role('button',name='모바일 앱 열기',exact=True)).to_have_count(0)
