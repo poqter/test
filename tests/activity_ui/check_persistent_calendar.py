@@ -19,13 +19,14 @@ try:
    page.goto('http://127.0.0.1:8511/?surface='+('pc' if width==1440 else 'mobile'));iframe=page.locator('iframe[title="modules.activity.center.sales_calendar_view"]');expect(iframe).to_be_visible()
    f=iframe.element_handle().content_frame();expect(f.locator('.cell')).to_have_count(30)
    f.evaluate('''() => {window.__calendarTest={grid:document.querySelector('#grid'),token:crypto.randomUUID(),blank:0};function sample(){if(document.querySelector('#grid')!==window.__calendarTest.grid)window.__calendarTest.blank++;requestAnimationFrame(sample)}sample()}''')
-   f.wait_for_function('calendarLayoutReady');token=f.evaluate('window.__calendarTest.token');height=iframe.bounding_box()['height']
+   f.wait_for_function('calendarLayoutReady');assert f.evaluate('calendarSeq')==0, 'Fresh boot must not repeat load';assert f.evaluate('calendarBoot.recent.length')==0;token=f.evaluate('window.__calendarTest.token');height=iframe.bounding_box()['height']
    def click(name):
     try:f.get_by_role('button',name=name,exact=True).click()
     except Exception:
      page.screenshot(path='/tmp/calendar-failure.png');print('GEOMETRY',iframe.bounding_box(),f.evaluate('({inner:innerHeight,frame:lastFrameHeight,body:document.body.getBoundingClientRect().toJSON(),panel:calendarPanel.getBoundingClientRect().toJSON(),client:calendarPanel.clientHeight,scroll:calendarPanel.scrollHeight,scrollTop:calendarPanel.scrollTop})'),flush=True);raise
    for _ in range(3):
     click('＋ 일정 등록');expect(f.get_by_role('dialog')).to_be_visible();click('팝업 닫기');expect(f.get_by_role('dialog')).to_have_count(0)
+   f.wait_for_function('calendarBoot.recentLoaded');assert f.evaluate('calendarBoot.recent[0].place')=='상담실'
    click('다음 기간');expect(f.locator('#nav h2')).to_have_text('2026년 12월')
    click('이전 기간');expect(f.locator('#nav h2')).to_have_text('2026년 11월')
    click('주간');expect(f.locator('#grid')).to_have_class('grid weekends-off week')
@@ -50,6 +51,9 @@ try:
    f.wait_for_function('!calendarLoading && !calendarFlight');assert f.evaluate('window.__calendarTest.token')==token
    assert f.evaluate('window.__calendarTest.blank')==0
    assert iframe.bounding_box()['height']==height
+   # A reused server boot must refresh when the frame is mounted again.
+   f.evaluate('''() => {const boot={...calendarBoot};calendarBoot=null;receiveCalendar({boot,bootFresh:false,mobileSession:latest.mobileSession});}''')
+   f.wait_for_function('!calendarLoading && !calendarFlight')
    expect(page.locator('[data-testid="stException"]')).to_have_count(0)
    assert not errors,errors
    page.screenshot(path=f'/tmp/calendar-persistent-{width}.png')

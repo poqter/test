@@ -147,14 +147,15 @@ def calendar(db,today):
             reply={"nonce":nonce,"ok":False,"error":"요청을 완료하지 못했습니다. 입력은 유지됩니다. 다시 시도해 주세요."}
         state["sales_persistent_reply"]=reply
         state["sales_persistent_nonce"]=nonce
-    if "sales_persistent_boot" not in state:
+    boot_fresh = "sales_persistent_boot" not in state
+    if boot_fresh:
         position=state["hwarang_auth"]["profile"].get("position_code")
         team=state.get("sales_calendar_team",position=="branch_manager")
         member=state.get("sales_calendar_member") if db.me["managed"] else None
         if member not in db.members:member=None
         state["sales_persistent_boot"]=calendar_service.bootstrap(db,today,state.get("sales_anchor",today),state.get("sales_view","월간"),team,member)
     # No conditional Streamlit elements before this mount: its position and key are fixed.
-    calendar_view(boot=state["sales_persistent_boot"],reply=reply,
+    calendar_view(boot=state["sales_persistent_boot"],bootFresh=boot_fresh,reply=reply,
         hideMobileApp=st.query_params.get("view")=="mobile-calendar",
         changeNonce=state.pop("sales_calendar_refresh",None),
         mobileSession=dict(url=db.auth.config.url,key=db.auth.config.publishable_key,token=db.token,uid=db.uid),
@@ -167,7 +168,6 @@ def calendar_extras(db,today):
     from modules.activity import ux
     mobile_shell=st.query_params.get("view")=="mobile-calendar"
     position=st.session_state["hwarang_auth"]["profile"].get("position_code")
-    branch={r["member"]:r for r in db.request("POST","rpc/sales_branch_members",body={})}
     fetch_start=fetch_end=today
     def calendar_rows(a,b):
         return db.request("POST","rpc/sales_calendar_days",body={"first_day":str(a),"last_day":str(b)})
@@ -197,13 +197,16 @@ def calendar_extras(db,today):
             if personal and all(r["status"]=="취소" for r in personal):return "모두 취소"
             return "미등록"
         if db.me["managed"] and not mobile_shell:
-            from modules.activity.status_policy import unregistered_exclusions, summary_groups
-            states={uid:day_state(uid) for uid in branch.keys() & db.members.keys()}
-            excluded=unregistered_exclusions(db.auth, [uid for uid,state in states.items() if state=="미등록"])
-            groups=summary_groups(states, {uid:branch[uid]["label"] for uid in states}, excluded)
-            with st.expander("오늘의 팀" if position=="team_leader" else "오늘의 지점",key="sales_team_panel",on_change="rerun"):
-                st.caption("미등록 "+str(len(groups.get("미등록",[])))+"명 · 일정 없음 "+str(len(groups.get("일정 없음",[])))+"명")
-                for state,names in groups.items():st.write(state+" "+str(len(names))+"명 · "+", ".join(sorted(names)))
+            team_panel=st.expander("오늘의 팀" if position=="team_leader" else "오늘의 지점",key="sales_team_panel",on_change="rerun")
+            if team_panel.open:
+                from modules.activity.status_policy import unregistered_exclusions, summary_groups
+                branch={r["member"]:r for r in db.request("POST","rpc/sales_branch_members",body={})}
+                states={uid:day_state(uid) for uid in branch.keys() & db.members.keys()}
+                excluded=unregistered_exclusions(db.auth, [uid for uid,state in states.items() if state=="미등록"])
+                groups=summary_groups(states, {uid:branch[uid]["label"] for uid in states}, excluded)
+                with team_panel:
+                    st.caption("미등록 "+str(len(groups.get("미등록",[])))+"명 · 일정 없음 "+str(len(groups.get("일정 없음",[])))+"명")
+                    for state,names in groups.items():st.write(state+" "+str(len(names))+"명 · "+", ".join(sorted(names)))
         if day_state(db.uid) in ("미등록","일정 없음","모두 취소"):
             checked=db.uid in confirmations
             if st.button("오늘 일정 없음 · 되돌리기" if checked else "오늘 일정 없음"):

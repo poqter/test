@@ -25,7 +25,11 @@ function receiveCalendar(a){
   try{parent.__hwarangCalendarMemory??={};calendarMemory=parent.__hwarangCalendarMemory[calendarBoot.uid]??={drafts:new Map()};calendarDrafts=calendarMemory.drafts;}catch{}
   latest={...a.boot,hideMobileApp:a.hideMobileApp,mobileSession:a.mobileSession};
   const remembered=calendarMemory?.view;if(remembered){calendarBoot.team=remembered.team;calendarBoot.member=remembered.member;latest={...latest,day:remembered.day,mode:remembered.mode};selected=remembered.selected;context=latest.mode+latest.day}
-  calendarLoading=true;render(latest);reloadCalendar(true);setTimeout(()=>{frameViewport='';fitCalendar();calendarLayoutReady=true},150);
+  const [first,last]=desiredRange();
+  const fresh=a.bootFresh&&!remembered&&first===a.boot.rangeStart&&last===a.boot.rangeEnd;
+  calendarLoading=!fresh;
+  if(fresh)calendarCache.set(rangeKey(first,last),a.boot);
+  render(latest);if(!fresh)reloadCalendar(true);setTimeout(()=>{frameViewport='';fitCalendar();calendarLayoutReady=true},150);
  }else{latest.mobileSession=a.mobileSession;latest.hideMobileApp=a.hideMobileApp;syncConfig=latest;}
  const r=a.reply,q=calendarFlight;
  if(r&&q&&r.nonce===q.nonce){clearTimeout(q.timer);document.querySelectorAll('[data-request]').forEach(n=>{if(n.dataset.request===q.nonce)n.remove()});calendarFlight=null;r.ok?q.resolve(r.result):q.reject(Error(r.error||'요청을 완료하지 못했습니다.'));sendNext()}
@@ -133,8 +137,23 @@ function openEditor(row,kind,day){
   const pair=el('div','','pair');form.append(pair);field(pair,'날짜','day',v.day,'date').required=true;const activity=field(pair,'활동 종류','kind',v.kind,'text',calendarBoot.kinds);
   const mode=field(form,'시간','mode',v.mode,'text',['시간 지정','종일','시간 미정']),times=el('div','','pair');form.append(times);const start=field(times,'시작 시간','start',v.start,'time'),end=field(times,'종료 시간 · 선택','end',v.end,'time');times.hidden=mode.value!=='시간 지정';mode.onchange=()=>times.hidden=mode.value!=='시간 지정';
   let lastStart=start.value;start.onchange=()=>{if(lastStart&&end.value&&start.value){const mins=s=>Number(s.slice(0,2))*60+Number(s.slice(3));const shifted=mins(end.value)+mins(start.value)-mins(lastStart);end.value=shifted>=0&&shifted<1440?String(Math.floor(shifted/60)).padStart(2,'0')+':'+String(shifted%60).padStart(2,'0'):'';}lastStart=start.value};
-  const place=field(form,'장소 · 선택','place',v.place);const recent=[...new Set([...(calendarBoot.recent||[]).map(d=>d.place),...[...calendarDrafts.values()].map(d=>d.values.place)].filter(Boolean))].slice(0,5);if(recent.length){const pick=field(form,'최근 장소','recent','','text',[['','선택 안 함'],...recent]);pick.onchange=()=>{if(pick.value)place.value=pick.value}}
-  const extra=section(form,'추가 정보 · 선택');extra.open=!!(v.note||v.companion||v.support||v.repeat||v.common);field(extra,'메모','note',v.note,'textarea');field(extra,'동행자','companion',v.companion,'text',[['','선택 안 함'],...[...new Set([...(calendarBoot.recent||[]).map(r=>r.companion),...Object.keys(calendarBoot.people)])].filter(u=>u&&u!==calendarBoot.uid&&calendarBoot.people[u]).map(u=>[u,calendarBoot.people[u]])]);
+  const place=field(form,'장소 · 선택','place',v.place);
+  const pick=field(form,'최근 장소','recent','','text',[['','선택 안 함']]);pick.parentElement.hidden=true;pick.onchange=()=>{if(pick.value)place.value=pick.value};
+  const extra=section(form,'추가 정보 · 선택');extra.open=!!(v.note||v.companion||v.support||v.repeat||v.common);field(extra,'메모','note',v.note,'textarea');const companion=field(extra,'동행자','companion',v.companion,'text',[['','선택 안 함'],...Object.entries(calendarBoot.people).filter(([u])=>u!==calendarBoot.uid)]);
+  const fillRecent=()=>{
+   if(!form.isConnected)return;
+   const recent=[...new Set([...(calendarBoot.recent||[]).map(d=>d.place),...[...calendarDrafts.values()].map(d=>d.values.place)].filter(Boolean))].slice(0,5);
+   pick.replaceChildren(new Option('선택 안 함',''),...recent.map(x=>new Option(x,x)));pick.parentElement.hidden=!recent.length;
+   const current=companion.value,people=calendarBoot.people;
+   const ids=[...new Set([...(calendarBoot.recent||[]).map(r=>r.companion),...Object.keys(people)])].filter(u=>u&&u!==calendarBoot.uid&&people[u]);
+   companion.replaceChildren(new Option('선택 안 함',''),...ids.map(u=>new Option(people[u],u)));
+   if(current&&!ids.includes(current))companion.append(new Option(current,current));companion.value=current;
+  };
+  fillRecent();
+  if(!calendarBoot.recentLoaded){
+   const hint=el('div','최근 장소를 불러오는 중…','');place.parentElement.after(hint);
+   const loadRecent=()=>{hint.textContent='최근 장소를 불러오는 중…';rpc('recent',{day:latest.day}).then(rows=>{calendarBoot.recent=[...calendarBoot.recent,...rows];calendarBoot.recentLoaded=true;fillRecent();hint.remove()}).catch(()=>{if(!form.isConnected)return;hint.replaceChildren(el('span','최근 장소를 불러오지 못했습니다. 직접 입력할 수 있습니다. '),button('다시 불러오기',loadRecent))})};loadRecent();
+  }
   const support=field(extra,'지원 요청','support',v.support,'checkbox'),help=field(extra,'지원받을 내용','help',v.help);help.parentElement.hidden=!support.checked;support.onchange=()=>help.parentElement.hidden=!support.checked;
   if(!editing){const repeat=field(extra,'매주 반복','repeat',v.repeat,'checkbox'),count=field(extra,'총 등록 횟수 · 이번 일정 포함','repeats',v.repeats,'number');count.min=1;count.max=52;count.parentElement.hidden=!repeat.checked;repeat.onchange=()=>count.parentElement.hidden=!repeat.checked;}
   if(calendarBoot.managed)field(extra,'지점 공통 일정','common',v.common,'checkbox');

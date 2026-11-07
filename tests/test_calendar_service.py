@@ -76,3 +76,14 @@ def test_follow_task_and_contract_fields(db):
  with pytest.raises(ValueError):command(db,'contract',{'event':EVENT,'seed':seed,'data':dict(v,effective='2026-11-01')})
  st.session_state['fixture_events'][0]['owner']=OTHER
  with pytest.raises(HwarangAuthError):command(db,'contract',{'event':EVENT,'seed':seed,'data':v})
+
+
+def test_bootstrap_defers_recent_and_recent_is_owner_scoped(db):
+ from datetime import date
+ from modules.activity.calendar_service import bootstrap
+ st.session_state['fixture_events'].append(dict(st.session_state['fixture_events'][0],id='other',owner=OTHER,place='다른 사람 장소'))
+ boot=bootstrap(db,date(2026,11,6),date(2026,11,6),'월간',False,None)
+ assert boot['recent']==[]
+ assert st.session_state['fixture_reads'].count(('GET','sales_events'))==1
+ recent=command(db,'recent',{'day':'2026-11-06'})
+ assert recent==[{'place':'상담실','companion':None}]

@@ -78,3 +78,15 @@ def test_report_help_title_is_stable_after_input():
     next(t for t in at.text_input if t.label=="지원받을 내용").input("동행 요청").run()
     assert not at.exception
     assert next(e for e in at.expander if e.label=="지원 요청 · 선택").proto.id==identity
+
+
+def test_team_summary_reads_only_when_opened():
+    at=app('center.calendar_extras(FakeRecords(),date(2026,11,6))')
+    assert not at.exception
+    assert ('POST','rpc/sales_branch_members') not in at.session_state['fixture_reads']
+    panel=next(e for e in at.expander if e.label=='오늘의 팀')
+    states=at._tree.get_widget_states()
+    states.widgets.add(id=panel.proto.id,bool_value=True)
+    at._run(states)
+    assert not at.exception
+    assert ('POST','rpc/sales_branch_members') in at.session_state['fixture_reads']

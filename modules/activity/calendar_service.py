@@ -110,6 +110,10 @@ def save_event(db,a):
 def command(db,op,a):
     db._reads.clear()
     if op=='load':return snapshot(db,a)
+    if op=='recent':
+        day=date.fromisoformat(a['day'])
+        rows=db.period('sales_events',day-30*DAY,day+30*DAY,owner='eq.'+db.uid,select='place,companion,id,day')
+        return [{k:r.get(k) for k in ('place','companion')} for r in reversed(rows)]
     if op=='detail':return detail(db,a['id'])
     if op=='save':return save_event(db,a)
     if op=='trash':
@@ -155,5 +159,4 @@ def bootstrap(db,today,day,mode,team,member):
     first=day.replace(day=1); first-=first.weekday()*DAY
     people={r['member']:r['label'] for r in db.request('POST','rpc/sales_branch_members',body={})}
     catalog=json.loads((Path(__file__).resolve().parents[2]/'data/portal_catalog.json').read_text())
-    recent=db.period('sales_events',day-30*DAY,day+30*DAY,owner='eq.'+db.uid)
-    return dict(recent=[{k:r.get(k) for k in ('place','companion')} for r in reversed(recent)],uid=db.uid,managed=bool(db.me['managed']),people=people,members={u:r['label'] for u,r in db.members.items()} if db.me['managed'] else {},insurers=[r['name'] for r in catalog['insurers'] if r['group'] in ('생명보험','손해보험')],kinds=KINDS,day=str(day),today=str(today),mode=mode,team=team,member=member,**snapshot(db,{'first':str(first),'last':str(first+41*DAY),'team':team,'member':member}))
+    return dict(recent=[],uid=db.uid,managed=bool(db.me['managed']),people=people,members={u:r['label'] for u,r in db.members.items()} if db.me['managed'] else {},insurers=[r['name'] for r in catalog['insurers'] if r['group'] in ('생명보험','손해보험')],kinds=KINDS,day=str(day),today=str(today),mode=mode,team=team,member=member,**snapshot(db,{'first':str(first),'last':str(first+41*DAY),'team':team,'member':member}))
