@@ -1,4 +1,4 @@
-<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="hwarang-release" content="20261108-calendar-navigation"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="hwarang-release" content="20261108-persistent-calendar"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
 *{box-sizing:border-box}body{margin:0;color:#18334c;background:transparent;font:14px system-ui,-apple-system,"Malgun Gothic",sans-serif}button{font:inherit;color:inherit;cursor:pointer;background:#fff;border:1px solid #d8e1e8;border-radius:8px;min-height:36px;padding:0 12px}button:hover{background:#eef6f7}button:focus-visible{outline:3px solid #267a87;outline-offset:-3px}header,.nav,.tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap}header{justify-content:space-between;margin:6px 0 13px}h2{font-size:22px;margin:0 10px 0 0;letter-spacing:-.04em}.primary{background:#155461;color:white;border-color:#155461;font-weight:700}.primary:hover{background:#103d48}.switch{display:flex;background:#eaf0f4;border-radius:9px;padding:3px}.switch button{min-height:31px;border:0;background:transparent}.switch .active{background:white;box-shadow:0 1px 3px #bbc7ce}.grid{display:grid;grid-template-columns:repeat(var(--days,7),minmax(0,1fr));border:1px solid #d9e2e8;border-radius:12px;overflow:hidden;background:white}.weekday{text-align:center;background:#f5f8fa;font-weight:600;color:#526779;padding:9px}.cell{min-height:83px;border-top:1px solid #e2e8ed;border-right:1px solid #e2e8ed;padding:4px;min-width:0}.cell:last-child{border-right:0}.weekends-off{--days:5}.weekend-toggle[aria-pressed="true"]{background:#e4f5eb;border-color:#27885d}.refreshing{font-size:12px;color:#526779;margin:4px 0;min-height:18px}.outside{background:#f7f9fa;color:#83919a}.selected{background:#eff8f7;box-shadow:inset 0 0 0 2px #699e9f}.day{border:0;border-radius:6px;font-size:13px;padding:0 7px;background:transparent;min-height:28px}.today{background:#155461;color:white}.chip{display:block;text-align:left;margin:2px 0;padding:3px 5px;min-height:22px;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;background:#e1f1ee;color:#185948;border:0;border-left:3px solid #408673;border-radius:4px}.done{background:#e9eff5;color:#526779;border-color:#8fa2b4}.more{font-size:12px;background:none;border:0;min-height:22px}.agenda{margin-top:12px;padding:15px 18px;border:1px solid #d9e2e8;border-radius:12px;background:white}.agenda h3{margin:0 0 8px;font-size:16px}.row{display:block;width:100%;border:0;border-top:1px solid #ecf0f3;border-radius:0;text-align:left;padding:10px 3px}.hint{color:#526779;margin:4px 0 10px}.daydot{display:block;color:#23776c;font-size:13px;line-height:8px;padding-left:10px}.strip .cell{min-height:46px}
 @media(max-width:650px){header{align-items:start}.nav,.tools{width:100%}h2{font-size:19px;margin-right:auto}.primary{margin-left:auto}.cell{min-height:49px;padding:2px}.chip{font-size:10px;padding:0 2px;min-height:14px}.day{min-height:23px}.weekday{padding:6px}.agenda{padding:12px}.row{min-height:44px}}
 [data-kind="TA"]{--ink:#164b91;--fill:#eaf2ff;--stripe:#3272c4}
@@ -21,11 +21,21 @@ dialog{position:fixed;inset:0 0 0 auto;margin:0;width:min(400px,90vw);height:100
 .mobile-shell .settings-menu{position:absolute;right:0;top:42px;width:220px;background:#fff;border:1px solid #d8e1e8;border-radius:10px;padding:12px;z-index:10;box-shadow:0 6px 18px #18334c22}.mobile-shell .view-settings:not([open]) .settings-menu{display:none}
 .mobile-shell .nav{width:100%;flex-wrap:nowrap}.mobile-shell .nav h2{margin-right:auto}
 .view-settings{position:relative}.view-settings summary{min-height:40px;display:flex;align-items:center}.settings-menu{position:absolute;right:0;top:42px;width:250px;max-width:calc(100vw - 16px);background:white;border:1px solid #d8e1e8;border-radius:10px;padding:12px;z-index:10;box-shadow:0 6px 18px #18334c22}.settings-heading{display:flex;justify-content:space-between;align-items:center}.settings-heading button{font-size:22px}.setting-option{display:flex;align-items:center;gap:10px;min-height:44px}.setting-option input{width:18px;height:18px}.settings-save{font-size:12px;color:#526779}.mobile-shell .tools{flex-wrap:wrap}.mobile-shell .switch{order:3;width:100%}.mobile-shell .switch button{flex:1;min-height:40px}.mobile-shell .settings-menu{width:250px}.view-settings:not([open]) .settings-menu{display:none}
+
+[hidden]{display:none!important}
+body .view-settings .settings-menu{position:fixed;right:8px;left:auto;top:100px;width:250px;max-width:calc(100vw - 16px);max-height:calc(100vh - 115px);overflow:auto}
+/* A stable viewport prevents month lengths, notices and forms moving the host. */
+html{height:100%;overflow:hidden}body{height:100%;overflow:auto;padding:4px 8px 14px;scrollbar-gutter:stable}
+.refreshing,.refreshing:empty{display:block;height:22px;min-height:22px;margin:0;font-size:12px}
+.grid:not(.week) .cell{min-height:54px}.grid{min-height:360px;grid-template-rows:30px repeat(6,minmax(50px,1fr));grid-auto-rows:auto}.grid.week{min-height:430px;grid-template-rows:30px minmax(160px,1fr)}
+.agenda{min-height:125px}dialog.calendar-panel{max-width:100%;inset:0 0 0 auto;width:min(540px,96vw);height:100%;max-height:100%;border-radius:14px 0 0 14px;box-shadow:-6px 0 25px #18334c22;padding:0;background:white;color:#18334c}
+.panel-head{position:sticky;top:0;background:white;z-index:2;padding:14px 18px;border-bottom:1px solid #e2e8ed;display:flex;align-items:center;gap:8px}.panel-head h3{margin:0;flex:1}.panel-content{padding:16px 18px}.panel-content form{display:grid;gap:12px}.panel-content label{display:grid;gap:5px;font-size:13px}.panel-content input,.panel-content select,.panel-content textarea{width:100%;font:inherit;font-size:16px;padding:9px;border:1px solid #cbd7df;border-radius:8px;background:white;color:inherit}.panel-content input[type=checkbox]{width:18px;height:18px}.panel-content label.check{display:flex;align-items:center;gap:9px;min-height:36px}.panel-content textarea{min-height:80px;resize:vertical}.panel-content details{border-top:1px solid #e2e8ed;padding-top:10px}.panel-content details>*+*{margin-top:12px}.panel-actions{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}.panel-error{color:#a33d22;white-space:pre-wrap;min-height:20px}.danger{color:#b42318;border-color:#d92d20;background:#fff1f0}.detail-line{margin:12px 0;white-space:pre-wrap;overflow-wrap:anywhere}.detail-line strong{display:block;color:#526779;font-size:12px;margin-bottom:5px}.panel-content button:disabled{opacity:.55;cursor:wait}.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}.draft-notice{padding:10px;background:#fff4df;border-radius:8px}.team-table{overflow:auto;max-height:240px}.team-table table{border-collapse:collapse;font-size:12px}.team-table td,.team-table th{padding:7px;border:1px solid #e2e8ed;min-width:90px}
+@media(max-width:650px){body{padding:4px}.grid{min-height:360px}.grid.week{min-height:360px;grid-template-rows:none;grid-auto-rows:minmax(50px,auto)}.cell{min-height:56px}dialog.calendar-panel{max-width:100%;inset:auto 0 0;width:100%;height:94%;max-height:94%;border-radius:16px 16px 0 0}.panel-content{padding:12px}.tools{gap:6px}.panel-content button{min-height:42px}}
 </style><header><div class="nav" id="nav"></div><div class="tools" id="tools"></div></header><div class="legend" aria-label="활동 종류별 색상"><span data-kind="TA">TA 고객 연락</span><span data-kind="AP">AP 초회 상담</span><span data-kind="PC">PC 프레젠테이션 / 클로징</span><span data-kind="CS">CS 고객 관리</span></div><div id="refreshing" class="refreshing" role="status" aria-live="polite"></div><div id="grid" class="grid"></div><section class="agenda" id="agenda"></section><script>
 const post=(type,data)=>parent.postMessage({isStreamlitMessage:true,type,...data},location.origin);
-const emit=(action,value)=>{try{sessionStorage.setItem('hwarang.calendar.selection.'+latest?.mobileSession?.uid,JSON.stringify({context,selected}));const main=parent.document.querySelector('[data-testid="stMain"]');if(['event','new','scope'].includes(action)&&main)parent.__calendarReturnScroll=main.scrollTop;}catch{};post('streamlit:setComponentValue',{value:{action,value,anchor:selected,nonce:crypto.randomUUID()},dataType:'json'});};
+const emit=(action,value)=>calendarAction(action,value);
 function el(tag,text,cls){let x=document.createElement(tag);x.textContent=text||'';x.className=cls||'';return x}
-function button(label,fn,cls,aria){let b=el('button',label,cls);b.onclick=fn;if(aria)b.setAttribute('aria-label',aria);return b}
+function button(label,fn,cls,aria){let b=el('button',label,cls);b.type='button';b.onclick=fn;if(aria)b.setAttribute('aria-label',aria);return b}
 const date=s=>new Date(s+'T12:00:00Z'), iso=d=>d.toISOString().slice(0,10), add=(d,n)=>new Date(+d+n*86400000);
 let selected,context,latest,lastRender,refreshNonce,selectedByUser=null,lastTap=0,pointerStart=null,suppressClickUntil=0;
 let prefsHydrated=false,prefsUser=null,prefs={showCompleted:true,showWeekends:false};
@@ -79,7 +89,7 @@ function openMobile(session){
 }
 function render(a){
  latest=a;loadPrefs(a);configureSync(a);
- if(!prefsHydrated){prefsHydrated=true;if(!!a.hideWeekends!==!prefs.showWeekends)queueMicrotask(()=>emit('weekends',!prefs.showWeekends));}
+ prefsHydrated=true;
  document.body.classList.toggle("mobile-shell",!!a.hideMobileApp);
  const {mode,day,today}=a,events=a.events.filter(e=>prefs.showCompleted||!e.done),hide=!prefs.showWeekends,anchor=date(day),month=mode==='월간',key=mode+day;
  if(context!==key){
@@ -88,17 +98,18 @@ function render(a){
    context=key;
  }
  if(hide&&isWeekend(selected)){const candidate=weekday(selected,-1);selected=month&&candidate.slice(0,7)!==day.slice(0,7)?weekday(selected):candidate}
- const signature=JSON.stringify([mode,day,today,events,a.roster,a.scopeLabel,hide,prefs.showCompleted,selected,selectedByUser]);
- if(!syncFailed)document.querySelector('#refreshing').textContent='';
+ if(calendarMemory)calendarMemory.view={day,mode,selected,team:calendarBoot.team,member:calendarBoot.member};
+ const signature=JSON.stringify([mode,day,today,events,a.roster,a.scopeLabel,hide,prefs.showCompleted,selected,selectedByUser,calendarLoading,calendarLoadError]);
+ // Status is owned by the request queue, not cleared by selection changes.
  if(signature===lastRender)return;
  lastRender=signature;
  const nav=el('div'),tools=el('div'),grid=el('div'),agenda=el('section');
- if(document.querySelector('dialog'))document.querySelector('dialog').close();
+ // Keep open forms and dialogs mounted during calendar data updates.
  const weekStart=add(anchor,-((anchor.getUTCDay()+6)%7)),weekEnd=add(weekStart,hide?4:6);
  const fmt=s=>Number(s.slice(5,7))+'월 '+Number(s.slice(8))+'일';
  const choose=s=>{
    if(hide)s=weekday(s);
-   const local=month?s.slice(0,7)===day.slice(0,7):s>=(a.rangeStart||iso(weekStart))&&s<=(a.rangeEnd||iso(weekEnd));
+   const local=month?s.slice(0,7)===day.slice(0,7):s>=iso(weekStart)&&s<=iso(weekEnd);
    if(!local){emit('date',s);return}
    selected=s;try{sessionStorage.setItem('hwarang.calendar.selection.'+a.mobileSession?.uid,JSON.stringify({context,selected}))}catch{}render(a);
  };
@@ -112,16 +123,16 @@ function render(a){
  option('완료 일정 표시','showCompleted');option('주말 표시','showWeekends');
  const guide=el('details');guide.dataset.key='color-guide';guide.append(el('summary','활동 색상 안내'),document.querySelector('.legend').cloneNode(true));panel.append(guide);
  panel.append(button('기본값으로 되돌리기',()=>changePrefs({showCompleted:true,showWeekends:false})),el('p','변경한 설정은 자동으로 저장됩니다.','settings-save'));settings.append(panel);
- if(a.hideMobileApp)tools.append(button((a.scopeLabel||'내 일정')+' ▾',()=>emit('scope',null),'scope-button','조회 대상 · '+(a.scopeLabel||'내 일정')));
- else tools.append(button('모바일 앱 열기',()=>openMobile(latest.mobileSession)));
+ if(true)tools.append(button((a.scopeLabel||'내 일정')+' ▾',()=>emit('scope',null),'scope-button','조회 대상 · '+(a.scopeLabel||'내 일정')));
+ if(!a.hideMobileApp)tools.append(button('모바일 앱 열기',()=>openMobile(latest.mobileSession)));
  tools.append(sw,settings);
- if(!a.hideMobileApp)tools.append(button('＋ 일정 등록',()=>emit('new',selected),'primary'));
+ tools.append(button('＋ 일정 등록',()=>emit('new',selected),'primary'));tools.append(button('삭제한 일정',()=>calendarTrash()));
  grid.hidden=mode==='날짜별';
  grid.className='grid'+(hide?' weekends-off':'')+(mode==='주간'?' week':'')+(mode==='날짜별'?' strip':'');
  if(!grid.hidden){
  for(let w of (hide?'월화수목금':'월화수목금토일'))grid.append(el('div',w,'weekday'));
  const first=month?date(day.slice(0,7)+'-01'):anchor, monday=add(first,-((first.getUTCDay()+6)%7)),last=new Date(Date.UTC(anchor.getUTCFullYear(),anchor.getUTCMonth()+1,0,12));
- let cells=month?Math.ceil(((first.getUTCDay()+6)%7+last.getUTCDate())/7)*7:7;
+ let cells=month?42:7;
  for(let i=0;i<cells;i++){let d=add(monday,i),s=iso(d);if(hide&&isWeekend(s))continue;let items=events.filter(e=>e.day===s),box=el('div','','cell'+(s===selected?' selected':'')+(month&&s.slice(0,7)!==day.slice(0,7)?' outside':''));
  box.dataset.key=s;
  const openDay=()=>{
@@ -139,15 +150,24 @@ function render(a){
  grid.append(box)}
  }
 
+ if(mode==='주간'&&Object.keys(a.roster||{}).length){
+ const group=el('details');group.dataset.key='weekly-roster';group.append(el('summary','구성원별 주간 일정'));
+ const wrap=el('div','','team-table'),table=el('table'),head=el('tr');head.append(el('th','구성원'));
+ for(let i=0;i<(hide?5:7);i++)head.append(el('th',fmt(iso(add(weekStart,i)))));table.append(head);
+ for(const [uid,name] of Object.entries(a.roster)){const row=el('tr');row.append(el('th',name));for(let i=0;i<(hide?5:7);i++)row.append(el('td',events.filter(e=>e.member===uid&&e.day===iso(add(weekStart,i))).map(e=>e.label.split(' · ').slice(0,2).join(' ')).join(' / ')));table.append(row)}wrap.append(table);group.append(wrap);agenda.append(group);
+ }
+ const soon=events.filter(e=>e.day===today&&e.soon);if(soon.length)agenda.append(el('p','30분 이내 시작 · '+soon.map(e=>e.short).join(' / '),'hint'));
  const list=events.filter(e=>e.day===selected);if(mode==='날짜별'&&Object.keys(a.roster||{}).length){
  const group=el('details');group.open=!matchMedia('(max-width:650px)').matches;group.append(el('summary','구성원별 일정 · '+Object.keys(a.roster).length+'명'));
  for(const [uid,name] of Object.entries(a.roster)){const own=list.filter(e=>e.member===uid);group.append(el('div',name+' · '+(own.map(e=>e.short.split(' · ')[0]).join(' / ')||'일정 없음'),'memberline'))}
  agenda.append(group)
  }
+ if(calendarLoadError)agenda.append(el('p','최신 일정을 확인하지 못했습니다.','hint'),button('다시 불러오기',()=>reloadCalendar(true)));
+ if(calendarLoading)agenda.append(el('p','일정을 불러오는 중입니다.','hint'));
  agenda.append(el('h3',Number(selected.slice(5,7))+'월 '+Number(selected.slice(8))+'일 일정 · '+list.length+'건'));
  if(month&&selectedByUser===selected)agenda.append(el('p','선택한 날짜의 빈 공간을 한 번 더 누르면 일정 등록','hint'));
  for(let item of (mode!=='날짜별'&&list.length>2?list.slice(0,2):list)){let row=button(item.label+'  ›',()=>emit('event',item.id),'row');row.dataset.key=item.id;row.dataset.kind=item.kind;agenda.append(row)}
- if(!list.length)agenda.append(el('p','등록된 일정이 없습니다.','hint'),button('이 날짜에 일정 등록',()=>emit('new',selected)));
+ if(!list.length&&!calendarLoading&&!calendarLoadError)agenda.append(el('p','등록된 일정이 없습니다.','hint'),button('이 날짜에 일정 등록',()=>emit('new',selected)));
  for(const [id,fresh] of [['nav',nav],['tools',tools],['grid',grid],['agenda',agenda]]){
    const old=document.getElementById(id);
    if(id==='grid'){old.className=fresh.className;old.hidden=fresh.hidden}
@@ -170,7 +190,7 @@ async function checkSync(){
  clearTimeout(syncTimer);syncTimer=null;
  if(syncBusy)return;
  const a=syncConfig,session=a?.mobileSession;
- if(document.hidden||!parentVisible||!session?.token||!a?.syncUnit){scheduleSync();return}
+ if(document.hidden||!parentVisible||calendarLoading||!session?.token||!a?.syncUnit){scheduleSync();return}
  syncBusy=true;const key=syncKey;const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),10000);
  try{
  const response=await fetch(session.url+'/rest/v1/rpc/sales_calendar_stamp',{method:'POST',headers:{apikey:session.key,Authorization:'Bearer '+session.token,'Content-Type':'application/json'},body:JSON.stringify({first_day:a.rangeStart,last_day:a.rangeEnd,p_unit:a.syncUnit}),signal:controller.signal});
@@ -178,22 +198,31 @@ async function checkSync(){
  const stamp=await response.json();
  if(key!==syncKey)return;
  if(typeof stamp!=='string'){requestRefresh();throw Error('permission')}
- failures=0;syncFailed=false;document.querySelector('#refreshing').textContent='';
+ failures=0;syncFailed=false;if(!calendarFlight)document.querySelector('#refreshing').textContent='';
  if(stamp!==syncStamp)requestRefresh();
  }catch{failures++;syncFailed=true;document.querySelector('#refreshing').textContent='연결 확인 중 · 현재 표시된 일정은 유지됩니다';}
  finally{clearTimeout(timeout);syncBusy=false;scheduleSync()}
 }
 addEventListener('online',()=>checkSync());
 addEventListener('visibilitychange',()=>{if(!document.hidden)checkSync()});
-let lastFrameHeight=0;new ResizeObserver(()=>{const height=document.documentElement.offsetHeight+2;if(height!==lastFrameHeight){lastFrameHeight=height;post('streamlit:setFrameHeight',{height})}}).observe(document.body);
+let lastFrameHeight=0,frameViewport='',reportedHeight=0;
+function fitCalendar(){
+ const viewport=parent.innerWidth+'x'+parent.innerHeight;
+ if(frameViewport!==viewport){
+  frameViewport=viewport;let top=0;
+  try{top=parent.document.querySelector('iframe[title="modules.activity.center.sales_calendar_view"]')?.getBoundingClientRect().top||0}catch{}
+  lastFrameHeight=Math.max(420,Math.min(900,(parent.innerHeight||800)-Math.max(0,top)-24));
+ }
+ document.documentElement.style.height=lastFrameHeight+'px';if(reportedHeight!==lastFrameHeight){reportedHeight=lastFrameHeight;post('streamlit:setFrameHeight',{height:lastFrameHeight})}
+}
+addEventListener('resize',fitCalendar);
 addEventListener('message',e=>{
  if(e.source!==parent||e.origin!==location.origin)return;
- if(e.data.type==='streamlit:render')render(e.data.args);
+ if(e.data.type==='streamlit:render')receiveCalendar(e.data.args);
  if(e.data.type==='hwarang.activity.new')emit('new',selected);
  if(e.data.type==='hwarang.activity.visibility'){parentVisible=e.data.visible;if(parentVisible)checkSync();}
  if(e.data.type==='hwarang.activity.changed'&&e.data.nonce!==refreshNonce){
    refreshNonce=e.data.nonce;requestRefresh();
  }
 });
-post('streamlit:componentReady',{apiVersion:1});
-</script></html>
+</script><script src="persistent.js"></script><script>post('streamlit:componentReady',{apiVersion:1});</script></html>

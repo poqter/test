@@ -106,7 +106,7 @@
    try{
     const child=iframe.contentDocument;
     const panel=child?.querySelector('dialog[open]');
-    if(panel){panel.close();return;}
+    if(panel){const close=panel.querySelector('.panel-head button[aria-label="팝업 닫기"]');if(close)close.click();else panel.close();return;}
     const settings=child?.querySelector('.view-settings[open]');
     if(settings){settings.open=false;return;}
    }catch{}

@@ -21,18 +21,12 @@ def test_edit_typing_does_not_refetch_snapshot():
     assert not at.exception
     assert len(at.session_state["fixture_reads"])==before
 
-def test_calendar_opens_modal_in_same_run_without_second_dialog():
-    at=app('''action={"action":"new","value":"2026-11-06","nonce":"test-open"}
-st.session_state.setdefault("sales_interactive_calendar",action)
-original= center.calendar_view
-center.calendar_view=lambda **kwargs:action
-try: center.run()
-finally: center.calendar_view=original
-''')
+def test_calendar_open_is_browser_owned_without_native_dialog():
+    at=app('center.run()')
     assert not at.exception
-    assert any("일정 등록" in s.value for s in at.markdown)
-    assert at.session_state["sales_dialog_rendered"]
-    assert not any(t=="sales_followups" for _,t in at.session_state["fixture_reads"])
+    assert 'sales_route' not in at.session_state
+    assert at.session_state['sales_persistent_boot']['uid']=='11111111-1111-4111-8111-111111111111'
+
 
 def test_collapsed_contracts_preserve_typed_values():
     at=app('''from modules.activity.contracts import contract_editor

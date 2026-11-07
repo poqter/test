@@ -63,28 +63,17 @@ def test_week_labels_include_counts_and_submission_state():
     assert any('11/06' in label and '1건 · 미제출' in label for label in selector.options)
 
 
-def test_weekends_default_and_session_toggle():
-    at=app('''original=center.calendar_view
-def capture(**kwargs):
-    st.session_state["captured_weekends"]=kwargs["hideWeekends"]
-    return st.session_state.get("sales_interactive_calendar")
-center.calendar_view=capture
-try:center.run()
-finally:center.calendar_view=original
-''')
-    assert not at.exception and at.session_state['captured_weekends'] is True
-    at.session_state['sales_interactive_calendar']={'action':'weekends','value':False,'anchor':'2026-11-06','nonce':'toggle'}
-    at.run()
-    assert not at.exception
-    assert at.session_state['captured_weekends'] is False
-    at.run()
-    assert at.session_state['captured_weekends'] is False
-
-
-def test_member_filter_reset():
+def test_calendar_boot_is_stable_across_host_runs():
+    # Weekend preferences now live in the browser and are covered by the UI test.
     at=app('center.run()')
-    selector=next(s for s in at.selectbox if s.label=='직원 이름 검색 · 선택')
-    selector.set_value('11111111-1111-4111-8111-111111111111').run()
-    button(at,'전체 보기').click().run()
     assert not at.exception
-    assert at.session_state['sales_calendar_member'] is None
+    before=at.session_state['sales_persistent_boot']
+    at.run()
+    assert not at.exception
+    assert at.session_state['sales_persistent_boot']==before
+
+
+def test_member_filter_is_available_to_managers():
+    at=app('center.run()')
+    assert not at.exception
+    assert '11111111-1111-4111-8111-111111111111' in at.session_state['sales_persistent_boot']['members']

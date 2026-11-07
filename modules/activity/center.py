@@ -119,132 +119,60 @@ def detail_dialog(db,row):
 
 @st.fragment
 def calendar(db,today):
-    from modules.activity import ux
-    ux.feedback()
+    """Stable component mount: browser owns navigation, forms and dialog lifecycle."""
+    from modules.activity import calendar_service
+    import logging
     if hasattr(db,"token"):db.token=st.session_state.get("hwarang_auth",{}).get("access_token",db.token)
-    pending=st.session_state.get("sales_interactive_calendar")
-    if isinstance(pending,dict) and pending.get("action")=="reauth" and pending.get("nonce")!=st.session_state.get("sales_calendar_action"):
-        st.session_state["sales_calendar_action"]=pending["nonce"];st.rerun()
-    opening=isinstance(pending,dict) and pending.get("action") in ("new","event") and pending.get("nonce")!=st.session_state.get("sales_calendar_action")
-    # Reuse only this already-visible calendar frame when opening a modal.
-    # Navigation and change notifications always read current data.
-    if getattr(db,"_resumed",False):db._resumed=False
-    elif not opening:
-        db._reads.clear()
-        if st.session_state.get("sales_route"):read_state.invalidate()
-    # The component value is available at the start of the widget rerun.
-    # Resolve navigation before querying the period, avoiding a second full run.
-    nav=st.session_state.get("sales_interactive_calendar")
-    if isinstance(nav,dict) and nav.get("action") in ("date","mode","weekends") and nav.get("nonce")!=st.session_state.get("sales_calendar_action"):
-        st.session_state["sales_calendar_action"]=nav.get("nonce")
-        if nav["action"]=="weekends":st.session_state["sales_hide_weekends"]=bool(nav.get("value"))
+    state=st.session_state
+    owner=state.get("sales_persistent_owner")
+    if owner!=db.uid:
+        state["sales_persistent_owner"]=db.uid
+        for key in ("sales_persistent_boot","sales_persistent_reply","sales_persistent_nonce"):
+            state.pop(key,None)
+    pending=state.get("sales_interactive_calendar")
+    if isinstance(pending,dict) and pending.get("action")=="reauth" and pending.get("nonce")!=state.get("sales_reauth_nonce"):
+        state["sales_reauth_nonce"]=pending["nonce"]
+        st.rerun()
+    reply=state.get("sales_persistent_reply")
+    if isinstance(pending,dict) and pending.get("action")=="rpc" and pending.get("nonce")!=state.get("sales_persistent_nonce"):
+        nonce=pending.get("nonce")
         try:
-            target=date.fromisoformat(nav.get("value") if nav["action"]=="date" else nav.get("anchor"))
-        except (TypeError,ValueError):
-            target=None
-        if target:st.session_state["sales_anchor"]=target
-        if nav["action"]=="mode" and nav.get("value") in ("날짜별","주간","월간"):
-            st.session_state["sales_view"]=nav["value"]
+            request=pending["value"]
+            result=calendar_service.command(db,request["op"],request.get("args",{}))
+            reply={"nonce":nonce,"ok":True,"result":result}
+        except (HwarangAuthError,ValueError,KeyError,TypeError) as exc:
+            reply={"nonce":nonce,"ok":False,"error":str(exc)}
+        except Exception:
+            logging.getLogger(__name__).exception("Persistent calendar request failed")
+            reply={"nonce":nonce,"ok":False,"error":"요청을 완료하지 못했습니다. 입력은 유지됩니다. 다시 시도해 주세요."}
+        state["sales_persistent_reply"]=reply
+        state["sales_persistent_nonce"]=nonce
+    if "sales_persistent_boot" not in state:
+        position=state["hwarang_auth"]["profile"].get("position_code")
+        team=state.get("sales_calendar_team",position=="branch_manager")
+        member=state.get("sales_calendar_member") if db.me["managed"] else None
+        if member not in db.members:member=None
+        state["sales_persistent_boot"]=calendar_service.bootstrap(db,today,state.get("sales_anchor",today),state.get("sales_view","월간"),team,member)
+    # No conditional Streamlit elements before this mount: its position and key are fixed.
+    calendar_view(boot=state["sales_persistent_boot"],reply=reply,
+        hideMobileApp=st.query_params.get("view")=="mobile-calendar",
+        changeNonce=state.pop("sales_calendar_refresh",None),
+        mobileSession=dict(url=db.auth.config.url,key=db.auth.config.publishable_key,token=db.token,uid=db.uid),
+        key="sales_interactive_calendar",default=None)
+    calendar_extras(db,today)
+
+@st.fragment
+def calendar_extras(db,today):
+    """Existing activity summaries remain independently refreshable."""
+    from modules.activity import ux
     mobile_shell=st.query_params.get("view")=="mobile-calendar"
-    notices_slot = None if mobile_shell else st.container()
     position=st.session_state["hwarang_auth"]["profile"].get("position_code")
     branch={r["member"]:r for r in db.request("POST","rpc/sales_branch_members",body={})}
-    st.session_state.setdefault("sales_calendar_team",position=="branch_manager")
-    selected_member=st.session_state.get("sales_calendar_member") if db.me["managed"] else None
-    if selected_member not in db.members:selected_member=None
-    team=st.session_state["sales_calendar_team"]
-    if not mobile_shell:
-        team=st.toggle("지점 일정",key="sales_calendar_team")
-        if db.me["managed"]:
-            a,b,c=st.columns([3,1,1])
-            selected_member=a.selectbox("직원 이름 검색 · 선택",[None,*db.members],format_func=lambda u:db.members[u]["label"] if u else "전체 · 기존 조회 범위",key="sales_calendar_member")
-            if selected_member:c.button("전체 보기",key="calendar_clear_member",on_click=lambda:st.session_state.update(sales_calendar_member=None))
-    scope_label=db.members[selected_member]["label"] if selected_member else "지점 일정" if team else "내 일정"
-    mobile=st.context.headers.get("User-Agent","").lower()
-    compact=any(word in mobile for word in ("android","iphone","mobile"))
-    mode=st.session_state.get("sales_view","월간")
-    day=st.session_state.get("sales_anchor",today)
-    start,end=bounds(day,mode)
-    fetch_start,fetch_end=bounds(day,"주간") if mode=="날짜별" else (start,end)
-    if mode=="날짜별":
-        fetch_start-=7*DAY
-        fetch_end+=7*DAY
-    sync_unit=db.members[selected_member]["unit"] if selected_member else db.me["unit"]
-    sync_stamp=db.request("POST","rpc/sales_calendar_stamp",body={"first_day":str(fetch_start),"last_day":str(fetch_end),"p_unit":sync_unit})
-    detail_scope={"owner":"eq."+selected_member} if selected_member else {"unit":"eq."+db.me["unit"]}
-    events=db.period("sales_events",fetch_start,fetch_end,order="day.asc,start_time.asc.nullsfirst",**detail_scope)
-    ux.remember_recent(db.uid,list(reversed(events)))
-    details={r["id"]:r for r in events}
+    fetch_start=fetch_end=today
     def calendar_rows(a,b):
         return db.request("POST","rpc/sales_calendar_days",body={"first_day":str(a),"last_day":str(b)})
-    summary=calendar_rows(fetch_start,fetch_end)
-    events=[details.get(r["id"],r) for r in summary if team or r["owner"]==db.uid or r["companion"]==db.uid or r["common"]]
-    if selected_member:
-        # Detailed records are already restricted by the existing sales_scope RLS.
-        events=[r for r in details.values() if r["owner"]==selected_member]
-    events.sort(key=lambda r:(r["day"],r["start_time"] or ""))
-    status_slot = None if mobile_shell else st.container()
-    if mode=="주간" and team and not selected_member:
-        members=[]
-        for uid,person in branch.items():
-            line={"구성원":person["label"]}
-            for i,label in enumerate("월화수목금" if st.session_state.get("sales_hide_weekends",True) else "월화수목금토일"):
-                target=str(start+i*DAY)
-                line[label]=" · ".join((r["start_time"] or "종일")[:5]+" "+r["kind"] for r in events if r["owner"]==uid and r["day"]==target)
-            members.append(line)
-        st.dataframe(members,hide_index=True,width="stretch")
-    if start<=today<=end:
-        now=datetime.now(KST)
-        soon=[]
-        for item in events:
-            if item["day"]==str(today) and item["status"]=="예정" and item["start_time"]:
-                at=datetime.combine(today,time.fromisoformat(item["start_time"]),KST)
-                if 0<=(at-now).total_seconds()<=1800:
-                    soon.append(item["start_time"][:5]+" "+item["kind"])
-        if soon:st.info("30분 이내 시작 · "+" / ".join(soon))
-    cards=[]
-    for row in events:
-        owner=branch.get(row["owner"],{}).get("label","지점 공통")
-        stamp=(row["start_time"] or ("시간 미정" if row.get("time_pending") else "종일"))[:5]
-        status=row["status"]
-        if status=="예정" and (row["day"]<str(today) or row["day"]==str(today) and row["start_time"] and row["start_time"]<datetime.now(KST).strftime("%H:%M:%S")):
-            status="결과 미입력"
-        label=f'{stamp} · {row["kind"]} · {owner} · {status}'
-        if row.get("companion"):label+=" · 동행 "+branch.get(row["companion"],{}).get("label","")
-        if row.get("help"):label+=" · 지원 요청"
-        cards.append(dict(id=row["id"],day=row["day"],kind=row["kind"],member=row["owner"],allDay=not row["start_time"],short=(row.get('title') or row['kind'])+(f' · {owner}' if team else ''),label=label,done=status=="완료"))
-    action=calendar_view(scopeLabel=scope_label,syncStamp=sync_stamp,syncUnit=sync_unit,hideMobileApp=st.query_params.get("view")=="mobile-calendar",hideWeekends=st.session_state.get("sales_hide_weekends",True),mobileSession=dict(url=db.auth.config.url,key=db.auth.config.publishable_key,token=db.token,uid=db.uid,unit=db.me["unit"],branch=position=="branch_manager"),mode=mode,day=str(day),today=str(today),events=cards,roster={uid:p["label"] for uid,p in branch.items() if not selected_member or uid==selected_member} if team else {},rangeStart=str(fetch_start),rangeEnd=str(fetch_end),key="sales_interactive_calendar",default=None)
-    if isinstance(action,dict) and action.get("nonce")!=st.session_state.get("sales_calendar_action"):
-        st.session_state["sales_calendar_action"]=action.get("nonce")
-        command,value=action.get("action"),action.get("value")
-        if command=="scope":
-            st.session_state.pop("calendar_scope_choice",None)
-            st.session_state.pop("calendar_scope_member",None)
-            st.session_state["sales_route"]={"type":"scope"}
-            st.session_state["sales_route_stack"]=[]
-            st.session_state["sales_calendar_open"]=True
-        if command=="mode" and value in ("날짜별","주간","월간"):
-            st.session_state["sales_view"]=value
-            ux.refresh()
-        if command in ("new","date"):
-            try:target=date.fromisoformat(value)
-            except (TypeError,ValueError):return
-            if command=="new":create_dialog(db,target)
-            else:
-                st.session_state["sales_anchor"]=target
-                ux.refresh()
-        if command in ("event","new") and action.get("anchor"):
-            try:st.session_state["sales_anchor"]=date.fromisoformat(action["anchor"])
-            except (TypeError,ValueError):pass
-        if command=="event":
-            found=next((r for r in events if r["id"]==value),None)
-            if found and found["id"] in details:detail_dialog(db,found)
-            elif found:st.info(next(c["label"] for c in cards if c["id"]==value))
-    if st.button("삭제한 일정",key="sales_trash_open",type="tertiary"):
-        st.session_state["sales_route"]={"type":"trash"}
-        st.session_state["sales_route_stack"]=[]
-        st.session_state["sales_calendar_open"]=True
-    with notices_slot if notices_slot is not None else st.container():
+    summary=calendar_rows(today,today)
+    with st.container():
         notices=db.request("GET","sales_notices",{"seen":"eq.false","order":"created_at.desc","limit":"20","select":"id,message,sales_events(day,kind)"})
         if notices:
             with st.expander("일정 알림",expanded=True,key="sales_notice_panel",on_change="rerun"):
@@ -256,7 +184,7 @@ def calendar(db,today):
                     ids=",".join(n["id"] for n in notices)
                     db.request("PATCH","sales_notices",{"id":"in.("+ids+")"},{"seen":True})
                     ux.refresh()
-    with status_slot if status_slot is not None else st.container():
+    with st.container():
         todays=summary if fetch_start<=today<=fetch_end else calendar_rows(today,today)
         todays=[r for r in todays if r["day"]==str(today) and not r["common"]]
         confirmations={r["owner"] for r in db.request("GET","sales_empty_days",{"day":"eq."+str(today),"select":"owner"})}
@@ -297,13 +225,6 @@ def calendar(db,today):
                         if st.form_submit_button("내 일정으로 전환"):
                             db.request("POST","rpc/schedule_sales_followup",body={"task":task["id"],"schedule_day":str(target),"activity":kind})
                             saved()
-    # A dialog opened inside this fragment must be re-registered when its
-    # calendar refreshes; otherwise Streamlit removes its widget callbacks.
-    if st.session_state.pop("sales_calendar_open",False) or st.session_state.get("sales_route"):
-        from modules.activity.redesign import dialog
-        st.session_state["sales_dialog_rendered"]=True
-        dialog(db)
-
 
 
 @st.fragment
@@ -373,7 +294,8 @@ def run():
             for mode,tab in zip(choices,tabs):
                 if tab.open:
                     with tab:
-                        if mode=="캘린더":calendar(db,today)
+                        if mode=="캘린더":
+                            calendar(db,today)
                         elif mode=="구성원 현황":overview(db,today)
                         else:reports(db,today,mode[:2])
         if st.session_state.get("sales_route") and not st.session_state.get("sales_dialog_rendered"):redesign.dialog(db)

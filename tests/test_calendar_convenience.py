@@ -29,7 +29,7 @@ redesign.calendar_scope(db)
 def test_sync_stamp_is_not_replaced_by_event_time():
     at=app('''original=center.calendar_view
 def capture(**kwargs):
-    st.session_state["captured_stamp"]=kwargs["syncStamp"]
+    st.session_state["captured_stamp"]=kwargs["boot"]["syncStamp"]
     return None
 center.calendar_view=capture
 try:center.calendar(FakeRecords(),date(2026,11,6))

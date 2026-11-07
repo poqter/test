@@ -12,8 +12,10 @@ with sync_playwright() as p:
     page=browser.new_page(viewport={'width':1100,'height':850})
     errors=[]
     page.on('pageerror',lambda e:errors.append(str(e)))
+    page.route('https://activity.test/persistent.js',lambda route:route.fulfill(path=str(ROOT/'modules/activity/calendar_view/persistent.js'),content_type='application/javascript'))
     page.route('https://activity.test/',lambda route:route.fulfill(body=HTML,content_type='text/html'))
     page.goto('https://activity.test/')
+    page.evaluate("()=>{calendarBoot={uid:'one',team:false,member:null};rpc=async(op,a)=>({events:[],rangeStart:a.first,rangeEnd:a.last})}")
     page.evaluate('a=>{loadPrefs(a);prefs.showWeekends=false;render(a)}',ARGS)
     assert page.locator('.cell').count()==5
     page.locator('.view-settings > summary').click()
@@ -41,7 +43,7 @@ with sync_playwright() as p:
     assert page.locator('dialog .row').count()==3
     page.locator('dialog').get_by_role('button',name='전체 일정 닫기',exact=True).click()
     # Weekend exclusion across a month/year boundary and day navigation.
-    for month,days in [('2026-11-01',30),('2027-01-01',25)]:
+    for month,days in [('2026-11-01',30),('2027-01-01',30)]:
         args=dict(ARGS,mode='월간',day=month,hideWeekends=True)
         page.evaluate('a=>{loadPrefs(a);prefs.showWeekends=false;render(a)}',args)
         assert page.locator('.cell').count()==days
@@ -59,7 +61,7 @@ with sync_playwright() as p:
     # Stable no-change probes, coalesced change notification, hidden pause and offline retention.
     args=dict(ARGS,hideWeekends=True,syncStamp='v1',syncUnit='unit',mobileSession=dict(uid='one',url='https://activity.test',key='public',token='fake'))
     page.evaluate('a=>{loadPrefs(a);prefs.showWeekends=false;render(a)}',args)
-    page.evaluate("window.syncCalls=0;window.syncChanges=0;window.fetch=async()=>{syncCalls++;return {ok:true,json:async()=>window.mockStamp||'v1'}};window.addEventListener('message',e=>{if(e.data.value?.action==='refresh')syncChanges++});window.keptCell=document.querySelector('[data-key=\"2026-11-06\"]')")
+    page.evaluate("window.syncCalls=0;window.syncChanges=0;window.fetch=async()=>{syncCalls++;return {ok:true,json:async()=>window.mockStamp||'v1'}};calendarAction=(action)=>{if(action==='refresh')syncChanges++};window.keptCell=document.querySelector('[data-key=\"2026-11-06\"]')")
     page.evaluate('checkSync()')
     page.wait_for_timeout(50)
     assert page.evaluate('syncCalls')==1 and page.evaluate('syncChanges')==0
