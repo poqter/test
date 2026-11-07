@@ -8,7 +8,7 @@ ROWS=[dict(id='root',code='HWARANG',name='화랑',unit_type='root',parent_id=Non
       dict(id='dream',code='DREAM_BRANCH',name='드림지점',unit_type='branch',parent_id='vision'),
       dict(id='vd',code='VISION_DIRECT',name='비전직할',unit_type='branch',parent_id='vision'),
       dict(id='dd',code='DONGVAN_DIRECT',name='동반직할',unit_type='branch',parent_id='dong')]
-POSITIONS=[dict(code=c,display_name=n) for c,n in [('chief_representative','총괄대표'),('division_head','본부장'),('team_leader','팀장')]]
+POSITIONS=[dict(code=c,display_name=n) for c,n in [('chief_representative','총괄대표'),('division_head','본부장'),('team_leader','팀장'),('partner','파트너')]]
 
 def test_affiliation_policy_and_path():
     assert valid_affiliation('chief_representative','root',ROWS)
@@ -17,6 +17,9 @@ def test_affiliation_policy_and_path():
     assert not valid_affiliation('division_head','dream',ROWS)
     assert not valid_affiliation('division_head','direct',ROWS)
     assert valid_affiliation('team_leader','vd',ROWS)
+    assert valid_affiliation('partner','dream',ROWS)
+    assert not valid_affiliation('partner','vision',ROWS)
+    assert not valid_affiliation('partner','root',ROWS)
     assert not valid_affiliation('team_leader','root',ROWS)
     assert not valid_affiliation('team_leader',None,ROWS)
     assert organization_path('dream',ROWS)=='화랑 → 비전본부 → 드림지점'
