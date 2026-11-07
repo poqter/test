@@ -1,0 +1,25 @@
+{
+  "id": "/?view=mobile-calendar",
+  "name": "화랑 캘린더",
+  "short_name": "화랑 캘린더",
+  "lang": "ko",
+  "start_url": "/?view=mobile-calendar",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F5F7FA",
+  "theme_color": "#155461",
+  "icons": [
+    {
+      "src": "calendar-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "calendar-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

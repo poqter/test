@@ -51,6 +51,37 @@
  // every date or field change. Existing dialog/draft handlers own navigation.
  const key='hwarangCalendarBack';let exiting=false,busyUntil=0;
  let host=w;try{while(host.parent!==host&&host.parent.location.origin===w.location.origin)host=host.parent;}catch{}
+ // The installation prompt belongs to the top-level document, not a component iframe.
+ let installPrompt=null,installed=false;
+ const standalone=()=>installed||host.matchMedia('(display-mode: standalone)').matches||!!host.navigator.standalone;
+ const installVisibility=()=>{for(const b of d.querySelectorAll('.calendar-install'))b.hidden=standalone();};
+ const manifest=host.document.querySelector('link[rel="manifest"]')||host.document.createElement('link');
+ manifest.rel='manifest';manifest.href=new URL('app/static/calendar-manifest.json',w.location.href).href;
+ if(!manifest.isConnected)host.document.head.append(manifest);
+ const icon=host.document.querySelector('link[rel="apple-touch-icon"]')||host.document.createElement('link');
+ icon.rel='apple-touch-icon';icon.href=new URL('app/static/calendar-icon-192.png',w.location.href).href;
+ if(!icon.isConnected)host.document.head.append(icon);
+ host.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;installVisibility()});
+ host.addEventListener('appinstalled',()=>{installed=true;installPrompt=null;installVisibility();d.getElementById('calendar-install-help')?.close()});
+ host.matchMedia('(display-mode: standalone)').addEventListener('change',installVisibility);
+ new w.MutationObserver(installVisibility).observe(d.body,{childList:true,subtree:true});installVisibility();
+ d.addEventListener('click',async e=>{
+  if(!e.target.closest('.calendar-install'))return;
+  if(standalone())return;
+  if(installPrompt){const prompt=installPrompt;installPrompt=null;try{await prompt.prompt();await prompt.userChoice;return}catch{}}
+  if(d.getElementById('calendar-install-help'))return;
+  const panel=d.createElement('dialog');panel.id='calendar-install-help';panel.setAttribute('aria-label','홈 화면에 설치');
+  panel.style.cssText='border:1px solid #d8e1e8;border-radius:16px;padding:24px;width:360px;max-width:calc(100vw - 32px);color:#18334c;background:white;';
+  const title=d.createElement('h3');title.textContent='화랑 캘린더 설치';
+  const msg=d.createElement('p');
+  const ios=/iPhone|iPad|iPod/i.test(host.navigator.userAgent)||(host.navigator.maxTouchPoints>1&&/Macintosh/i.test(host.navigator.userAgent));
+  msg.textContent=ios?'Safari에서 공유 버튼 → 홈 화면에 추가를 선택하세요.':'브라우저 메뉴(⋮)에서 앱 설치 또는 홈 화면에 추가를 선택하세요. 설치 항목이 없다면 바로가기로 추가할 수 있습니다.';
+  const note=d.createElement('p');note.textContent='카카오톡 등 앱 안의 브라우저라면 Chrome 또는 Safari에서 열어 주세요. 실행하면 이 캘린더로 연결됩니다.';
+  const link=d.createElement('a');link.textContent='캘린더 주소 열기';link.href='https://hwarang-workspace.streamlit.app/?view=mobile-calendar';link.target='_blank';link.rel='noopener';
+  const close=d.createElement('button');close.textContent='닫기';close.setAttribute('aria-label','설치 안내 닫기');close.style.cssText='min-height:44px;margin-left:20px;padding:8px 16px';close.onclick=()=>panel.close();
+  panel.onclose=()=>panel.remove();panel.onclick=e=>{if(e.target===panel){const r=panel.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)panel.close()}};
+  panel.append(title,msg,note,link,close);d.body.append(panel);panel.showModal();close.focus();
+ });
  const active=()=>!!d.querySelector('.st-key-mobile_header');
  const arm=()=>{
   if(!exiting&&active()&&!host.history.state?.[key])host.history.pushState({...host.history.state,[key]:true},'',host.location.href);
@@ -62,6 +93,7 @@
   busyUntil=Date.now()+350;
   const focused=d.activeElement;
   if(w.visualViewport&&w.innerHeight-w.visualViewport.height>120&&focused?.matches('input,textarea,[contenteditable="true"]')){focused.blur();return;}
+  const installHelp=d.getElementById('calendar-install-help');if(installHelp){installHelp.close();return;}
   // An already-visible unsaved-change prompt is kept; Back never discards it.
   if(d.querySelector('.st-key-sales_keep,.st-key-mobile_continue'))return;
   const dialog=d.querySelector('[role="dialog"]:has(.sales-dialog-marker)');
