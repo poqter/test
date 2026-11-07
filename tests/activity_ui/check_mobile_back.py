@@ -63,15 +63,18 @@ try:
         expect(cal.get_by_role('button',name='조회 대상 · 내 일정',exact=True)).to_be_visible()
         expect(page.locator('.mobile-navigation-state')).to_have_attribute('data-page','캘린더')
         expect(page.locator('.mobile-navigation-state')).to_have_attribute('data-depth','0')
-        confirmations=[]
-        def reject(dialog):
-            confirmations.append(dialog.message);dialog.dismiss()
-        page.on('dialog',reject)
         page.wait_for_timeout(400)
         page.go_back()
-        page.wait_for_timeout(300)
-        assert confirmations==['화랑 캘린더를 나가시겠습니까?']
+        expect(page.get_by_role('dialog',name='캘린더 나가기')).to_be_visible()
+        page.get_by_role('button',name='계속 사용',exact=True).click()
         assert page.url==base
+        # Alerts cause full app reruns; handlers must survive component replacement.
+        page.locator('.st-key-mobile_alerts button').click()
+        expect(page.locator('.mobile-navigation-state')).to_have_attribute('data-page','알림·피드백')
+        page.evaluate("document.querySelectorAll('iframe[srcdoc]').forEach(f=>{if(f.srcdoc.includes('calendar-layout-source'))f.remove()})")
+        page.wait_for_timeout(400)
+        page.go_back()
+        expect(page.locator('.mobile-navigation-state')).to_have_attribute('data-page','캘린더')
         browser.close()
     print('PASS browser Back: settings, drawer, clean/dirty editor, menu history, exit cancellation')
 finally:

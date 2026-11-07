@@ -1,6 +1,6 @@
-<!doctype html><script>
+<!doctype html><script type="text/plain" id="calendar-layout-source">
 (()=>{
- const w=window.parent,d=w.document;
+ const w=window,d=w.document;
  if(w.__hwarangCalendarLayout)return;
  w.__hwarangCalendarLayout=true;
  let hadDialog=false,queued=false;
@@ -26,9 +26,10 @@
  // A single same-document guard catches Android/browser Back without logging
  // every date or field change. Existing dialog/draft handlers own navigation.
  const key='hwarangCalendarBack';let exiting=false,busyUntil=0;
+ let host=w;try{while(host.parent!==host&&host.parent.location.origin===w.location.origin)host=host.parent;}catch{}
  const active=()=>!!d.querySelector('.st-key-mobile_header');
  const arm=()=>{
-  if(!exiting&&active()&&!w.history.state?.[key])w.history.pushState({...w.history.state,[key]:true},'',w.location.href);
+  if(!exiting&&active()&&!host.history.state?.[key])host.history.pushState({...host.history.state,[key]:true},'',host.location.href);
  };
  const back=()=>{
   if(exiting||!active())return;
@@ -56,15 +57,30 @@
   if(state&&(state.dataset.page!=='캘린더'||Number(state.dataset.depth)>0)){
    d.querySelector('.st-key-mobile_history_back button')?.click();return;
   }
-  if(w.confirm('화랑 캘린더를 나가시겠습니까?')){
-   exiting=true;
-   // Release the guard and return to the preceding browser entry where present.
-   w.history.go(w.history.length>2?-2:-1);
-  }
+  if(d.getElementById('calendar-exit-confirm'))return;
+  const prompt=d.createElement('dialog');prompt.id='calendar-exit-confirm';
+  prompt.setAttribute('aria-label','캘린더 나가기');
+  prompt.style.cssText='border:1px solid #d8e1e8;border-radius:16px;padding:24px;max-width:calc(100vw - 32px);width:340px;color:#18334c;background:white;';
+  const message=d.createElement('p');message.textContent='화랑 캘린더를 나가시겠습니까?';
+  const stay=d.createElement('button');stay.textContent='계속 사용';
+  const leave=d.createElement('button');leave.textContent='나가기';
+  for(const button of [stay,leave])button.style.cssText='min-height:44px;padding:8px 16px;margin:8px 8px 0 0;border:1px solid #cad2df;border-radius:8px;background:white;color:#18334c;font:inherit';
+  stay.onclick=()=>prompt.close();
+  leave.onclick=()=>{exiting=true;prompt.close();host.history.go(host.history.length>2?-2:-1)};
+  prompt.onclose=()=>prompt.remove();prompt.append(message,stay,leave);d.body.append(prompt);prompt.showModal();stay.focus();
  };
- w.addEventListener('popstate',back);
+ host.addEventListener('popstate',back);
+ // Re-arm from a user interaction too: mobile browsers may skip synthetic
+ // history entries created before the document received user activation.
+ d.addEventListener('pointerdown',arm,true);
+ d.addEventListener('keydown',arm,true);
  new w.MutationObserver(arm).observe(d.body,{childList:true,subtree:true});
  arm();
  update();
 })();
+</script><script>
+// The bridge iframe is recreated by Streamlit. Install in the persistent app realm.
+const script=parent.document.createElement("script");
+script.textContent=document.getElementById("calendar-layout-source").textContent;
+parent.document.head.append(script);script.remove();
 </script>
