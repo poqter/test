@@ -24,8 +24,24 @@ try:
     try:f.get_by_role('button',name=name,exact=True).click()
     except Exception:
      page.screenshot(path='/tmp/calendar-failure.png');print('GEOMETRY',iframe.bounding_box(),f.evaluate('({inner:innerHeight,frame:lastFrameHeight,body:document.body.getBoundingClientRect().toJSON(),panel:calendarPanel.getBoundingClientRect().toJSON(),client:calendarPanel.clientHeight,scroll:calendarPanel.scrollHeight,scrollTop:calendarPanel.scrollTop})'),flush=True);raise
-   for _ in range(3):
-    click('＋ 일정 등록');expect(f.get_by_role('dialog')).to_be_visible();click('팝업 닫기');expect(f.get_by_role('dialog')).to_have_count(0)
+   def backdrop():
+    box=iframe.bounding_box();page.mouse.click(box['x']+2,box['y']+2)
+   click('＋ 일정 등록');expect(f.get_by_role('dialog')).to_be_visible()
+   geometry=f.evaluate("({b:calendarPanel.getBoundingClientRect().toJSON(),w:innerWidth,h:innerHeight})")
+   assert abs(geometry['b']['x']+geometry['b']['width']/2-geometry['w']/2)<3
+   assert abs(geometry['b']['y']+geometry['b']['height']/2-geometry['h']/2)<3
+   f.evaluate("document.fonts.ready")
+   assert f.evaluate("[...document.fonts].some(x=>x.family==='HW LINE Seed' && x.status==='loaded')")
+   backdrop();expect(f.get_by_role('dialog')).to_have_count(0)
+   click('＋ 일정 등록');f.get_by_label('고객 또는 일정명',exact=True).fill('배경 클릭 작성 보존')
+   backdrop();expect(f.get_by_role('button',name='계속 작성',exact=True)).to_be_visible();click('계속 작성')
+   f.locator('body').press('Escape');click('내용 유지하고 닫기')
+   click('＋ 일정 등록');expect(f.get_by_label('고객 또는 일정명',exact=True)).to_have_value('배경 클릭 작성 보존')
+   backdrop();click('저장하지 않고 닫기')
+   click('＋ 일정 등록');expect(f.get_by_label('고객 또는 일정명',exact=True)).to_have_value('')
+   f.evaluate("calendarPanel.dataset.busy='true'");backdrop();expect(f.get_by_role('dialog')).to_be_visible()
+   f.locator('body').press('Escape');expect(f.get_by_role('dialog')).to_be_visible()
+   f.evaluate("delete calendarPanel.dataset.busy");click('팝업 닫기')
    f.wait_for_function('calendarBoot.recentLoaded');assert f.evaluate('calendarBoot.recent[0].place')=='상담실'
    click('다음 기간');expect(f.locator('#nav h2')).to_have_text('2026년 12월')
    click('이전 기간');expect(f.locator('#nav h2')).to_have_text('2026년 11월')

@@ -1,9 +1,9 @@
 {
-  "id": "./",
+  "id": "/calendar",
   "name": "화랑 캘린더",
   "short_name": "화랑 캘린더",
-  "start_url": "./index.html",
-  "scope": "./",
+  "start_url": "/calendar",
+  "scope": "/calendar",
   "display": "standalone",
   "lang": "ko",
   "background_color": "#ffffff",

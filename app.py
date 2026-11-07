@@ -19,8 +19,10 @@ def sidebar_default():
     return "collapsed" if mobile or st.query_params.get("view")=="mobile-calendar" else "expanded"
 
 
+from modules.activity.entry_route import select_entry
+select_entry()
 calendar_entry = st.query_params.get("view") in ("my-calendar","mobile-calendar")
-calendar_icon = Path(__file__).parent / "modules/activity/calendar_view/pwa/calendar/brand-192.png"
+calendar_icon = Path(__file__).parent / "modules/activity/calendar_view/pwa/calendar/brand-v2-192.png"
 st.set_page_config(page_title="화랑 캘린더" if calendar_entry else "화랑WORKSPACE", page_icon=str(calendar_icon) if calendar_entry else "H", layout="wide", initial_sidebar_state=sidebar_default() if st.session_state.get("password_correct") else "collapsed")
 st.set_option("client.toolbarMode", "minimal")
 # Public release probe exposes code readiness only; no credentials, DB or AI calls.

@@ -74,10 +74,15 @@ function createPanel(title){
  try{const fab=parent.document.querySelector('.mobile-new-event');if(fab)fab.style.visibility='hidden'}catch{}
  const panel=calendarPanel=el('dialog','','calendar-panel');panel.setAttribute('aria-label',title);
  const head=el('div','','panel-head'),body=el('div','','panel-content');head.append(el('h3',title),button('×',()=>closePanel(),'','팝업 닫기'));panel.append(head,body);document.body.append(panel);
+ let backdropDown=false;
+ const outside=e=>{const b=panel.getBoundingClientRect();return e.clientX<b.left||e.clientX>b.right||e.clientY<b.top||e.clientY>b.bottom};
+ panel.addEventListener('pointerdown',e=>{backdropDown=e.target===panel&&outside(e)});
+ panel.addEventListener('click',e=>{if(backdropDown&&e.target===panel&&outside(e))closePanel();backdropDown=false});
  panel.addEventListener('cancel',e=>{e.preventDefault();closePanel()});panel.addEventListener('close',()=>{panel.remove();if(calendarPanel===panel)calendarPanel=null;try{const fab=parent.document.querySelector('.mobile-new-event');if(fab)fab.style.visibility=''}catch{}returnFocus?.focus({preventScroll:true})});panel.showModal();calendarDraft=null;
  return body;
 }
 function closePanel(){
+ if(calendarPanel?.dataset.busy)return;
  if(calendarDraft&&calendarDraft.dirty){
   if(calendarPanel.querySelector('.draft-notice'))return;
   const box=el('div','','draft-notice');box.append(el('p','저장하지 않은 변경이 있습니다.'));
@@ -96,7 +101,7 @@ function field(form,label,name,value='',type='text',options=null){
 function values(form){const out=Object.fromEntries(new FormData(form));for(const i of form.querySelectorAll('input[type=checkbox]'))out[i.name]=i.checked;return out}
 function section(form,title){const d=el('details');d.append(el('summary',title));form.append(d);return d}
 function feedback(form){const e=el('div','','panel-error');e.setAttribute('role','status');form.append(e);return e}
-async function runButton(btn,error,fn){if(btn.disabled)return;btn.disabled=true;error.textContent='저장 중…';const form=btn.closest('form');if(form)form.inert=true;try{await fn()}catch(e){error.textContent=e.message}finally{if(form)form.inert=false;btn.disabled=false}}
+async function runButton(btn,error,fn){if(btn.disabled)return;btn.disabled=true;error.textContent='저장 중…';const form=btn.closest('form'),panel=btn.closest('dialog');if(panel)panel.dataset.busy='true';if(form)form.inert=true;try{await fn()}catch(e){error.textContent=e.message}finally{if(panel)delete panel.dataset.busy;if(form)form.inert=false;btn.disabled=false}}
 function mutate(){calendarEpoch++;calendarCache.clear();reloadCalendar(true)}
 function openScope(){
  const body=createPanel('조회 대상'),form=el('form');body.append(form);
@@ -167,7 +172,7 @@ function openEditor(row,kind,day){
   const result=await rpc('save',{id:editing?row.id:null,revision:editing?row.revision:null,parent:kind==='follow'?row.id:null,seed:draft.seed,data:draft.values,overlap:draft.overlap});
   if(result.overlap){draft.overlap=result.overlap;error.textContent=result.message;return}
   draft.dirty=false;calendarDrafts.delete(key);calendarBoot.recent.unshift({place:draft.values.place,companion:draft.values.companion});if(calendarDraft===draft){calendarDraft=null;latest={...latest,day:result.day};selected=result.day;context=null;openDetail(result.id)}mutate();calendarStatus('저장했습니다.');
- })},'primary');form.append(save);
+ })},'primary');const actions=el('div','','editor-actions');actions.append(button('닫기',()=>closePanel()),save);form.append(actions);
  if(editing){form.append(button('최신 기록 불러오기',()=>{if(confirm('현재 입력 대신 최신 저장 내용을 불러올까요?')){calendarDrafts.delete(key);if(calendarDraft===draft){calendarDraft=null;openDetail(row.id)}}}));}
  const remember=()=>{draft.values={...v,...values(form)};draft.dirty=true};form.addEventListener('input',remember);form.addEventListener('change',remember);form.onsubmit=e=>{e.preventDefault();save.click()};
 }

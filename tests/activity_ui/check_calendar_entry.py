@@ -2,7 +2,7 @@
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 ROOT=Path(__file__).resolve().parents[2]/"modules/activity/calendar_view/pwa/calendar"
-TARGET="https://hwarang-workspace.streamlit.app/?view=mobile-calendar"
+TARGET="https://hwarang-workspace.streamlit.app/calendar"
 with sync_playwright() as p:
     browser=p.chromium.launch()
     for saved in (False,True):
