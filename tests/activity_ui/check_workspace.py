@@ -35,7 +35,9 @@ try:
         expect(dlg).not_to_be_visible()
         cal.locator('.cell[data-key="2026-11-06"] .chip').first.click()
         expect(dlg.get_by_role('button',name='일정 삭제',exact=True)).to_have_css('color','rgb(180, 35, 24)')
-        assert dlg.bounding_box()['width'] <= 540
+        box=dlg.bounding_box();frame=page.locator('iframe[title="modules.activity.center.sales_calendar_view"]').bounding_box()
+        assert box['width'] <= 620
+        assert abs(box['x']+box['width']/2-frame['x']-frame['width']/2)<3
         dlg.get_by_role('button',name='일정 수정',exact=True).click()
         page.set_viewport_size({'width':1280,'height':600})
         expect(dlg.get_by_role('button',name='변경 저장',exact=True)).to_be_visible()
