@@ -229,6 +229,11 @@ def _combined_sharing(repo, selected_day=None, *, use_cache=False):
                     except BriefingRepositoryError as exc: st.error(str(exc))
             else:
                 st.info('영역을 선택하고 링크를 만들면 발신자 이름·직책이 포함된 문구가 표시됩니다.')
+    from .kakao_ui import render_kakao
+    if shared and codes and approved:
+        render_kakao(repo, uid, day, url, sender)
+    else:
+        render_kakao(repo, uid, day, None, {})
     if preview and codes and any(c in bundles for c in codes):
         from .sharing import combine_bodies
         with st.container(border=True):
@@ -534,3 +539,4 @@ def run():
                     _render_generate_panel(repo)
         except BriefingRepositoryError as exc:
             st.error(str(exc))
+
