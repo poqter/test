@@ -89,6 +89,7 @@ function calendarAction(action,value){
  if(action==='reauth'){if(calendarFlight){setTimeout(()=>calendarAction('reauth'),1000);return}post('streamlit:setComponentValue',{value:{action:'reauth',nonce:crypto.randomUUID()},dataType:'json'});return}
 }
 function createPanel(title){
+ dismissCloseConfirm();
  if(calendarPanel){calendarPanel.remove();calendarPanel=null;}
  const returnFocus=document.activeElement;
  try{const fab=parent.document.querySelector('.mobile-new-event');if(fab)fab.style.visibility='hidden'}catch{}
@@ -101,12 +102,37 @@ function createPanel(title){
  panel.addEventListener('cancel',e=>{e.preventDefault();closePanel()});panel.addEventListener('close',()=>{panel.remove();if(calendarPanel===panel)calendarPanel=null;try{const fab=parent.document.querySelector('.mobile-new-event');if(fab)fab.style.visibility=''}catch{}returnFocus?.focus({preventScroll:true})});panel.showModal();calendarDraft=null;
  return body;
 }
+let calendarCloseConfirm=null;
+function dismissCloseConfirm(){
+ const box=calendarCloseConfirm;if(!box)return;
+ calendarCloseConfirm=null;box.close();box.remove();
+}
 function closePanel(){
  if(calendarPanel?.dataset.busy)return;
+ if(calendarCloseConfirm)return;
  if(calendarDraft&&calendarDraft.dirty){
-  if(calendarPanel.querySelector('.draft-notice'))return;
-  const box=el('div','','draft-notice');box.append(el('p','저장하지 않은 변경이 있습니다.'));
-  box.append(button('계속 작성',()=>box.remove()),button('내용 유지하고 닫기',()=>{calendarDrafts.set(calendarDraft.key,calendarDraft);calendarDraft=null;calendarPanel.close()}),button('저장하지 않고 닫기',()=>{calendarDrafts.delete(calendarDraft.key);calendarDraft=null;calendarPanel.close()}));calendarPanel.querySelector('.panel-content').prepend(box);box.scrollIntoView({block:'nearest'});return;
+  const panel=calendarPanel,draft=calendarDraft,focus=document.activeElement;
+  const box=calendarCloseConfirm=el('dialog','','calendar-close-confirm');
+  box.setAttribute('aria-labelledby','calendar-close-title');
+  box.setAttribute('aria-describedby','calendar-close-description');
+  const title=el('h3','저장하지 않은 변경이 있습니다.');title.id='calendar-close-title';
+  const description=el('p','작성 중인 내용을 어떻게 할까요?');description.id='calendar-close-description';
+  const resume=()=>{dismissCloseConfirm();if(focus?.isConnected)focus.focus({preventScroll:true})};
+  const actions=el('div','','confirm-actions');
+  const keepWriting=button('계속 작성',resume,'primary');keepWriting.autofocus=true;
+  actions.append(keepWriting,button('내용 유지하고 닫기',()=>{
+   calendarDrafts.set(draft.key,draft);calendarDraft=null;dismissCloseConfirm();panel.close();
+  }),button('저장하지 않고 닫기',()=>{
+   calendarDrafts.delete(draft.key);calendarDraft=null;dismissCloseConfirm();panel.close();
+  },'danger'));
+  box.append(title,description,actions);document.body.append(box);
+  let backdropDown=false;
+  const outside=e=>{const b=box.getBoundingClientRect();return e.clientX<b.left||e.clientX>b.right||e.clientY<b.top||e.clientY>b.bottom};
+  box.addEventListener('pointerdown',e=>{backdropDown=e.target===box&&outside(e)});
+  box.addEventListener('click',e=>{if(backdropDown&&e.target===box&&outside(e))resume();backdropDown=false});
+  box.addEventListener('cancel',e=>{e.preventDefault();e.stopPropagation();resume()});
+  panel.addEventListener('close',dismissCloseConfirm,{once:true});
+  box.showModal();keepWriting.focus({preventScroll:true});return;
  }
  calendarDraft=null;calendarPanel?.close();
 }

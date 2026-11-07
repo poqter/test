@@ -34,7 +34,17 @@ try:
    assert f.evaluate("[...document.fonts].some(x=>x.family==='HW LINE Seed' && x.status==='loaded')")
    backdrop();expect(f.get_by_role('dialog')).to_have_count(0)
    click('＋ 일정 등록');f.get_by_label('일정명',exact=True).fill('배경 클릭 작성 보존')
-   backdrop();expect(f.get_by_role('button',name='계속 작성',exact=True)).to_be_visible();click('계속 작성')
+   before=f.locator('dialog.calendar-panel').bounding_box()
+   backdrop();expect(f.get_by_role('dialog',name='저장하지 않은 변경이 있습니다.',exact=True)).to_be_visible()
+   assert f.locator('dialog.calendar-panel dialog').count()==0
+   assert f.locator('dialog.calendar-panel').bounding_box()==before
+   expect(f.get_by_role('button',name='계속 작성',exact=True)).to_be_focused()
+   page.screenshot(path=f'/tmp/calendar-confirm-{width}.png')
+   f.locator('body').press('Escape');expect(f.locator('.calendar-close-confirm')).to_have_count(0)
+   expect(f.get_by_label('일정명',exact=True)).to_have_value('배경 클릭 작성 보존')
+   backdrop();backdrop();expect(f.locator('.calendar-close-confirm')).to_have_count(0)
+   expect(f.get_by_label('일정명',exact=True)).to_have_value('배경 클릭 작성 보존')
+   backdrop();click('계속 작성')
    f.locator('body').press('Escape');click('내용 유지하고 닫기')
    click('＋ 일정 등록');expect(f.get_by_label('일정명',exact=True)).to_have_value('배경 클릭 작성 보존')
    backdrop();click('저장하지 않고 닫기')
