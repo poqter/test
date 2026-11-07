@@ -11,7 +11,7 @@ ENGINE_VERSION = json.loads(
 
 expected=f'HWARANG_BRIEFING_RELEASE={ENGINE_VERSION};READY=true'
 activity_root=Path(__file__).resolve().parents[2]/'modules/activity'
-activity_expected='HWARANG_ACTIVITY_RELEASE='+hashlib.sha256(b''.join((activity_root/name).read_bytes() for name in ('center.py','redesign.py','manager.py','daily.py','daily_bridge.html','ux.py','contracts.py','calendar_view/index.html','mobile.py','device.py'))).hexdigest()[:16]
+activity_expected='HWARANG_ACTIVITY_RELEASE='+hashlib.sha256(b''.join((activity_root/name).read_bytes() for name in ('center.py','redesign.py','manager.py','daily.py','daily_bridge.html','ux.py','contracts.py','calendar_view/index.html','mobile.py','calendar_bridge.html','device.py'))).hexdigest()[:16]
 login_expected='HWARANG_LOGIN_RELEASE='+hashlib.sha256((activity_root.parents[1]/'app.py').read_bytes()).hexdigest()[:16]
 with sync_playwright() as p:
     browser=p.chromium.launch(headless=True)

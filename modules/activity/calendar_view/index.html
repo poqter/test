@@ -14,9 +14,15 @@
 .grid[hidden]{display:none}
 dialog{position:fixed;inset:0 0 0 auto;margin:0;width:min(400px,90vw);height:100%;max-height:100%;border:1px solid #d4dce6;padding:16px;overflow:auto}dialog::backdrop{background:#172b4044}summary{cursor:pointer;font-weight:650}.memberline{padding:7px;border-bottom:1px solid #e4e9ef}@media(max-width:650px){dialog{inset:auto 0 0;width:100%;height:auto;max-height:80%;border-radius:14px 14px 0 0}}
 .refreshing:empty{display:none}.mobile-shell> .legend{display:none}.mobile-shell header{margin:0 0 6px}.mobile-shell .tools{gap:10px}.mobile-shell select{font:inherit;min-height:40px;border:1px solid #d8e1e8;border-radius:8px;background:white;padding:0 12px;color:inherit}.view-settings{font-size:13px}.view-settings[open]{padding:6px;background:#f5f8fa;border-radius:8px}.view-settings button{margin:8px 0}.view-settings .legend{margin-top:8px}
+.mobile-shell .tools{display:flex;flex-wrap:nowrap;width:100%;gap:8px}
+.mobile-shell .scope-button{margin-right:auto;max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-height:40px;font-weight:650}
+.mobile-shell .view-settings{position:relative}.mobile-shell .view-settings[open]{position:relative;background:white}
+.mobile-shell .view-settings summary{min-height:40px;display:flex;align-items:center;cursor:pointer}
+.mobile-shell .settings-menu{position:absolute;right:0;top:42px;width:220px;background:#fff;border:1px solid #d8e1e8;border-radius:10px;padding:12px;z-index:10;box-shadow:0 6px 18px #18334c22}.mobile-shell .view-settings:not([open]) .settings-menu{display:none}
+.mobile-shell .nav{width:100%;flex-wrap:nowrap}.mobile-shell .nav h2{margin-right:auto}
 </style><header><div class="nav" id="nav"></div><div class="tools" id="tools"></div></header><div class="legend" aria-label="활동 종류별 색상"><span data-kind="TA">TA 고객 연락</span><span data-kind="AP">AP 초회 상담</span><span data-kind="PC">PC 프레젠테이션 / 클로징</span><span data-kind="CS">CS 고객 관리</span></div><div id="refreshing" class="refreshing" role="status" aria-live="polite"></div><div id="grid" class="grid"></div><section class="agenda" id="agenda"></section><script>
 const post=(type,data)=>parent.postMessage({isStreamlitMessage:true,type,...data},location.origin);
-const emit=(action,value)=>post('streamlit:setComponentValue',{value:{action,value,anchor:selected,nonce:crypto.randomUUID()},dataType:'json'});
+const emit=(action,value)=>{try{sessionStorage.setItem('hwarang.calendar.selection.'+latest?.mobileSession?.uid,JSON.stringify({context,selected}));const main=parent.document.querySelector('[data-testid="stMain"]');if(['event','new','scope'].includes(action)&&main)parent.__calendarReturnScroll=main.scrollTop;}catch{};post('streamlit:setComponentValue',{value:{action,value,anchor:selected,nonce:crypto.randomUUID()},dataType:'json'});};
 function el(tag,text,cls){let x=document.createElement(tag);x.textContent=text||'';x.className=cls||'';return x}
 function button(label,fn,cls,aria){let b=el('button',label,cls);b.onclick=fn;if(aria)b.setAttribute('aria-label',aria);return b}
 const date=s=>new Date(s+'T12:00:00Z'), iso=d=>d.toISOString().slice(0,10), add=(d,n)=>new Date(+d+n*86400000);
@@ -66,7 +72,7 @@ function render(a){
    context=key;
  }
  if(hide&&isWeekend(selected)){const candidate=weekday(selected,-1);selected=month&&candidate.slice(0,7)!==day.slice(0,7)?weekday(selected):candidate}
- const signature=JSON.stringify([mode,day,today,events,a.roster,hide,selected]);
+ const signature=JSON.stringify([mode,day,today,events,a.roster,a.scopeLabel,hide,selected]);
  if(!syncFailed)document.querySelector('#refreshing').textContent='';
  if(signature===lastRender)return;
  lastRender=signature;
@@ -88,9 +94,9 @@ function render(a){
  if(a.hideMobileApp){
    const select=el('select');select.setAttribute('aria-label','캘린더 보기');
    for(const m of ['날짜별','주간','월간']){const o=el('option',m);o.value=m;select.append(o)}select.value=mode;select.onchange=()=>emit('mode',select.value);
-   const settings=el('details','','view-settings');settings.append(el('summary','보기 설정'),weekend);
-   const guide=el('details');guide.append(el('summary','활동 색상 안내'),document.querySelector('.legend').cloneNode(true));settings.append(guide);
-   tools.append(select,settings);
+   const settings=el('details','','view-settings');settings.append(el('summary','설정'));const panel=el('div','','settings-menu');panel.append(weekend);
+   const guide=el('details');guide.append(el('summary','활동 색상 안내'),document.querySelector('.legend').cloneNode(true));panel.append(guide);settings.append(panel);
+   tools.append(button((a.scopeLabel||'내 일정')+' ▾',()=>emit('scope',null),'scope-button','조회 대상 · '+(a.scopeLabel||'내 일정')),select,settings);
  }else tools.append(sw,weekend,button('＋ 일정 등록',()=>emit('new',selected),'primary'));
  grid.hidden=mode==='날짜별';
  grid.className='grid'+(hide?' weekends-off':'')+(mode==='주간'?' week':'')+(mode==='날짜별'?' strip':'');

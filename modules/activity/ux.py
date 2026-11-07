@@ -14,6 +14,14 @@ def copy_event(row):
     allowed = ("day", "start_time", "end_time", "time_pending", "title", "kind", "place", "note", "companion")
     return {**{k: row.get(k) for k in allowed}, "status": "예정", "result": "", "help": "", "common": False}
 
+def remember_recent(uid, rows):
+    key="sales_recent_"+uid
+    previous=st.session_state.get(key,[])
+    fresh=[{"id":r["id"],"place":r.get("place") or "","companion":r.get("companion")} for r in rows if r.get("owner")==uid and not r.get("deleted_at")]
+    by_id={}
+    for r in [*fresh,*previous]:by_id.setdefault(r["id"],r)
+    st.session_state[key]=list(by_id.values())[:40]
+
 def shifted_end(previous, current, end):
     if not all((previous, current, end)) or end <= previous: return end
     origin = datetime.combine(datetime.min.date(), previous)
@@ -187,11 +195,17 @@ def dialog_styles():
     .st-key-sales_dialog_header .st-key-sales_close_top{margin-left:auto;flex:0 0 auto!important}
     .st-key-sales_dialog_header button{min-width:44px;min-height:44px}
     .st-key-sales_dialog_header p{margin:0!important}
-    .st-key-sales_dialog_body{max-height:calc(100dvh - 110px)!important;overflow-y:auto!important;overflow-x:hidden!important;min-height:0;padding:16px 24px 24px!important;scrollbar-gutter:stable;overscroll-behavior:contain;scroll-padding:20px}
+    .st-key-sales_dialog_body{max-height:calc(100dvh - 180px)!important;overflow-y:auto!important;overflow-x:hidden!important;min-height:0;padding:16px 24px 24px!important;scrollbar-gutter:stable;overscroll-behavior:contain;scroll-padding:20px}
+    .st-key-sales_dialog_footer{padding:8px 16px;background:white;border-top:1px solid #e6ebf1}
+    .st-key-sales_event_save{position:sticky;bottom:0;background:white;z-index:3;padding:8px 0}
     .st-key-sales_dialog_body h3{padding-top:0!important}
     @media(max-width:700px){
       [data-testid="stDialog"] div:has(>[role="dialog"]):has(.sales-dialog-marker){width:calc(100vw - 16px)!important}
-      .st-key-sales_dialog_header{padding:8px 12px!important}
-      .st-key-sales_dialog_body{padding:12px 16px max(20px,env(safe-area-inset-bottom))!important;max-height:calc(var(--sales-viewport,100dvh) - 100px)!important}
+      body:has(.st-key-mobile_header) [data-testid="stDialog"]{align-items:flex-start!important;padding:8px 0!important}
+      body:has(.st-key-mobile_header) [data-testid="stDialog"] div:has(>[role="dialog"]):has(.sales-dialog-marker){margin-top:0!important;margin-bottom:0!important}
+      .st-key-sales_dialog_header{padding:8px 12px!important;min-height:52px}
+      .st-key-sales_dialog_body [data-testid="stElementContainer"]:has(> [data-testid="stEmpty"]){display:none}
+
+      .st-key-sales_dialog_body{padding:12px 16px max(20px,env(safe-area-inset-bottom))!important;max-height:calc(var(--sales-viewport,100dvh) - 160px)!important}
     }
     </style>''')

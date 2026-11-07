@@ -65,7 +65,10 @@ def event_editor(db,day,event=None,parent=None,copy=None):
     d=ux.draft(key,initial,event)
     ux.conflict_recovery(d,key)
     v=d["values"]
-    st.subheader("일정 수정" if event else "일정 복사" if copy else "후속 일정 등록" if parent else "일정 등록")
+    if copy:st.caption("날짜와 시간을 확인한 뒤 새 일정으로 저장해 주세요.")
+    # Reuse loaded/saved personal events: no network round trip when opening a form.
+    if "recent" not in d:
+        d["recent"]=deepcopy(st.session_state.get("sales_recent_"+db.uid,[]))
     def infer_kind():
         if not event and not parent and not copy and not d.get("manual_kind"):
             matches=set(re.findall(r"(?<![A-Za-z0-9])(AP|PC|TA|CS)(?![A-Za-z0-9])",v["title"].upper()))
@@ -96,6 +99,13 @@ def event_editor(db,day,event=None,parent=None,copy=None):
         if v["end"] and (not v["start"] or v["end"]<=v["start"]): st.error("종료 시간은 시작 시간보다 늦어야 합니다.")
         if "start" in errors:st.error(errors["start"])
         if not v["start"]: st.caption("시작 시간을 입력하거나 ‘시간 미정’을 선택해 주세요.")
+    recent_places=list(dict.fromkeys((r.get("place") or "").strip() for r in d["recent"] if (r.get("place") or "").strip()))[:5]
+    if recent_places:
+        def choose_place():
+            value=st.session_state.get(d["epoch"]+"recent_place")
+            if value:ux.set_values(d,{"place":value})
+        st.selectbox("최근 장소",[None,*recent_places],format_func=lambda p:p or "최근 장소에서 선택 · 선택",key=d["epoch"]+"recent_place",on_change=choose_place)
+
     ux.field(d,"place",st.text_input,"장소 · 선택",placeholder="예: 지점 상담실, 고객 방문, 전화 상담")
     populated=any((v["note"],v["companion"],v["support"],v["repeat"],v["common"]))
     extra=st.expander("추가 정보 · 선택",key=d["epoch"]+"extra",on_change="rerun")
@@ -103,8 +113,9 @@ def event_editor(db,day,event=None,parent=None,copy=None):
         with extra:
             ux.field(d,"note",st.text_area,"메모",height=90)
             people={r["member"]:r["label"] for r in db.request("POST","rpc/sales_branch_members",body={}) if r["member"]!=db.uid}
-            choices=list(dict.fromkeys([None,*people,*([v["companion"]] if v["companion"] else [])]))
-            ux.field(d,"companion",st.selectbox,"동행자",options=choices,format_func=lambda u:people.get(u,"기존 동행자") if u else "선택 안 함")
+            recent_people=list(dict.fromkeys(r.get("companion") for r in d["recent"] if r.get("companion") in people))[:5]
+            choices=list(dict.fromkeys([None,*recent_people,*people,*([v["companion"]] if v["companion"] else [])]))
+            ux.field(d,"companion",st.selectbox,"동행자",options=choices,format_func=lambda u:(("최근 · " if u in recent_people else "")+people.get(u,"기존 동행자")) if u else "선택 안 함")
             ux.field(d,"support",st.toggle,"지원 요청")
             if v["support"]: ux.field(d,"help",st.text_input,"지원받을 내용")
             if not event:
@@ -118,7 +129,8 @@ def event_editor(db,day,event=None,parent=None,copy=None):
             ux.field(d,"result",st.text_area,"활동 결과",height=80)
             ux.field(d,"follow",st.date_input,"후속 일정 날짜 · 선택")
             if v["follow"] and v["follow"]<v["day"]:st.error("후속 일정 날짜는 현재 일정 날짜 이후로 선택해 주세요.")
-    save_slot=st.empty()
+    with st.container(key="sales_event_save"):
+        save_slot=st.empty()
     if save_slot.button("변경 저장" if event else "일정 등록",type="primary",key=key+"save",on_click=lambda:d.update(attempted=True)):
         errors=event_errors(v)
         if errors:
@@ -161,6 +173,8 @@ def event_editor(db,day,event=None,parent=None,copy=None):
                     raise HwarangAuthError("같은 저장 요청의 기존 내용과 현재 입력이 다릅니다. 입력은 유지됩니다. 최신 일정을 확인해 주세요.")
             except HwarangAuthError:
                 d["conflict"]=True;raise
+        ux.remember_recent(db.uid,[{**body,"id":event["id"] if event else rows[0]["id"],"owner":db.uid}])
+        st.session_state["sales_anchor"]=v["day"]
         ux.saved_event(key,event["id"] if event else rows[0]["id"])
     if event:delete_control(db,event)
     return key
@@ -511,12 +525,29 @@ def admin_settings(db,start,end):
             for r in snap["reports"]:
                 with st.expander(labels[r["owner"]]+" · "+r["period"]+" 기록 · "+r["day"]):st.write(r["data"])
 
+def calendar_scope(db):
+    options=["내 일정","지점 일정"]+(["직원 선택"] if db.me["managed"] else [])
+    current=st.session_state.get("sales_calendar_member")
+    default="직원 선택" if current in db.members and db.me["managed"] else "지점 일정" if st.session_state.get("sales_calendar_team") else "내 일정"
+    choice=st.radio("조회 대상",options,index=options.index(default),key="calendar_scope_choice",horizontal=True)
+    member=None
+    if choice=="직원 선택":
+        ids=list(db.members)
+        member=st.selectbox("직원 이름 검색 · 선택",ids,index=ids.index(current) if current in ids else 0,format_func=lambda u:db.members[u]["label"],key="calendar_scope_member")
+    if st.button("적용",type="primary",key="calendar_scope_apply"):
+        st.session_state["sales_calendar_team"]=choice=="지점 일정"
+        st.session_state["sales_calendar_member"]=member
+        ux.back()
+    if member and st.button("일정 · 활동 기록",key="calendar_scope_detail"):
+        ux.navigate({"type":"member","uid":member,"day":str(st.session_state.get("sales_anchor",datetime.now(KST).date())),"period":"주간" if st.session_state.get("sales_view")=="주간" else "일일"},True)
+
+
 @st.dialog("영업활동",width="large",dismissible=False)
 def dialog(db):
     ux.dialog_styles()
     st.html('<span class="sales-dialog-marker"></span>')
     kind=st.session_state.get("sales_route",{}).get("type")
-    title={"new":"일정 등록","edit":"일정 수정","event":"일정 상세","copy":"일정 복사","follow":"다음 활동 추가","result":"완료 · 결과 처리","member":"직원 활동 기록","daily":"일일 기록","trash":"삭제한 일정"}.get(kind,"영업활동")
+    title={"new":"일정 등록","edit":"일정 수정","event":"일정 상세","copy":"일정 복사","follow":"다음 활동 추가","result":"완료 · 결과 처리","member":"직원 활동 기록","daily":"일일 기록","trash":"삭제한 일정","scope":"조회 대상"}.get(kind,"영업활동")
     with st.container(key="sales_dialog_header",horizontal=True,vertical_alignment="center"):
         st.markdown("**"+title+"**")
         close_top=st.button("✕",help="팝업 닫기",key="sales_close_top",type="tertiary")
@@ -529,7 +560,8 @@ def dialog(db):
         key=None
         try:
             kind=route.get("type")
-            if kind=="new":key=event_editor(db,date.fromisoformat(route["day"]))
+            if kind=="scope":calendar_scope(db)
+            elif kind=="new":key=event_editor(db,date.fromisoformat(route["day"]))
             elif kind=="member":member_detail(db,route["uid"],date.fromisoformat(route["day"]),route["period"])
             elif kind=="trash":trash(db)
             elif kind=="daily":key=reports(db,date.fromisoformat(route["day"]),"일일",date.fromisoformat(route["day"]))
@@ -553,6 +585,7 @@ def dialog(db):
             if st.session_state.pop("sales_write_in_progress",False):ux.refresh()
             st.error(st.session_state.pop("sales_dialog_error"))
             key=next((k for k in st.session_state.get("sales_drafts",{}) if ux.dirty(k)),None)
+    with st.container(key="sales_dialog_footer"):
         ux.close_control(key,requested=close_top,top_container=close_feedback)
 
 

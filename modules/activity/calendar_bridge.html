@@ -1,0 +1,28 @@
+<!doctype html><script>
+(()=>{
+ const w=window.parent,d=w.document;
+ if(w.__hwarangCalendarLayout)return;
+ w.__hwarangCalendarLayout=true;
+ let hadDialog=false,queued=false;
+ const update=()=>{
+  queued=false;
+  if(!d.querySelector('.st-key-mobile_header'))return;
+  const dialog=d.querySelector('[role="dialog"]');
+  const height=w.visualViewport?.height||w.innerHeight;
+  d.documentElement.style.setProperty('--sales-viewport',height+'px');
+  if(hadDialog&&!dialog&&Number.isFinite(w.__calendarReturnScroll)){
+   const top=w.__calendarReturnScroll;
+   w.requestAnimationFrame(()=>w.requestAnimationFrame(()=>{
+    const main=d.querySelector('[data-testid="stMain"]');if(main)main.scrollTop=top;
+   }));
+  }
+  hadDialog=!!dialog;
+ };
+ new w.MutationObserver(()=>{if(!queued){queued=true;w.requestAnimationFrame(update)}}).observe(d.body,{childList:true,subtree:true});
+ w.visualViewport?.addEventListener('resize',update);
+ d.addEventListener('visibilitychange',()=>{
+  d.querySelectorAll('iframe').forEach(f=>f.contentWindow.postMessage({type:'hwarang.activity.visibility',visible:!d.hidden},w.location.origin));
+ });
+ update();
+})();
+</script>

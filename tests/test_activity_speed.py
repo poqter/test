@@ -30,7 +30,7 @@ try: center.run()
 finally: center.calendar_view=original
 ''')
     assert not at.exception
-    assert any(s.value=="일정 등록" for s in at.subheader)
+    assert any("일정 등록" in s.value for s in at.markdown)
     assert at.session_state["sales_dialog_rendered"]
     assert not any(t=="sales_followups" for _,t in at.session_state["fixture_reads"])
 

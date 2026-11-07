@@ -140,11 +140,13 @@ def calendar(db,today):
     mobile_shell=st.query_params.get("view")=="mobile-calendar"
     notices_slot = None if mobile_shell else st.container()
     position=st.session_state["hwarang_auth"]["profile"].get("position_code")
-    filters=st.popover("직원 조회" if db.me["managed"] else "조회 범위") if mobile_shell else st.container()
-    with filters:
-        team=st.toggle("지점 일정",value=position=="branch_manager")
-        branch={r["member"]:r for r in db.request("POST","rpc/sales_branch_members",body={})}
-        selected_member=None
+    branch={r["member"]:r for r in db.request("POST","rpc/sales_branch_members",body={})}
+    st.session_state.setdefault("sales_calendar_team",position=="branch_manager")
+    selected_member=st.session_state.get("sales_calendar_member") if db.me["managed"] else None
+    if selected_member not in db.members:selected_member=None
+    team=st.session_state["sales_calendar_team"]
+    if not mobile_shell:
+        team=st.toggle("지점 일정",key="sales_calendar_team")
         if db.me["managed"]:
             a,b,c=st.columns([3,1,1])
             selected_member=a.selectbox("직원 이름 검색 · 선택",[None,*db.members],format_func=lambda u:db.members[u]["label"] if u else "전체 · 기존 조회 범위",key="sales_calendar_member")
@@ -153,6 +155,7 @@ def calendar(db,today):
                 st.session_state["sales_route"]={"type":"member","uid":selected_member,"day":str(st.session_state.get("sales_anchor",today)),"period":"주간" if st.session_state.get("sales_view")=="주간" else "일일"}
                 st.session_state["sales_route_stack"]=[]
                 st.session_state["sales_calendar_open"]=True
+    scope_label=db.members[selected_member]["label"] if selected_member else "지점 일정" if team else "내 일정"
     mobile=st.context.headers.get("User-Agent","").lower()
     compact=any(word in mobile for word in ("android","iphone","mobile"))
     mode=st.session_state.get("sales_view","월간")
@@ -162,11 +165,11 @@ def calendar(db,today):
     if mode=="날짜별":
         fetch_start-=7*DAY
         fetch_end+=7*DAY
-    if selected_member and mobile_shell:st.caption("조회 중 · "+db.members[selected_member]["label"])
     sync_unit=db.members[selected_member]["unit"] if selected_member else db.me["unit"]
-    stamp=db.request("POST","rpc/sales_calendar_stamp",body={"first_day":str(fetch_start),"last_day":str(fetch_end),"p_unit":sync_unit})
+    sync_stamp=db.request("POST","rpc/sales_calendar_stamp",body={"first_day":str(fetch_start),"last_day":str(fetch_end),"p_unit":sync_unit})
     detail_scope={"owner":"eq."+selected_member} if selected_member else {"unit":"eq."+db.me["unit"]}
     events=db.period("sales_events",fetch_start,fetch_end,order="day.asc,start_time.asc.nullsfirst",**detail_scope)
+    ux.remember_recent(db.uid,list(reversed(events)))
     details={r["id"]:r for r in events}
     def calendar_rows(a,b):
         return db.request("POST","rpc/sales_calendar_days",body={"first_day":str(a),"last_day":str(b)})
@@ -206,10 +209,16 @@ def calendar(db,today):
         if row.get("companion"):label+=" · 동행 "+branch.get(row["companion"],{}).get("label","")
         if row.get("help"):label+=" · 지원 요청"
         cards.append(dict(id=row["id"],day=row["day"],kind=row["kind"],member=row["owner"],allDay=not row["start_time"],short=(row.get('title') or row['kind'])+(f' · {owner}' if team else ''),label=label,done=status=="완료"))
-    action=calendar_view(syncStamp=stamp,syncUnit=sync_unit,hideMobileApp=st.query_params.get("view")=="mobile-calendar",hideWeekends=st.session_state.get("sales_hide_weekends",True),mobileSession=dict(url=db.auth.config.url,key=db.auth.config.publishable_key,token=db.token,uid=db.uid,unit=db.me["unit"],branch=position=="branch_manager"),mode=mode,day=str(day),today=str(today),events=cards,roster={uid:p["label"] for uid,p in branch.items() if not selected_member or uid==selected_member} if team else {},rangeStart=str(fetch_start),rangeEnd=str(fetch_end),key="sales_interactive_calendar",default=None)
+    action=calendar_view(scopeLabel=scope_label,syncStamp=sync_stamp,syncUnit=sync_unit,hideMobileApp=st.query_params.get("view")=="mobile-calendar",hideWeekends=st.session_state.get("sales_hide_weekends",True),mobileSession=dict(url=db.auth.config.url,key=db.auth.config.publishable_key,token=db.token,uid=db.uid,unit=db.me["unit"],branch=position=="branch_manager"),mode=mode,day=str(day),today=str(today),events=cards,roster={uid:p["label"] for uid,p in branch.items() if not selected_member or uid==selected_member} if team else {},rangeStart=str(fetch_start),rangeEnd=str(fetch_end),key="sales_interactive_calendar",default=None)
     if isinstance(action,dict) and action.get("nonce")!=st.session_state.get("sales_calendar_action"):
         st.session_state["sales_calendar_action"]=action.get("nonce")
         command,value=action.get("action"),action.get("value")
+        if command=="scope":
+            st.session_state.pop("calendar_scope_choice",None)
+            st.session_state.pop("calendar_scope_member",None)
+            st.session_state["sales_route"]={"type":"scope"}
+            st.session_state["sales_route_stack"]=[]
+            st.session_state["sales_calendar_open"]=True
         if command=="mode" and value in ("날짜별","주간","월간"):
             st.session_state["sales_view"]=value
             ux.refresh()

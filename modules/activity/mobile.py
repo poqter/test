@@ -156,6 +156,9 @@ def alerts(db):
 
 def run(logout):
     ux.styles()
+    import streamlit.components.v1 as components
+    from pathlib import Path
+    components.html(Path(__file__).with_name('calendar_bridge.html').read_text(),height=0)
     st.html('''<style>
     [data-testid="stHeader"]{display:none}.block-container{padding-top:.4rem!important;padding-bottom:2rem!important;max-width:1200px}
     body:has(.st-key-mobile_header) [data-testid="stMain"] [data-testid="stMainBlockContainer"]{padding-top:0!important}
@@ -163,7 +166,7 @@ def run(logout):
     body:has(.st-key-mobile_header) [data-testid="stMain"] [data-testid="stMainBlockContainer"]>[data-testid="stVerticalBlock"]{gap:.4rem!important}
     body:has(.st-key-mobile_header) [data-testid="stElementContainer"]:has(> [data-testid="stEmpty"]){display:none!important}
     .st-key-mobile_content [data-testid="stVerticalBlock"]{gap:6px}
-    .st-key-mobile_header button{min-height:40px!important;padding:4px 10px!important}
+    .st-key-mobile_header button{border:0!important;background:transparent!important;min-height:40px!important;padding:4px 10px!important}
     .st-key-mobile_header h3{margin:0;padding:0;font-size:1.15rem;white-space:nowrap}
     .st-key-mobile_header [data-testid="stHorizontalBlock"],.st-key-mobile_work_counts [data-testid="stHorizontalBlock"]{flex-wrap:nowrap!important;gap:6px!important}
     .st-key-mobile_header [data-testid="stColumn"],.st-key-mobile_work_counts [data-testid="stColumn"]{min-width:0!important;flex:1 1 0!important;width:0!important}
@@ -178,7 +181,7 @@ def run(logout):
     db=center.Records();today=datetime.now(center.KST).date()
     st.session_state['sales_dialog_rendered']=False
     # Preserve navigation widgets when another menu temporarily unmounts them.
-    for key in ('sales_calendar_member','sales_day_일일','sales_day_주간','sales_overview_day','sales_overview_period','sales_overview_unit','sales_member_search','sales_member_status','mobile_work_mode','mobile_work_tab'):
+    for key in ('sales_calendar_member','sales_calendar_team','sales_day_일일','sales_day_주간','sales_overview_day','sales_overview_period','sales_overview_unit','sales_member_search','sales_member_status','mobile_work_mode','mobile_work_tab'):
         if key in st.session_state:st.session_state[key]=st.session_state[key]
     page=st.session_state.get('mobile_page','캘린더')
     allowed=[*menus(db),'주간 기록','알림·피드백']
@@ -192,7 +195,7 @@ def run(logout):
                 st.html('<span class="mobile-drawer"></span>');menu_items(db,logout,'drawer')
         b.subheader('화랑 캘린더')
         unread=db.request('GET','sales_notices',{'seen':'eq.false','select':'id','limit':'50'})
-        c.button('🔔 '+(str(len(unread))+'+' if len(unread)==50 else str(len(unread))) if unread else '🔔',on_click=choose,args=('알림·피드백',),key='mobile_alerts')
+        c.button('알림 '+(str(len(unread))+'+' if len(unread)==50 else str(len(unread))) if unread else '알림',icon=':material/notifications:',type='tertiary',on_click=choose,args=('알림·피드백',),key='mobile_alerts')
     pending_navigation()
     with st.container(key='mobile_content'):
         if page=='캘린더':

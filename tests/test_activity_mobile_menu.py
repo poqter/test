@@ -56,6 +56,6 @@ def test_weekly_and_alerts_empty_state():
     button(at,'주간 기록').click().run()
     assert not at.exception
     assert any(s.value=='이번 주 돌아보기' for s in at.subheader)
-    button(at,'🔔').click().run()
+    button(at,'알림').click().run()
     assert not at.exception
     assert any(i.value=='일정 알림이 없습니다.' for i in at.info)

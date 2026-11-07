@@ -23,8 +23,17 @@ try:
         expect(page.get_by_role('button',name='☰',exact=True)).to_be_visible()
         cal=page.frame_locator('iframe[title="modules.activity.center.sales_calendar_view"]')
         assert page.locator('.st-key-mobile_header').bounding_box()['y'] < 24
+        expect(page.locator('iframe[title="modules.activity.center.sales_calendar_view"]')).to_be_visible()
         assert page.locator('iframe[title="modules.activity.center.sales_calendar_view"]').bounding_box()['y'] < 200
-        cal.get_by_text('보기 설정',exact=True).click()
+        cal.get_by_role('button',name='조회 대상 · 내 일정',exact=True).click()
+        expect(page.get_by_role('dialog')).to_be_visible()
+        page.get_by_text('지점 일정',exact=True).click()
+        page.get_by_role('button',name='적용',exact=True).click()
+        expect(cal.get_by_role('button',name='조회 대상 · 지점 일정',exact=True)).to_be_visible()
+        cal.get_by_role('button',name='조회 대상 · 지점 일정',exact=True).click()
+        page.get_by_text('내 일정',exact=True).click()
+        page.get_by_role('button',name='적용',exact=True).click()
+        cal.get_by_text('설정',exact=True).click()
         expect(cal.get_by_role('button',name='주말 제외',exact=True)).to_have_attribute('aria-pressed','true')
         expect(cal.get_by_role('button',name='모바일 앱 열기',exact=True)).to_have_count(0)
         cal.get_by_role('button',name='2026-11-05 일정 보기',exact=True).click()
@@ -34,6 +43,7 @@ try:
         if os.environ.get('ACTIVITY_SCREENSHOT'):page.screenshot(path=os.environ['ACTIVITY_SCREENSHOT'],full_page=True)
         page.get_by_role('button',name='일정 등록',exact=True).click()
         expect(page.get_by_role('dialog')).to_be_visible()
+        assert page.get_by_role('dialog').bounding_box()['y'] < 40
         expect(page.get_by_role('dialog').get_by_test_id('stDateInput').locator('input').first).to_have_value('2026-11-05')
         page.get_by_role('button',name='✕',exact=True).click()
         expect(page.get_by_role('dialog')).to_have_count(0)
