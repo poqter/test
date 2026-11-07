@@ -17,6 +17,7 @@ try:
             page.goto('http://127.0.0.1:8507')
             page.get_by_role('tab',name='일일 기록',exact=True).click()
             expect(page.get_by_label('AP',exact=True)).to_be_visible()
+            page.wait_for_timeout(700) # Let the menu's app run finish before measuring fragment runs.
             full_runs=page.get_by_text('전체 실행 횟수',exact=False).inner_text()
             record=page.locator('.st-key-daily_record')
             expect(record.locator('.sales-summary')).to_contain_text('2026.11.06')
@@ -39,6 +40,7 @@ try:
                 expect(dlg).to_be_visible()
                 dlg.get_by_role('button',name='✕',exact=True).click()
                 expect(dlg).not_to_be_visible()
+                page.wait_for_timeout(700) # Native dialog close completes an app run.
                 full_runs=page.get_by_text('전체 실행 횟수',exact=False).inner_text()
                 options.get_by_role('radio',name='기록 작성',exact=True).click()
                 expect(field).to_have_value('7')

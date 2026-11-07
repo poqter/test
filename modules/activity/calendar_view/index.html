@@ -35,7 +35,7 @@ function loadPrefs(a){
  try{const stored=JSON.parse(localStorage.getItem('hwarang.calendar.preferences.'+uid)||'null');if(stored)for(const k of Object.keys(prefs))if(typeof stored[k]==='boolean')prefs[k]=stored[k]}catch{}
 }
 function savePrefs(){try{localStorage.setItem('hwarang.calendar.preferences.'+prefsUser,JSON.stringify(prefs));return true}catch{return false}}
-function changePrefs(patch){Object.assign(prefs,patch);const saved=savePrefs();render(latest);const note=document.querySelector('.settings-save');if(note&&!saved)note.textContent='현재 화면에 반영했습니다. 이 브라우저에서는 설정 저장이 제한됩니다.';emit('weekends',!prefs.showWeekends)}
+function changePrefs(patch){const weekendsBefore=prefs.showWeekends;Object.assign(prefs,patch);const saved=savePrefs();render(latest);const note=document.querySelector('.settings-save');if(note&&!saved)note.textContent='현재 화면에 반영했습니다. 이 브라우저에서는 설정 저장이 제한됩니다.';if(weekendsBefore!==prefs.showWeekends)emit('weekends',!prefs.showWeekends)}
 addEventListener('pointerdown',e=>{pointerStart={x:e.clientX,y:e.clientY};});
 addEventListener('pointermove',e=>{if(pointerStart&&Math.hypot(e.clientX-pointerStart.x,e.clientY-pointerStart.y)>10)suppressClickUntil=Date.now()+450;});
 addEventListener('pointerup',()=>{pointerStart=null;});
@@ -185,7 +185,7 @@ async function checkSync(){
 }
 addEventListener('online',()=>checkSync());
 addEventListener('visibilitychange',()=>{if(!document.hidden)checkSync()});
-new ResizeObserver(()=>post('streamlit:setFrameHeight',{height:document.documentElement.offsetHeight+2})).observe(document.body);
+let lastFrameHeight=0;new ResizeObserver(()=>{const height=document.documentElement.offsetHeight+2;if(height!==lastFrameHeight){lastFrameHeight=height;post('streamlit:setFrameHeight',{height})}}).observe(document.body);
 addEventListener('message',e=>{
  if(e.source!==parent||e.origin!==location.origin)return;
  if(e.data.type==='streamlit:render')render(e.data.args);

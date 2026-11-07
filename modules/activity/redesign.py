@@ -537,12 +537,14 @@ def calendar_scope(db):
     if st.button("적용",type="primary",key="calendar_scope_apply"):
         st.session_state["sales_calendar_team"]=choice=="지점 일정"
         st.session_state["sales_calendar_member"]=member
-        ux.back()
+        ux.back(preserve=False)
 
 
 
 @st.dialog("영업활동",width="large",dismissible=False)
 def dialog(db):
+    from modules.activity import read_state
+    read_state.remember(db)
     ux.dialog_styles()
     st.html('<span class="sales-dialog-marker"></span>')
     kind=st.session_state.get("sales_route",{}).get("type")
@@ -554,7 +556,8 @@ def dialog(db):
         close_feedback=st.container()
         ux.feedback()
         if message:=st.session_state.pop("sales_dialog_error",None):st.error(message)
-        db._reads.clear() # Dialog fragments must not retain a stale Records read snapshot.
+        route_key=st.session_state.get("sales_route",{})
+        read_state.refresh(db,("dialog",route_key.get("type"),route_key.get("id"),route_key.get("day"),route_key.get("uid")))
         route=st.session_state.get("sales_route",{})
         key=None
         try:

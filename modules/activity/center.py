@@ -1,3 +1,4 @@
+from modules.activity import read_state
 from modules.activity.contracts import contract_editor, performance, conversions
 import re
 import json
@@ -23,7 +24,9 @@ mobile_calendar = components.declare_component("mobile_calendar", path=str(Path(
 
 class Records:
     def __init__(self):
-        self._reads={}
+        resumed=read_state.consume()
+        self._reads=resumed if resumed is not None else {}
+        self._resumed=resumed is not None
         self.auth=HwarangAuthService(SupabaseConfig.from_mapping(st.secrets))
         identity=st.session_state["hwarang_auth"]
         self.token=identity["access_token"]
@@ -38,7 +41,9 @@ class Records:
         if method == "GET" and table == "sales_events":
             params={"deleted_at":"is.null",**(params or {})}
         readonly = method == "GET" or (method == "POST" and table in {"rpc/sales_members", "rpc/sales_branch_members", "rpc/sales_calendar_days", "rpc/sales_calendar_stamp"})
-        if not readonly:self._reads.clear()
+        if not readonly:
+            self._reads.clear()
+            read_state.invalidate()
         def fetch(query):
             key=json.dumps([method,table,query,body,prefer],sort_keys=True)
             if readonly and key in self._reads:return deepcopy(self._reads[key])
@@ -122,8 +127,11 @@ def calendar(db,today):
         st.session_state["sales_calendar_action"]=pending["nonce"];st.rerun()
     opening=isinstance(pending,dict) and pending.get("action") in ("new","event") and pending.get("nonce")!=st.session_state.get("sales_calendar_action")
     # Reuse only this already-visible calendar frame when opening a modal.
-    # Normal navigation and the 30-second refresh always read current data.
-    if not opening:db._reads.clear()
+    # Navigation and change notifications always read current data.
+    if getattr(db,"_resumed",False):db._resumed=False
+    elif not opening:
+        db._reads.clear()
+        if st.session_state.get("sales_route"):read_state.invalidate()
     # The component value is available at the start of the widget rerun.
     # Resolve navigation before querying the period, avoiding a second full run.
     nav=st.session_state.get("sales_interactive_calendar")
@@ -300,7 +308,7 @@ def calendar(db,today):
 
 @st.fragment
 def reports(db,today,period):
-    db._reads.clear()
+    read_state.refresh(db,("reports",period,st.session_state.get("sales_day_"+period)))
     from modules.activity.redesign import reports as render
     return render(db,today,period)
 

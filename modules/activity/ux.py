@@ -48,6 +48,8 @@ def styles():
 
     .st-key-sales_workspace [data-testid="stVerticalBlockBorderWrapper"]>div {border-radius:14px}
     .st-key-sales_workspace input,.st-key-sales_workspace textarea,[data-testid="stDialog"]:has(.sales-dialog-marker) input,[data-testid="stDialog"]:has(.sales-dialog-marker) textarea {border:1px solid #dbe3ed!important;border-radius:8px!important}
+    /* Keep the existing calendar legible while the native dialog is removed. */
+    [data-testid="stElementContainer"][data-stale="true"]:has(iframe[title="modules.activity.center.sales_calendar_view"]){opacity:1!important}
     .st-key-sales_workspace input::placeholder,.st-key-sales_workspace textarea::placeholder,[data-testid="stDialog"]:has(.sales-dialog-marker) input::placeholder {color:#8d9caf!important;opacity:1}
     .sales-summary{display:flex;gap:10px;flex-wrap:wrap;margin:5px 0 16px}.sales-summary span{padding:6px 10px;background:#eef3f9;border-radius:7px;color:#334e6b;font-size:13px}
     .sales-details{display:grid;grid-template-columns:85px 1fr;gap:10px 14px;margin:18px 0}.sales-details dt{color:#718197;font-size:13px}.sales-details dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.sales-dialog-marker{display:none}
@@ -134,13 +136,17 @@ def navigate(route,push=False):
     if already_open:refresh()
     else:st.rerun()
 
-def back():
+def back(preserve=True):
     stack=st.session_state.get("sales_route_stack",[])
     if stack: st.session_state["sales_route"]=stack.pop()
     else: st.session_state.pop("sales_route",None)
     st.session_state.pop("sales_close_check",None)
     if st.session_state.get("sales_route"): refresh()
-    else: st.rerun() # Streamlit requires a full run to remove the modal itself.
+    else:
+        from modules.activity import read_state
+        if preserve:read_state.resume()
+        else:read_state.invalidate()
+        st.rerun() # Native dialog removal still requires an app run.
 
 def close_control(key=None,requested=False,top_container=None):
     bottom=st.button("이전 화면으로" if st.session_state.get("sales_route_stack") else "닫기",key="sales_close")

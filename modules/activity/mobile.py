@@ -15,6 +15,8 @@ def commit_page(target, backwards=False):
     current=st.session_state.get('mobile_page','캘린더')
     history=st.session_state.setdefault('mobile_back_stack',[])
     if target!=current:
+        from modules.activity import read_state
+        read_state.invalidate()
         if backwards:
             if history and history[-1]==target:history.pop()
         else:
@@ -188,10 +190,7 @@ def run(logout):
         if page=='캘린더':
             st.html("""<button class="mobile-new-event" aria-label="일정 등록" title="일정 등록">＋</button><style>.mobile-new-event{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));width:52px;height:52px;border:0;border-radius:50%;background:#155461;color:white;font-size:28px;z-index:40;box-shadow:0 3px 12px #1234;cursor:pointer}</style><script>document.querySelector('.mobile-new-event').onclick=()=>document.querySelectorAll('iframe').forEach(f=>f.contentWindow.postMessage({type:'hwarang.activity.new'},location.origin));</script>""",unsafe_allow_javascript=True)
             center.calendar(db,today)
-            with st.expander('결과 미입력 일정',key='calendar_missing_results',on_change='rerun') as missing_panel:
-                if missing_panel.open:
-                    rows=db.request('GET','sales_events',{'owner':'eq.'+db.uid,'day':'lte.'+str(today),'status':'eq.예정','order':'day.desc'})
-                    redesign.event_list(db,[r for r in rows if overdue(r,today)],'calendar_missing_')
+            missing_results(db,today)
         elif page=='후속 할 일':tasks_view(db,today)
         elif page=='구성원 현황':center.overview(db,today)
         elif page=='알림·피드백':alerts(db)
@@ -200,6 +199,19 @@ def run(logout):
             a.button('일일 기록',on_click=choose,args=('활동 기록',),key='mobile_daily',type='primary' if page=='활동 기록' else 'secondary')
             b.button('주간 기록',on_click=choose,args=('주간 기록',),key='mobile_weekly',type='primary' if page=='주간 기록' else 'secondary')
             center.reports(db,today,'주간' if page=='주간 기록' else '일일')
-            with st.expander('내 청약·계약 실적',key='mobile_performance',on_change='rerun') as panel:
-                if panel.open:center.performance(db,today,{db.uid:db.me},center.bounds,selected_member=db.uid,key='mobile_perf')
+            personal_performance(db,today)
     if st.session_state.get('sales_route') and not st.session_state.get('sales_dialog_rendered'):redesign.dialog(db)
+
+
+@st.fragment
+def missing_results(db,today):
+    with st.expander('결과 미입력 일정',key='calendar_missing_results',on_change='rerun') as missing_panel:
+        if missing_panel.open:
+            rows=db.request('GET','sales_events',{'owner':'eq.'+db.uid,'day':'lte.'+str(today),'status':'eq.예정','order':'day.desc'})
+            redesign.event_list(db,[r for r in rows if overdue(r,today)],'calendar_missing_')
+
+
+@st.fragment
+def personal_performance(db,today):
+    with st.expander('내 청약·계약 실적',key='mobile_performance',on_change='rerun') as panel:
+        if panel.open:center.performance(db,today,{db.uid:db.me},center.bounds,selected_member=db.uid,key='mobile_perf')
