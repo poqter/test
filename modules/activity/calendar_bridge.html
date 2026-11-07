@@ -17,6 +17,30 @@
    }));
   }
   hadDialog=!!dialog;
+  for(const pop of d.querySelectorAll('[data-testid="stPopoverBody"]')){
+   if(pop.querySelector('.calendar-panel-close'))continue;
+   if(!pop.querySelector('.mobile-drawer,.sales-reference'))continue;
+   const close=d.createElement('button');close.className='calendar-panel-close';close.textContent='×';close.setAttribute('aria-label','패널 닫기');
+   close.style.cssText='float:right;min-width:44px;min-height:44px;border:0;background:transparent;font-size:24px;cursor:pointer';
+   close.onclick=()=>{
+    const trigger=d.querySelector('[aria-expanded="true"][aria-controls="'+pop.id+'"]')||d.querySelector('[data-testid="stPopover"] button[aria-expanded="true"]');
+    if(trigger)trigger.click();else pop.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+   };pop.prepend(close);
+  }
+  const handheld=/Android|iPhone|iPad|iPod/i.test(w.navigator.userAgent)||(w.navigator.maxTouchPoints>1&&/Macintosh/i.test(w.navigator.userAgent));
+  d.documentElement.classList.toggle('hwarang-handheld',handheld);
+  // Cloud chrome may be mounted in the same-origin outer host, outside the app iframe.
+  let target=w;
+  for(let i=0;i<5;i++){
+   try{
+    const doc=target.document;doc.documentElement.classList.toggle('hwarang-handheld',handheld);
+    if(!doc.getElementById('hwarang-handheld-chrome')){
+     const style=doc.createElement('style');style.id='hwarang-handheld-chrome';
+     style.textContent='.hwarang-handheld [data-testid="stAppToolbar"],.hwarang-handheld [data-testid="stToolbar"],.hwarang-handheld [data-testid="stStatusWidget"],.hwarang-handheld [data-testid="stMainMenu"],.hwarang-handheld [data-testid="manage-app-button"],.hwarang-handheld .viewerBadge_container__r5tak,.hwarang-handheld [class*="viewerBadge"],.hwarang-handheld [class*="profilePreview"],.hwarang-handheld a:has([data-testid="appCreatorAvatar"]){display:none!important;pointer-events:none!important}';doc.head.append(style);
+    }
+    if(target.parent===target)break;target=target.parent;
+   }catch{break}
+  }
  };
  new w.MutationObserver(()=>{if(!queued){queued=true;w.requestAnimationFrame(update)}}).observe(d.body,{childList:true,subtree:true});
  w.visualViewport?.addEventListener('resize',update);
@@ -42,6 +66,8 @@
   if(d.querySelector('.st-key-sales_keep,.st-key-mobile_continue'))return;
   const dialog=d.querySelector('[role="dialog"]:has(.sales-dialog-marker)');
   if(dialog){dialog.querySelector('.st-key-sales_close_top button')?.click();return;}
+  const reference=d.querySelector('[data-testid="stPopoverBody"]:has(.sales-reference) .calendar-panel-close');
+  if(reference){reference.click();return;}
   const drawer=d.querySelector('[data-testid="stPopoverBody"] .mobile-drawer')&&d.querySelector('.st-key-mobile_menu_toggle button');
   if(drawer){drawer.click();return;}
   for(const iframe of d.querySelectorAll('iframe')){
@@ -72,7 +98,9 @@
  host.addEventListener('popstate',back);
  // Re-arm from a user interaction too: mobile browsers may skip synthetic
  // history entries created before the document received user activation.
- d.addEventListener('pointerdown',arm,true);
+ d.addEventListener('pointerdown',event=>{
+  arm();for(const frame of d.querySelectorAll('iframe')){try{const settings=frame.contentDocument?.querySelector('.view-settings[open]');if(settings)settings.open=false}catch{}}
+ },true);
  d.addEventListener('keydown',arm,true);
  new w.MutationObserver(arm).observe(d.body,{childList:true,subtree:true});
  arm();

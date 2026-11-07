@@ -4,7 +4,7 @@ import streamlit as st
 from modules.activity import center, redesign, ux
 from modules.shared.hwarang_auth import HwarangAuthError
 
-MENUS=('캘린더','오늘의 업무','활동 기록','후속 할 일')
+MENUS=('캘린더','활동 기록','후속 할 일')
 
 
 def menus(db):
@@ -21,6 +21,7 @@ def commit_page(target, backwards=False):
             history.append(current)
             del history[:-30]
         st.session_state['mobile_page']=target
+        if target=='캘린더':st.session_state['sales_view']='월간'
     st.session_state.pop('sales_active_draft',None)
 
 
@@ -84,21 +85,6 @@ def work_data(db,today):
     return todays,[r for r in events if overdue(r,today)],tasks
 
 
-@st.fragment(run_every='30s')
-def summary(db,today):
-    db._reads.clear()
-    events,missing,tasks=work_data(db,today)
-    with st.container(key='mobile_work_counts'):
-        a,b,c=st.columns(3)
-    for slot,label,count,section in [(a,'오늘 일정',len(events),'오늘 일정'),(b,'결과 미입력',len(missing),'결과 미입력'),(c,'할 일',len(tasks),'후속 할 일')]:
-        def select(section=section):
-            st.session_state['mobile_work_section']=section
-            if section!='후속 할 일':st.session_state['mobile_work_tab']=section
-            choose('후속 할 일' if section=='후속 할 일' else '오늘의 업무')
-            st.rerun()
-        slot.button(f'{label} {count}',key='mobile_count_'+section,on_click=select,width='stretch')
-
-
 @st.fragment
 def tasks_view(db,today):
     db._reads.clear();ux.feedback()
@@ -121,29 +107,6 @@ def tasks_view(db,today):
                             if isinstance(event_id,str):ux.navigate({'type':'event','id':event_id})
                             ux.refresh()
                         except HwarangAuthError as exc:st.error(str(exc))
-
-
-@st.fragment
-def today_view(db,today):
-    db._reads.clear()
-    st.subheader('오늘의 업무')
-    if db.me['managed']:
-        mode=st.segmented_control('업무 범위',['내 업무','관리 현황'],default='내 업무',required=True,key='mobile_work_mode')
-        if mode=='관리 현황':
-            st.caption('기존 조회 권한 범위의 구성원입니다.')
-            redesign.overview(db,today)
-            return
-    events,missing,tasks=work_data(db,today)
-    sections=['오늘 일정','결과 미입력']
-    selected=st.session_state.get('mobile_work_section','오늘 일정')
-    selected=selected if selected in sections else sections[0]
-    which=st.segmented_control('확인할 업무',sections,default=selected,required=True,key='mobile_work_tab')
-    redesign.event_list(db,events if which=='오늘 일정' else missing,'mobile_work_')
-    if st.button('오늘 일일 기록 작성',type='primary'):
-        st.session_state['sales_day_일일']=today
-        ux.navigate({'type':'daily','day':str(today)})
-    due=[r for r in tasks if r['due']<=str(today)]
-    if due:st.caption(f'오늘까지 처리할 후속 할 일 {len(due)}건 · 후속 할 일 메뉴에서 확인하세요.')
 
 
 @st.fragment
@@ -202,6 +165,7 @@ def run(logout):
     # Preserve navigation widgets when another menu temporarily unmounts them.
     for key in ('sales_calendar_member','sales_calendar_team','sales_day_일일','sales_day_주간','sales_overview_day','sales_overview_period','sales_overview_unit','sales_member_search','sales_member_status','mobile_work_mode','mobile_work_tab'):
         if key in st.session_state:st.session_state[key]=st.session_state[key]
+    st.session_state['mobile_back_stack']=[p for p in st.session_state.get('mobile_back_stack',[]) if p!='오늘의 업무']
     page=st.session_state.get('mobile_page','캘린더')
     allowed=[*menus(db),'주간 기록','알림·피드백']
     if page not in allowed:page='캘린더';st.session_state['mobile_page']=page
@@ -223,7 +187,10 @@ def run(logout):
         if page=='캘린더':
             st.html("""<button class="mobile-new-event" aria-label="일정 등록" title="일정 등록">＋</button><style>.mobile-new-event{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));width:52px;height:52px;border:0;border-radius:50%;background:#155461;color:white;font-size:28px;z-index:40;box-shadow:0 3px 12px #1234;cursor:pointer}</style><script>document.querySelector('.mobile-new-event').onclick=()=>document.querySelectorAll('iframe').forEach(f=>f.contentWindow.postMessage({type:'hwarang.activity.new'},location.origin));</script>""",unsafe_allow_javascript=True)
             center.calendar(db,today)
-        elif page=='오늘의 업무':today_view(db,today)
+            with st.expander('결과 미입력 일정',key='calendar_missing_results',on_change='rerun') as missing_panel:
+                if missing_panel.open:
+                    rows=db.request('GET','sales_events',{'owner':'eq.'+db.uid,'day':'lte.'+str(today),'status':'eq.예정','order':'day.desc'})
+                    redesign.event_list(db,[r for r in rows if overdue(r,today)],'calendar_missing_')
         elif page=='후속 할 일':tasks_view(db,today)
         elif page=='구성원 현황':center.overview(db,today)
         elif page=='알림·피드백':alerts(db)

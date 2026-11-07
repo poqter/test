@@ -151,10 +151,6 @@ def calendar(db,today):
             a,b,c=st.columns([3,1,1])
             selected_member=a.selectbox("직원 이름 검색 · 선택",[None,*db.members],format_func=lambda u:db.members[u]["label"] if u else "전체 · 기존 조회 범위",key="sales_calendar_member")
             if selected_member:c.button("전체 보기",key="calendar_clear_member",on_click=lambda:st.session_state.update(sales_calendar_member=None))
-            if selected_member and b.button("일정 · 활동 기록",key="calendar_member_detail"):
-                st.session_state["sales_route"]={"type":"member","uid":selected_member,"day":str(st.session_state.get("sales_anchor",today)),"period":"주간" if st.session_state.get("sales_view")=="주간" else "일일"}
-                st.session_state["sales_route_stack"]=[]
-                st.session_state["sales_calendar_open"]=True
     scope_label=db.members[selected_member]["label"] if selected_member else "지점 일정" if team else "내 일정"
     mobile=st.context.headers.get("User-Agent","").lower()
     compact=any(word in mobile for word in ("android","iphone","mobile"))
@@ -184,7 +180,7 @@ def calendar(db,today):
         members=[]
         for uid,person in branch.items():
             line={"구성원":person["label"]}
-            for i,label in enumerate("월화수목금" if st.session_state.get("sales_hide_weekends",True) else "월화수목금토일"):
+            for i,label in enumerate("월화수목금" if st.session_state.get("sales_hide_weekends",False) else "월화수목금토일"):
                 target=str(start+i*DAY)
                 line[label]=" · ".join((r["start_time"] or "종일")[:5]+" "+r["kind"] for r in events if r["owner"]==uid and r["day"]==target)
             members.append(line)
@@ -209,7 +205,7 @@ def calendar(db,today):
         if row.get("companion"):label+=" · 동행 "+branch.get(row["companion"],{}).get("label","")
         if row.get("help"):label+=" · 지원 요청"
         cards.append(dict(id=row["id"],day=row["day"],kind=row["kind"],member=row["owner"],allDay=not row["start_time"],short=(row.get('title') or row['kind'])+(f' · {owner}' if team else ''),label=label,done=status=="완료"))
-    action=calendar_view(scopeLabel=scope_label,syncStamp=sync_stamp,syncUnit=sync_unit,hideMobileApp=st.query_params.get("view")=="mobile-calendar",hideWeekends=st.session_state.get("sales_hide_weekends",True),mobileSession=dict(url=db.auth.config.url,key=db.auth.config.publishable_key,token=db.token,uid=db.uid,unit=db.me["unit"],branch=position=="branch_manager"),mode=mode,day=str(day),today=str(today),events=cards,roster={uid:p["label"] for uid,p in branch.items() if not selected_member or uid==selected_member} if team else {},rangeStart=str(fetch_start),rangeEnd=str(fetch_end),key="sales_interactive_calendar",default=None)
+    action=calendar_view(scopeLabel=scope_label,syncStamp=sync_stamp,syncUnit=sync_unit,hideMobileApp=st.query_params.get("view")=="mobile-calendar",hideWeekends=st.session_state.get("sales_hide_weekends",False),mobileSession=dict(url=db.auth.config.url,key=db.auth.config.publishable_key,token=db.token,uid=db.uid,unit=db.me["unit"],branch=position=="branch_manager"),mode=mode,day=str(day),today=str(today),events=cards,roster={uid:p["label"] for uid,p in branch.items() if not selected_member or uid==selected_member} if team else {},rangeStart=str(fetch_start),rangeEnd=str(fetch_end),key="sales_interactive_calendar",default=None)
     if isinstance(action,dict) and action.get("nonce")!=st.session_state.get("sales_calendar_action"):
         st.session_state["sales_calendar_action"]=action.get("nonce")
         command,value=action.get("action"),action.get("value")
@@ -264,7 +260,7 @@ def calendar(db,today):
             if uid in confirmations:return "일정 없음"
             if personal and all(r["status"]=="취소" for r in personal):return "모두 취소"
             return "미등록"
-        if db.me["managed"]:
+        if db.me["managed"] and not mobile_shell:
             from modules.activity.status_policy import unregistered_exclusions, summary_groups
             states={uid:day_state(uid) for uid in branch.keys() & db.members.keys()}
             excluded=unregistered_exclusions(db.auth, [uid for uid,state in states.items() if state=="미등록"])

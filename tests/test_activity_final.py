@@ -72,13 +72,13 @@ center.calendar_view=capture
 try:center.run()
 finally:center.calendar_view=original
 ''')
-    assert not at.exception and at.session_state['captured_weekends'] is True
-    at.session_state['sales_interactive_calendar']={'action':'weekends','value':False,'anchor':'2026-11-06','nonce':'toggle'}
+    assert not at.exception and at.session_state['captured_weekends'] is False
+    at.session_state['sales_interactive_calendar']={'action':'weekends','value':True,'anchor':'2026-11-06','nonce':'toggle'}
     at.run()
     assert not at.exception
-    assert at.session_state['captured_weekends'] is False
+    assert at.session_state['captured_weekends'] is True
     at.run()
-    assert at.session_state['captured_weekends'] is False
+    assert at.session_state['captured_weekends'] is True
 
 
 def test_member_filter_reset():

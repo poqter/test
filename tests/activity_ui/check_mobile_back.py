@@ -28,7 +28,7 @@ try:
         page.wait_for_function("history.state?.hwarangCalendarBack === true")
         base=page.url
         # Settings and drawer close before changing app pages.
-        cal.get_by_text('설정',exact=True).click()
+        cal.locator('.view-settings > summary').click()
         page.go_back()
         expect(cal.locator('.view-settings')).not_to_have_attribute('open','')
         page.get_by_role('button',name='☰',exact=True).click()

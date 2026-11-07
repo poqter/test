@@ -14,34 +14,36 @@ with sync_playwright() as p:
     page.on('pageerror',lambda e:errors.append(str(e)))
     page.route('https://activity.test/',lambda route:route.fulfill(body=HTML,content_type='text/html'))
     page.goto('https://activity.test/')
-    page.evaluate('a=>render(a)',ARGS)
+    page.evaluate('a=>{loadPrefs(a);prefs.showWeekends=false;render(a)}',ARGS)
     assert page.locator('.cell').count()==5
-    assert page.get_by_role('button',name='주말 제외',exact=True).get_attribute('aria-pressed')=='true'
-    page.get_by_role('button',name='주말 제외',exact=True).click()
+    page.locator('.view-settings > summary').click()
+    assert not page.get_by_label('주말 표시',exact=True).is_checked()
+    page.get_by_label('주말 표시',exact=True).click()
     assert page.locator('.cell').count()==7
-    assert page.locator('[data-key="2026-11-07"] .chip').inner_text()=='주말 일정'
-    page.get_by_role('button',name='주말 제외',exact=True).click()
+    assert page.locator('[data-key="2026-11-07"] .chip').inner_text().endswith('주말 일정')
+    page.get_by_label('주말 표시',exact=True).click()
     assert page.locator('.cell').count()==5
+    page.get_by_role('button',name='보기 설정 닫기').click()
     # Same payload: no DOM mutation. Changed event: update only the existing node.
     page.evaluate('window.savedCell=document.querySelector("[data-key=\\"2026-11-06\\"]");window.savedChip=savedCell.querySelector(".chip");window.savedNav=document.querySelector("#nav button");')
-    page.evaluate('a=>render(a)',ARGS)
+    page.evaluate('a=>{loadPrefs(a);prefs.showWeekends=false;render(a)}',ARGS)
     assert page.evaluate('savedCell===document.querySelector("[data-key=\\"2026-11-06\\"]")')
     ARGS['events'][0]['short']='다른 직원이 수정한 내용'
-    page.evaluate('a=>render(a)',ARGS)
+    page.evaluate('a=>{loadPrefs(a);prefs.showWeekends=false;render(a)}',ARGS)
     assert page.evaluate('savedChip===document.querySelector("[data-key=\\"2026-11-06\\"] .chip")')
     assert page.evaluate('savedNav===document.querySelector("#nav button")')
-    assert page.locator('[data-key="2026-11-06"] .chip').inner_text()=='다른 직원이 수정한 내용'
+    assert page.locator('[data-key="2026-11-06"] .chip').inner_text().endswith('다른 직원이 수정한 내용')
     # Keep the compact preview; more opens every event for that day.
     ARGS['events'] += [dict(ARGS['events'][0],id='c'),dict(ARGS['events'][0],id='d')]
-    page.evaluate('a=>render(a)',ARGS)
+    page.evaluate('a=>{loadPrefs(a);prefs.showWeekends=false;render(a)}',ARGS)
     assert page.locator('#agenda .row').count()==2
     page.locator('[data-key="2026-11-06"] .more').click()
     assert page.locator('dialog .row').count()==3
-    page.locator('dialog').get_by_role('button',name='닫기',exact=True).click()
+    page.locator('dialog').get_by_role('button',name='전체 일정 닫기',exact=True).click()
     # Weekend exclusion across a month/year boundary and day navigation.
     for month,days in [('2026-11-01',30),('2027-01-01',25)]:
         args=dict(ARGS,mode='월간',day=month,hideWeekends=True)
-        page.evaluate('a=>render(a)',args)
+        page.evaluate('a=>{loadPrefs(a);prefs.showWeekends=false;render(a)}',args)
         assert page.locator('.cell').count()==days
         assert page.evaluate('[...document.querySelectorAll(".cell")].every(c=>![0,6].includes(date(c.dataset.key).getUTCDay()))')
     page.evaluate('a=>render(a)',dict(ARGS,mode='날짜별',hideWeekends=True))
@@ -56,7 +58,7 @@ with sync_playwright() as p:
     assert page.locator('#grid').evaluate('(e)=>getComputedStyle(e).gridTemplateColumns.split(" ").length')==1
     # Stable no-change probes, coalesced change notification, hidden pause and offline retention.
     args=dict(ARGS,hideWeekends=True,syncStamp='v1',syncUnit='unit',mobileSession=dict(uid='one',url='https://activity.test',key='public',token='fake'))
-    page.evaluate('a=>render(a)',args)
+    page.evaluate('a=>{loadPrefs(a);prefs.showWeekends=false;render(a)}',args)
     page.evaluate("window.syncCalls=0;window.syncChanges=0;window.fetch=async()=>{syncCalls++;return {ok:true,json:async()=>window.mockStamp||'v1'}};window.addEventListener('message',e=>{if(e.data.value?.action==='refresh')syncChanges++});window.keptCell=document.querySelector('[data-key=\"2026-11-06\"]')")
     page.evaluate('checkSync()')
     page.wait_for_timeout(50)

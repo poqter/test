@@ -30,6 +30,23 @@ def summarize(members,events,reports,contracts,tasks,start,end,today,now):
             contracts=len(grouped['contracts'][uid]),support=support,tasks=overdue))
     return result
 
+def registration_summary(db,today,members):
+    """Retain the calendar's registration summary in its single management home."""
+    from modules.activity.status_policy import unregistered_exclusions, summary_groups
+    with st.expander('오늘의 일정 등록 현황',key='manager_registration',on_change='rerun') as panel:
+        if not panel.open:return
+        rows=db.request('POST','rpc/sales_calendar_days',body={'first_day':str(today),'last_day':str(today)})
+        confirmations={r['owner'] for r in db.request('GET','sales_empty_days',{'day':'eq.'+str(today),'select':'owner'})}
+        states={}
+        for uid in members:
+            own=[r for r in rows if not r['common'] and uid in (r['owner'],r.get('companion'))]
+            active=[r for r in own if r['status'] not in ('취소','연기')]
+            states[uid]=('일정 있음' if any(r['kind']!='휴무' or r['start_time'] for r in active) else '휴무' if active else '일정 없음' if uid in confirmations else '모두 취소' if own and all(r['status']=='취소' for r in own) else '미등록')
+        excluded=unregistered_exclusions(db.auth,[uid for uid,state in states.items() if state=='미등록'])
+        groups=summary_groups(states,{uid:m['label'] for uid,m in members.items()},excluded)
+        st.caption('미등록 '+str(len(groups.get('미등록',[])))+'명 · 일정 없음 '+str(len(groups.get('일정 없음',[])))+'명')
+        for state,names in groups.items():st.write(state+' '+str(len(names))+'명 · '+', '.join(sorted(names)))
+
 def render(db,today):
     from modules.activity.center import bounds,KST
     from modules.activity.redesign import admin_settings
@@ -56,6 +73,7 @@ def render(db,today):
         if leader:
             ids={r['member'] for r in assignments if r['leader']==leader}|{leader}
             members={u:m for u,m in members.items() if u in ids}
+    if st.query_params.get('view')=='mobile-calendar':registration_summary(db,today,members)
     events=db.period('sales_events',start,end)
     reports=db.period('sales_reports',start,end)
     contracts=db.period('sales_contracts',start,end)

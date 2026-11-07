@@ -538,8 +538,7 @@ def calendar_scope(db):
         st.session_state["sales_calendar_team"]=choice=="지점 일정"
         st.session_state["sales_calendar_member"]=member
         ux.back()
-    if member and st.button("일정 · 활동 기록",key="calendar_scope_detail"):
-        ux.navigate({"type":"member","uid":member,"day":str(st.session_state.get("sales_anchor",datetime.now(KST).date())),"period":"주간" if st.session_state.get("sales_view")=="주간" else "일일"},True)
+
 
 
 @st.dialog("영업활동",width="large",dismissible=False)
