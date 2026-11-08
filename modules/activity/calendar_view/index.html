@@ -108,7 +108,7 @@ function render(a){
  }
  if(hide&&isWeekend(selected)){const candidate=weekday(selected,-1);selected=month&&candidate.slice(0,7)!==day.slice(0,7)?weekday(selected):candidate}
  if(calendarMemory)calendarMemory.view={day,mode,selected,team:calendarBoot.team,member:calendarBoot.member};
- const signature=JSON.stringify([mode,day,today,events,a.roster,a.scopeLabel,hide,prefs.showCompleted,selected,selectedByUser,calendarLoading,calendarLoadError]);
+ const signature=JSON.stringify([mode,day,today,events,a.roster,a.scopeLabel,hide,prefs.showCompleted,selected,selectedByUser,calendarLoading,calendarLoadError,!!calendarBoot,typeof calendarAccessPending!=='undefined'&&calendarAccessPending]);
  // Status is owned by the request queue, not cleared by selection changes.
  if(signature===lastRender)return;
  lastRender=signature;
@@ -136,6 +136,7 @@ function render(a){
  if(!a.hideMobileApp)tools.append(button('모바일 앱 열기',()=>openMobile(latest.mobileSession)));
  tools.append(sw,settings);
  tools.append(button('＋ 일정 등록',()=>emit('new',selected),'primary'));tools.append(button('삭제한 일정',()=>calendarTrash()));
+ if(!calendarBoot||(typeof calendarAccessPending!=='undefined'&&calendarAccessPending)){for(const b of tools.querySelectorAll('button'))b.disabled=true;}
  grid.hidden=mode==='날짜별';
  grid.className='grid'+(hide?' weekends-off':'')+(mode==='주간'?' week':'')+(mode==='날짜별'?' strip':'');
  if(!grid.hidden){
@@ -171,9 +172,9 @@ function render(a){
  for(const [uid,name] of Object.entries(a.roster)){const own=list.filter(e=>e.member===uid);group.append(el('div',name+' · '+(own.map(e=>e.short.split(' · ')[0]).join(' / ')||'일정 없음'),'memberline'))}
  agenda.append(group)
  }
- if(calendarLoadError)agenda.append(el('p','최신 일정을 확인하지 못했습니다.','hint'),button('다시 불러오기',()=>reloadCalendar(true)));
+ if(calendarLoadError)agenda.append(el('p','최신 일정을 확인하지 못했습니다.','hint'),button('다시 불러오기',()=>{if(typeof calendarAccessPending!=='undefined'&&calendarAccessPending)post('streamlit:setComponentValue',{value:{action:'reauth',nonce:crypto.randomUUID()},dataType:'json'});else reloadCalendar(true)}));
  if(calendarLoading)agenda.append(el('p','일정을 불러오는 중입니다.','hint'));
- agenda.append(el('h3',Number(selected.slice(5,7))+'월 '+Number(selected.slice(8))+'일 일정 · '+list.length+'건'));
+ agenda.append(el('h3',Number(selected.slice(5,7))+'월 '+Number(selected.slice(8))+'일 일정'+(calendarLoading?'':' · '+list.length+'건')));
  if(month&&selectedByUser===selected)agenda.append(el('p','선택한 날짜의 빈 공간을 한 번 더 누르면 일정 등록','hint'));
  for(let item of (mode!=='날짜별'&&list.length>2?list.slice(0,2):list)){let row=button(item.label+'  ›',()=>emit('event',item.id),'row');row.dataset.key=item.id;row.dataset.kind=item.kind;agenda.append(row)}
  if(!list.length&&!calendarLoading&&!calendarLoadError)agenda.append(el('p','등록된 일정이 없습니다.','hint'),button('이 날짜에 일정 등록',()=>emit('new',selected)));
@@ -235,4 +236,4 @@ addEventListener('message',e=>{
    refreshNonce=e.data.nonce;requestRefresh();
  }
 });
-</script><script src="realtime.js"></script><script src="sync.js"></script><script src="persistent.js"></script><script>post('streamlit:componentReady',{apiVersion:1});</script></html>
+</script><script src="realtime.js"></script><script src="sync.js"></script><script src="persistent.js"></script><script src="host.js"></script><script>post('streamlit:componentReady',{apiVersion:1});</script></html>

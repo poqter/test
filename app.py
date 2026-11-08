@@ -32,7 +32,7 @@ if st.query_params.get("briefing_health") == "1":
     st.code("HWARANG_BRIEFING_RELEASE=" + release['engine_version'] +
             ";READY=" + str(release['code_matches_release']).lower())
     import hashlib
-    activity_files=("read_state.py","center.py","redesign.py","manager.py","daily.py","daily_bridge.html","ux.py","contracts.py","calendar_view/index.html","mobile.py","calendar_bridge.html","device.py","calendar_service.py","calendar_view/persistent.js","calendar_view/sync.js","calendar_view/realtime.js","../shell/workspace_v2.py","../shell/home_briefing.py","../shared/workspace_design.css")
+    activity_files=("read_state.py","center.py","redesign.py","manager.py","daily.py","daily_bridge.html","ux.py","contracts.py","calendar_view/index.html","mobile.py","calendar_bridge.html","device.py","calendar_service.py","calendar_view/persistent.js","calendar_view/sync.js","calendar_view/realtime.js","calendar_view/host.js","workspace_calendar.py","../shell/workspace_v2.py","../shell/home_briefing.py","../shared/workspace_design.css")
     activity_hash=hashlib.sha256(b"".join((Path(__file__).parent / "modules/activity" / name).read_bytes() for name in activity_files)).hexdigest()[:16]
     st.code("HWARANG_ACTIVITY_RELEASE="+activity_hash)
     org_files=("organization_picker.py","account_admin_ui.py","admin_center_ui.py","hwarang_auth.py")
@@ -345,6 +345,7 @@ def main() -> None:
         if "sales_activity" not in permitted:
             st.error("영업활동 관리 이용 권한을 확인해 주세요.")
             st.stop()
+        st.session_state["sales_workspace_host_enabled"] = False
         from modules.activity.mobile import run as render_mobile_workspace
         try:
             render_mobile_workspace(workspace_logout)
@@ -399,18 +400,33 @@ def main() -> None:
             st.button("관리자 센터 →", key="hw_open_admin_center", use_container_width=True,
                       on_click=_open_admin_center)
 
-    # Replace the page on navigation, before any blocking page reads.
-    # Keep the same slot untouched for same-page/fragment reruns and open forms.
+    # This mount stays outside the replaceable page; home preloads only its UI.
+    host_slot = st.container(key="sales_calendar_host")
+    hosted = "sales_activity" in permitted
+    st.session_state["sales_workspace_host_enabled"] = hosted
+    st.session_state.pop("sales_host_args", None)
+    st.session_state.pop("sales_host_error", None)
     from modules.shell.page_slot import page_slot
-    with page_slot(active):
-        if active == "home":
-            render_home(permitted, navigate, NOTICE)
-            return
-        restore_page_draft(active)
-        with st.container(key="hw_task_page"):
-            st.markdown('<div class="hw-task-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
-            render_workbench(active, permitted, navigate)
-            render_task_content(active, permission_role, permitted)
+    try:
+        with st.container(key="hw_workspace_body"):
+            with page_slot(active):
+                if active == "home":
+                    render_home(permitted, navigate, NOTICE)
+                else:
+                    restore_page_draft(active)
+                    with st.container(key="hw_task_page"):
+                        st.markdown('<div class="hw-task-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
+                        render_workbench(active, permitted, navigate)
+                        if active == "sales_activity":
+                            dispatch(active, role=permission_role, allowed=permitted)
+                        else:
+                            render_task_content(active, permission_role, permitted)
+    finally:
+        if hosted:
+            from modules.activity.workspace_calendar import render as render_calendar_host
+            args = st.session_state.get("sales_host_args")
+            with host_slot:
+                render_calendar_host(active == "sales_activity" and st.session_state.get("sales_menu", "캘린더") == "캘린더", args)
 
 
 if __name__ == "__main__":

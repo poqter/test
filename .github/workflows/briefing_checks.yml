@@ -29,6 +29,7 @@ jobs:
           python tests/activity_ui/check_calendar_fast.py
           python tests/activity_ui/check_home_speed.py
           python tests/activity_ui/check_calendar_loading.py
+          python tests/activity_ui/check_calendar_host.py
           python tests/activity_ui/check_entry_routes.py
           python tests/activity_ui/check_calendar_entry.py
           python tests/activity_ui/check_install.py

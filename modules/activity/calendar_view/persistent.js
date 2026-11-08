@@ -17,20 +17,23 @@ function sendNext(){
 }
 function calendarStatus(text){document.getElementById('refreshing').textContent=text||''}
 function receiveCalendar(a){
+ const hostEntering=typeof receiveHost==='function'?receiveHost(a):false;
+ if(a.hosted&&!a.hostActive)return;
  if(!a.boot)return;
  fitCalendar();
- if(calendarBoot&&(calendarBoot.uid!==a.boot.uid||calendarBoot.access!==a.boot.access)){calendarCache.clear();calendarDrafts.clear();if(calendarPanel)calendarPanel.close();calendarBoot=null;context=null;lastRender=null;}
+ if(calendarBoot&&(calendarBoot.uid!==a.boot.uid||calendarBoot.access!==a.boot.access)){calendarEpoch++;calendarSeq++;stopRealtime();calendarCache.clear();calendarDrafts.clear();if(calendarPanel)calendarPanel.close();calendarBoot=null;context=null;lastRender=null;}
  if(!calendarBoot){
   calendarBoot=a.boot;
   try{parent.__hwarangCalendarMemory??={};calendarMemory=parent.__hwarangCalendarMemory[calendarBoot.uid]??={drafts:new Map()};calendarDrafts=calendarMemory.drafts; if(calendarMemory.access!==a.boot.access){calendarMemory.cache=new Map();calendarMemory.access=a.boot.access;}for(const [k,v] of calendarMemory.cache||[])calendarCache.set(k,v);}catch{}
-  latest={...a.boot,hideMobileApp:a.hideMobileApp,mobileSession:a.mobileSession};
+  const shellView=a.hosted&&latest?{day:latest.day,mode:latest.mode}:{};
+  latest={...a.boot,...shellView,hideMobileApp:a.hideMobileApp,mobileSession:a.mobileSession};
   const remembered=calendarMemory?.view;if(remembered){calendarBoot.team=remembered.team;calendarBoot.member=calendarBoot.members[remembered.member]?remembered.member:null;latest={...latest,day:remembered.day,mode:remembered.mode};selected=remembered.selected;context=latest.mode+latest.day}
   const [first,last]=desiredRange();
   const fresh=a.boot.ready!==false&&a.bootFresh&&!remembered&&first===a.boot.rangeStart&&last===a.boot.rangeEnd;
   calendarLoading=!fresh;
   if(fresh)calendarCache.set(rangeKey(first,last),a.boot);
   render(latest);if(!fresh)reloadCalendar();setTimeout(()=>{frameViewport='';fitCalendar();calendarLayoutReady=true},150);
- }else{latest.mobileSession=a.mobileSession;latest.hideMobileApp=a.hideMobileApp;syncConfig=latest;configureRealtime(latest);}
+ }else{latest.mobileSession=a.mobileSession;latest.hideMobileApp=a.hideMobileApp;syncConfig=latest;configureRealtime(latest);if(hostEntering){calendarLoading=true;reloadCalendar();}}
  const r=a.reply,q=calendarFlight;
  if(r&&q&&r.nonce===q.nonce){clearTimeout(q.timer);document.querySelectorAll('[data-request]').forEach(n=>{if(n.dataset.request===q.nonce)n.remove()});calendarFlight=null;r.ok?q.resolve(r.result):q.reject(Error(r.error||'요청을 완료하지 못했습니다.'));sendNext()}
  if(a.changeNonce&&calendarChange!==a.changeNonce){calendarChange=a.changeNonce;reloadCalendar(true)}
@@ -74,7 +77,11 @@ async function loadPayload(first,last,team,member){
  }finally{clearTimeout(timeout)}
 }
 function calendarAction(action,value){
- if(!calendarBoot)return;
+ if(!calendarBoot){
+  if(latest&&(action==='mode'||action==='date')){latest={...latest,[action==='mode'?'mode':'day']:value};context=null;render(latest);}
+  return;
+ }
+ if(typeof workspaceHost!=='undefined'&&workspaceHost&&(workspaceHost.pending()||!parentVisible)&&action!=='reauth')return;
  if(action==='mode'||action==='date'){
   selectedByUser=null;
   if(action==='mode'){latest={...latest,mode:value,day:selected||latest.day};}
