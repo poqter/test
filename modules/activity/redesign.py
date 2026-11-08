@@ -325,18 +325,18 @@ def reports(db,today,period,fixed_day=None):
                         contracts=db.period("sales_contracts",day,day,owner="eq."+db.uid)
                         linked={r["event"] for r in contracts}
                         completed=[r for r in events if r["status"]=="완료"]
-                        current={r["id"]:{"AP":"상담","PC":"제안"}.get(r["kind"],r["kind"]) for r in completed if {"AP":"상담","PC":"제안"}.get(r["kind"],r["kind"]) in COUNTS and not(r["kind"]=="청약" and r["id"] in linked)}
+                        current={r["id"]:r["kind"] for r in completed if r["kind"] in COUNTS and not(r["kind"]=="청약" and r["id"] in linked)}
                         current.update({r["id"]:"청약" for r in contracts})
                         proposed=ux.refreshed_counts(v,v["sources"],current,COUNTS)
                         st.dataframe([{"항목":ux.LABELS.get(c,c),"현재 입력":v[c],"반영 후":proposed[c]} for c in COUNTS],hide_index=True,width="stretch")
                         st.caption("반영 후 값을 확인해 주세요. 이미 반영한 원천은 중복 합산하지 않습니다.")
                         if st.button("이 집계 초안 반영",key=key+"import"):
                             ux.set_values(d,{**proposed,"sources":current,"contracts":contracts,"results":[{"결과":e["result"],"지원 요청":e["help"]} for e in completed if e["result"] or e["help"]]})
-                for label,metrics in [("연락 활동",COUNTS[:4]),("상담 · 계약 활동",COUNTS[4:])]:
+                for label,metrics in [("연락 활동",COUNTS[:4]),("약속 · 청약",COUNTS[4:])]:
                     st.markdown("**"+label+"**")
-                    cols=st.columns(2 if mobile else 4)
+                    cols=st.columns(2)
                     for i,c in enumerate(metrics): ux.field(d,c,cols[i%len(cols)].number_input,ux.LABELS.get(c,c),min_value=0,step=1)
-                st.caption("전화: 발신 시도 · 메시지: 고객 수 · 약속: 신규 확정 · 상담·제안: 진행 횟수 · 청약: 접수 건수")
+                st.caption("TA·AP·PC·CS: 활동 건수 · 약속 확보: 신규 확정 · 청약: 접수 건수")
             else:
                 st.caption("일일 기록을 참고해 주요 성과와 다음 주 계획을 정리하세요.")
                 if old:

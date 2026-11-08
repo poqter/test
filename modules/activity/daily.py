@@ -9,7 +9,7 @@ import streamlit as st
 from modules.activity import ux
 from modules.shared.hwarang_auth import HwarangAuthError
 
-COUNTS=['TA','AP','PC','CS','약속 확보','상담','제안','청약']
+COUNTS=['TA','AP','PC','CS','약속 확보','청약']
 KST=ZoneInfo('Asia/Seoul')
 
 
@@ -126,7 +126,7 @@ def render(db,today,fixed_day=None):
                 with st.container(border=True,key='daily_inputs'):
                     st.markdown('### 활동 종류')
                     st.caption('각 항목의 건수를 입력하세요.')
-                    width=2 if mobile else 4
+                    width=2
                     for offset in range(0,len(COUNTS),width):
                         cols=st.columns(width)
                         for col,name in zip(cols,COUNTS[offset:offset+width]):
@@ -145,7 +145,7 @@ def render(db,today,fixed_day=None):
                         current.update({r['id']:'청약' for r in contracts})
                         proposed=ux.refreshed_counts(v,v['sources'],current,COUNTS)
                         st.dataframe([{'항목':c,'현재 입력':v[c],'반영 후':proposed[c]} for c in COUNTS],hide_index=True,width='stretch')
-                        st.caption('AP·PC는 각각 같은 활동 종류로 가져옵니다. 상담·제안으로 바꾸지 않으며, 이미 가져온 일정은 중복 합산하지 않습니다.')
+                        st.caption('AP·PC는 각각 같은 활동 종류로 가져옵니다. 이미 가져온 일정은 중복 합산하지 않습니다.')
                         def apply():
                             ux.set_values(d,{**proposed,'sources':current,'contracts':contracts,'results':[{'결과':e['result'],'지원 요청':e['help']} for e in completed if e['result'] or e['help']]})
                         st.button('이 집계 초안 반영',key=key+'import',on_click=apply)

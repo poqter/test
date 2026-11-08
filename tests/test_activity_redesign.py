@@ -44,13 +44,13 @@ def test_refresh_is_idempotent_and_week_only_submitted():
 def test_daily_keeps_manual_input_and_saves_all_fields():
     at=app('redesign.reports(FakeRecords(),date(2026,11,6),"일일")')
     assert not at.exception
-    number(at,"상담").set_value(7).run()
+    number(at,"AP").set_value(7).run()
     text(at,"주요 성과 · 진행사항").input("직접 입력한 활동").run()
-    assert number(at,"상담").value==7
+    assert number(at,"AP").value==7
     button(at,"임시 저장").click().run()
     assert not at.exception
     saved=at.session_state["fixture_reports"][0]
-    assert saved["data"]["counts"]["상담"]==7 and saved["data"]["note"]=="직접 입력한 활동"
+    assert saved["data"]["counts"]["AP"]==7 and saved["data"]["note"]=="직접 입력한 활동"
     assert saved["submitted"] is False
 
 def test_weekly_daily_roundtrip_retains_week_draft():
@@ -112,5 +112,5 @@ def test_daily_submit_requires_confirmation():
 def test_mobile_reference_path_and_fields_render():
     at=app('original=redesign.ux.compact\nredesign.ux.compact=lambda:True\ntry: redesign.reports(FakeRecords(),date(2026,11,6),"일일")\nfinally: redesign.ux.compact=original')
     assert not at.exception
-    assert len(at.number_input)>=8
+    assert [n.label for n in at.number_input]==['TA','AP','PC','CS','약속 확보','청약']
     assert any(s.label=="일일 기록 화면" for s in at.segmented_control)

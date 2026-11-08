@@ -5,21 +5,22 @@ from modules.activity.daily import COUNTS
 TAIL='redesign.reports(FakeRecords(),date(2026,11,6),"일일")'
 
 
-def test_eight_independent_fields_and_legacy_counts_survive_edit():
+def test_six_independent_fields_and_legacy_counts_survive_edit():
     seed='''db=FakeRecords()
 if not st.session_state['fixture_reports']:
-    db.save('sales_reports',dict(id='old',period='일일',day='2026-11-06',submitted=False,data={'counts':{'전화':12,'메시지':4,'상담':3},'extra':'preserve','plan':'기존 계획'}))
+    db.save('sales_reports',dict(id='old',period='일일',day='2026-11-06',submitted=False,data={'counts':{'전화':12,'메시지':4,'상담':3,'제안':4},'extra':'preserve','plan':'기존 계획'}))
 '''
     at=app(seed+TAIL)
     assert [n.label for n in at.number_input]==COUNTS
     number(at,'AP').set_value(2).run()
     number(at,'PC').set_value(5).run()
-    assert number(at,'상담').value==3 and number(at,'제안').value==0
+    assert not {'상담','제안'} & {n.label for n in at.number_input}
     button(at,'임시 저장').click().run()
     assert not at.exception
     data=at.session_state['fixture_reports'][0]['data']
     assert data['counts']['전화']==12 and data['counts']['메시지']==4
     assert data['counts']['AP']==2 and data['counts']['PC']==5
+    assert data['counts']['상담']==3 and data['counts']['제안']==4
     assert data['extra']=='preserve' and data['plan']=='기존 계획'
 
 
@@ -88,8 +89,27 @@ st.session_state.setdefault('report:'+UID+':일일:2026-11-06source_panel',True)
     assert not at.exception
     button(at,'이 집계 초안 반영').click().run()
     assert not at.exception
-    assert number(at,'AP').value==1 and number(at,'상담').value==0
+    assert number(at,'AP').value==1
     number(at,'AP').set_value(7).run()
     button(at,'이 집계 초안 반영').click().run()
     assert not at.exception
-    assert number(at,'AP').value==7 and number(at,'상담').value==0
+    assert number(at,'AP').value==7
+
+
+def test_weekly_excludes_retired_metrics_and_preserves_saved_history():
+    seed='''db=FakeRecords()
+if not st.session_state['fixture_reports']:
+    db.save('sales_reports',dict(id='week',period='주간',day='2026-11-02',submitted=False,data={'counts':{'AP':2,'PC':1,'상담':9,'제안':8}}))
+    db.save('sales_reports',dict(id='day',period='일일',day='2026-11-03',submitted=True,data={'counts':{'AP':3,'PC':4,'상담':20,'제안':30}}))
+redesign.reports(db,date(2026,11,6),'주간')
+'''
+    at=app(seed)
+    assert not at.exception
+    values=[m.value for m in at.markdown]
+    assert not any(m.startswith(('상담 **','제안 **')) for m in values)
+    assert 'AP **3**' in values and 'PC **4**' in values
+    text(at,'주요 성과 · 진행사항').input('과거 실적 보존').run()
+    button(at,'임시 저장').click().run()
+    assert not at.exception
+    week=next(r for r in at.session_state['fixture_reports'] if r['period']=='주간')
+    assert week['data']['counts']=={'AP':2,'PC':1,'상담':9,'제안':8,'TA':0,'CS':0,'약속 확보':0,'청약':0}

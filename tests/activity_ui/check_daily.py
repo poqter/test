@@ -21,7 +21,7 @@ try:
             full_runs=page.get_by_text('전체 실행 횟수',exact=False).inner_text()
             record=page.locator('.st-key-daily_record')
             expect(record.locator('.sales-summary')).to_contain_text('2026.11.06')
-            expect(record.locator('.st-key-daily_inputs').get_by_role('spinbutton')).to_have_count(8)
+            expect(record.locator('.st-key-daily_inputs').get_by_role('spinbutton')).to_have_count(6)
             assert record.get_by_label('전화',exact=True).count()==0
             field=record.get_by_label('AP',exact=True)
             field.fill('7');field.press('Tab')
@@ -50,7 +50,7 @@ try:
                 assert inputs.nth(2).bounding_box()['y']>inputs.nth(0).bounding_box()['y']
             else:
                 inputs=record.locator('[data-testid="stNumberInput"]')
-                assert abs(inputs.nth(0).bounding_box()['y']-inputs.nth(3).bounding_box()['y'])<2
+                assert abs(inputs.nth(0).bounding_box()['y']-inputs.nth(1).bounding_box()['y'])<2
             record.get_by_role('button',name='임시 저장',exact=True).click()
             expect(page.get_by_text('임시 저장했습니다. 서버에 보관된 기록입니다.',exact=True)).to_be_visible()
             expect(note).to_have_value('일정 참고 후에도 유지할 내용')
@@ -73,6 +73,6 @@ try:
 
             page.close()
         browser.close()
-    print('DAILY_UI_OK: eight fields, desktop/mobile grids, reference tabs, stable help, persistence, single submission and fragment isolation')
+    print('DAILY_UI_OK: six fields, desktop/mobile grids, reference tabs, stable help, persistence, single submission and fragment isolation')
 finally:
     server.terminate();server.wait(timeout=10)
