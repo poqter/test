@@ -403,6 +403,18 @@ def main() -> None:
     # This mount stays outside the replaceable page; home preloads only its UI.
     host_slot = st.container(key="sales_calendar_host")
     hosted = "sales_activity" in permitted
+    if hosted:
+        # A long-lived Cloud session can retain the old lazy-imported center
+        # after a source deployment. Upgrade that module once, without dropping
+        # the user's authentication or drafts, before dispatching the page.
+        from modules.activity import center as activity_center
+        if getattr(activity_center, "WORKSPACE_HOST_PROTOCOL", 0) < 1:
+            from importlib import reload
+            from threading import Lock
+            lock = activity_center.__dict__.setdefault("_host_upgrade_lock", Lock())
+            with lock:
+                if getattr(activity_center, "WORKSPACE_HOST_PROTOCOL", 0) < 1:
+                    reload(activity_center)
     st.session_state["sales_workspace_host_enabled"] = hosted
     st.session_state.pop("sales_host_args", None)
     st.session_state.pop("sales_host_error", None)

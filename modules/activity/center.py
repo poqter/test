@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 import streamlit as st
 from modules.shared.hwarang_auth import HwarangAuthService, HwarangAuthError, SupabaseConfig
 
+WORKSPACE_HOST_PROTOCOL = 1
 KST=ZoneInfo("Asia/Seoul")
 SALES_TYPES={"TA":"고객 연락","AP":"초회 상담","PC":"프레젠테이션 / 클로징","CS":"기존 고객 관리"}
 KINDS=["미분류",*SALES_TYPES,"청약","교육","회의","휴무","기타"]
