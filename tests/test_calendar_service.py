@@ -86,3 +86,19 @@ def test_bootstrap_renders_before_event_queries(db):
  assert ('GET','sales_events') not in st.session_state.get('fixture_reads',[])
  assert 'recent' not in boot
  with pytest.raises(ValueError):command(db,'recent',{'day':'2026-11-06'})
+
+@pytest.mark.parametrize('editing', [False, True])
+@pytest.mark.parametrize('mode,start,end,expected', [
+ ('시간 지정','13:00','',('13:00:00',None)),
+ ('시간 지정','13:00',None,('13:00:00',None)),
+ ('시간 지정','13:00','14:00',('13:00:00','14:00:00')),
+ ('시간 미정','','',(None,None)),
+ ('종일','13:00','14:00',(None,None)),
+])
+def test_optional_times_are_nullable_on_create_and_edit(db,editing,mode,start,end,expected):
+ a=payload(mode=mode,start=start,end=end)
+ if editing:a.update(id=EVENT,revision=1)
+ result=command(db,'save',a)
+ row=next(r for r in st.session_state['fixture_events'] if r['id']==result['id'])
+ assert (row['start_time'],row['end_time'])==expected
+ assert row['time_pending']==(mode=='시간 미정')

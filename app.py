@@ -341,6 +341,16 @@ def main() -> None:
     permission_role = st.session_state.get("login_user")
     permitted = allowed_ids(permission_role)
     st.session_state["ws_allowed_ids"] = permitted
+    if "sales_activity" in permitted:
+        # Upgrade cached command handlers in existing desktop/mobile sessions.
+        from modules.activity import calendar_service
+        if getattr(calendar_service, "NULLABLE_TIME_PROTOCOL", 0) < 1:
+            from importlib import reload
+            from threading import Lock
+            lock = calendar_service.__dict__.setdefault("_time_upgrade_lock", Lock())
+            with lock:
+                if getattr(calendar_service, "NULLABLE_TIME_PROTOCOL", 0) < 1:
+                    reload(calendar_service)
     if st.query_params.get("view") == "mobile-calendar":
         if "sales_activity" not in permitted:
             st.error("영업활동 관리 이용 권한을 확인해 주세요.")

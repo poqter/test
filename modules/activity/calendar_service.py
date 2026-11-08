@@ -7,6 +7,7 @@ from modules.shared.hwarang_auth import HwarangAuthError
 from modules.activity.redesign import write_event, KST, KINDS
 
 DAY = timedelta(days=1)
+NULLABLE_TIME_PROTOCOL = 1
 
 def identity(value):
     return str(UUID(str(value)))
@@ -61,7 +62,9 @@ def save_event(db,a):
     if not title or len(title)>200:raise ValueError('일정명을 200자 이내로 입력해 주세요.')
     kind=v.get('kind','미분류')
     if kind not in KINDS and (not old or kind!=old['kind']):raise ValueError('활동 종류를 확인해 주세요.')
-    mode=v.get('mode','시간 미정'); start=v.get('start') if mode=='시간 지정' else None; end=v.get('end') if start else None
+    mode=v.get('mode','시간 미정')
+    start=(v.get('start') or None) if mode=='시간 지정' else None
+    end=(v.get('end') or None) if start else None
     if mode=='시간 지정' and not start:raise ValueError('시작 시간을 입력해 주세요.')
     if start:start=time.fromisoformat(start).isoformat()
     if end:end=time.fromisoformat(end).isoformat()
