@@ -399,15 +399,18 @@ def main() -> None:
             st.button("관리자 센터 →", key="hw_open_admin_center", use_container_width=True,
                       on_click=_open_admin_center)
 
-    if active == "home":
-        render_home(permitted, navigate, NOTICE)
-        return
-
-    restore_page_draft(active)
-    with st.container(key="hw_task_page"):
-        st.markdown('<div class="hw-task-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
-        render_workbench(active, permitted, navigate)
-        render_task_content(active, permission_role, permitted)
+    # Replace the page on navigation, before any blocking page reads.
+    # Keep the same slot untouched for same-page/fragment reruns and open forms.
+    from modules.shell.page_slot import page_slot
+    with page_slot(active):
+        if active == "home":
+            render_home(permitted, navigate, NOTICE)
+            return
+        restore_page_draft(active)
+        with st.container(key="hw_task_page"):
+            st.markdown('<div class="hw-task-marker" aria-hidden="true"></div>', unsafe_allow_html=True)
+            render_workbench(active, permitted, navigate)
+            render_task_content(active, permission_role, permitted)
 
 
 if __name__ == "__main__":

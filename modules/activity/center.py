@@ -265,6 +265,8 @@ def run():
     ux.styles()
     st.title("영업활동 관리")
     if notice:=st.session_state.pop("sales_notice",None):st.success(notice)
+    from modules.activity.loading import calendar_loading
+    loading = calendar_loading() if st.session_state.get("sales_menu", "캘린더") == "캘린더" else st.empty()
     try:
         db=Records()
         choices=["캘린더","일일 기록","주간 기록"]+(["구성원 현황"] if db.me["managed"] else [])
@@ -306,4 +308,9 @@ def run():
                         else:reports(db,today,mode[:2])
         if st.session_state.get("sales_route") and not st.session_state.get("sales_dialog_rendered"):redesign.dialog(db)
     except HwarangAuthError as exc:
+        loading.empty()
         st.error("요청을 완료하지 못했습니다. 입력 내용은 유지됩니다. "+str(exc))
+        if st.button("다시 불러오기", key="sales_context_retry"):
+            st.rerun()
+    finally:
+        loading.empty()
