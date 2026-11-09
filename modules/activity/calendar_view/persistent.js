@@ -266,8 +266,9 @@ function openEditor(row,kind,day){
   const title=field(form,'일정명','title',v.title);title.required=true;title.maxLength=200;
   const pair=el('div','','pair');form.append(pair);field(pair,'날짜','day',v.day,'date').required=true;const activity=field(pair,'활동 종류','kind',v.kind,'text',calendarBoot.kinds);
   const allDay=field(form,'종일','all_day',v.all_day??v.mode==='종일','checkbox'),times=el('div','','pair');form.append(times);
+  times.style.alignItems='start';
   const start=field(times,'시작 시간','start',v.start),endWrap=el('div');times.append(endWrap);const end=field(endWrap,'종료 시간 · 선택','end',v.end);
-  const endError=el('p','','panel-error');endError.setAttribute('aria-live','polite');endWrap.append(endError);
+  const endError=el('p','','panel-error time-range-error');endError.setAttribute('aria-live','polite');endWrap.append(endError);
   const hint=el('p','','hint');form.append(hint);
   const mode=field(form,'시간 저장 방식','mode',v.mode,'hidden');mode.parentElement.hidden=true;
   const auto=field(form,'시간 자동 판별','auto_time','1','hidden');auto.parentElement.hidden=true;
