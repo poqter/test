@@ -97,4 +97,21 @@ await db.exec('reset role;set role anon');
 await assert.rejects(()=>db.query('select public.sales_calendar_context()'));
 await assert.rejects(()=>payload());
 console.log('PASS: bundled reads, >1000 rows, RLS-private details, anonymous/scope denial, signal isolation and client write denial');
+await db.exec('reset role');
+{
+const timeMigration=fs.readFileSync(new URL('../supabase/migrations/20261109154325_sales_followup_time_selection.sql',import.meta.url),'utf8');
+await db.exec(timeMigration);await db.exec(timeMigration);
+await db.exec(`set role authenticated;set request.jwt.claim.sub='${owner}'`);
+const before=(await db.query('select * from public.sales_events where id=$1',[event])).rows[0];
+const nextId='99999999-9999-4999-8999-999999999999';
+const delayed={...before,status:'연기',result:'시간 변경',follow_start_time:'16:10',follow_end_time:'17:20',follow_time_pending:false};
+await db.query('select public.sales_edit_event($1,$2,$3::jsonb,$4::date,$5)',[event,before.revision,JSON.stringify(delayed),'2026-11-12',nextId]);
+const after=(await db.query('select * from public.sales_events where id=$1',[event])).rows[0];
+const shifted=(await db.query('select * from public.sales_events where id=$1',[nextId])).rows[0];
+assert.equal(after.start_time,before.start_time);assert.equal(after.end_time,before.end_time);assert.equal(after.note,before.note);
+assert.equal(shifted.start_time,'16:10:00');assert.equal(shifted.end_time,'17:20:00');assert.equal(shifted.previous_event,event);assert.equal(shifted.note,before.note);
+await assert.rejects(()=>db.query('select public.sales_edit_event($1,$2,$3::jsonb,$4::date,$5)',[event,after.revision,JSON.stringify({...delayed,follow_end_time:'15:00'}),'2026-11-13','77777777-7777-4777-8777-777777777777']));
+assert.equal((await db.query('select revision from public.sales_events where id=$1',[event])).rows[0].revision,after.revision,'invalid follow-up rolls back original update');
+console.log('PASS: selected follow-up times, original time/note preservation, atomic invalid-time rollback');
+}
 await db.close();
