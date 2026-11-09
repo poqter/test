@@ -92,7 +92,7 @@ def save_event(db,a):
     if status not in ('예정','완료','연기','취소'):raise ValueError('상태를 확인해 주세요.')
     common=bool(v.get('common'))
     if common and not db.me['managed'] and (not old or not old.get('common')):raise HwarangAuthError('공통 일정 권한을 확인해 주세요.')
-    body=dict(day=str(day),title=title,kind=kind,start_time=start,end_time=end,time_pending=mode=='시간 미정',place=str(v.get('place','')),note=str(v.get('note','')),help=str(v.get('help','')) if v.get('support') else '',companion=companion,common=common,status=status,result=str(v.get('result','')) if old else '')
+    body=dict(day=str(day),title=title,kind=kind,start_time=start,end_time=end,time_pending=mode=='시간 미정',place=str(v.get('place','')),note=str(v.get('note','')),help=str(v.get('help','')) if v.get('support') else '',help_recipient=v.get('help_recipient') or None if v.get('support') else None,companion=companion,common=common,status=status,result=str(v.get('result','')) if old else '')
     if follow and 'follow_start' in v:
         follow_start=parse_clock(v['follow_start']) if str(v.get('follow_start','')).strip() else None
         follow_end=parse_clock(v['follow_end']) if str(v.get('follow_end','')).strip() else None
@@ -139,7 +139,7 @@ def command(db,op,a):
         if row['revision']!=int(a['revision']):raise HwarangAuthError('일정이 변경됐습니다. 최신 일정을 확인해 주세요.')
         day=str(date.fromisoformat(a['day']))
         if day!=row['day']:
-            body={k:row.get(k) for k in ('day','start_time','end_time','time_pending','title','kind','place','note','help','companion','common','status','result')}
+            body={k:row.get(k) for k in ('day','start_time','end_time','time_pending','title','kind','place','note','help','help_recipient','companion','common','status','result')}
             body['day']=day
             write_event(db,row,body)
         current=event(db,row['id'],own=True)
@@ -163,7 +163,7 @@ def command(db,op,a):
             raise ValueError('이 일정은 상세 화면에서 상태를 변경해 주세요.')
         if row['revision']!=int(a['revision']):
             raise HwarangAuthError('다른 화면에서 변경했습니다. 최신 목록을 확인한 뒤 다시 시도해 주세요.')
-        body={k:row.get(k) for k in ('day','start_time','end_time','time_pending','title','kind','place','note','help','companion','common','status','result')}
+        body={k:row.get(k) for k in ('day','start_time','end_time','time_pending','title','kind','place','note','help','help_recipient','companion','common','status','result')}
         body['status']=target
         write_event(db,row,body)
         current=event(db,row['id'],own=True)
@@ -206,7 +206,8 @@ def command(db,op,a):
     raise ValueError('지원하지 않는 요청입니다.')
 
 def bootstrap(db,today,day,mode,team,member):
+    from modules.activity.support_request import recipients
     first=day.replace(day=1); first-=first.weekday()*DAY
     people={u:r['label'] for u,r in db.branch.items()} if hasattr(db,'branch') else {r['member']:r['label'] for r in db.request('POST','rpc/sales_branch_members',body={})}
     catalog=json.loads((Path(__file__).resolve().parents[2]/'data/portal_catalog.json').read_text())
-    return dict(access=json.dumps(db.members,sort_keys=True),viewLabel=__import__('streamlit').session_state.get('calendar_view_label'),ready=False,fast=bool(getattr(db,'fast_calendar',False)),uid=db.uid,managed=bool(db.me['managed']),people=people,members={u:r['label'] for u,r in db.members.items()} if db.me['managed'] else {},insurers=[r['name'] for r in catalog['insurers'] if r['group'] in ('생명보험','손해보험')],kinds=KINDS,day=str(day),today=str(today),mode=mode,team=team,member=member,events=[],roster={},rangeStart=str(first),rangeEnd=str(first+41*DAY),syncUnit=db.members[member]['unit'] if member else db.me['unit'],syncStamp=None,scopeLabel=db.members[member]['label'] if member else '지점 일정' if team else '내 일정')
+    return dict(access=json.dumps(db.members,sort_keys=True),viewLabel=__import__('streamlit').session_state.get('calendar_view_label'),supportRecipients=recipients(db),ready=False,fast=bool(getattr(db,'fast_calendar',False)),uid=db.uid,managed=bool(db.me['managed']),people=people,members={u:r['label'] for u,r in db.members.items()} if db.me['managed'] else {},insurers=[r['name'] for r in catalog['insurers'] if r['group'] in ('생명보험','손해보험')],kinds=KINDS,day=str(day),today=str(today),mode=mode,team=team,member=member,events=[],roster={},rangeStart=str(first),rangeEnd=str(first+41*DAY),syncUnit=db.members[member]['unit'] if member else db.me['unit'],syncStamp=None,scopeLabel=db.members[member]['label'] if member else '지점 일정' if team else '내 일정')

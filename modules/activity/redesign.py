@@ -38,7 +38,7 @@ def event_body(values):
     end=values["end"] if start else None
     return dict(day=str(values["day"]),start_time=str(start) if start else None,end_time=str(end) if end else None,
                 time_pending=values["mode"]=="시간 미정",title=values["title"].strip(),kind=values["kind"],place=values["place"],
-                note=values["note"],help=values["help"] if values["support"] else "",common=values["common"],
+                note=values["note"],help=values["help"] if values["support"] else "",help_recipient=values.get("help_recipient") if values["support"] else None,common=values["common"],
                 companion=values["companion"],status=values["status"],result=values["result"])
 
 def follow_time_body(v):
@@ -50,6 +50,7 @@ def follow_time_body(v):
 
 def event_errors(v):
     errors={}
+    if v.get("support") and v.get("help", "").strip() and not v.get("help_recipient"):errors["help_recipient"]="지원 요청 대상을 선택해 주세요."
     if not v["title"].strip():errors["title"]="일정명을 입력해 주세요."
     if v["mode"]=="시간 지정":
         if not v["start"]:errors["start"]="시작 시간을 입력해 주세요."
@@ -68,7 +69,7 @@ def event_editor(db,day,event=None,parent=None,copy=None):
         kind=old.get("kind",{"TA":"AP","AP":"PC"}.get(parent["kind"],"미분류") if parent else "미분류"),
         mode="시간 미정",start=time.fromisoformat(old["start_time"]) if old.get("start_time") else None,
         end=time.fromisoformat(old["end_time"]) if old.get("end_time") else None,place=old.get("place","") or "",note=old.get("note","") or "",
-        help=old.get("help","") if event else "",support=bool(event and old.get("help")),companion=old.get("companion"),
+        help=old.get("help","") if event else "",help_recipient=old.get("help_recipient") if event else None,support=bool(event and old.get("help")),companion=old.get("companion"),
         repeat=False,repeats=1,common=old.get("common",False) if event else False,status=old.get("status","예정") if event else "예정",
         result=old.get("result","") if event else "",follow=None,
         follow_start=(old.get('start_time') or '')[:5],follow_end=(old.get('end_time') or '')[:5])
@@ -123,7 +124,11 @@ def event_editor(db,day,event=None,parent=None,copy=None):
             choices=list(dict.fromkeys([None,*recent_people,*people,*([v["companion"]] if v["companion"] else [])]))
             ux.field(d,"companion",st.selectbox,"동행자",options=choices,format_func=lambda u:(("최근 · " if u in recent_people else "")+people.get(u,"기존 동행자")) if u else "선택 안 함")
             ux.field(d,"support",st.toggle,"지원 요청")
-            if v["support"]: ux.field(d,"help",st.text_input,"지원받을 내용")
+            if v["support"]:
+                from modules.activity.support_request import picker
+                picker(db,d)
+                ux.field(d,"help",st.text_input,"지원받을 내용")
+                if errors.get("help_recipient"):st.error(errors["help_recipient"])
             if not event:
                 ux.field(d,"repeat",st.toggle,"매주 반복")
                 if v["repeat"]: ux.field(d,"repeats",st.number_input,"총 등록 횟수 · 이번 일정 포함",min_value=1,max_value=52)

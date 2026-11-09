@@ -119,15 +119,28 @@ def tasks_view(db,today):
 def alerts(db):
     db._reads.clear();st.subheader('알림·피드백')
     rows=db.request('GET','sales_notices',{'order':'created_at.desc','limit':'50'})
-    if not rows:st.info('일정 알림이 없습니다.')
+    if not rows:st.info('알림이 없습니다.')
     for row in rows:
         with st.container(border=True):
             st.write(('● ' if not row['seen'] else '')+row['message'])
             st.caption(datetime.fromisoformat(row['created_at'].replace('Z','+00:00')).astimezone(center.KST).strftime('%m.%d %H:%M'))
-            if st.button('해당 일정 보기',key='mobile_notice_'+row['id']):
+            if row.get('report'):
+                if st.button('요청 기록 보기',key='mobile_notice_'+row['id']):
+                    db.request('PATCH','sales_notices',{'id':'eq.'+row['id']},{'seen':True})
+                    st.session_state['support_notice_report']=row['report']
+                if st.session_state.get('support_notice_report')==row['report']:
+                    records=db.request('GET','sales_reports',{'id':'eq.'+row['report'],'submitted':'eq.true','limit':'1'})
+                    if records:
+                        from modules.activity.manager_ui import counts
+                        record=records[0];st.caption(record['day']+' · '+record['period'])
+                        counts(record['data'].get('counts',{}))
+                        st.write(record['data'].get('help') or '지원 요청 내용 없음')
+                        st.write(record['data'].get('note') or '')
+                    else:st.caption('현재 조회 가능한 제출 기록이 없습니다.')
+            elif row.get('event') and st.button('해당 일정 보기',key='mobile_notice_'+row['id']):
                 db.request('PATCH','sales_notices',{'id':'eq.'+row['id']},{'seen':True})
                 ux.navigate({'type':'event','id':row['event']})
-    st.caption('최근 알림 최대 50개 · 일정 상세에서 의견을 확인할 수 있습니다.')
+    st.caption('최근 알림 최대 50개')
     with st.expander('기록에 남긴 최근 피드백',key='mobile_report_feedback',on_change='rerun') as panel:
         if panel.open:
             reviews=db.request('GET','sales_reviews',{'report':'not.is.null','order':'created_at.desc','limit':'30','select':'id,message,created_at,report,sales_reports(owner,day,period)'})

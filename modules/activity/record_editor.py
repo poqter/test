@@ -11,7 +11,7 @@ from modules.shared.hwarang_auth import HwarangAuthError
 
 DAY=timedelta(days=1)
 TEXT_FIELDS=('note','reflection','plan','help')
-META_FIELDS=('sources','coverage','contracts','results','manual_fields','source_versions','no_activity')
+META_FIELDS=('sources','coverage','contracts','results','manual_fields','source_versions','no_activity','help_recipient')
 
 
 def values_from(data):
@@ -20,7 +20,7 @@ def values_from(data):
         'sources':deepcopy(data.get('sources',{})), 'coverage':deepcopy(data.get('coverage',[])),
         'contracts':deepcopy(data.get('contracts',[])), 'results':deepcopy(data.get('results',[])),
         'manual_fields':list(data.get('manual_fields',[])), 'source_versions':deepcopy(data.get('source_versions',{})),
-        'no_activity':bool(data.get('no_activity',False))}
+        'no_activity':bool(data.get('no_activity',False)), 'help_recipient':data.get('help_recipient')}
 
 
 def pack(d):
@@ -62,6 +62,8 @@ def persist(db,d,day,period,submit=False,slot=None):
         d['save_error']='활동 건수를 입력하거나 ‘활동 없는 날’을 선택해 주세요.'
         if slot is not None:slot.error(d['save_error'])
         return False
+    if submit and d['values'].get('help','').strip() and not d['values'].get('help_recipient'):
+        st.warning('지원 요청 대상을 선택해 주세요.');return False
     d['saving']=True
     if slot is not None:slot.caption('제출 중…' if submit else '저장 중…')
     try:
@@ -217,6 +219,8 @@ def render(db,today,period,fixed_day=None):
                             ux.set_values(d,{'help':'\n'.join(requests[x] for x in picked)})
                             edit('help')()
                         st.button('선택한 요청 가져오기',key=key+'help_apply',on_click=apply_help,disabled=not picked)
+                    from modules.activity.support_request import picker
+                    picker(db,d,after_change=edit('help_recipient'))
                     ux.field(d,'help',st.text_area,'지원받을 내용',height=80,after_change=edit('help'))
         if right is not None:
             with right:

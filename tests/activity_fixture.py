@@ -21,6 +21,7 @@ class FakeRecords:
         st.session_state.setdefault("fixture_checks",[])
     def request(self,method,table,params=None,body=None,prefer=None):
         st.session_state.setdefault("fixture_reads",[]).append((method,table))
+        if table=='rpc/sales_support_recipients':return st.session_state.get('fixture_support_candidates',[])
         if table=="rpc/sales_calendar_stamp":return "fixture-stamp"
         if method=="POST" and table in ("rpc/sales_members","rpc/sales_branch_members"):return list(self.members.values())
         if method=="POST" and table in ("rpc/sales_calendar_days","rpc/sales_calendar_days_v2"):return deepcopy([r for r in st.session_state["fixture_events"] if not r.get("deleted_at")])
