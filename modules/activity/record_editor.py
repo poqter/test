@@ -178,8 +178,8 @@ def render(db,today,period,fixed_day=None):
                 sources.update({r['id']:'청약' for r in contracts})
                 proposed=ux.refreshed_counts(v,v['sources'],sources,COUNTS)
                 st.markdown('**완료 일정·청약 기준 집계**')
-                st.dataframe([{'항목':c,'입력':v[c],'자동 집계':list(sources.values()).count(c),'직접 수정':c in v['manual_fields']} for c in COUNTS],hide_index=True,width='stretch')
-                st.caption('직접 수정한 항목은 유지합니다. 가져온 원천은 중복 합산하지 않습니다.')
+                st.html('<div class="record-count-summary">'+''.join(f'<div class="record-count-item"><span>{c}</span><strong>{list(sources.values()).count(c)}<small>건</small></strong></div>' for c in COUNTS)+'</div>')
+                st.caption('직접 수정한 값은 유지됩니다.')
                 st.button('집계값 가져오기',key=key+'import',on_click=import_values,args=({**proposed,'sources':sources},))
             else:
                 st.markdown('**일일 기록 반영 현황**')
@@ -239,6 +239,12 @@ def render(db,today,period,fixed_day=None):
 
 def styles():
     st.html('''<style>
+.record-count-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:4px 0 8px}
+.record-count-item{background:#f7f9fc;border:1px solid #dce4ee;border-radius:10px;padding:10px 6px;text-align:center;min-width:0}
+.record-count-item span{display:block;font-size:13px;color:#52647c;white-space:nowrap}
+.record-count-item strong{display:block;font-size:22px;line-height:1.5;color:#172b49}
+.record-count-item small{font-size:12px;font-weight:400;margin-left:3px}
+
 /* Keep headings in a real measured block, independent of markdown heading metrics. */
 [class*="st-key-daily_record"]{gap:12px!important}
 [class*="st-key-daily_record"] .record-meta{display:flex;align-items:center;flex-wrap:wrap;gap:10px;min-height:30px;color:#53657c;font-size:14px}
