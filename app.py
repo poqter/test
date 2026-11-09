@@ -285,6 +285,14 @@ def main() -> None:
 
     if render_recovery_entry(auth):
         st.stop()
+    if st.session_state.get("_calendar_deployment") and st.query_params.get("launch"):
+        from modules.activity.launch import accept_launch
+        ticket = str(st.query_params["launch"])
+        del st.query_params["launch"]
+        try:
+            _set_authenticated(auth, accept_launch(auth, ticket, st.session_state.get("hwarang_auth")))
+        except HwarangAuthError as exc:
+            st.session_state["calendar_launch_error"] = str(exc)
     from modules.activity import device
     try:
         device.synchronize(auth, _set_authenticated)
@@ -294,6 +302,8 @@ def main() -> None:
     except HwarangAuthError as exc:
         st.error(str(exc))
         st.stop()
+    if st.session_state.get("calendar_launch_error"):
+        st.warning(st.session_state.pop("calendar_launch_error"))
     flash = st.session_state.get("hw_account_flash", "")
     state = st.session_state.get("hwarang_auth")
     if state:
@@ -410,9 +420,9 @@ def main() -> None:
             st.button("관리자 센터 →", key="hw_open_admin_center", use_container_width=True,
                       on_click=_open_admin_center)
 
-    # This mount stays outside the replaceable page; home preloads only its UI.
+    # Keep legacy embedded sessions working; the home now opens the separate app.
     host_slot = st.container(key="sales_calendar_host")
-    hosted = "sales_activity" in permitted
+    hosted = "sales_activity" in permitted and active == "sales_activity"
     if hosted:
         # A long-lived Cloud session can retain the old lazy-imported center
         # after a source deployment. Upgrade that module once, without dropping

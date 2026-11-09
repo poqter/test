@@ -45,8 +45,12 @@ def _external_launch_context(app: AppSpec) -> tuple[str, str, str] | None:
     if not app.external_app_key or ("ws_allowed_ids" in st.session_state and app.id not in st.session_state["ws_allowed_ids"]):
         return None
     target = external_app_url(app.external_app_key)
-    target_app = "academy" if app.id == "academy" else "calculator" if app.id == "quick_calculators" else ""
+    target_app = "academy" if app.id == "academy" else "calculator" if app.id == "quick_calculators" else "workspace" if app.id == "sales_activity" else ""
     state = st.session_state.get("hwarang_auth") or {}
+    if app.id == "sales_activity" and (
+        not state.get("access_token") or "workspace.sales_activity" not in state.get("feature_permissions", [])
+    ):
+        return None
     profile = state.get("profile") or {}
     uid = str(profile.get("id") or "")
     app_access = st.session_state.get("hw_app_access") or {}
@@ -178,8 +182,7 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
                 on_click=_navigate_once, args=(navigate, "home", None),
             )
             if "sales_activity" in allowed:
-                st.button("영업활동 관리", icon=":material/calendar_month:", key="hw_sidebar_sales", use_container_width=True,
-                          on_click=_navigate_once,args=(navigate,"sales_activity",None))
+                _launch_widget(APP_BY_ID["sales_activity"], "영업활동 관리", key="hw_sidebar_sales", navigate=navigate)
             if "briefing" in allowed:
                 st.button(
                     "브리핑 센터", icon=":material/newspaper:", key="hw_sidebar_briefing", use_container_width=True,
@@ -291,7 +294,12 @@ def render_home(allowed_ids, navigate, notice):
         if 'insurer_portal' in allowed:
             with right:render_home_quick_search()
     if 'sales_activity' in allowed:
-        ui.card("영업활동 관리","내 일정 · 일일 기록 · 주간 기록","📅","brand_tile_sales",_navigate_once,(navigate,"sales_activity"))
+        from modules.shared.one_click_launch import launch_button
+        app = APP_BY_ID["sales_activity"]
+        launch_button("영업활동 관리 ↗", key="brand_launch_sales_activity",
+                      disabled=_external_launch_context(app) is None,
+                      issue_url=lambda: _external_launch_url(APP_BY_ID["sales_activity"], fresh=True),
+                      card={"title": "영업활동 관리", "description": "내 일정 · 일일 기록 · 주간 기록", "icon": "📅"})
     briefing_slot = st.container(key='brand_briefing') if 'briefing' in allowed else None
     def tile(key):
         app=APP_BY_ID[key];copy=_HOME_SHORT_COPY.get(key,app.description);icon=_PREMIUM_EMOJI.get(key,'📁')

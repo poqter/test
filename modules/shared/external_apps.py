@@ -28,6 +28,8 @@ def external_app_url(key: str) -> str:
     if not value:
         env_key = "HW_" + key.upper()
         value = os.getenv(env_key, "").strip()
+    if not value and key.lower() == "calendar_url":
+        value = "https://hwarang-calendar.streamlit.app"
     if value and not value.lower().startswith(("https://", "http://")):
         return ""
     return value.rstrip("/")
