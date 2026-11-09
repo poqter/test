@@ -11,4 +11,4 @@ def stylesheet():
 
 def apply_workspace_design():
     st.session_state["hw_workspace_design"] = True
-    st.markdown('<link rel="preload" href="./app/static/LINESeedKR-Bd.woff2" as="font" type="font/woff2" crossorigin><style>' + stylesheet() + '</style><span class="hw-design-2026" aria-hidden="true"></span>', unsafe_allow_html=True)
+    st.markdown('<link rel="preload" href="./app/static/LINESeedKR-Bd.woff2" as="font" type="font/woff2" crossorigin>\n\n<style>' + stylesheet() + '</style><span class="hw-design-2026" aria-hidden="true"></span>', unsafe_allow_html=True)
