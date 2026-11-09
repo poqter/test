@@ -20,6 +20,7 @@ APP_TARGETS = (
     AppTarget("WORKSPACE", os.getenv("WORKSPACE_URL", "https://hwarang-workspace.streamlit.app")),
     AppTarget("CALCULATOR", os.getenv("CALCULATOR_URL", "https://hwarang-calculator.streamlit.app")),
     AppTarget("ACADEMY", os.getenv("ACADEMY_URL", "https://hwarang-academy.streamlit.app")),
+    AppTarget("CALENDAR", os.getenv("CALENDAR_URL", "https://hwarang-calendar.streamlit.app")),
 )
 
 
