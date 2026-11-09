@@ -344,12 +344,12 @@ def main() -> None:
     if "sales_activity" in permitted:
         # Upgrade cached command handlers in existing desktop/mobile sessions.
         from modules.activity import calendar_service
-        if getattr(calendar_service, "NULLABLE_TIME_PROTOCOL", 0) < 2:
+        if getattr(calendar_service, "NULLABLE_TIME_PROTOCOL", 0) < 3:
             from importlib import reload
             from threading import Lock
             lock = calendar_service.__dict__.setdefault("_time_upgrade_lock", Lock())
             with lock:
-                if getattr(calendar_service, "NULLABLE_TIME_PROTOCOL", 0) < 2:
+                if getattr(calendar_service, "NULLABLE_TIME_PROTOCOL", 0) < 3:
                     reload(calendar_service)
     if st.query_params.get("view") == "mobile-calendar":
         if "sales_activity" not in permitted:

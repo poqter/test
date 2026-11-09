@@ -44,7 +44,7 @@ class Records:
     def request(self,method,table,params=None,body=None,prefer=None):
         if method == "GET" and table == "sales_events":
             params={"deleted_at":"is.null",**(params or {})}
-        readonly = method == "GET" or (method == "POST" and table in {"rpc/sales_members", "rpc/sales_branch_members", "rpc/sales_calendar_days", "rpc/sales_calendar_stamp", "rpc/sales_calendar_context", "rpc/sales_calendar_payload"})
+        readonly = method == "GET" or (method == "POST" and table in {"rpc/sales_members", "rpc/sales_branch_members", "rpc/sales_calendar_days", "rpc/sales_calendar_days_v2", "rpc/sales_calendar_stamp", "rpc/sales_calendar_context", "rpc/sales_calendar_payload"})
         if not readonly:
             self._reads.clear()
             read_state.invalidate()

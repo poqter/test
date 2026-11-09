@@ -119,3 +119,45 @@ def test_quick_complete_rejects_other_owner_and_stale_undo(db):
  assert st.session_state['fixture_events'][0]['status']=='완료'
  st.session_state['fixture_events'][0]['owner']=OTHER
  with pytest.raises(HwarangAuthError):command(db,'status',{'id':EVENT,'revision':2,'status':'예정'})
+
+@pytest.mark.parametrize('raw,expected',[('9','09:00:00'),('930','09:30:00'),('14','14:00:00'),('1430','14:30:00'),('14:30','14:30:00')])
+def test_auto_time(db,raw,expected):
+ result=command(db,'save',payload(auto_time='1',start=raw,end=''))
+ row=next(r for r in st.session_state['fixture_events'] if r['id']==result['id'])
+ assert row['start_time']==expected and not row['time_pending']
+
+@pytest.mark.parametrize('patch',[{'start':'25'},{'start':'1370'},{'start':'','end':'1500'}])
+def test_invalid_auto_time(db,patch):
+ with pytest.raises(ValueError):command(db,'save',payload(auto_time='1',**patch))
+
+def test_move_preserves_fields_and_guards_owner_revision(db):
+ before=deepcopy(st.session_state['fixture_events'][0])
+ result=command(db,'move',{'id':EVENT,'revision':1,'day':'2026-11-10'})
+ row=st.session_state['fixture_events'][0]
+ assert row['day']=='2026-11-10'
+ assert all(row[k]==v for k,v in before.items() if k not in ('day','revision'))
+ with pytest.raises(HwarangAuthError):command(db,'move',{'id':EVENT,'revision':1,'day':before['day']})
+ command(db,'move',{'id':EVENT,'revision':result['revision'],'day':before['day']})
+ row['owner']=OTHER
+ with pytest.raises(HwarangAuthError):command(db,'move',{'id':EVENT,'revision':row['revision'],'day':'2026-11-12'})
+
+def test_feedback_crud_author_and_conflict(db):
+ command(db,'review',{'id':EVENT,'revision':1,'message':'피드백'})
+ r=st.session_state['fixture_reviews'][0]
+ args={'id':EVENT,'review':r['id'],'version':1,'message':'수정'}
+ r['reviewer']=OTHER
+ with pytest.raises(HwarangAuthError):command(db,'review_edit',args)
+ r['reviewer']=UID
+ command(db,'review_edit',args)
+ assert r['message']=='수정' and r['edit_version']==2
+ with pytest.raises(HwarangAuthError):command(db,'review_delete',args)
+ command(db,'review_delete',{**args,'version':2})
+ assert command(db,'detail',{'id':EVENT})['reviews']==[]
+
+def test_fp_branch_summary_has_title_without_detail_access(db,monkeypatch):
+ db.me['managed']=False
+ st.session_state['fixture_events'][0]['owner']=OTHER
+ monkeypatch.setattr(db,'period',lambda *a,**k:[])
+ data=command(db,'load',{'first':'2026-11-01','last':'2026-11-30','team':True})
+ assert data['events'][0]['short'].startswith('상담 테스트')
+ assert data['events'][0]['readable'] is False

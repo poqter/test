@@ -7,7 +7,7 @@ from modules.shared.hwarang_auth import HwarangAuthError
 from modules.activity.redesign import write_event, KST, KINDS
 
 DAY = timedelta(days=1)
-NULLABLE_TIME_PROTOCOL = 2
+NULLABLE_TIME_PROTOCOL = 3
 
 def identity(value):
     return str(UUID(str(value)))
@@ -31,7 +31,7 @@ def snapshot(db, args):
     scope = {'owner':'eq.'+member} if member else {'unit':'eq.'+db.me['unit']}
     rows = db.period('sales_events', first, last, **scope)
     details = {r['id']:r for r in rows}
-    summary = db.request('POST','rpc/sales_calendar_days',body={'first_day':str(first),'last_day':str(last)})
+    summary = db.request('POST','rpc/sales_calendar_days_v2',body={'first_day':str(first),'last_day':str(last)})
     visible = list(details.values()) if member else [details.get(r['id'],r) for r in summary if team or db.uid in (r['owner'],r.get('companion')) or r['common']]
     now = datetime.now(KST)
     cards=[]
@@ -50,9 +50,19 @@ def snapshot(db, args):
 
 def detail(db,key):
     row=event(db,key)
+    authors={r['member']:r['label'] for r in db.request('POST','rpc/sales_branch_members',body={})}
     return dict(row=row,canReview=bool(db.me['managed'] and db.members.get(row['owner'],{}).get('managed')),
-        reviews=db.request('GET','sales_reviews',{'event':'eq.'+row['id'],'order':'created_at.desc'}),
+        reviews=[{**r,'author':db.members.get(r['reviewer'],{}).get('label') or authors.get(r['reviewer']) or ('나' if r['reviewer']==db.uid else '관리자')} for r in db.request('GET','sales_reviews',{'event':'eq.'+row['id'],'deleted_at':'is.null','order':'created_at.desc'}) if r['message']!='일정 확인'],
         contracts=db.request('GET','sales_contracts',{'owner':'eq.'+db.uid,'event':'eq.'+row['id'],'order':'day.desc'}) if row['owner']==db.uid else [])
+
+def parse_clock(value):
+    value=str(value).strip()
+    if value.isdigit():
+        if len(value)<=2:value=value.zfill(2)+':00'
+        elif len(value) in (3,4):value=value.zfill(4)[:2]+':'+value.zfill(4)[2:]
+        else:raise ValueError('시간은 0~23시, 분은 0~59분으로 입력해 주세요.')
+    try:return time.fromisoformat(value).isoformat()
+    except ValueError:raise ValueError('시간은 0~23시, 분은 0~59분으로 입력해 주세요.')
 
 def save_event(db,a):
     old=event(db,a['id'],own=True) if a.get('id') else None
@@ -63,11 +73,14 @@ def save_event(db,a):
     kind=v.get('kind','미분류')
     if kind not in KINDS and (not old or kind!=old['kind']):raise ValueError('활동 종류를 확인해 주세요.')
     mode=v.get('mode','시간 미정')
+    if v.get('auto_time'):
+        mode='종일' if v.get('all_day') else '시간 지정' if str(v.get('start','')).strip() else '시간 미정'
+        if mode=='시간 미정' and str(v.get('end','')).strip():raise ValueError('종료 시간보다 시작 시간을 먼저 입력해 주세요.')
     start=(v.get('start') or None) if mode=='시간 지정' else None
     end=(v.get('end') or None) if start else None
     if mode=='시간 지정' and not start:raise ValueError('시작 시간을 입력해 주세요.')
-    if start:start=time.fromisoformat(start).isoformat()
-    if end:end=time.fromisoformat(end).isoformat()
+    if start:start=parse_clock(start)
+    if end:end=parse_clock(end)
     if end and end<=start:raise ValueError('종료 시간은 시작 시간보다 늦어야 합니다.')
     follow=date.fromisoformat(v['follow']) if v.get('follow') else None
     if follow and follow<day:raise ValueError('후속 일정 날짜를 확인해 주세요.')
@@ -90,7 +103,7 @@ def save_event(db,a):
             cursor=day
             while cursor<=stop:
                 edge=min(stop,cursor+62*DAY)
-                candidates=db.request('POST','rpc/sales_calendar_days',body={'first_day':str(cursor),'last_day':str(edge)})
+                candidates=db.request('POST','rpc/sales_calendar_days_v2',body={'first_day':str(cursor),'last_day':str(edge)})
                 overlap.extend(r['id'] for r in candidates if r['id']!=(old or {}).get('id') and r['day'] in days and r['status']=='예정' and companion in (r['owner'],r.get('companion')) and r.get('start_time')==start)
                 cursor=edge+DAY
         signature=str(uuid5(NAMESPACE_URL,json.dumps([body,repeat,sorted(set(overlap))],sort_keys=True)))
@@ -115,6 +128,28 @@ def command(db,op,a):
     if op=='load':return snapshot(db,a)
     if op=='detail':return detail(db,a['id'])
     if op=='save':return save_event(db,a)
+    if op=='move':
+        row=event(db,a['id'],own=True)
+        if row['revision']!=int(a['revision']):raise HwarangAuthError('일정이 변경됐습니다. 최신 일정을 확인해 주세요.')
+        day=str(date.fromisoformat(a['day']))
+        if day!=row['day']:
+            body={k:row.get(k) for k in ('day','start_time','end_time','time_pending','title','kind','place','note','help','companion','common','status','result')}
+            body['day']=day
+            write_event(db,row,body)
+        current=event(db,row['id'],own=True)
+        return {'id':row['id'],'day':current['day'],'revision':current['revision']}
+    if op in ('review_edit','review_delete'):
+        row=event(db,a['id'])
+        found=db.request('GET','sales_reviews',{'id':'eq.'+identity(a['review']),'event':'eq.'+row['id'],'deleted_at':'is.null','limit':'1'})
+        if not found or found[0]['reviewer']!=db.uid:raise HwarangAuthError('본인이 작성한 피드백만 변경할 수 있습니다.')
+        version=int(a['version'])
+        if found[0]['edit_version']!=version:raise HwarangAuthError('피드백이 변경됐습니다. 다시 열어 확인해 주세요.')
+        text=str(a.get('message','')).strip()
+        if op=='review_edit' and (not text or len(text)>4000):raise ValueError('피드백을 1~4000자로 입력해 주세요.')
+        body={'message':text} if op=='review_edit' else {'deleted_at':datetime.now(KST).isoformat()}
+        updated=db.request('PATCH','sales_reviews',{'id':'eq.'+found[0]['id'],'reviewer':'eq.'+db.uid,'edit_version':'eq.'+str(version)},body=body,prefer='return=representation')
+        if not updated:raise HwarangAuthError('피드백 변경 결과를 확인하지 못했습니다. 다시 확인해 주세요.')
+        return {'ok':True}
     if op=='status':
         row=event(db,a['id'],own=True)
         target=a.get('status')
@@ -145,8 +180,9 @@ def command(db,op,a):
         row=event(db,a['id'])
         if not db.me['managed'] or not db.members.get(row['owner'],{}).get('managed'):raise HwarangAuthError('피드백 작성 권한이 없습니다.')
         if row['revision']!=int(a['revision']):raise HwarangAuthError('일정이 변경됐습니다. 최신 일정을 확인해 주세요.')
-        text=str(a.get('message','')).strip() or '일정 확인'
-        db.request('POST','sales_reviews',body={'id':str(uuid5(NAMESPACE_URL,row['id']+db.uid+str(row['revision'])+text)),'event':row['id'],'revision':row['revision'],'message':text},prefer='resolution=ignore-duplicates')
+        text=str(a.get('message','')).strip()
+        if not text or len(text)>4000:raise ValueError('피드백을 1~4000자로 입력해 주세요.')
+        db.request('POST','sales_reviews',body={'id':identity(a['seed']) if a.get('seed') else str(uuid5(NAMESPACE_URL,row['id']+db.uid+str(row['revision'])+text)),'event':row['id'],'revision':row['revision'],'message':text},prefer='resolution=ignore-duplicates')
         return {'ok':True}
     if op=='contract':
         row=event(db,a['event'],own=True);v=a['data'];old=None

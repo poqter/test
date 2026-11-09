@@ -49,8 +49,8 @@ try:
    f.wait_for_function('!workspaceHost.pending() && parentVisible && !calendarLoading',timeout=20000)
    assert f.evaluate('testFrame')==token
    f.get_by_role('button',name='＋ 일정 등록',exact=True).click();expect(field).to_have_value('유지할 초안')
-   f.get_by_label('시간',exact=True).select_option('시간 지정')
    f.get_by_label('시작 시간',exact=True).fill('13:00')
+   f.get_by_role('button',name='＋ 종료 시간',exact=True).click()
    f.get_by_label('종료 시간 · 선택',exact=True).fill('12:00')
    f.get_by_role('button',name='일정 등록',exact=True).click()
    expect(f.get_by_text('종료 시간은 시작 시간보다 늦어야 합니다.',exact=True)).to_be_visible(timeout=15000)
