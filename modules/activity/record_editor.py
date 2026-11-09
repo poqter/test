@@ -168,28 +168,6 @@ def render(db,today,period,fixed_day=None):
             st.caption('일일 기록 · '+' · '.join(f'{label} {sum(s==label for _,s,_ in states)}일' for label in ('제출','임시 저장','미작성')))
             if v['source_versions'] and v['source_versions']!=source['source_versions']:st.info('일일 기록이 변경되었습니다. 직접 수정한 항목을 유지하며 초안을 갱신할 수 있습니다.')
             st.button('일일 기록에서 초안 가져오기',key=key+'import',on_click=import_values,args=(source,),disabled=not source['coverage'])
-        left,right=st.columns([1.85,1],gap='medium') if not mobile else (st.container(),None)
-        with left:
-            with st.container(border=True,key='daily_inputs'+suffix):
-                st.html('<div class="record-section-heading" role="heading" aria-level="3">활동 건수</div>')
-                width=2 if mobile else 3
-                for offset in range(0,len(COUNTS),width):
-                    for col,name in zip(st.columns(width),COUNTS[offset:offset+width]):
-                        ux.field(d,name,col.number_input,name,min_value=0,max_value=99999999,step=1,format='%d',after_change=edit(name))
-                if period=='일일':ux.field(d,'no_activity',st.checkbox,'활동 없는 날',after_change=edit('no_activity'))
-                ux.field(d,'note',st.text_area,'주요 성과 · 진행사항',height=140,placeholder='오늘의 성과와 진행 내용을 남겨주세요.' if period=='일일' else '이번 주의 주요 성과를 정리해 주세요.',after_change=edit('note'))
-                if period=='주간':
-                    ux.field(d,'reflection',st.text_area,'이번 주 돌아보기',height=100,after_change=edit('reflection'))
-                    ux.field(d,'plan',st.text_area,'다음 주 계획',height=100,after_change=edit('plan'))
-                with st.expander('지원 요청 · 선택',key=key+'help_panel',on_change='rerun'):
-                    if period=='주간':
-                        requests={r['id']:r['day'][5:]+' · '+r['data']['help'] for r in daily if r.get('submitted') and r['data'].get('help')}
-                        picked=st.multiselect('아직 필요한 요청',list(requests),format_func=requests.get,key=key+'help_pick')
-                        def apply_help():
-                            ux.set_values(d,{'help':'\n'.join(requests[x] for x in picked)})
-                            edit('help')()
-                        st.button('선택한 요청 가져오기',key=key+'help_apply',on_click=apply_help,disabled=not picked)
-                    ux.field(d,'help',st.text_area,'지원받을 내용',height=80,after_change=edit('help'))
         def references():
             if period=='일일':
                 st.markdown('**'+('오늘 일정' if day==today else '선택한 날짜의 일정')+f' · {len(events)}건**')
@@ -215,12 +193,34 @@ def render(db,today,period,fixed_day=None):
                 if contracts:st.dataframe([{'접수일':r['day'],'보험사':r['insurer'],'구분':r['category'],'보험료(원)':r['amount'],'상태':r['status']} for r in contracts],hide_index=True,width='stretch')
                 else:st.caption('선택 기간에 등록된 실적이 없습니다.')
             if fixed_day is None and st.button('청약·계약 입력 및 수정',key=key+'contracts'):contract_dialog(db,day)
+        if mobile:
+            with st.expander('일정·집계·참고 자료',expanded=False,key=key+'references',on_change='rerun') as panel:
+                if panel.open:references()
+        left,right=st.columns([1.85,1],gap='medium') if not mobile else (st.container(),None)
+        with left:
+            with st.container(border=True,key='daily_inputs'+suffix):
+                st.html('<div class="record-section-heading" role="heading" aria-level="3">활동 건수</div>')
+                width=2 if mobile else 3
+                for offset in range(0,len(COUNTS),width):
+                    for col,name in zip(st.columns(width),COUNTS[offset:offset+width]):
+                        ux.field(d,name,col.number_input,name,min_value=0,max_value=99999999,step=1,format='%d',after_change=edit(name))
+                if period=='일일':ux.field(d,'no_activity',st.checkbox,'활동 없는 날',after_change=edit('no_activity'))
+                ux.field(d,'note',st.text_area,'주요 성과 · 진행사항',height=140,placeholder='오늘의 성과와 진행 내용을 남겨주세요.' if period=='일일' else '이번 주의 주요 성과를 정리해 주세요.',after_change=edit('note'))
+                if period=='주간':
+                    ux.field(d,'reflection',st.text_area,'이번 주 돌아보기',height=100,after_change=edit('reflection'))
+                    ux.field(d,'plan',st.text_area,'다음 주 계획',height=100,after_change=edit('plan'))
+                with st.expander('지원 요청 · 선택',key=key+'help_panel',on_change='rerun'):
+                    if period=='주간':
+                        requests={r['id']:r['day'][5:]+' · '+r['data']['help'] for r in daily if r.get('submitted') and r['data'].get('help')}
+                        picked=st.multiselect('아직 필요한 요청',list(requests),format_func=requests.get,key=key+'help_pick')
+                        def apply_help():
+                            ux.set_values(d,{'help':'\n'.join(requests[x] for x in picked)})
+                            edit('help')()
+                        st.button('선택한 요청 가져오기',key=key+'help_apply',on_click=apply_help,disabled=not picked)
+                    ux.field(d,'help',st.text_area,'지원받을 내용',height=80,after_change=edit('help'))
         if right is not None:
             with right:
                 with st.container(border=True,key='daily_reference_card'+suffix):references()
-        else:
-            with st.expander('일정·집계·참고 자료',key=key+'references',on_change='rerun') as panel:
-                if panel.open:references()
         with left:
             with st.container(key='daily_footer'+suffix,horizontal=True,vertical_alignment='center'):
                 st.caption('수정 초안은 다시 제출하기 전까지 기존 제출 내용에 반영되지 않습니다.' if old.get('submitted') else '자동 저장 · 제출 전까지 수정 가능')
