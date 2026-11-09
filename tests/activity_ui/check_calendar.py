@@ -40,8 +40,8 @@ with sync_playwright() as p:
     page.evaluate('a=>{loadPrefs(a);prefs.showWeekends=false;render(a)}',ARGS)
     assert page.locator('#agenda .row').count()==2
     page.locator('[data-key="2026-11-06"] .more').click()
-    assert page.locator('dialog .row').count()==3
-    page.locator('dialog').get_by_role('button',name='전체 일정 닫기',exact=True).click()
+    assert page.locator('dialog .day-list-row').count()==3
+    page.locator('dialog').get_by_role('button',name='팝업 닫기',exact=True).click()
     # Weekend exclusion across a month/year boundary and day navigation.
     for month,days in [('2026-11-01',30),('2027-01-01',30)]:
         args=dict(ARGS,mode='월간',day=month,hideWeekends=True)
