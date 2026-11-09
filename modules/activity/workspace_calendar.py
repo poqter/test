@@ -12,7 +12,8 @@ def render(active, args=None):
     args = dict(args or {})
     state = st.session_state
     uid = state['hwarang_auth']['profile']['id']
-    pending = state.get('sales_host_calendar')
+    component_key = 'sales_host_calendar' + ('_'+str(state['calendar_scope_generation']) if state.get('calendar_scope_generation') else '')
+    pending = state.get(component_key)
     reply = state.get('sales_host_reply')
     if state.get('sales_host_owner') != uid:
         state['sales_host_owner'] = uid
@@ -42,4 +43,4 @@ def render(active, args=None):
         args.pop('mobileSession', None)
     elif args.get('mobileSession'):
         args['mobileSession'] = {**args['mobileSession'], 'token':state['hwarang_auth']['access_token']}
-    center.calendar_view(**args, key='sales_host_calendar', default=None)
+    center.calendar_view(**args, key=component_key, default=None)

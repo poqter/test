@@ -61,7 +61,7 @@ def test_records_restore_cache_and_write_invalidate(monkeypatch):
             return {'members':[{'member':'one','managed':False}], 'branch':[]}
         return []
     monkeypatch.setattr(center,'SupabaseConfig',SimpleNamespace(from_mapping=lambda _:None))
-    monkeypatch.setattr(center,'HwarangAuthService',lambda _:SimpleNamespace(_request=request))
+    monkeypatch.setattr(center,'HwarangAuthService',lambda _:SimpleNamespace(_request=request,http=SimpleNamespace(headers={})))
     first=center.Records()
     first.request('GET','sales_events',{'limit':'10'})
     read_state.remember(first)

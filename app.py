@@ -79,6 +79,8 @@ def initialize_state() -> None:
 
 
 def _set_authenticated(auth: HwarangAuthService, state: dict) -> None:
+    st.session_state.pop("calendar_view_scope", None)
+    st.session_state.pop("calendar_view_label", None)
     profile = dict(state.get("profile") or {})
     st.session_state["hwarang_auth"] = state
     st.session_state["login_profile"] = profile
@@ -424,6 +426,9 @@ def main() -> None:
     from modules.shared.build_info import BUILD_ID
 
     with st.sidebar:
+        if active == "sales_activity":
+            from modules.activity.view_scope import render_settings
+            render_settings("workspace")
         if st.button("내 계정 · 비밀번호 변경", key="hw_my_account", use_container_width=True):
             account_dialog(auth)
         st.caption("버전 " + BUILD_ID)

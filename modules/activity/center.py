@@ -30,6 +30,9 @@ class Records:
         self._resumed=resumed is not None
         self.auth=HwarangAuthService(SupabaseConfig.from_mapping(st.secrets))
         identity=st.session_state["hwarang_auth"]
+        from modules.activity.view_scope import current
+        self.view_scope=current()
+        self.auth.http.headers["X-Hwarang-View-Scope"]=self.view_scope
         self.token=identity["access_token"]
         self.uid=identity["profile"]["id"]
         context=self.request("POST","rpc/sales_calendar_context",body={})
@@ -133,7 +136,8 @@ def calendar(db,today):
         state["sales_persistent_owner"]=db.uid
         for key in ("sales_persistent_boot","sales_persistent_reply","sales_persistent_nonce"):
             state.pop(key,None)
-    pending=state.get("sales_interactive_calendar")
+    component_key="sales_interactive_calendar" + ("_"+str(state["calendar_scope_generation"]) if state.get("calendar_scope_generation") else "")
+    pending=state.get(component_key)
     if isinstance(pending,dict) and pending.get("action")=="reauth" and pending.get("nonce")!=state.get("sales_reauth_nonce"):
         state["sales_reauth_nonce"]=pending["nonce"]
         st.rerun()
@@ -154,7 +158,7 @@ def calendar(db,today):
     boot_fresh = "sales_persistent_boot" not in state or state["sales_persistent_boot"].get("access") != json.dumps(db.members,sort_keys=True)
     if boot_fresh:
         position=state["hwarang_auth"]["profile"].get("position_code")
-        team=state.get("sales_calendar_team",position=="branch_manager")
+        team=state.get("sales_calendar_team",position=="branch_manager" or getattr(db,"view_scope","daily").startswith("{"))
         member=state.get("sales_calendar_member") if db.me["managed"] else None
         if member not in db.members:member=None
         state["sales_persistent_boot"]=calendar_service.bootstrap(db,today,state.get("sales_anchor",today),state.get("sales_view","월간"),team,member)
@@ -163,13 +167,13 @@ def calendar(db,today):
         shellFirst=bool(state.get("_calendar_deployment")),
         hideMobileApp=st.query_params.get("view")=="mobile-calendar",
         changeNonce=state.pop("sales_calendar_refresh",None),
-        mobileSession=dict(url=db.auth.config.url,key=db.auth.config.publishable_key,token=db.token,uid=db.uid),
+        mobileSession=dict(url=db.auth.config.url,key=db.auth.config.publishable_key,token=db.token,uid=db.uid,viewScope=getattr(db,"view_scope","daily")),
         )
     if state.get("sales_workspace_host_enabled"):
         state["sales_host_args"]=args
         st.markdown('<div id="sales-calendar-anchor" style="height:700px"></div>',unsafe_allow_html=True)
     else:
-        calendar_view(**args,key="sales_interactive_calendar",default=None)
+        calendar_view(**args,key=component_key,default=None)
     calendar_extras(db,today)
 
 @st.fragment

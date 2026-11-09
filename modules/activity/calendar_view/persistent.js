@@ -43,7 +43,7 @@ function receiveCalendar(a){
  if(calendarBoot&&(calendarBoot.uid!==a.boot.uid||calendarBoot.access!==a.boot.access)){calendarEpoch++;calendarSeq++;stopRealtime();calendarCache.clear();calendarDrafts.clear();if(calendarPanel)calendarPanel.close();calendarBoot=null;context=null;lastRender=null;}
  if(!calendarBoot){
   calendarBoot=a.boot;
-  try{parent.__hwarangCalendarMemory??={};calendarMemory=parent.__hwarangCalendarMemory[calendarBoot.uid]??={drafts:new Map()};calendarDrafts=calendarMemory.drafts; if(calendarMemory.access!==a.boot.access){calendarMemory.cache=new Map();calendarMemory.access=a.boot.access;}for(const [k,v] of calendarMemory.cache||[])calendarCache.set(k,v);}catch{}
+  try{parent.__hwarangCalendarMemory??={};calendarMemory=parent.__hwarangCalendarMemory[calendarBoot.uid]??={drafts:new Map()};calendarDrafts=calendarMemory.drafts; if(calendarMemory.access!==a.boot.access){calendarMemory.cache=new Map();calendarMemory.view=null;calendarMemory.access=a.boot.access;}for(const [k,v] of calendarMemory.cache||[])calendarCache.set(k,v);}catch{}
   const shellView=a.hosted&&latest?{day:latest.day,mode:latest.mode}:{};
   latest={...a.boot,...shellView,hideMobileApp:a.hideMobileApp,mobileSession:a.mobileSession};
   const remembered=calendarMemory?.view;if(remembered){calendarBoot.team=remembered.team;calendarBoot.member=calendarBoot.members[remembered.member]?remembered.member:null;latest={...latest,day:remembered.day,mode:remembered.mode};selected=remembered.selected;context=latest.mode+latest.day}
@@ -79,7 +79,7 @@ async function reloadCalendar(force=false){
 async function loadPayload(first,last,team,member){
  const session=latest.mobileSession,controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
  try{
-  const response=await fetch(session.url+'/rest/v1/rpc/sales_calendar_payload',{method:'POST',headers:{apikey:session.key,Authorization:'Bearer '+session.token,'Content-Type':'application/json'},body:JSON.stringify({first_day:first,last_day:last,p_member:member||null,p_team:!!team}),signal:controller.signal});
+  const response=await fetch(session.url+'/rest/v1/rpc/sales_calendar_payload',{method:'POST',headers:{apikey:session.key,Authorization:'Bearer '+session.token,'Content-Type':'application/json','X-Hwarang-View-Scope':session.viewScope||'daily'},body:JSON.stringify({first_day:first,last_day:last,p_member:member||null,p_team:!!team}),signal:controller.signal});
   if(!response.ok){if(response.status===401)calendarAction('reauth');if(response.status===403){calendarCache.clear();if(calendarMemory)calendarMemory.cache=new Map();latest={...latest,events:[],roster:{}};}throw Error('일정을 불러오지 못했습니다. 다시 확인해 주세요.');}
   const data=await response.json(),details=new Map(data.rows.map(r=>[r.id,r])),branch=Object.fromEntries(data.branch.map(r=>[r.member,r.label]));
   const rows=member?data.rows:data.summary.map(r=>details.get(r.id)||r);
@@ -92,7 +92,7 @@ async function loadPayload(first,last,team,member){
    const seconds=r.start_time?(new Date(r.day+'T'+r.start_time+'+09:00')-now)/1000:-1;
    return {start:r.start_time,timePending:!!r.time_pending,place:r.place||'',status:r.status,revision:r.revision,id:r.id,day:r.day,kind:r.kind,member:r.owner,allDay:!r.start_time,short:(r.title||r.kind)+(team?' · '+owner:''),label,done:r.status==='완료',soon:r.day===today&&r.status==='예정'&&seconds>=0&&seconds<=1800,readable:details.has(r.id)};
   });
-  return {events,rangeStart:first,rangeEnd:last,syncUnit:data.unit,syncStamp:data.stamp,scopeLabel:member?calendarBoot.members[member]:team?'지점 일정':'내 일정',roster:team||member?Object.fromEntries(Object.entries(branch).filter(([u])=>!member||u===member)):{}};
+  return {events,rangeStart:first,rangeEnd:last,syncUnit:data.unit,syncStamp:data.stamp,scopeLabel:member?calendarBoot.members[member]:team?(calendarBoot.viewLabel||'지점 일정'):'내 일정',roster:team||member?Object.fromEntries(Object.entries(branch).filter(([u])=>!member||u===member)):{}};
  }finally{clearTimeout(timeout)}
 }
 function calendarAction(action,value){
@@ -182,7 +182,7 @@ function selectScope(value){
  const member=!['my','team'].includes(value)?value:null;
  if(member&&(!calendarBoot.managed||!Object.hasOwn(calendarBoot.members,member)))return;
  calendarBoot.member=member;calendarBoot.team=value==='team';calendarEpoch++;calendarCache.clear();
- latest={...latest,events:[],roster:{},scopeLabel:member?calendarBoot.members[member]:value==='team'?'지점 일정':'내 일정'};
+ latest={...latest,events:[],roster:{},scopeLabel:member?calendarBoot.members[member]:value==='team'?(calendarBoot.viewLabel||'지점 일정'):'내 일정'};
  if(calendarPanel)calendarPanel.close();calendarLoading=true;render(latest);reloadCalendar(true);
 }
 function openScope(){

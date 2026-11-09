@@ -8,7 +8,7 @@ RESUME = 'sales_resume_reads'
 
 def identity():
     auth = st.session_state.get('hwarang_auth', {})
-    return (auth.get('access_token'), deepcopy(auth.get('profile', {})))
+    return (auth.get('access_token'), deepcopy(auth.get('profile', {})), st.session_state.get('calendar_view_scope', 'daily'))
 
 def remember(db):
     if BACKGROUND not in st.session_state:
