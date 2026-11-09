@@ -10,6 +10,10 @@ def picker(db,d,after_change=None):
     options=recipients(db)
     chosen=d['values'].get('help_recipient')
     if chosen not in options:
-        ux.set_values(d,{'help_recipient':next(iter(options)) if len(options)==1 else None})
+        replacement=next(iter(options)) if len(options)==1 else None
+        ux.set_values(d,{'help_recipient':replacement})
+        # Automatic defaults are not user edits; preserve other unsaved fields.
+        if chosen==d['baseline'].get('help_recipient'):
+            d['baseline']['help_recipient']=replacement
     if not options:st.caption('연결된 요청 대상이 없습니다. 담당 관리자 연결을 확인해 주세요.')
     ux.field(d,'help_recipient',st.selectbox,'지원 요청 대상',options=[None,*options],format_func=lambda u:options.get(u,'관리자를 선택하세요'),after_change=after_change,disabled=not options)

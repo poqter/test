@@ -60,21 +60,29 @@ def menu_items(db,logout,prefix):
     st.button('로그아웃',key=prefix+'_logout',on_click=logout,width='stretch')
 
 
-def pending_navigation():
+def cancel_pending_navigation():
+    st.session_state.pop('mobile_pending',None)
+    st.session_state.pop('mobile_pending_back',None)
+
+
+@st.dialog('저장하지 않은 변경',width='small',dismissible=True,on_dismiss=cancel_pending_navigation)
+def navigation_dialog():
     target=st.session_state.get('mobile_pending')
     if not target:return
-    st.warning('저장하지 않은 기록이 있습니다. 이동 방법을 선택해 주세요.')
-    a,b,c=st.columns(3)
-    if a.button('계속 작성',key='mobile_continue'):
-        st.session_state.pop('mobile_pending',None);st.session_state.pop('mobile_pending_back',None);st.rerun()
-    retain=b.button('내용 유지하고 이동',key='mobile_retain')
-    discard=c.button('내용 버리고 이동',key='mobile_discard')
+    st.write('아직 저장되지 않은 내용이 있습니다. 이동 방법을 선택해 주세요.')
+    if st.button('계속 작성',key='mobile_continue',type='primary',width='stretch'):
+        cancel_pending_navigation();st.rerun()
+    retain=st.button('내용 유지하고 이동',key='mobile_retain',width='stretch')
+    discard=st.button('내용 버리고 이동',key='mobile_discard',width='stretch')
     if retain or discard:
         if discard:ux.clear_draft(st.session_state.get('sales_active_draft'))
-        commit_page(target,st.session_state.pop('mobile_pending_back',False))
-        st.session_state.pop('mobile_pending',None)
-        st.session_state.pop('sales_active_draft',None)
+        commit_page(target,st.session_state.get('mobile_pending_back',False))
+        cancel_pending_navigation()
         st.rerun()
+
+
+def pending_navigation():
+    if st.session_state.get('mobile_pending'):navigation_dialog()
 
 
 def overdue(row,today):

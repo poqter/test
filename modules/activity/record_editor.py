@@ -138,7 +138,7 @@ def render(db,today,period,fixed_day=None):
         v=d['values'];old=d.get('old') or {}
         st.html('<span class="daily-context" data-context="'+d['epoch']+'"></span>')
         with st.container(key='daily_layout_bridge'+suffix):components.html(Path(__file__).with_name('daily_bridge.html').read_text(),height=0)
-        changed=v!=values_from(old.get('data',{}))
+        changed=not ux.same_draft_values(v,values_from(old.get('data',{})))
         state='제출 완료 · 수정 초안' if old.get('submitted') and (changed or d.get('server_draft')) else '제출 완료' if old.get('submitted') else '임시 저장' if old else '작성 전'
         date_label=f'{day:%Y.%m.%d}'+(f' – {day+6*DAY:%m.%d}' if period=='주간' else ' '+ '월화수목금토일'[day.weekday()]+'요일')
         st.html('<div class="record-meta"><span>'+date_label+'</span><span class="record-state'+(' is-submitted' if old.get('submitted') else '')+'">'+escape(state)+'</span></div>')

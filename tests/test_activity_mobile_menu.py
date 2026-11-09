@@ -70,3 +70,27 @@ def test_alerts_dialog_keeps_page_and_closes():
     assert not at.exception
     assert at.session_state.get('mobile_page','캘린더')==page
     assert not any(i.value=='알림이 없습니다.' for i in at.info)
+
+
+def test_automatic_support_recipient_does_not_warn_when_leaving_untouched_record():
+    at=app("st.session_state['fixture_support_candidates']=[dict(member='manager',label='관리자',role_code='branch_manager')]\n"+TAIL)
+    button(at,'활동 기록').click().run()
+    assert next(s for s in at.selectbox if s.label=='지원 요청 대상').value=='manager'
+    at.run()
+    button(at,'캘린더').click().run()
+    assert not at.exception and at.session_state['mobile_page']=='캘린더'
+    assert not any(b.label=='계속 작성' for b in at.button)
+    assert not at.session_state['fixture_writes']
+
+
+def test_unsaved_edit_opens_small_dialog_and_continue_preserves_text():
+    at=app('st.session_state.setdefault("fixture_conflict",True)\n'+TAIL)
+    button(at,'활동 기록').click().run()
+    text(at,'주요 성과 · 진행사항').input('저장 실패한 작성 내용').run()
+    button(at,'캘린더').click().run()
+    assert not at.exception and len(at.get('dialog'))==1
+    assert not any('이동 방법' in w.value for w in at.warning)
+    button(at,'계속 작성').click().run()
+    assert not at.exception and at.session_state['mobile_page']=='활동 기록'
+    assert text(at,'주요 성과 · 진행사항').value=='저장 실패한 작성 내용'
+    assert not at.session_state.get('mobile_pending')

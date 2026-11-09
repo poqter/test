@@ -77,9 +77,16 @@ def draft(key, initial, old=None):
     if key not in bucket: bucket[key]={"values":deepcopy(initial),"baseline":deepcopy(initial),"old":deepcopy(old),"epoch":str(uuid4())}
     return bucket[key]
 
+def same_draft_values(left,right):
+    # A recipient has no effect until there is a support request to send.
+    keys=set(left)|set(right)
+    if not (left.get('help') or '').strip() and not (right.get('help') or '').strip():
+        keys.discard('help_recipient')
+    return all(left.get(k)==right.get(k) for k in keys)
+
 def dirty(key):
     d=st.session_state.get("sales_drafts",{}).get(key)
-    return bool(d and d["values"]!=d["baseline"])
+    return bool(d and not same_draft_values(d["values"],d["baseline"]))
 
 def clear_draft(key): st.session_state.get("sales_drafts",{}).pop(key,None)
 
