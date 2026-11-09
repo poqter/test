@@ -78,7 +78,7 @@ class Records:
         if table in {"rpc/sales_calendar_stamp","rpc/sales_calendar_context","rpc/sales_calendar_payload"} or not readonly or "limit" in (params or {}):
             return fetch(params)
         from modules.shared.collection_pages import collect_pages
-        keys={"sales_empty_days":("owner","day"), "sales_report_history":("report","revision"), "sales_team_assignments":("member",), "rpc/sales_members":("member",), "rpc/sales_branch_members":("member",)}.get(table,("id",))
+        keys={"sales_empty_days":("owner","day"), "sales_report_history":("report","revision"), "sales_team_assignments":("member",), "sales_deputy_assignments":("member",), "sales_report_checks":("report","reviewer"), "rpc/sales_members":("member",), "rpc/sales_branch_members":("member",)}.get(table,("id",))
         return collect_pages(fetch, params, keys)
 
 
@@ -246,20 +246,6 @@ def calendar_extras(db,today):
                 else:db.request("POST","sales_empty_days",body={"day":str(today)},prefer="resolution=ignore-duplicates")
                 ux.refresh()
     if st.query_params.get("view")!="mobile-calendar":st.caption("모바일 앱 열기로 캘린더에 접속한 뒤 홈 화면에 추가할 수 있습니다.")
-    if st.query_params.get("view")!="mobile-calendar":
-        tasks_panel=st.expander("내 후속 할 일",key="sales_tasks_panel",on_change="rerun")
-        if tasks_panel.open:
-            with tasks_panel:
-                tasks=db.request("GET","sales_followups",{"owner":"eq."+db.uid,"scheduled":"is.null","order":"due.asc"})
-                if not tasks:st.caption("예정된 후속 할 일이 없습니다.")
-                for task in tasks:
-                    st.write(task["due"],task["title"])
-                    with st.form("schedule_task_"+task["id"]):
-                        target=st.date_input("일정 날짜",max(today,date.fromisoformat(task["due"])))
-                        kind=st.selectbox("활동 종류",KINDS)
-                        if st.form_submit_button("내 일정으로 전환"):
-                            db.request("POST","rpc/schedule_sales_followup",body={"task":task["id"],"schedule_day":str(target),"activity":kind})
-                            saved()
 
 
 @st.fragment

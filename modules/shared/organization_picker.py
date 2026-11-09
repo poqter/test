@@ -53,3 +53,27 @@ def render_affiliation(rows, positions, profile, key):
     if uid:st.caption('선택한 소속: '+organization_path(uid,rows))
     st.caption('소속·직책 변경은 아래 저장 버튼을 눌러야 반영되며, 시스템 권한은 자동 변경되지 않습니다.')
     return position,uid
+
+
+def manager_candidates(rows, uid, member, position):
+    return {r['id']:r for r in rows if r.get('is_active',True) and r['id']!=member
+            and r.get('organization_unit_id')==uid and r.get('position_code')==position}
+
+
+def render_managers(auth, actor, member, unit, key):
+    """Optional reporting lines are separate from the account's own position."""
+    auth._require_super_admin(actor)
+    people=auth._request('GET','/rest/v1/profiles',admin=True,params={'organization_unit_id':'eq.'+str(unit),'is_active':'eq.true','position_code':'in.(team_leader,deputy_branch_manager)','select':'id,display_name,login_id,position_code,organization_unit_id,is_active'}) if unit else []
+    chosen={}
+    for field,table,position,label in (
+        ('deputy_manager','sales_deputy_assignments','deputy_branch_manager','담당 부지점장 · 선택'),
+        ('team_leader','sales_team_assignments','team_leader','담당 팀장 · 선택')):
+        rows=auth._request('GET','/rest/v1/'+table,admin=True,params={'member':'eq.'+member,'select':'leader','limit':'1'})
+        old=rows[0]['leader'] if rows else None
+        candidates=manager_candidates(people,unit,member,position)
+        choices=[None,*sorted(candidates,key=lambda u:(candidates[u]['display_name'],u))]
+        chosen[field]=st.selectbox(label,choices,index=choices.index(old) if old in choices else 0,
+            format_func=lambda u:'미지정' if u is None else candidates[u]['display_name']+' · '+str(candidates[u].get('login_id') or ''),key=key+'_'+field+'_'+str(unit))
+        if old and old not in candidates:st.caption('기존 담당자의 소속·직책이 변경되었습니다. 저장 시 선택한 담당자로 갱신됩니다.')
+    st.caption('동일한 직할·지점의 담당자만 선택할 수 있으며, 담당자가 없으면 미지정으로 두세요.')
+    return chosen

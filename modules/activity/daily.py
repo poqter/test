@@ -186,34 +186,34 @@ def render(db,today,fixed_day=None):
 
 def styles():
     st.html('''<style>
-    .st-key-daily_record{gap:12px!important;padding-bottom:8px}
-    .st-key-daily_layout_bridge,.st-key-daily_record [data-testid="stElementContainer"]:has(>.stHtml>.daily-context){display:none!important}
-    .st-key-daily_navigation{gap:8px!important}
-    .st-key-daily_navigation [data-testid="stDateInput"]{max-width:240px}
-    .st-key-daily_inputs{padding:18px!important;border-radius:14px!important;background:#fff}
-    .st-key-daily_reference_card{background:#fff}
-    .st-key-daily_inputs h3{font-size:20px!important;padding-top:0!important;padding-bottom:0!important}
-    .st-key-daily_inputs [data-testid="stNumberInput"]{border:1px solid #dce3ed;border-radius:10px;padding:10px;background:#fff}
-    .st-key-daily_inputs [data-testid="stNumberInput"] input{font-size:22px!important;text-align:center;border:0!important}
-    .st-key-daily_inputs [data-testid="stNumberInput"] button{min-width:28px!important}
-    .st-key-daily_inputs :is(input,textarea)::placeholder{color:#98a3b2!important;font-weight:400!important;opacity:1}
-    .st-key-daily_record>[data-testid="stLayoutWrapper"]:has(>.st-key-daily_footer){position:sticky;bottom:var(--daily-keyboard-inset,0px);z-index:5}
-    .st-key-daily_footer{background:#fff;border-top:1px solid #dce3ed;padding:10px 12px max(10px,env(safe-area-inset-bottom));box-shadow:0 -4px 12px #172e4d08;gap:6px!important}
-    .st-key-daily_footer button{min-height:44px}
-    .st-key-daily_footer button[kind="primary"]{background:#146f76!important;border-color:#146f76!important}
-    .st-key-daily_record [data-testid="stButtonGroup"] button[role="radio"]{border:0!important;border-radius:0!important;background:transparent!important;border-bottom:2px solid transparent!important}
-    .st-key-daily_record [data-testid="stButtonGroup"] button[aria-checked="true"]{border-bottom-color:#2d6ad5!important;color:#2d6ad5!important}
+    [class*="st-key-daily_record"]{gap:12px!important;padding-bottom:8px}
+    [class*="st-key-daily_layout_bridge"],[class*="st-key-daily_record"] [data-testid="stElementContainer"]:has(>.stHtml>.daily-context){display:none!important}
+    [class*="st-key-daily_navigation"]{gap:8px!important}
+    [class*="st-key-daily_navigation"] [data-testid="stDateInput"]{max-width:240px}
+    [class*="st-key-daily_inputs"]{padding:18px!important;border-radius:14px!important;background:#fff}
+    [class*="st-key-daily_reference_card"]{background:#fff}
+    [class*="st-key-daily_inputs"] h3{font-size:20px!important;padding-top:0!important;padding-bottom:0!important}
+    [class*="st-key-daily_inputs"] [data-testid="stNumberInput"]{border:1px solid #dce3ed;border-radius:10px;padding:10px;background:#fff}
+    [class*="st-key-daily_inputs"] [data-testid="stNumberInput"] input{font-size:22px!important;text-align:center;border:0!important}
+    [class*="st-key-daily_inputs"] [data-testid="stNumberInput"] button{min-width:28px!important}
+    [class*="st-key-daily_inputs"] :is(input,textarea)::placeholder{color:#98a3b2!important;font-weight:400!important;opacity:1}
+    [class*="st-key-daily_record"]>[data-testid="stLayoutWrapper"]:has(>[class*="st-key-daily_footer"]){position:sticky;bottom:var(--daily-keyboard-inset,0px);z-index:5}
+    [class*="st-key-daily_footer"]{background:#fff;border-top:1px solid #dce3ed;padding:10px 12px max(10px,env(safe-area-inset-bottom));box-shadow:0 -4px 12px #172e4d08;gap:6px!important}
+    [class*="st-key-daily_footer"] button{min-height:44px}
+    [class*="st-key-daily_footer"] button[kind="primary"]{background:#146f76!important;border-color:#146f76!important}
+    [class*="st-key-daily_record"] [data-testid="stButtonGroup"] button[role="radio"]{border:0!important;border-radius:0!important;background:transparent!important;border-bottom:2px solid transparent!important}
+    [class*="st-key-daily_record"] [data-testid="stButtonGroup"] button[aria-checked="true"]{border-bottom-color:#2d6ad5!important;color:#2d6ad5!important}
     @media(max-width:700px){
-      .st-key-daily_record{gap:8px!important}
-      .st-key-daily_navigation [data-testid="stDateInput"]{max-width:160px}
-      .st-key-daily_inputs{padding:12px!important}
-      .st-key-daily_footer [data-testid="stHorizontalBlock"]{flex-wrap:nowrap!important;gap:10px!important}
-      .st-key-daily_footer [data-testid="stHorizontalBlock"]>[data-testid="stColumn"]{min-width:0!important;width:calc(50% - 5px)!important;flex:1!important}
-      .st-key-daily_inputs [data-testid="stNumberInput"]{padding:7px!important}
-      .st-key-daily_inputs [data-testid="stNumberInput"] label{margin-bottom:2px!important}
-      .st-key-daily_inputs [data-testid="stNumberInput"] input{font-size:20px!important}
-      .st-key-daily_inputs [data-testid="stHorizontalBlock"]{flex-wrap:nowrap!important;gap:10px!important}
-      .st-key-daily_inputs [data-testid="stHorizontalBlock"]>[data-testid="stColumn"]{min-width:0!important;width:calc(50% - 5px)!important;flex:1!important}
-      .st-key-daily_record :is(input,textarea){font-size:16px!important;scroll-margin-block:90px}
+      [class*="st-key-daily_record"]{gap:8px!important}
+      [class*="st-key-daily_navigation"] [data-testid="stDateInput"]{max-width:160px}
+      [class*="st-key-daily_inputs"]{padding:12px!important}
+      [class*="st-key-daily_footer"] [data-testid="stHorizontalBlock"]{flex-wrap:nowrap!important;gap:10px!important}
+      [class*="st-key-daily_footer"] [data-testid="stHorizontalBlock"]>[data-testid="stColumn"]{min-width:0!important;width:calc(50% - 5px)!important;flex:1!important}
+      [class*="st-key-daily_inputs"] [data-testid="stNumberInput"]{padding:7px!important}
+      [class*="st-key-daily_inputs"] [data-testid="stNumberInput"] label{margin-bottom:2px!important}
+      [class*="st-key-daily_inputs"] [data-testid="stNumberInput"] input{font-size:20px!important}
+      [class*="st-key-daily_inputs"] [data-testid="stHorizontalBlock"]{flex-wrap:nowrap!important;gap:10px!important}
+      [class*="st-key-daily_inputs"] [data-testid="stHorizontalBlock"]>[data-testid="stColumn"]{min-width:0!important;width:calc(50% - 5px)!important;flex:1!important}
+      [class*="st-key-daily_record"] :is(input,textarea){font-size:16px!important;scroll-margin-block:90px}
     }
     </style>''')

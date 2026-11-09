@@ -236,20 +236,7 @@ def event_detail(db,row):
         if a.button("일정 수정",width="stretch"): ux.navigate({"type":"edit","id":row["id"]},True)
         if c.button("일정 복사",width="stretch"): ux.navigate({"type":"copy","id":row["id"]},True)
         delete_control(db,row)
-        with st.expander("다음 활동 추가"):
-            kind=st.radio("추가할 활동",["후속 일정","할 일"],horizontal=True,key="next_"+row["id"])
-            if kind=="후속 일정":
-                if st.button("후속 일정 작성"): ux.navigate({"type":"follow","id":row["id"]},True)
-            else:
-                with st.form("follow_task_"+row["id"]):
-                    title=st.text_input("할 일",max_chars=200)
-                    due=st.date_input("기한",max(date.fromisoformat(row["day"]),datetime.now(KST).date()))
-                    if st.form_submit_button("할 일 추가"):
-                        if not title.strip():st.error("할 일을 입력해 주세요.")
-                        else:
-                            seed="task_seed_"+row["id"]
-                            db.request("POST","sales_followups",body={"id":st.session_state.setdefault(seed,str(uuid4())),"source":row["id"],"due":str(due),"title":title.strip()},prefer="resolution=ignore-duplicates")
-                            st.session_state.pop(seed);notify();ux.refresh()
+        if st.button("후속 일정 작성"):ux.navigate({"type":"follow","id":row["id"]},True)
         contract_editor(db,date.fromisoformat(row["day"]),row["id"])
     feedback=st.expander("확인 · 피드백",key="event_feedback_"+row["id"],on_change="rerun")
     if feedback.open:
@@ -300,134 +287,8 @@ def count_grid(values):
     for i,c in enumerate([*COUNTS,*[c for c in ("전화","메시지") if values.get(c)]]): columns[i%2].write(f'{ux.LABELS.get(c,c)} **{values.get(c,0):,}**')
 
 def reports(db,today,period,fixed_day=None):
-    if period=="일일":
-        from modules.activity.daily import render
-        return render(db,today,fixed_day)
-    from modules.activity.center import bounds, report_detail
-    if fixed_day is None:
-        selected=st.date_input("기록 날짜" if period=="일일" else "조회 주간",today,max_value=today,key="sales_day_"+period)
-        day=selected if period=="일일" else bounds(selected,"주간")[0]
-        previous=st.session_state.get("sales_report_active_"+period)
-        if previous and previous!=str(day) and ux.dirty(report_key(db,previous,period)):
-            st.warning("이전 날짜에 저장하지 않은 내용이 있습니다. 내용을 유지한 채 날짜를 변경할까요?")
-            a,b,c=st.columns(3)
-            if c.button("내용 버리고 날짜 변경",key="discard_date_"+period):
-                ux.clear_draft(report_key(db,previous,period))
-                st.session_state["sales_report_active_"+period]=str(day);ux.refresh()
-            if a.button("날짜 변경",key="change_date_"+period):
-                st.session_state["sales_report_active_"+period]=str(day);ux.refresh()
-            def stay(): st.session_state["sales_day_"+period]=date.fromisoformat(previous)
-            b.button("계속 작성",key="keep_date_"+period,on_click=stay)
-            day=date.fromisoformat(previous)
-        else: st.session_state["sales_report_active_"+period]=str(day)
-    else: day=fixed_day
-    key=report_key(db,day,period)
-    if fixed_day is None: st.session_state["sales_active_draft"]=key
-    rows=db.period("sales_reports",day,day,owner="eq."+db.uid,period="eq."+period)
-    old=rows[0] if rows else {}
-    data=old.get("data",{})
-    events=db.period("sales_events",day,day,owner="eq."+db.uid,order="day.asc,start_time.asc.nullsfirst") if period=="일일" else []
-    daily=db.period("sales_reports",day,day+6*DAY,owner="eq."+db.uid,period="eq.일일") if period=="주간" else []
-    counts={c:int(data.get("counts",{}).get(c,0)) for c in COUNTS}
-    if period=="주간" and not old: counts=ux.report_totals(daily,COUNTS)
-    initial={**counts,"note":data.get("note",""),"plan":data.get("plan",""),"help":data.get("help",""),
-             "sources":data.get("sources",{}),"coverage":data.get("coverage",[r["day"] for r in daily if r["submitted"]]),
-             "contracts":data.get("contracts",[]),"results":data.get("results",[])}
-    d=ux.draft(key,initial,old)
-    ux.conflict_recovery(d,key)
-    v=d["values"]
-    if message:=d.pop("save_error",None):st.error(message)
-    # New weekly drafts reflect saved daily records without overwriting legacy weekly snapshots.
-    if period=="주간" and not old:
-        v.update(ux.report_totals(daily,COUNTS));v["coverage"]=[r["day"] for r in daily if r["submitted"]]
-        d["baseline"].update({c:v[c] for c in COUNTS});d["baseline"]["coverage"]=v["coverage"][:]
-    st.subheader(str(day)+(f" – {day+6*DAY}" if period=="주간" else " · "+"월화수목금토일"[day.weekday()]))
-    ux.feedback()
-    ux.summary(["수정 중" if old.get("submitted") and ux.dirty(key) else "제출 완료" if old.get("submitted") else "임시 저장" if old else "작성 중",db.me["label"]])
-    mobile=ux.compact()
-    if mobile:
-        with st.popover("오늘 일정 참고" if period=="일일" else "활동 합계 · 제출 현황",width="stretch"):
-            st.html('<span class="sales-reference"></span>')
-            report_reference(db,day,period,events,daily)
-        left=st.container();right=None
-    else: left,right=st.columns([1.55,1],gap="large")
-    with left:
-        with st.container(border=True):
-            st.subheader("오늘의 활동 기록" if period=="일일" else "이번 주 돌아보기")
-            if period=="일일":
-                st.caption("실제 진행한 활동을 입력하세요. 일정 완료와 실적은 별도로 관리합니다.")
-                source_panel=st.expander("완료 일정 · 청약에서 집계 초안 확인",key=key+"source_panel",on_change="rerun")
-                if source_panel.open:
-                    with source_panel:
-                        contracts=db.period("sales_contracts",day,day,owner="eq."+db.uid)
-                        linked={r["event"] for r in contracts}
-                        completed=[r for r in events if r["status"]=="완료"]
-                        current={r["id"]:r["kind"] for r in completed if r["kind"] in COUNTS and not(r["kind"]=="청약" and r["id"] in linked)}
-                        current.update({r["id"]:"청약" for r in contracts})
-                        proposed=ux.refreshed_counts(v,v["sources"],current,COUNTS)
-                        st.dataframe([{"항목":ux.LABELS.get(c,c),"현재 입력":v[c],"반영 후":proposed[c]} for c in COUNTS],hide_index=True,width="stretch")
-                        st.caption("반영 후 값을 확인해 주세요. 이미 반영한 원천은 중복 합산하지 않습니다.")
-                        if st.button("이 집계 초안 반영",key=key+"import"):
-                            ux.set_values(d,{**proposed,"sources":current,"contracts":contracts,"results":[{"결과":e["result"],"지원 요청":e["help"]} for e in completed if e["result"] or e["help"]]})
-                for label,metrics in [("연락 활동",COUNTS[:4]),("약속 · 청약",COUNTS[4:])]:
-                    st.markdown("**"+label+"**")
-                    cols=st.columns(2)
-                    for i,c in enumerate(metrics): ux.field(d,c,cols[i%len(cols)].number_input,ux.LABELS.get(c,c),min_value=0,step=1)
-                st.caption("TA·AP·PC·CS: 활동 건수 · 약속 확보: 신규 확정 · 청약: 접수 건수")
-            else:
-                st.caption("일일 기록을 참고해 주요 성과와 다음 주 계획을 정리하세요.")
-                if old:
-                    with st.expander("저장된 주간 실적 · 기존 기록 유지"):
-                        count_grid({c:v[c] for c in COUNTS})
-                        st.caption("제출된 일일 기록으로 재집계하면 이 주간 기록의 실적이 변경됩니다.")
-                        if st.button("최신 일일 합계 확인",key=key+"check_week"): d["week_check"]=True
-                        if d.get("week_check"):
-                            proposed=ux.report_totals(daily,COUNTS)
-                            count_grid(proposed)
-                            if st.button("확인한 합계 반영",key=key+"apply_week"):
-                                v.update(proposed);v["coverage"]=[r["day"] for r in daily if r["submitted"]];d.pop("week_check",None);ux.refresh()
-            ux.field(d,"note",st.text_area,"주요 성과 · 진행사항",height=120,placeholder="주요 활동과 진행 내용을 적어 주세요.")
-            if period=="주간":ux.field(d,"plan",st.text_area,"다음 주 계획",height=110,placeholder="다음 주 진행할 활동과 계획을 적어 주세요.")
-            with st.expander("지원 요청 · 선택",key=d["epoch"]+"help_panel",on_change="rerun"):
-                ux.field(d,"help",st.text_input,"지원받을 내용")
-            if v["help"]:st.caption("지원 요청 · 입력됨")
-            st.caption("조회 권한이 있는 관리자에게 제출 기록이 공유됩니다.")
-            a,b=st.columns(2)
-            draft_slot=a.empty()
-            save_draft=draft_slot.button("임시 저장",disabled=bool(old.get("submitted")),key=key+"draft",width="stretch")
-            if b.button("수정 제출" if old.get("submitted") else "기록 제출",type="primary",key=key+"submit",width="stretch"):
-                d["confirm"]=True
-            submit=False
-            if d.get("confirm"):
-                st.info("입력한 내용으로 기록을 제출할까요?")
-                a,b=st.columns(2)
-                submit_slot=a.empty()
-                submit=submit_slot.button("제출 확인",type="primary",key=key+"confirm")
-                if b.button("계속 작성",key=key+"cancel_submit"):d.pop("confirm",None);ux.refresh()
-            if save_draft or submit:
-                # Preserve unknown legacy data keys as well as all known input fields.
-                payload=deepcopy((d["old"] or {}).get("data",{}))
-                payload.update(counts={**payload.get("counts",{}),**{c:v[c] for c in COUNTS}},**{k:v[k] for k in ("note","plan","help","sources","coverage","contracts","results")})
-                body={"period":period,"day":str(day),"submitted":bool(submit),"data":payload}
-                if not d["old"]:body["id"]=str(uuid5(NAMESPACE_URL,db.uid+period+str(day)))
-                (submit_slot if submit else draft_slot).button("저장 중…",disabled=True,key=key+"busy")
-                try:db.save("sales_reports",body,d["old"])
-                except HwarangAuthError as exc:
-                    d["conflict"]=True;d["save_error"]="저장하지 못했습니다. 입력 내용은 유지됩니다. "+str(exc);ux.refresh()
-                ux.clear_draft(key)
-                st.session_state["sales_dialog_notice"]="기록을 제출했습니다." if submit else "임시 저장했습니다. 서버에 보관된 기록입니다."
-                if fixed_day is not None:ux.back()
-                ux.refresh()
-        if period=="일일":contract_editor(db,day)
-        if old:
-            history_panel=st.expander("기존 제출 내용 · 수정 이력 · 피드백",key=key+"history_panel",on_change="rerun")
-            if history_panel.open:
-                with history_panel:
-                    report_detail(db,old)
-    if right is not None:
-        with right:
-            with st.container(border=True):report_reference(db,day,period,events,daily)
-    return key
+    from modules.activity.record_editor import render
+    return render(db,today,period,fixed_day)
 
 def member_detail(db,uid,day,period):
     from modules.activity.center import bounds, report_detail
@@ -470,12 +331,6 @@ def member_detail(db,uid,day,period):
             for i,(request_day,message,event_id) in enumerate(support):
                 st.write(f"**{request_day}** · {message}")
                 if event_id and st.button("일정 확인",key=f"member_support_{uid}_{i}"):ux.navigate({"type":"event","id":event_id})
-    tasks=db.request("GET","sales_followups",{"owner":"eq."+uid,"and":f"(due.gte.{start},due.lte.{end})","scheduled":"is.null","order":"due.asc"})
-    if tasks:
-        with st.expander(f"후속 할 일 {len(tasks)}건"):
-            for task in tasks:
-                st.write(f"**{task['due']}** · {task['title']}"+(" · 지연" if task["due"]<str(today) else ""))
-                if st.button("연결된 일정 확인",key="member_task_"+task["id"]):ux.navigate({"type":"event","id":task["source"]})
     def one(target):
         mobile=ux.compact()
         tab=st.segmented_control("상세 내용",["일정","활동 기록"],default="일정",required=True,key="member_content_"+uid,label_visibility="collapsed") if mobile else None
@@ -533,27 +388,8 @@ def overview(db,today):
 
 
 def admin_settings(db,start,end):
-    with st.expander("관리 설정 · 담당 팀원 및 권한 미리보기"):
-        members=db.members
-        leaders=db.request("GET","profiles",{"position_code":"eq.team_leader","is_active":"eq.true","select":"id,display_name,organization_unit_id"})
-        names={r["id"]:r["display_name"] for r in leaders if r["id"] in members}
-        if not names:st.caption("설정할 팀장이 없습니다.");return
-        leader=st.selectbox("대상 팀장",list(names),format_func=names.get)
-        preview=st.toggle("팀장 권한으로 미리보기")
-        if not preview:
-            candidates=[uid for uid,m in members.items() if uid!=leader and m["unit"]==members[leader]["unit"]]
-            if candidates:
-                member=st.selectbox("담당 팀원",candidates,format_func=lambda u:members[u]["label"])
-                if st.button("담당 팀원 연결"):
-                    db.request("POST","sales_team_assignments",body={"leader":leader,"member":member},prefer="resolution=merge-duplicates");notify();ux.refresh()
-        else:
-            st.info("팀장 권한으로 미리보기 중 · 읽기 전용")
-            snap=db.request("POST","rpc/sales_qa_snapshot",body={"subject":leader,"first_day":str(start),"last_day":str(end)})
-            labels={m["member"]:m["label"] for m in snap["members"]}
-            st.write("조회 가능 구성원",list(labels.values()))
-            for e in snap["events"]:st.write(e["day"],labels[e["owner"]],e["kind"],e["title"])
-            for r in snap["reports"]:
-                with st.expander(labels[r["owner"]]+" · "+r["period"]+" 기록 · "+r["day"]):st.write(r["data"])
+    with st.expander("담당 구성원 설정 안내"):
+        st.caption("관리자 센터 → 계정 기본정보에서 담당 부지점장·담당 팀장을 선택하세요. 동일 직할·지점 내에서 선택하며 미지정도 가능합니다.")
 
 def calendar_scope(db):
     options=["내 일정","지점 일정"]+(["직원 선택"] if db.me["managed"] else [])

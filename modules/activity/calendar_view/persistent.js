@@ -225,7 +225,6 @@ function showDetail(data,body){
   const resultButton=button('완료 · 결과 처리',()=>openResult(row),'result-trigger');calendarPanel.querySelector('.panel-head').insertBefore(resultButton,calendarPanel.querySelector('.panel-head button'));
   const actions=el('div','','panel-actions');actions.append(button('일정 수정',()=>openEditor(row,'edit')),button('일정 복사',()=>openEditor(row,'copy')),button('일정 삭제',()=>deleteEvent(row),'danger'));body.append(actions);
   const next=section(body,'다음 활동 추가');next.append(button('후속 일정 작성',()=>openEditor(row,'follow')));
-  const task=el('form');next.append(task);field(task,'할 일','title').maxLength=200;field(task,'기한','due',row.day>latest.today?row.day:latest.today,'date');const error=feedback(task),seed=crypto.randomUUID();const save=button('할 일 추가',()=>runButton(save,error,async()=>{await rpc('task',{id:row.id,seed,...values(task)});error.textContent='할 일을 추가했습니다.';save.hidden=true}));task.append(save);task.onsubmit=e=>e.preventDefault();
   const contracts=section(body,'청약·계약 입력 및 수정');contracts.append(button('새 청약',()=>openContract(row,null)));for(const c of data.contracts)contracts.append(button(c.insurer+' · '+Number(c.amount).toLocaleString()+'원 · '+c.status,()=>openContract(row,c),'row'));
  }
  const reviews=section(body,'피드백');reviews.open=true;paintReviews(reviews,data);

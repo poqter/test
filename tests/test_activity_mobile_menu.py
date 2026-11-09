@@ -31,16 +31,15 @@ def test_report_draft_survives_menu_navigation():
     button(at,'활동 기록').click().run()
     assert not at.exception
     text(at,'주요 성과 · 진행사항').input('모바일 작성 중').run()
-    button(at,'후속 할 일').click().run()
-    assert at.warning
-    button(at,'내용 유지하고 이동').click().run()
-    assert at.session_state['mobile_page']=='후속 할 일'
+    assert not any(b.label=='후속 할 일' for b in at.button)
+    button(at,'캘린더').click().run()
+    assert at.session_state['mobile_page']=='캘린더'
     button(at,'활동 기록').click().run()
     assert text(at,'주요 성과 · 진행사항').value=='모바일 작성 중'
 
 
 def test_menu_discard_does_not_write_records():
-    at=app(TAIL)
+    at=app('st.session_state.setdefault("fixture_conflict",True)\n'+TAIL)
     button(at,'활동 기록').click().run()
     text(at,'주요 성과 · 진행사항').input('버릴 내용').run()
     button(at,'캘린더').click().run()
@@ -53,9 +52,9 @@ def test_menu_discard_does_not_write_records():
 def test_weekly_and_alerts_empty_state():
     at=app(TAIL)
     button(at,'활동 기록').click().run()
-    button(at,'주간 기록').click().run()
+    next(s for s in at.segmented_control if s.label=='기록 구분').set_value('주간 기록').run()
     assert not at.exception
-    assert any(s.value=='이번 주 돌아보기' for s in at.subheader)
+    assert any(s.label=='이번 주 돌아보기' for s in at.text_area)
     button(at,'알림').click().run()
     assert not at.exception
     assert any(i.value=='일정 알림이 없습니다.' for i in at.info)

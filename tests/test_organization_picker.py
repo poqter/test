@@ -51,6 +51,8 @@ def test_admin_save_keeps_permissions_and_updates_only_selected_affiliation():
     src=f'''import streamlit as st
 from modules.shared.admin_center_ui import _user_permissions
 class Auth:
+ def _require_super_admin(self,actor):pass
+ def _request(self,*args,**kwargs):return []
  def admin_user_snapshot(self, actor, uid):
   return dict(profile=dict(id=uid,display_name='테스트',login_id='test',role='user',is_active=True,position_code='team_leader',organization_unit_id='dream'),app_access={{'workspace':True,'academy':True,'calculator':False}},feature_permissions=['academy.practice'])
  def admin_reference_data(self, actor):return dict(organizations={ROWS!r},positions={POSITIONS!r},permissions=[dict(permission_code='academy.practice',app_code='academy',display_name='연습')])

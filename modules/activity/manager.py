@@ -55,6 +55,11 @@ def render(db,today):
     styles()
     ux.feedback()
     st.subheader('구성원 현황')
+    screen=st.segmented_control('관리 화면',['활동 현황','주간 기록 검토'],default='활동 현황',required=True,key='manager_screen')
+    if screen=='주간 기록 검토':
+        from modules.activity.weekly_review import render as weekly_review
+        weekly_review(db,today)
+        return
     a,b,c=st.columns([1,1,1.3])
     day=a.date_input('조회 기준일',today,key='sales_overview_day')
     period=b.segmented_control('기록 구분',['일일','주간'],default='주간',required=True,key='sales_overview_period')
@@ -77,9 +82,9 @@ def render(db,today):
     events=db.period('sales_events',start,end)
     reports=db.period('sales_reports',start,end)
     contracts=db.period('sales_contracts',start,end)
-    tasks=db.request('GET','sales_followups',{'and':f'(due.gte.{start},due.lte.{end})','scheduled':'is.null','order':'due.asc'})
+    tasks=[]
     summary=summarize(members,events,reports,contracts,tasks,start,end,today,datetime.now(KST))
-    filters=[('지원 요청','help'),('결과 미입력','missing'),('지연된 후속 활동','late'),('일일 기록 미제출','unsubmitted')]
+    filters=[('지원 요청','help'),('결과 미입력','missing'),('일일 기록 미제출','unsubmitted')]
     labels=['전체',*(label for label,_ in filters)]
     if st.session_state.get('sales_member_status') not in labels:st.session_state['sales_member_status']='전체'
     def choose(label):st.session_state['sales_member_status']=label
@@ -90,8 +95,8 @@ def render(db,today):
             columns[i%len(columns)].button(f'{label} {count}'+('명' if field=='unsubmitted' else '건'),key='manager_'+field,on_click=choose,args=(label,),width='stretch')
     st.caption(f'{start} – {end} · 활동은 완료 일정 기준 · 청약은 접수일 기준 · 미제출은 조회 기간 중 오늘까지의 '+('평일' if period=='주간' else '조회일')+' 기준입니다.')
     with st.expander('오늘 먼저 확인할 사항',expanded=any(r['help'] or r['late'] for r in summary)):
-        attention=[(r,s) for r in summary for s in r['support']]+[(r,dict(type='task',id=t['id'],day=t['due'],text=t['title'])) for r in summary for t in r['tasks']]
-        if not attention:st.caption('선택 기간에 등록된 지원 요청·지연된 후속 활동이 없습니다.')
+        attention=[(r,s) for r in summary for s in r['support']]
+        if not attention:st.caption('선택 기간에 등록된 지원 요청이 없습니다.')
         for r,item in attention[:5]:
             a,b=st.columns([5,1])
             a.write(f"**{r['name']}** · {item['day']} · {item['text']}")

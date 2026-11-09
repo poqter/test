@@ -943,8 +943,9 @@ def _user_permissions(auth: HwarangAuthService, actor_id: str, uid: str) -> None
     orgs = [r for r in refs.get("organizations", []) if r.get("is_active", True)]
     perms = list(refs.get("permissions", []))
     st.markdown('<div class="hw-section-head">기본 정보</div>', unsafe_allow_html=True)
-    from .organization_picker import render_affiliation, valid_affiliation
+    from .organization_picker import render_affiliation, valid_affiliation, render_managers
     position_code, organization_unit_id = render_affiliation(orgs, positions, profile, 'hw_affiliation_'+uid)
+    managers = render_managers(auth, actor_id, uid, organization_unit_id, 'hw_managers_'+uid)
     with st.form(f"hw_admin_user_permissions_v2_{uid}", clear_on_submit=False):
         c1, c2 = st.columns(2, gap="large")
         with c1:
@@ -1008,6 +1009,7 @@ def _user_permissions(auth: HwarangAuthService, actor_id: str, uid: str) -> None
             "is_active": bool(is_active),
             "organization_unit_id": organization_unit_id,
             "position_code": position_code,
+            **managers,
             "app_access": app_values,
             "permissions": permission_values,
         }

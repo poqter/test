@@ -17,6 +17,8 @@ class FakeRecords:
         st.session_state.setdefault("fixture_reports",[])
         st.session_state.setdefault("fixture_reviews",[])
         st.session_state.setdefault("fixture_writes",[])
+        st.session_state.setdefault("fixture_drafts",[])
+        st.session_state.setdefault("fixture_checks",[])
     def request(self,method,table,params=None,body=None,prefer=None):
         st.session_state.setdefault("fixture_reads",[]).append((method,table))
         if table=="rpc/sales_calendar_stamp":return "fixture-stamp"
@@ -29,8 +31,30 @@ class FakeRecords:
                     row.update(body["p_data"]);row["revision"]+=1
                     st.session_state["fixture_writes"].append(deepcopy(body));return True
             return False
+        if method=='POST' and table=='rpc/sales_save_report':
+            from modules.shared.hwarang_auth import HwarangAuthError
+            from uuid import uuid4
+            if st.session_state.get('fixture_conflict'):raise HwarangAuthError('저장 충돌')
+            row=next((r for r in st.session_state['fixture_reports'] if r['owner']==self.uid and r['period']==body['p_period'] and r['day']==body['p_day']),None)
+            draft=next((r for r in st.session_state['fixture_drafts'] if row and r['report']==row['id']),None)
+            if (row or {}).get('revision',0)!=body['p_base_revision'] or (draft or {}).get('revision',0)!=body['p_draft_revision']:raise HwarangAuthError('저장 충돌')
+            if row and row['submitted'] and not body['p_submit']:
+                draft=dict(id=(draft or {}).get('id',str(uuid4())),report=row['id'],owner=self.uid,data=deepcopy(body['p_data']),base_revision=row['revision'],revision=(draft or {}).get('revision',0)+1)
+                st.session_state['fixture_drafts']=[r for r in st.session_state['fixture_drafts'] if r['report']!=row['id']]+[draft]
+            else:
+                row=dict(id=(row or {}).get('id',str(uuid4())),owner=self.uid,day=body['p_day'],period=body['p_period'],submitted=body['p_submit'],data=deepcopy(body['p_data']),revision=(row or {}).get('revision',0)+1,changed_at='2026-11-06T00:00:00Z')
+                st.session_state['fixture_reports']=[r for r in st.session_state['fixture_reports'] if r['id']!=row['id']]+[row]
+                st.session_state['fixture_drafts']=[r for r in st.session_state['fixture_drafts'] if r['report']!=row['id']];draft=None
+            st.session_state['fixture_writes'].append(deepcopy(body))
+            return deepcopy(dict(report=row,draft=draft))
+        if method=='POST' and table=='rpc/sales_check_report':
+            from modules.shared.hwarang_auth import HwarangAuthError
+            row=next((r for r in st.session_state['fixture_reports'] if r['id']==body['p_report']),None)
+            if not row or not row['submitted'] or row['revision']!=body['p_revision']:raise HwarangAuthError('제출 버전 변경')
+            st.session_state['fixture_checks']=[c for c in st.session_state['fixture_checks'] if c['report']!=row['id']]+[dict(report=row['id'],reviewer=self.uid,report_revision=row['revision'])]
+            st.session_state['fixture_writes'].append(deepcopy(body));return True
         if method=="GET":
-            rows=st.session_state["fixture_events"] if table=="sales_events" else st.session_state["fixture_reports"] if table=="sales_reports" else st.session_state["fixture_reviews"] if table=="sales_reviews" else []
+            rows=st.session_state["fixture_events"] if table=="sales_events" else st.session_state["fixture_reports"] if table=="sales_reports" else st.session_state["fixture_reviews"] if table=="sales_reviews" else st.session_state["fixture_drafts"] if table=="sales_report_drafts" else st.session_state["fixture_checks"] if table=="sales_report_checks" else []
             for k,v in (params or {}).items():
                 if str(v).startswith("eq."):rows=[r for r in rows if str(r.get(k)).lower()==str(v)[3:].lower()]
             if table=="sales_reviews":rows=[r for r in rows if not r.get("deleted_at")]

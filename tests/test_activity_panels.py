@@ -75,7 +75,7 @@ def test_report_help_title_is_stable_after_input():
     at=app('redesign.reports(FakeRecords(),date(2026,11,6),"일일")')
     panel=next(e for e in at.expander if e.label=="지원 요청 · 선택")
     identity=panel.proto.id
-    next(t for t in at.text_input if t.label=="지원받을 내용").input("동행 요청").run()
+    next(t for t in at.text_area if t.label=="지원받을 내용").input("동행 요청").run()
     assert not at.exception
     assert next(e for e in at.expander if e.label=="지원 요청 · 선택").proto.id==identity
 

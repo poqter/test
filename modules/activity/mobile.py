@@ -4,7 +4,7 @@ import streamlit as st
 from modules.activity import center, redesign, ux
 from modules.shared.hwarang_auth import HwarangAuthError
 
-MENUS=('캘린더','활동 기록','후속 할 일')
+MENUS=('캘린더','활동 기록')
 
 
 def menus(db):
@@ -215,13 +215,13 @@ def run(logout):
             if page=='캘린더':
                 st.html("""<button class="mobile-new-event" aria-label="일정 등록" title="일정 등록">＋</button><style>.mobile-new-event{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));width:52px;height:52px;border:0;border-radius:50%;background:#155461;color:white;font-size:28px;z-index:40;box-shadow:0 3px 12px #1234;cursor:pointer}</style><script>document.querySelector('.mobile-new-event').onclick=()=>document.querySelectorAll('iframe').forEach(f=>f.contentWindow.postMessage({type:'hwarang.activity.new'},location.origin));</script>""",unsafe_allow_javascript=True)
                 center.calendar(db,today)
-            elif page=='후속 할 일':tasks_view(db,today)
             elif page=='구성원 현황':center.overview(db,today)
             elif page=='알림·피드백':alerts(db)
             else:
-                a,b=st.columns(2)
-                a.button('일일 기록',on_click=choose,args=('활동 기록',),key='mobile_daily',type='primary' if page=='활동 기록' else 'secondary')
-                b.button('주간 기록',on_click=choose,args=('주간 기록',),key='mobile_weekly',type='primary' if page=='주간 기록' else 'secondary')
+                tab_key='mobile_record_tab'
+                st.session_state[tab_key]='주간 기록' if page=='주간 기록' else '일일 기록'
+                def select_record():choose('주간 기록' if st.session_state[tab_key]=='주간 기록' else '활동 기록')
+                st.segmented_control('기록 구분',['일일 기록','주간 기록'],key=tab_key,required=True,on_change=select_record,label_visibility='collapsed')
                 center.reports(db,today,'주간' if page=='주간 기록' else '일일')
                 personal_performance(db,today)
         unread=db.request('GET','sales_notices',{'seen':'eq.false','select':'id','limit':'50'})

@@ -98,8 +98,9 @@ def render(auth: HwarangAuthService) -> None:
     current_role = str(profile.get("role") or "user")
 
     st.markdown("---")
-    from .organization_picker import render_affiliation, valid_affiliation
+    from .organization_picker import render_affiliation, valid_affiliation, render_managers
     position_code, organization_unit_id = render_affiliation(organizations, positions, profile, 'hw_legacy_affiliation_'+selected_id)
+    managers = render_managers(auth, actor_id, selected_id, organization_unit_id, 'hw_legacy_managers_'+selected_id)
     with st.form("hw_account_permission_form", clear_on_submit=False):
         top1, top2 = st.columns(2, gap="large")
         with top1:
@@ -168,6 +169,7 @@ def render(auth: HwarangAuthService) -> None:
                 is_active=is_active,
                 organization_unit_id=organization_unit_id,
                 position_code=position_code,
+                **managers,
                 app_access=app_values,
                 permissions=permission_values,
             )

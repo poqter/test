@@ -382,6 +382,7 @@ class HwarangAuthService:
         self, *, actor_user_id: str, target_user_id: str, display_name: str, role: str,
         is_active: bool, organization_unit_id: str | None, position_code: str,
         app_access: dict[str, bool], permissions: dict[str, bool],
+        team_leader: str | None = None, deputy_manager: str | None = None,
     ) -> dict[str, Any]:
         self._require_super_admin(actor_user_id)
         from modules.shared.organization_picker import valid_affiliation
@@ -391,7 +392,7 @@ class HwarangAuthService:
             raise HwarangAuthError("직책에 맞는 소속을 선택해 주세요. 총괄대표는 화랑, 본부장은 본부, 구성원은 직할·지점에 소속됩니다.")
         self._request(
             "POST",
-            "/rest/v1/rpc/admin_apply_hwarang_user",
+            "/rest/v1/rpc/admin_apply_hwarang_user_with_managers",
             admin=True,
             json={
                 "p_actor_user_id": actor_user_id,
@@ -401,6 +402,8 @@ class HwarangAuthService:
                 "p_is_active": bool(is_active),
                 "p_organization_unit_id": organization_unit_id,
                 "p_position_code": position_code,
+                "p_team_leader": team_leader,
+                "p_deputy_manager": deputy_manager,
                 "p_app_access": app_access,
                 "p_permissions": permissions,
             },

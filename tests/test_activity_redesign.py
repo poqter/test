@@ -57,7 +57,7 @@ def test_weekly_daily_roundtrip_retains_week_draft():
     at=app('st.session_state.setdefault("sales_menu","주간 기록")\ncenter.run()')
     assert not at.exception
     text(at,"주요 성과 · 진행사항").input("주간 작성 중").run()
-    button(at,"미제출 · 작성하기").click().run()
+    next(b for b in at.button if b.label=="미작성 · 작성").click().run()
     assert not at.exception
     # Daily modal and weekly background each have one note field.
     at.text_area[-1].input("일일 추가 기록").run()
@@ -65,6 +65,7 @@ def test_weekly_daily_roundtrip_retains_week_draft():
     [b for b in at.button if b.label=="임시 저장"][-1].click().run()
     assert not at.exception
     assert text(at,"주요 성과 · 진행사항").value=="주간 작성 중"
+    button(at,"닫기").click().run()
     assert not at.session_state.get("sales_route")
 
 def test_event_edit_preserves_duration_and_revision():
@@ -93,24 +94,24 @@ def test_event_conflict_keeps_input_and_does_not_write():
     assert next(t for t in at.text_input if t.label=="일정명").value=="수정 중인 제목"
     assert not at.session_state["fixture_writes"]
 
-def test_dirty_date_switch_keeps_previous_until_confirmed():
+def test_date_switch_preserves_auto_saved_record():
     at=app('redesign.reports(FakeRecords(),date(2026,11,6),"일일")')
     text(at,"주요 성과 · 진행사항").input("보존할 내용").run()
     at.date_input[0].set_value(__import__('datetime').date(2026,11,5)).run()
-    assert at.warning and text(at,"주요 성과 · 진행사항").value=="보존할 내용"
-    button(at,"계속 작성").click().run()
-    assert at.date_input[0].value==__import__('datetime').date(2026,11,6)
-    assert text(at,"주요 성과 · 진행사항").value=="보존할 내용"
+    assert not at.exception
+    assert at.session_state['fixture_reports'][0]['data']['note']=='보존할 내용'
 
-def test_daily_submit_requires_confirmation():
+
+def test_daily_submit_requires_explicit_no_activity():
     at=app('redesign.reports(FakeRecords(),date(2026,11,6),"일일")')
     button(at,"제출하기").click().run()
     assert not at.session_state["fixture_writes"]
-    button(at,"활동 없는 날로 제출").click().run()
+    next(c for c in at.checkbox if c.label=='활동 없는 날').check().run()
+    button(at,'제출하기').click().run()
     assert not at.exception and at.session_state["fixture_reports"][0]["submitted"]
 
 def test_mobile_reference_path_and_fields_render():
     at=app('original=redesign.ux.compact\nredesign.ux.compact=lambda:True\ntry: redesign.reports(FakeRecords(),date(2026,11,6),"일일")\nfinally: redesign.ux.compact=original')
     assert not at.exception
     assert [n.label for n in at.number_input]==['TA','AP','PC','CS','약속 확보','청약']
-    assert any(s.label=="일일 기록 화면" for s in at.segmented_control)
+    assert any(s.label=="일정·집계·참고 자료" for s in at.expander)

@@ -6,13 +6,13 @@ from uuid import uuid4
 import streamlit as st
 
 
-def contract_editor(db, day, event=None):
+def contract_editor(db, day, event=None, expanded=False):
     prefix="contract_"+str(event or day)
     # Keep unsaved widget inputs when the lazily rendered section is collapsed.
     for name in list(st.session_state):
         if name.startswith(prefix) and name.endswith(("_pick","insurer","category","payment","amount","day","status","effective","product","note")):
             st.session_state[name]=st.session_state[name]
-    panel=st.expander("청약·계약 입력 및 수정",key=prefix+"panel",on_change="rerun")
+    panel=st.expander("청약·계약 입력 및 수정",key=prefix+"panel",expanded=expanded,on_change="rerun")
     if not panel.open:return
     with panel:
         query = {"owner":"eq."+db.uid, "order":"day.desc"}
