@@ -165,6 +165,7 @@ body [class*="st-key-contract_fields_"] [data-testid="stDateInput"] [data-basewe
 body [class*="st-key-contract_fields_"] textarea:focus{border-color:#2d6ad5!important;box-shadow:0 0 0 2px #2d6ad51a!important}
 body [class*="st-key-contract_fields_"] hr{border-color:#dce4ee!important;margin:4px 0!important}
 @media(max-width:700px){body [class*="st-key-contract_fields_"]{gap:12px!important}
-body [class*="st-key-contract_fields_"] [data-testid="stHorizontalBlock"]{flex-wrap:wrap!important}
-body [class*="st-key-contract_fields_"] [data-testid="stColumn"]{width:100%!important;flex:1 1 100%!important;min-width:0!important}}
+body [class*="st-key-contract_fields_"] [data-testid="stHorizontalBlock"]{flex-wrap:nowrap!important;gap:10px!important}
+body [class*="st-key-contract_fields_"] [data-testid="stColumn"]{width:calc(50% - 5px)!important;flex:1 1 0!important;min-width:0!important}
+body [class*="st-key-contract_fields_"] [data-baseweb="select"]>div{padding-left:8px!important;padding-right:8px!important}}
 </style>''')
