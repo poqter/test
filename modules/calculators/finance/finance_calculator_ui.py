@@ -160,7 +160,7 @@ def render_result(name,result,calculated_on,args,prefix):
         pdf_options = pdf_section_options(prefix+'_pdf_scope')
         if any(pdf_options.values()):
             pdf = build_result_pdf(name, input_rows(args), result, calculated_on, **pdf_options)
-            st.download_button('결과 PDF 저장',pdf,name+'_결과보고서.pdf','application/pdf',key=prefix+'_customer_export', type='primary', icon=':material/download:', width='stretch')
+            st.download_button('결과 PDF 저장',pdf,name+'_결과보고서.pdf','application/pdf', on_click="ignore",key=prefix+'_customer_export', type='primary', icon=':material/download:', width='stretch')
         if result.rows and '총 자금' in result.rows[0]:
             from modules.calculators.result_chart import render_growth_chart
             render_growth_chart(result.rows)
@@ -180,4 +180,4 @@ def render_result(name,result,calculated_on,args,prefix):
         if result.rows:
             rows=_rows_for_display(result);writer.writerow([]);writer.writerow(rows[0].keys())
             for row in rows:writer.writerow([csv_safe(v) for v in row.values()])
-        st.download_button('상세 계산 CSV 저장',text.getvalue().encode('utf-8-sig'),name+'_상세계산.csv','text/csv',key=prefix+'_advisor_export')
+        st.download_button('상세 계산 CSV 저장',text.getvalue().encode('utf-8-sig'),name+'_상세계산.csv','text/csv', on_click="ignore",key=prefix+'_advisor_export')

@@ -345,19 +345,23 @@ def render_home(allowed_ids, navigate, notice):
             job = summary_job(SupabaseConfig.from_mapping(st.secrets))
         except Exception:
             job = None
-        pending = job is not None and not job.done()
-        @st.fragment(run_every=1 if pending else None)
+        @st.fragment(parallel=True)
         def briefing_status():
-            status, detail = '게시 상태 확인 중', ''
-            if job is not None and job.done():
-                try: status, detail = job.result()
-                except Exception: detail = '브리핑센터에서 확인해 주세요.'
-                if pending:
-                    # Stop the temporary one-second timer after this one result.
-                    st.rerun()
             info, action = st.columns([4,1.2], vertical_alignment='center')
-            info.markdown('**오늘의 브리핑 · '+status+'**')
-            if detail: info.caption(detail)
-            with action: _launch_widget(APP_BY_ID['briefing'], '브리핑 보기 →', key='brand_briefing_open', navigate=navigate)
+            headline = info.empty()
+            detail_slot = info.empty()
+            headline.markdown('**오늘의 브리핑 · 게시 상태 확인 중**')
+            detail_slot.caption('최신 공개 자료를 확인하고 있습니다.')
+            with action:
+                if _launch_widget(APP_BY_ID['briefing'], '브리핑 보기 →', key='brand_briefing_open', navigate=navigate):
+                    st.rerun()  # Route changes must leave this status fragment.
+            status, detail = '게시 상태 확인 지연', '브리핑센터에서 확인해 주세요.'
+            if job is not None:
+                try:
+                    status, detail = job.result(timeout=20)
+                except Exception:
+                    pass
+            headline.markdown('**오늘의 브리핑 · '+status+'**')
+            detail_slot.caption(detail or '브리핑센터에서 자료를 확인하세요.')
         with briefing_slot:
             briefing_status()

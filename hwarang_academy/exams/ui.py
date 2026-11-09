@@ -3,6 +3,7 @@ from uuid import uuid4
 from datetime import datetime,timedelta
 import html
 import streamlit as st
+from modules.shared.refresh import refresh_current
 import pandas as pd
 import altair as alt
 from .repository import Repository
@@ -20,10 +21,10 @@ def _question(q):
     if q.get('table'):st.table(pd.DataFrame(q['table']['rows'],columns=q['table']['headers']))
 
 def _open(aid):
-    st.session_state['_academy_exam_id']=aid;st.rerun()
+    st.session_state['_academy_exam_id']=aid;refresh_current()
 
 def _close():
-    st.session_state.pop('_academy_exam_id',None);st.rerun()
+    st.session_state.pop('_academy_exam_id',None);refresh_current()
 
 def _abort_dialog(repo, aid):
     st.subheader('시험을 중단할까요?')
@@ -31,7 +32,7 @@ def _abort_dialog(repo, aid):
     st.caption('서버에 저장된 답안은 중단 기록에 보존됩니다. 아직 저장되지 않은 답안은 반영되지 않을 수 있습니다.')
     left,right=st.columns(2)
     if left.button('계속 풀기',key='abort_keep'):
-        st.session_state.pop('_academy_exam_abort',None);st.rerun()
+        st.session_state.pop('_academy_exam_abort',None);refresh_current()
     if right.button('시험 중단 확정',type='primary',key='abort_confirm'):
         try:
             current=repo.call('get',id=aid)
@@ -44,7 +45,7 @@ def _abort_dialog(repo, aid):
             st.session_state.pop('_academy_exam_abort',None)
             st.session_state.pop('_academy_exam_wire_'+aid,None)
             st.session_state.pop('_academy_exam_start_request',None)
-            st.rerun()
+            refresh_current()
         except Exception:
             st.error('중단을 확인하지 못했습니다. 다시 시도해 주세요.')
 
@@ -82,8 +83,8 @@ def _result(repo,a,manager=False):
             st.divider();st.markdown('**원본 해설**');_text(q['explanation'])
             st.caption(f"출처: {q.get('source_title',a['title'])} · 원본 {q.get('source_number',q['number'])}번")
         x,y,z=st.columns([1,2,1]);y.caption(f'{pos+1} / {len(questions)}문제')
-        if x.button('← 이전 문제',disabled=pos==0,key='result_prev_'+a['id']):st.session_state[key]=pos-1;st.rerun()
-        if z.button('다음 문제 →',disabled=pos==len(questions)-1,key='result_next_'+a['id']):st.session_state[key]=pos+1;st.rerun()
+        if x.button('← 이전 문제',disabled=pos==0,key='result_prev_'+a['id']):st.session_state[key]=pos-1;refresh_current()
+        if z.button('다음 문제 →',disabled=pos==len(questions)-1,key='result_next_'+a['id']):st.session_state[key]=pos+1;refresh_current()
     if not manager and st.button('시험 목록으로',key='result_back'):_close()
 
 def _history(rows):
@@ -121,7 +122,7 @@ def _dashboard(repo,profile):
     person=next((p for p in people if p['id']==detail),None)
     if detail and not person:st.session_state.pop('_academy_exam_person',None);st.session_state.pop('_academy_exam_review',None)
     if person:
-        if st.button('← 학습자 목록',key='person_back'):st.session_state['_academy_exam_restore_list']=True;st.session_state.pop('_academy_exam_person',None);st.session_state.pop('_academy_exam_review',None);st.rerun()
+        if st.button('← 학습자 목록',key='person_back'):st.session_state['_academy_exam_restore_list']=True;st.session_state.pop('_academy_exam_person',None);st.session_state.pop('_academy_exam_review',None);refresh_current()
         st.subheader(person['display_name']);st.caption(person.get('organization_name') or '소속 미지정')
         mine=person['attempts']
         graph=[{'날짜':stamp(r['submitted_at']),'과목':s['name'],'점수':s['score']} for r in mine if r['mode']=='exam' and r['status']=='submitted' for s in (r.get('result') or {}).get('sections',[])]
@@ -167,12 +168,13 @@ def _dashboard(repo,profile):
     for p in visible[(page-1)*10:page*10]:
         with st.container(border=True,key='exam_person_'+p['id']):
             left,right=st.columns([3,1])
-            if left.button(p['display_name']+' →',key='person_'+p['id']):st.session_state['_academy_exam_person']=p['id'];st.rerun()
+            if left.button(p['display_name']+' →',key='person_'+p['id']):st.session_state['_academy_exam_person']=p['id'];refresh_current()
             left.caption((p.get('organization_name') or '소속 미지정')+' · '+p['state']+(' · 최근 시험 중단' if p['latest_aborted'] and p['state']!='중단' else ''))
             right.caption('최근 활동 '+(stamp(p['last']).strftime('%m.%d %H:%M') if p['last'] else '없음'))
             st.write(' · '.join(f"{s['name']} {s['score']}점{' · 기준 미달' if not s['passed'] else ''}" for s in p['scores']) or '모의시험 성적 없음')
             if p['state']=='학습 중' and p['last'] and datetime.now(KST)-stamp(p['last'])>timedelta(days=1):st.caption('마지막 활동 후 24시간 이상 · 학습 중단으로 단정하지 않고 확인이 필요합니다.')
 
+@st.fragment
 def render(auth,owner,permissions,profile):
     st.title('보험시험 CBT')
     if 'academy.assessment' not in permissions:st.warning('시험·평가 이용 권한이 필요합니다.');return
@@ -194,7 +196,7 @@ def render(auth,owner,permissions,profile):
                 st.markdown('<style>[data-testid="stSidebar"]{display:none}</style>',unsafe_allow_html=True)
                 if st.button('← 시험 목록',help='저장된 시험은 이어 풀 수 있으며 제한시간은 계속 흐릅니다.'):_close()
                 if st.button('시험 중단',key='abort_active'):
-                    st.session_state['_academy_exam_abort']=aid;st.rerun()
+                    st.session_state['_academy_exam_abort']=aid;refresh_current()
                 active(repo,a)
             return
         tabs=['시험 시작','나의 응시 기록']
@@ -210,7 +212,7 @@ def render(auth,owner,permissions,profile):
             left,right=st.columns(2)
             if left.button('이어서 풀기',type='primary'):_open(existing['id'])
             if right.button('시험 중단 · 새 시험 선택',key='abort_existing'):
-                st.session_state['_academy_exam_abort']=existing['id'];st.rerun()
+                st.session_state['_academy_exam_abort']=existing['id'];refresh_current()
             return
         catalog=repo.call('catalog') or []
         if not catalog:st.info('시험 자료를 준비하고 있습니다.');return

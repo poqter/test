@@ -10,6 +10,8 @@ ENGINE_VERSION = json.loads(
 )['engine_version']
 
 expected=f'HWARANG_BRIEFING_RELEASE={ENGINE_VERSION};READY=true'
+import runpy
+ui_expected='HWARANG_UI_RELEASE='+runpy.run_path(str(Path(__file__).resolve().parents[2]/'modules/shared/build_info.py'))['BUILD_ID']
 activity_root=Path(__file__).resolve().parents[2]/'modules/activity'
 activity_expected='HWARANG_ACTIVITY_RELEASE='+hashlib.sha256(b''.join((activity_root/name).read_bytes() for name in ('read_state.py','center.py','redesign.py','manager.py','daily.py','daily_bridge.html','ux.py','contracts.py','calendar_view/index.html','mobile.py','calendar_bridge.html','device.py','calendar_service.py','calendar_view/persistent.js','calendar_view/sync.js','calendar_view/realtime.js','calendar_view/host.js','workspace_calendar.py','../shell/workspace_v2.py','../shell/home_briefing.py','../shared/workspace_design.css'))).hexdigest()[:16]
 login_expected='HWARANG_LOGIN_RELEASE='+hashlib.sha256((activity_root.parents[1]/'app.py').read_bytes()).hexdigest()[:16]
@@ -22,7 +24,7 @@ with sync_playwright() as p:
         try:
             page.goto('https://hwarang-workspace.streamlit.app/?briefing_health=1',wait_until='domcontentloaded',timeout=45000)
             for _ in range(20):
-                if any(expected in (body:=frame.locator('body').inner_text(timeout=2000)) and activity_expected in body and login_expected in body
+                if any(expected in (body:=frame.locator('body').inner_text(timeout=2000)) and activity_expected in body and login_expected in body and ui_expected in body
                        for frame in page.frames):
                     break
                 page.wait_for_timeout(1000)
@@ -73,4 +75,23 @@ with sync_playwright() as p:
     remember=frame.get_by_text('이 개인 기기에서 30일간 로그인 유지',exact=True)
     remember.wait_for(state='visible',timeout=45000)
     print('WORKSPACE_ENTRY_OK;LINE_SEED_LOADED;SALES_LOGIN_OPTION_OK')
+    page.close()
+    page=browser.new_page()
+    deadline=time.monotonic()+240
+    while time.monotonic()<deadline:
+        try:
+            page.goto('https://hwarang-calculator.streamlit.app/?stability_health=1',wait_until='domcontentloaded',timeout=45000)
+            for _ in range(15):
+                if any(ui_expected in f.locator('body').inner_text(timeout=2000) for f in page.frames):
+                    print('CALCULATOR_UI_RELEASE_OK '+ui_expected,flush=True)
+                    break
+                page.wait_for_timeout(1000)
+            else:
+                raise RuntimeError('Calculator release not ready')
+            break
+        except Exception:
+            print('Waiting for Calculator deployment',flush=True)
+            page.wait_for_timeout(5000)
+    else:
+        raise SystemExit('Expected calculator release was not observed.')
     browser.close()

@@ -39,6 +39,8 @@ if st.query_params.get("briefing_health") == "1":
     org_hash=hashlib.sha256(b"".join((Path(__file__).parent / "modules/shared" / name).read_bytes() for name in org_files)).hexdigest()[:16]
     st.code("HWARANG_ORGANIZATION_RELEASE="+org_hash)
     st.code("HWARANG_LOGIN_RELEASE="+hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:16])
+    from modules.shared.build_info import BUILD_ID
+    st.code("HWARANG_UI_RELEASE=" + BUILD_ID)
     st.stop()
 inject_global_styles()
 from modules.shared.workspace_design import apply_workspace_design

@@ -19,6 +19,11 @@ st.set_page_config(
 )
 st.set_option("client.toolbarMode", "minimal")
 
+if st.query_params.get("stability_health") == "1":
+    from modules.shared.build_info import BUILD_ID
+    st.code("HWARANG_UI_RELEASE=" + BUILD_ID)
+    st.stop()
+
 
 @st.cache_resource(show_spinner=False)
 def auth_service() -> HwarangAuthService:
@@ -124,6 +129,17 @@ def _isolated_brand() -> None:
     )
 
 
+@st.fragment
+def render_calculator_content(*, isolated=False, fixed_name=None):
+    if not isolated and st.session_state.get("hwcalc_shell_selection") != st.session_state.get("hwcalc_open"):
+        st.rerun()  # A route change also updates the sidebar selection.
+    # Keep authorization current even when only the calculator reruns.
+    if not _consume_workspace_launch(auth_service()):
+        st.stop()
+    from modules.calculators.calculator_center import run
+    run(isolated=isolated, fixed_name=fixed_name)
+
+
 def main() -> None:
     try:
         auth = auth_service()
@@ -156,17 +172,16 @@ def main() -> None:
             if not valid_deep_link or not st.session_state.get("hwcalc_open"):
                 st.error("유효한 계산기 링크가 아닙니다. 계산기 센터에서 다시 열어주세요.")
             else:
-                from modules.calculators.calculator_center import run
-                run(isolated=True, fixed_name=st.session_state.get("hwcalc_open"))
+                render_calculator_content(isolated=True, fixed_name=st.session_state.get("hwcalc_open"))
             from modules.shared.build_info import BUILD_ID
             st.markdown(f'<div class="hw-calc-isolated-footer">Planned &amp; Built by 박병선 팀장 · {BUILD_ID}</div>', unsafe_allow_html=True)
         return
 
     st.session_state["hwcalc_isolated_single"] = False
     render_sidebar()
+    st.session_state["hwcalc_shell_selection"] = st.session_state.get("hwcalc_open")
     with st.container(key="hw_calc_shell"):
-        from modules.calculators.calculator_center import run
-        run()
+        render_calculator_content()
 
 
 if __name__ == "__main__":

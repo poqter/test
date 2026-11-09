@@ -42,6 +42,7 @@ from io import BytesIO
 
 import openpyxl
 import streamlit as st
+from modules.shared.refresh import refresh_current
 from modules.shared.upload_ui import guarded_upload
 from openpyxl import Workbook
 from openpyxl.drawing.image import Image as XLImage
@@ -163,7 +164,7 @@ def run() -> None:
             st.markdown("**전체 보장분석 원본**")
             with st.expander('예시 파일 · 업로드 안내'):
                 from modules.consultation.analyzer_sample import sample_workbook
-                st.download_button('익명 예시 XLSX 내려받기', sample_workbook(), file_name='HWARANG_analyzer_sample.xlsx', mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                st.download_button('익명 예시 XLSX 내려받기', sample_workbook(), on_click="ignore", file_name='HWARANG_analyzer_sample.xlsx', mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
                 st.caption('XLSX는 계약사항 / 상품별보장내용 시트를 사용합니다. KB PDF는 인식 내용 확인 및 수정이 가능합니다.')
             uploaded_main = guarded_upload(
                 "전체 보장내용이 포함된 컨설팅보장분석.xlsx 또는 KB 보장분석 PDF를 업로드하세요",
@@ -190,12 +191,16 @@ def run() -> None:
             st.caption('선택한 날짜의 월을 사용합니다. 과거 결과 비교 시 해당 엑셀 생성월로 변경하세요.')
         if uploaded_main and (not is_pdf or pdf_state["ready"]):
             try:
-                with st.spinner('원본 자료를 읽고 있습니다...'):
+                from contextlib import nullcontext
+                parse_token = hashlib.sha256(main_bytes).hexdigest() + str(calculation_month)
+                cached_parse = st.session_state.get('analyzer_last_parse_token') == parse_token
+                with (nullcontext() if cached_parse else st.spinner('원본 자료를 읽고 있습니다...')):
                     if is_pdf and pdf_state.get('raw') is not None:
                         from modules.consultation.analyzer_pdf import convert_kb
                         parsed = convert_kb(pdf_state['raw'], calculation_month)
                     else:
                         parsed = parse_kb_pdf(main_bytes, calculation_month) if is_pdf else parse_source_file(main_bytes)
+                st.session_state['analyzer_last_parse_token'] = parse_token
             except Exception as exc:
                 parse_error = exc
                 from modules.shared.error_reporting import record_error, user_message
@@ -287,7 +292,6 @@ def run() -> None:
     with result_area:
         st.markdown("### 02 · 분석 결과 및 다운로드")
         if should_generate:
-            st.session_state.pop("analyzer_v2_result", None)
             st.session_state.pop("analyzer_v2_error", None)
             try:
                 with st.spinner("고객 상담용 보장분석 엑셀을 만들고 있습니다..."):
@@ -317,7 +321,7 @@ def run() -> None:
             st.error(error["message"])
             if st.button("분석 다시 시도", key="analyzer_retry"):
                 st.session_state.pop("analyzer_v2_error", None)
-                st.rerun()
+                refresh_current()
 
         result = st.session_state.get("analyzer_v2_result")
         if result_is_current(result, signature):
@@ -327,7 +331,7 @@ def run() -> None:
             col2.metric("분석 모드", result["mode"])
             col3.metric("보장항목", f"{result['coverage_count']}개")
             st.download_button(
-                "결과 엑셀 다운로드",
+                "결과 엑셀 다운로드", on_click="ignore",
                 data=result["bytes"],
                 file_name=result["filename"],
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

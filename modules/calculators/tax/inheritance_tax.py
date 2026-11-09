@@ -1385,7 +1385,7 @@ def legacy_run():
                 excel_bytes = build_excel_report(result, input_data, available_cash, death_benefit, other_liquidity)
                 file_name = f"상속세_예상계산_상담보고서_{now_kst():%Y%m%d_%H%M%S}.xlsx"
                 st.download_button(
-                    "📥 서식 적용 엑셀 보고서 다운로드",
+                    "📥 서식 적용 엑셀 보고서 다운로드", on_click="ignore",
                     data=excel_bytes,
                     file_name=file_name,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

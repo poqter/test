@@ -85,7 +85,8 @@ def workflow_button(label: str, step: str, key: str, *, primary=False):
     if st.button(label, key=key + '_go_' + step,
                  type='primary' if primary else 'secondary', use_container_width=True):
         st.session_state[key + '_pending'] = step
-        st.rerun()
+        from modules.shared.refresh import refresh_current
+        refresh_current()
 
 
 def tool_guide(title: str, introduction: str, steps: list[tuple[str, str]], criteria: str = "", caution: str = "") -> None:

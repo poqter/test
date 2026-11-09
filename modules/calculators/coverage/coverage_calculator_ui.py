@@ -253,14 +253,14 @@ def run(name, fields=None, calculator=None, caption=None):
             pdf_options = pdf_section_options("cov_pdf_" + name)
             if any(pdf_options.values()):
                 pdf = build_result_pdf(name, [(f"{f[0]} ({f[2]})", value) for f, value in zip(fields[name], args)], result, stamp, **pdf_options)
-                st.download_button("결과 PDF 저장", pdf, file_name=name + "_결과보고서.pdf", mime="application/pdf", key=name + "_customer", type="primary", icon=":material/download:", width="stretch")
+                st.download_button("결과 PDF 저장", pdf, on_click="ignore", file_name=name + "_결과보고서.pdf", mime="application/pdf", key=name + "_customer", type="primary", icon=":material/download:", width="stretch")
         with advisor:
             st.write(result.formula)
             st.caption("계산 시각: " + stamp)
             inputs = [{"입력 항목": f"{field[0]} ({field[2]})", "값": str(value)} for field, value in zip(fields[name], args)]
             st.dataframe(inputs, hide_index=True, width="stretch")
             st.dataframe([{key: float(value) if hasattr(value, "quantize") else value for key, value in row.items()} for row in result.rows], hide_index=True, width="stretch")
-            st.download_button("상세 계산 CSV 저장", csv_bytes, file_name=name + "_상세.csv", mime="text/csv", key=name + "_advisor")
+            st.download_button("상세 계산 CSV 저장", csv_bytes, on_click="ignore", file_name=name + "_상세.csv", mime="text/csv", key=name + "_advisor")
 
     from modules.calculators.input_design import jump_to_result
     jump_to_result(submitted, "coverage_calculator_ui")

@@ -154,19 +154,14 @@ def input_panels(key):
     [class*="st-key-hw_calc_"] [data-testid="stCaptionContainer"] {color:#426e98!important}
     .hw-money-hint{font-size:12px;color:#426e98;text-align:right;margin-top:-6px}
     </style>''', unsafe_allow_html=True)
-    from contextlib import contextmanager
     with st.container(key='hw_calc_'+key):
         left,right=st.columns([1.25,1],gap='large')
         inputs=left.container(border=True, key='hw_calc_input_'+key)
         results=right.container(border=True, key='hw_calc_result_'+key)
         with results:
-            hint=st.empty()
-            hint.info('🧮 입력 조건을 확인한 뒤 계산하기를 눌러주세요.')
-    @contextmanager
-    def result_context():
-        hint.empty()
-        with results: yield
-    return inputs,result_context()
+            st.caption('계산 결과 · 조건을 입력하고 계산하기를 눌러주세요.')
+    return inputs,results
+
 
 
 def _primary_metric_index(items, preferred_labels=()):

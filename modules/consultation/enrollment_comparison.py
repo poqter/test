@@ -6,6 +6,7 @@ import html, io, json, re
 
 import pandas as pd
 import streamlit as st
+from modules.shared.refresh import refresh_current
 from modules.shared.runtime_cache import cached, digest_bytes, session_export
 from modules.shared.ui_components import page_header, workflow_steps, workflow_button
 
@@ -203,10 +204,14 @@ def run():
     page_header('고객 상담','고객용 비교표 제작기','보험료와 필요한 보장만 입력해 비교 자료를 만드세요.','CB')
     st.session_state.setdefault('enroll_model',new_model());m=migrate(st.session_state['enroll_model']);st.session_state['enroll_model']=m
     rev=st.session_state.get('enroll_revision',0)
-    def refresh():st.session_state['enroll_revision']=rev+1;st.rerun()
+    sync_widgets=st.session_state.pop('enroll_sync_widgets',False)
+    def refresh():
+        st.session_state['enroll_revision']=rev+1
+        st.session_state['enroll_sync_widgets']=True
+        refresh_current()
     def widget(kind,label,obj,key,ident,**kw):
-        wk=f'enroll_v2_{rev}_{ident}_{key}'
-        if wk not in st.session_state:st.session_state[wk]=obj[key]
+        wk=f'enroll_v3_{ident}_{key}'
+        if wk not in st.session_state or sync_widgets:st.session_state[wk]=obj[key]
         obj[key]=getattr(st,kind)(label,key=wk,**kw);return obj[key]
     def conditions(xs,label,priced=False):
         for i,x in enumerate(list(xs),1):
@@ -235,14 +240,15 @@ def run():
             refresh()
         if no.button('취소',key='enroll_example_cancel'):
             st.session_state['enroll_example_pending']=False
-            st.rerun()
+            refresh_current()
     st.caption('예시는 가상 자료입니다. 공통 내용과 A·B·C안이 채워지며, 입력 후 자유롭게 수정할 수 있습니다.')
     steps=['1. 기본·가입 조건','2. 보장 묶음','3. 미리보기·PDF 저장']
     step=workflow_steps(steps,'enroll_step')
     if step==steps[0]:
         widget('text_input','자료 제목',m,'title','base',max_chars=100)
         widget('checkbox','C안 추가',m,'third','base')
-        chosen=st.radio('기본 입력 방식',MODES,index=MODES.index(m['mode']),key=f'enroll_globalmode_{rev}',horizontal=True)
+        if sync_widgets:st.session_state['enroll_globalmode']=m['mode']
+        chosen=st.radio('기본 입력 방식',MODES,index=MODES.index(m['mode']),key='enroll_globalmode',horizontal=True)
         if chosen!=m['mode']:
             m['mode']=chosen
             for p in 'ABC':
@@ -263,7 +269,8 @@ def run():
                         copy_conditions(m,'A',p);refresh()
 
                 override=widget('checkbox','이 안만 입력 방식 별도 선택',plan,'override',p)
-                mode=st.radio('입력 방식',MODES,index=MODES.index(plan['mode']),key=f'enroll_mode_{rev}_{p}',horizontal=True) if override else m['mode']
+                if sync_widgets:st.session_state['enroll_mode_'+p]=plan['mode']
+                mode=st.radio('입력 방식',MODES,index=MODES.index(plan['mode']),key='enroll_mode_'+p,horizontal=True) if override else m['mode']
                 if mode!=plan['mode']:switch_mode(plan,mode);refresh()
                 if plan['mode']==MODES[0]:
                     widget('number_input','공통 제외 월 보험료 (원)' if m['common_enabled'] else '월 보험료 합계 (원)',plan,'premium',p,min_value=0,step=1000,value=None)
@@ -299,14 +306,12 @@ def run():
             if only and not g['selected']:continue
             left,right=st.columns([.07,.93],gap='small')
             with left:
-                old=g['selected'];widget('checkbox',g['name']+' PDF 포함',g,'selected',g['id'],label_visibility='collapsed')
-                if old!=g['selected']:
-                    st.session_state['enroll_expand_'+g['id']]=st.session_state.get('enroll_expand_'+g['id'],0)+1
-                    st.rerun()
+                widget('checkbox',g['name']+' PDF 포함',g,'selected',g['id'],label_visibility='collapsed')
+                # Inclusion does not remount the editor or force its open state.
             count=sum(bool(m['plans'][p]['cells'][g['id']]['summary'].strip()) or m['plans'][p]['cells'][g['id']]['absent'] for p in active(m))
             with right:
-                with st.container(key=f'enroll_group_{g["id"]}_{st.session_state.get("enroll_expand_"+g["id"],0)}'):
-                    with st.expander(f'{g["name"]} · {count}/{len(active(m))}안 작성',expanded=g['selected']):
+                with st.container(key=f'enroll_group_{g["id"]}'):
+                    with st.expander(f'{g["name"]} · {count}/{len(active(m))}안 작성',expanded=g['selected'],key='enroll_editor_'+g['id']):
                         for p,col in zip(active(m),st.columns(len(active(m)))):
                             with col:
                                 c=m['plans'][p]['cells'][g['id']];st.markdown('**'+m['plans'][p]['name']+'**')
@@ -337,12 +342,20 @@ def run():
         st.caption('기본 설명이 입력되어 있습니다. 추천안과 이유를 실제 비교 결과에 맞게 수정하세요. 모두 지우면 PDF에서 안내 표가 생략됩니다.')
         headers,rows=table_data(m);st.dataframe(pd.DataFrame(rows,columns=headers),hide_index=True,width='stretch')
         errors=issues(m);pdf=None
-        pdf=build_pdf(m)
-        
-        def _page_count():
-            from pypdf import PdfReader
-            return len(PdfReader(io.BytesIO(pdf)).pages)
-        pages=cached("meta:enrollment_comparison:pdf_pages",digest_bytes(pdf),_page_count)
+        try:
+            pdf=build_pdf(m)
+            def _page_count():
+                from pypdf import PdfReader
+                return len(PdfReader(io.BytesIO(pdf)).pages)
+            pages=cached("meta:enrollment_comparison:pdf_pages",digest_bytes(pdf),_page_count)
+        except Exception as exc:
+            from modules.shared.error_reporting import record_error, user_message
+            st.error(user_message(record_error(exc, 'comparison.pdf')))
+            st.caption('입력 내용은 유지됩니다. 다시 시도하거나 보장 묶음을 수정하세요.')
+            if st.button('PDF 다시 만들기',key='enroll_pdf_retry'):
+                refresh_current()
+            workflow_button('← 보장 묶음',steps[1],'enroll_step')
+            return
         if pages==1:st.success('A4 가로 한 장 출력 가능')
         else:
             st.warning(f'한 장 분량을 초과하여 총 {pages}페이지로 출력됩니다. 그대로 PDF를 저장할 수 있습니다.')
@@ -354,6 +367,6 @@ def run():
         if st.session_state.get('enroll_last_sig')!=sig:st.session_state['enroll_last_sig']=sig;st.session_state['enroll_reviewed']=False
         reviewed=st.checkbox('현재 보험료·조건·보장 내용을 확인했습니다.',key='enroll_reviewed',disabled=bool(errors))
         if reviewed and not errors:
-            st.download_button('PDF 저장',pdf,filename(m['title'])+'.pdf','application/pdf',width='stretch')
+            st.download_button('PDF 저장',pdf,filename(m['title'])+'.pdf','application/pdf', on_click="ignore",width='stretch')
 
         workflow_button('← 보장 묶음',steps[1],'enroll_step')

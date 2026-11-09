@@ -28,7 +28,7 @@ def render_briefing(parsed):
     try:
         profile=st.session_state.get('login_profile') or {}
         data=current_brief_pdf(parsed,profile=profile,detailed=kind=='자세한 브리핑')
-        st.download_button('고객용 브리핑 PDF 다운로드',data=data,file_name='현재_보험_보장_브리핑.pdf',mime='application/pdf',use_container_width=True,key='analyzer_customer_brief_pdf')
+        st.download_button('고객용 브리핑 PDF 다운로드', on_click="ignore",data=data,file_name='현재_보험_보장_브리핑.pdf',mime='application/pdf',use_container_width=True,key='analyzer_customer_brief_pdf')
     except Exception as exc:
         from modules.shared.error_reporting import record_error, user_message
         reference=record_error(exc,'analyzer.customer_briefing')

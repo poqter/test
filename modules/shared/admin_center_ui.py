@@ -15,6 +15,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 import streamlit as st
+from modules.shared.refresh import refresh_current
 
 from modules.shared.ai_guardrails import (
     credit_display_state,
@@ -675,7 +676,7 @@ def _render_accounts(auth: HwarangAuthService, actor_id: str) -> None:
         if len(selected_users) == 1 and st.button("선택 계정 상세", type="primary", use_container_width=True):
             st.session_state["hw_admin_selected_user_id"] = str(selected_users[0]["user_id"])
             st.session_state["hw_admin_user_page"] = "overview"
-            st.rerun()
+            refresh_current()
     with c2:
         if selected_users:
             st.caption(f"표에서 {len(selected_users)}명 선택됨")
@@ -779,7 +780,7 @@ def _render_accounts(auth: HwarangAuthService, actor_id: str) -> None:
         c1, c2 = st.columns(2)
         if c1.button("일괄 처리 취소", key="hw_admin_bulk_asset_cancel_v4", use_container_width=True):
             st.session_state.pop("hw_admin_bulk_asset_pending_v4", None)
-            st.rerun()
+            refresh_current()
         if c2.button(
             f"{target_count:,}명에게 적용",
             key="hw_admin_bulk_asset_apply_v4",
@@ -855,7 +856,7 @@ def _render_accounts(auth: HwarangAuthService, actor_id: str) -> None:
         ):
             st.session_state["hw_admin_bulk_asset_pending_v4"] = retry
             st.session_state.pop("hw_admin_bulk_asset_retry_v4", None)
-            st.rerun()
+            refresh_current()
 
 def _render_user_header(user: dict[str, Any]) -> None:
     st.button("← 계정 목록",key="hw_admin_back_users",on_click=_back_to_accounts)
@@ -926,7 +927,9 @@ def _apply_user_changes(auth: HwarangAuthService, actor_id: str, uid: str, chang
                                 hw_app_access=updated["app_access"], hw_feature_permissions=set(updated["feature_permissions"]))
     st.session_state.pop("hw_admin_reference_cache", None); _clear_admin_read_cache()
     st.success("계정과 권한을 저장했습니다.")
-    st.rerun()
+    if uid == actor_id:
+        st.rerun()  # Re-evaluate the shell and access after self-permission changes.
+    refresh_current()
 
 
 def _user_permissions(auth: HwarangAuthService, actor_id: str, uid: str) -> None:
@@ -1025,7 +1028,7 @@ def _user_permissions(auth: HwarangAuthService, actor_id: str, uid: str) -> None
         c1, c2 = st.columns(2)
         if c1.button("취소", key=f"hw_cancel_danger_{uid}", use_container_width=True):
             st.session_state.pop(pending_key, None)
-            st.rerun()
+            refresh_current()
         if c2.button("위험 변경 적용", key=f"hw_apply_danger_{uid}", type="primary", use_container_width=True):
             st.session_state.pop(pending_key, None)
             _apply_user_changes(auth, actor_id, uid, pending)
@@ -1113,7 +1116,7 @@ def _user_ai(auth: HwarangAuthService, actor_id: str, uid: str) -> None:
                     },
                 )
                 st.success("훈련 크레딧을 반영했습니다.")
-                st.rerun()
+                refresh_current()
 
     with right:
         st.markdown("##### Voice 조정")
@@ -1157,7 +1160,7 @@ def _user_ai(auth: HwarangAuthService, actor_id: str, uid: str) -> None:
                     },
                 )
                 st.success("Voice 이용량을 반영했습니다.")
-                st.rerun()
+                refresh_current()
 
     usage = _safe_rows(
         auth,
@@ -1233,10 +1236,10 @@ def _pager(prefix: str, page: int, has_next: bool) -> int:
     c1, c2, c3 = st.columns([1, 1, 4])
     if c1.button("← 이전", key=f"{prefix}_prev", disabled=page <= 0, use_container_width=True):
         st.session_state[f"{prefix}_page"] = max(0, page - 1)
-        st.rerun()
+        refresh_current()
     if c2.button("다음 →", key=f"{prefix}_next", disabled=not has_next, use_container_width=True):
         st.session_state[f"{prefix}_page"] = page + 1
-        st.rerun()
+        refresh_current()
     c3.caption(f"{page + 1} 페이지")
     return page
 
@@ -1484,7 +1487,7 @@ def _render_settings(auth: HwarangAuthService, actor_id: str) -> None:
             },
         )
         st.success("AI 서비스 설정을 저장했습니다.")
-        st.rerun()
+        refresh_current()
 
     st.markdown('<div class="hw-section-head">크레딧 · 예산 정책</div>', unsafe_allow_html=True)
     with st.form("hw_credit_policy_v2"):
@@ -1548,7 +1551,7 @@ def _render_settings(auth: HwarangAuthService, actor_id: str) -> None:
             },
         )
         st.success("크레딧·예산 정책을 저장했습니다. 월 기본량 변경은 기존 사용자의 다음 월 갱신부터 적용됩니다.")
-        st.rerun()
+        refresh_current()
 
     st.markdown('<div class="hw-section-head">AI 모델</div>', unsafe_allow_html=True)
     policies = _safe_rows(
@@ -1602,7 +1605,7 @@ def _render_settings(auth: HwarangAuthService, actor_id: str) -> None:
         c1, c2 = st.columns(2)
         if c1.button("취소", key="hw_cancel_ai_kill_v2", use_container_width=True):
             st.session_state[confirm_key] = False
-            st.rerun()
+            refresh_current()
         if c2.button("AI 서비스 긴급 정지 확인", key="hw_apply_ai_kill_v2", type="primary", use_container_width=True):
             _safe_rpc(
                 auth,
@@ -1620,16 +1623,17 @@ def _render_settings(auth: HwarangAuthService, actor_id: str) -> None:
             )
             st.session_state[confirm_key] = False
             st.warning("AI 서비스를 정지했습니다.")
-            st.rerun()
+            refresh_current()
     else:
         if st.button("AI 서비스 긴급 정지", key="hw_start_ai_kill_v2", use_container_width=True):
             st.session_state[confirm_key] = True
-            st.rerun()
+            refresh_current()
 
 
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+@st.fragment
 def render(auth: HwarangAuthService) -> None:
     _inject_css()
     try:

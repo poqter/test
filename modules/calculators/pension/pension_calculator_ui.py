@@ -271,7 +271,7 @@ def run():
                 )
                 st.download_button(
                     "결과 PDF 저장",
-                    pdf,
+                    pdf, on_click="ignore",
                     file_name="연금계산_결과보고서.pdf",
                     mime="application/pdf",
                     type="primary",
@@ -301,7 +301,7 @@ def run():
             st.dataframe([{key: float(value) for key, value in row.items()} for row in result.rows], hide_index=True)
             st.download_button(
                 "상세 계산 CSV 저장",
-                csv_data,
+                csv_data, on_click="ignore",
                 file_name="연금계산_상세.csv",
                 mime="text/csv",
             )

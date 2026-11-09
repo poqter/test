@@ -12,7 +12,7 @@ try:
  with sync_playwright() as p:
   browser=p.chromium.launch(headless=True,args=['--no-sandbox']);page=browser.new_page(viewport={'width':1440,'height':1000})
   page.goto('http://127.0.0.1:8519')
-  expect(page.locator('.st-key-brand_tile_sales')).to_be_visible()
+  expect(page.locator('.st-key-brand_feature_analysis')).to_be_visible()
   started=time.monotonic()
   expect(page.get_by_role('heading',name='자료·교육',exact=True)).to_be_visible()
   expect(page.get_by_text('오늘의 브리핑 · 게시 상태 확인 중',exact=True)).to_be_visible()
@@ -22,8 +22,8 @@ try:
   assert box['x']>=brand['x'] and box['x']+box['width']<=brand['x']+brand['width'],(brand,box)
   collapse.click();opener=page.get_by_test_id('stExpandSidebarButton');expect(opener).to_be_visible()
   assert opener.bounding_box()['y']<48
-  page.locator('.st-key-brand_tile_sales button').click()
-  expect(page.get_by_role('heading',name='OPENED sales_activity')).to_be_visible(timeout=3000)
+  page.locator('.st-key-brand_analyze button').click()
+  expect(page.get_by_role('heading',name='OPENED analyzer')).to_be_visible(timeout=3000)
   assert time.monotonic()-started<6,'Navigation waited for an eight-second briefing request'
   expect(page.get_by_test_id('stException')).to_have_count(0)
   page.screenshot(path='/tmp/home-instant.png')
