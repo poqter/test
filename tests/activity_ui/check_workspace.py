@@ -41,6 +41,7 @@ try:
         dlg.get_by_role('button',name='일정 수정',exact=True).click()
         page.set_viewport_size({'width':1280,'height':600})
         expect(dlg.get_by_role('button',name='변경 저장',exact=True)).to_be_visible()
+        dlg.evaluate("async e=>{await Promise.all(e.getAnimations().map(a=>a.finished.catch(()=>{})))}")
         header=dlg.locator('.panel-head')
         y=header.bounding_box()['y']
         dlg.evaluate('e=>e.scrollTop=e.scrollHeight')
@@ -52,7 +53,7 @@ try:
         dlg.get_by_label('일정명',exact=True).press('Tab')
         dlg.get_by_role('button',name='변경 저장',exact=True).click()
         expect(dlg.get_by_text('브라우저 저장한 제목',exact=True)).to_be_visible()
-        expect(cal.locator('.cell[data-key="2026-11-06"] .chip').first).to_have_text('브라우저 저장한 제목')
+        expect(cal.locator('.cell[data-key="2026-11-06"] .chip').first).to_have_text('14:00 브라우저 저장한 제목')
         expect(page.get_by_text('전체 실행 횟수 1',exact=True)).to_be_visible()
         # Visible delete action, confirmation, calendar removal and restore.
         expect(dlg.get_by_role('button',name='일정 삭제',exact=True)).to_have_css('background-color','rgb(255, 241, 240)')
