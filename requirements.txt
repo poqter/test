@@ -1,5 +1,5 @@
 # Direct runtime dependencies only.
-# CBT UX v2 release 2026-10-27: rebuild Cloud runtime to replace cached Python modules.
+# Runtime stability release 2026-11-10: restart once to activate production watcher policy.
 # Exact deployment versions are managed in constraints.txt to keep one source of truth.
 -c constraints.txt
 streamlit

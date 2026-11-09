@@ -64,11 +64,11 @@ if not st.session_state['fixture_reports']:
 render(db,date(2026,11,6))
 ''')
     assert not at.exception
-    button(at,'테스트 구성원 · 검토 대기').click().run()
+    button(at,'테스트 구성원 · 검토 대기 · 지원 요청').click().run()
     assert not at.exception and not at.session_state['fixture_writes']
     button(at,'확인 완료').click().run()
     assert not at.exception and len(at.session_state['fixture_checks'])==1
-    assert button(at,'확인 완료').disabled
+    assert button(at,'피드백 저장')
     row=at.session_state['fixture_reports'][0];row['revision']+=1
     at.run()
     assert not button(at,'확인 완료').disabled

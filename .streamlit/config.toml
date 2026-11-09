@@ -10,6 +10,8 @@ baseFontSize = 16
 gatherUsageStats = false
 
 [server]
+# Production releases load on process restart; avoid concurrent module eviction.
+fileWatcherType = "none"
 enableStaticServing = true
 enableCORS = true
 enableXsrfProtection = true

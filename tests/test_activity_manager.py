@@ -37,7 +37,7 @@ def test_member_week_navigation_and_weekends_do_not_expand_daily_rows():
 
 def test_manager_summary_filters_and_member_permission():
     at=app('st.session_state.setdefault("sales_menu","구성원 현황")\ncenter.run()')
-    button(at,'지원 요청 0건').click().run()
+    next(c for c in at.segmented_control if c.label=='표시').set_value('지원 요청').run()
     assert not at.exception
     assert any('조건에 맞는 구성원' in i.value for i in at.info)
     denied=app('redesign.member_detail(FakeRecords(),"not-in-scope",date(2026,11,6),"주간")')

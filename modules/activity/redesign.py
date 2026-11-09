@@ -302,6 +302,17 @@ def member_detail(db,uid,day,period):
     if anchor_key not in st.session_state or route.get("type")=="member" and not route.get("anchor_initialized"):
         st.session_state[anchor_key]=day
         if route.get("type")=="member":route["anchor_initialized"]=True
+    peers=[u for u in st.session_state.get('manager_visible_members',[]) if u in db.members]
+    if ux.compact() and uid in peers:
+        index=peers.index(uid)
+        with st.container(horizontal=True):
+            previous=st.button('‹ 이전 직원',disabled=index==0,key='member_peer_prev')
+            st.caption(f'{index+1} / {len(peers)}명')
+            following=st.button('다음 직원 ›',disabled=index==len(peers)-1,key='member_peer_next')
+        if previous or following:
+            target_uid=peers[index+(-1 if previous else 1)]
+            st.session_state['manager_selected']=target_uid
+            ux.navigate({'type':'member','uid':target_uid,'day':str(day),'period':period})
     st.subheader(member["label"])
     period=st.segmented_control("보기",["일일","주간"],default=period,key="member_period_"+uid,required=True,label_visibility="collapsed")
     def shift(amount):
@@ -333,17 +344,17 @@ def member_detail(db,uid,day,period):
                 if event_id and st.button("일정 확인",key=f"member_support_{uid}_{i}"):ux.navigate({"type":"event","id":event_id})
     def one(target):
         mobile=ux.compact()
-        tab=st.segmented_control("상세 내용",["일정","활동 기록"],default="일정",required=True,key="member_content_"+uid,label_visibility="collapsed") if mobile else None
+        tab=None
         a,b=st.columns([1.1,1]) if not mobile else (st.container(),st.container())
-        if not mobile or tab=="일정":
+        if tab is None or tab=="일정":
             with a:
                 st.markdown("**일정**")
                 event_list(db,[e for e in events if e["day"]==str(target)],"member_"+str(target),show_result_actions=False)
-        if not mobile or tab=="활동 기록":
+        if tab is None or tab=="활동 기록":
             with b:
                 st.markdown("**일일 활동 기록**")
                 row=next((r for r in records if r["day"]==str(target) and r["period"]=="일일"),None)
-                if row:
+                if row and (row["submitted"] or uid==db.uid):
                     count_grid(row["data"].get("counts",{}))
                     ux.details([("진행사항",row["data"].get("note")),("지원 요청",row["data"].get("help"))])
                     if row["submitted"]:report_detail(db,row,show_content=False)

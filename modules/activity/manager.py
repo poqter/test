@@ -60,25 +60,10 @@ def render(db,today):
         from modules.activity.weekly_review import render as weekly_review
         weekly_review(db,today)
         return
-    a,b,c=st.columns([1,1,1.3])
-    day=a.date_input('조회 기준일',today,key='sales_overview_day')
-    period=b.segmented_control('기록 구분',['일일','주간'],default='주간',required=True,key='sales_overview_period')
-    start,end=bounds(day,'주간' if period=='주간' else '날짜별')
-    members=db.members.copy()
+    from modules.activity import manager_ui as ui
+    ui.styles()
+    day,period,start,end,members,query,units=ui.controls(db,today)
     admin=st.session_state['hwarang_auth']['profile'].get('role')=='super_admin'
-    if admin:
-        units={r['id']:r['name'] for r in db.request('GET','organization_units',{'select':'id,name'})}
-        choices=list(dict.fromkeys([db.me['unit'],'all',*(m['unit'] for m in members.values())]))
-        unit=c.selectbox('조회 범위',choices,format_func=lambda u:'전체 조직' if u=='all' else units.get(u,'소속 미지정'),key='sales_overview_unit')
-        if unit!='all':members={u:m for u,m in members.items() if m['unit']==unit}
-    assignments=db.request('GET','sales_team_assignments',{'select':'leader,member'})
-    leaders={r['leader'] for r in assignments if r['leader'] in members}
-    if leaders:
-        leader=st.selectbox('팀 조회',[None,*sorted(leaders)],format_func=lambda u:db.members[u]['label']+' 담당 팀' if u else '전체 팀',key='manager_team')
-        if leader:
-            ids={r['member'] for r in assignments if r['leader']==leader}|{leader}
-            members={u:m for u,m in members.items() if u in ids}
-    if st.query_params.get('view')=='mobile-calendar':registration_summary(db,today,members)
     events=db.period('sales_events',start,end)
     reports=db.period('sales_reports',start,end)
     contracts=db.period('sales_contracts',start,end)
@@ -87,41 +72,38 @@ def render(db,today):
     filters=[('지원 요청','help'),('결과 미입력','missing'),('일일 기록 미제출','unsubmitted')]
     labels=['전체',*(label for label,_ in filters)]
     if st.session_state.get('sales_member_status') not in labels:st.session_state['sales_member_status']='전체'
-    def choose(label):st.session_state['sales_member_status']=label
-    with st.container(key='manager_summary'):
-        columns=st.columns(2 if ux.compact() else 4)
-        for i,(label,field) in enumerate(filters):
-            count=sum(r[field] for r in summary) if field!='unsubmitted' else sum(r[field]>0 for r in summary)
-            columns[i%len(columns)].button(f'{label} {count}'+('명' if field=='unsubmitted' else '건'),key='manager_'+field,on_click=choose,args=(label,),width='stretch')
-    st.caption(f'{start} – {end} · 활동은 완료 일정 기준 · 청약은 접수일 기준 · 미제출은 조회 기간 중 오늘까지의 '+('평일' if period=='주간' else '조회일')+' 기준입니다.')
-    with st.expander('오늘 먼저 확인할 사항',expanded=any(r['help'] or r['late'] for r in summary)):
-        attention=[(r,s) for r in summary for s in r['support']]
-        if not attention:st.caption('선택 기간에 등록된 지원 요청이 없습니다.')
-        for r,item in attention[:5]:
-            a,b=st.columns([5,1])
-            a.write(f"**{r['name']}** · {item['day']} · {item['text']}")
-            if b.button('확인',key='attention_'+r['uid']+item['type']+item['id']):
-                if item['type']=='event':ux.navigate({'type':'event','id':item['id']})
-                else:ux.navigate({'type':'member','uid':r['uid'],'day':item['day'],'period':'일일'})
-        if len(attention)>5:st.caption(f'외 {len(attention)-5}건 · 아래 직원 목록에서 확인하세요.')
-        st.caption('지원 요청은 기록된 요청 기준이며 처리 완료 여부를 뜻하지 않습니다.')
-    st.markdown('### 직원별 활동 요약')
-    query=st.text_input('직원 이름 검색',placeholder='이름을 입력하세요',key='sales_member_search').strip().casefold()
-    status=st.segmented_control('표시',labels,required=True,key='sales_member_status')
+    counts={'전체':len(summary),**{label:sum(r[field]>0 for r in summary) for label,field in filters}}
+    if period=='일일':
+        from modules.activity.status_policy import unregistered_exclusions
+        confirmations={r['owner'] for r in db.request('GET','sales_empty_days',{'day':'eq.'+str(day),'select':'owner'})}
+        registered={e['owner'] for e in events if e['status'] not in ('취소','연기')}
+        excluded=unregistered_exclusions(db.auth,[u for u in members if u not in registered and u not in confirmations])
+        for r in summary:r['unregistered']=int(r['uid'] not in registered and r['uid'] not in confirmations and r['uid'] not in excluded)
+        filters.append(('일정 미등록','unregistered'));labels.append('일정 미등록')
+        counts['일정 미등록']=sum(r['unregistered'] for r in summary)
+    status=st.segmented_control('표시',labels,default='전체',required=True,key='manager_status_v2',format_func=lambda label:label+' '+str(counts[label])+'명')
+    st.caption('활동은 완료 일정 기준 · 청약은 접수일 기준')
     field=dict(filters).get(status)
     visible=[r for r in summary if query in r['name'].casefold() and (not field or r[field]>0)]
     st.caption(f'검색 결과 {len(visible)}명 / 조회 범위 {len(summary)}명')
     if not visible:st.info('조건에 맞는 구성원이 없습니다.')
-    signature=tuple(r['uid'] for r in visible)
+    if not visible:return
+    ids=[r['uid'] for r in visible]
+    st.session_state['manager_visible_members']=ids
+    selected=st.session_state.get('manager_selected')
+    if selected not in ids:selected=ids[0];st.session_state['manager_selected']=selected
+    def select(uid):st.session_state['manager_selected']=uid
+    signature=tuple(ids)
     if st.session_state.get('manager_list_signature')!=signature:
         st.session_state['manager_list_signature']=signature
         st.session_state['manager_list_page']=1
     pages=(len(visible)+24)//25
     if pages>1:
         page=st.selectbox('목록 페이지',range(1,pages+1),key='manager_list_page',format_func=lambda n:f'{n} / {pages} 페이지')
-        st.caption(f'{(page-1)*25+1}–{min(page*25,len(visible))}번째 직원 · 상단 요약은 조회 범위 전체 기준입니다.')
         visible=visible[(page-1)*25:page*25]
-    with st.container(key='manager_table'):
+    mobile=ux.compact()
+    left,right=st.columns([1.5,1]) if not mobile else (st.container(),None)
+    with left,st.container(key='manager_table'):
         if not ux.compact():
             cols=st.columns([2,1.4,0.6,0.6,0.6,0.6,0.8,2.2])
             for col,label in zip(cols,['직원','기록 제출',*CODES,'청약','확인할 사항']):col.markdown('**'+label+'**')
@@ -130,20 +112,27 @@ def render(db,today):
             submission=f"{r['submitted']}/{r['required']}일 제출" if r['required'] else '예정'
             with st.container(key='manager_row_'+r['uid']):
                 if ux.compact():
-                    if st.button(r['name']+' ›',key='member_open_'+r['uid'],width='stretch'):ux.navigate({'type':'member','uid':r['uid'],'day':str(day),'period':period})
+                    if st.button(r['name']+' ›',key='member_open_'+r['uid'],width='stretch'):
+                        select(r['uid']);ux.navigate({'type':'member','uid':r['uid'],'day':str(day),'period':period})
                     st.caption(submission+' · '+' · '.join(f'{k} {r["counts"][k]}' for k in CODES)+f' · 청약 {r["contracts"]}건')
                     st.caption(flags)
                 else:
                     cols=st.columns([2,1.4,0.6,0.6,0.6,0.6,0.8,2.2],vertical_alignment='center')
-                    if cols[0].button(r['name']+' ›',key='member_open_'+r['uid'],width='stretch'):ux.navigate({'type':'member','uid':r['uid'],'day':str(day),'period':period})
+                    cols[0].button(r['name'],key='member_open_'+r['uid'],width='stretch',on_click=select,args=(r['uid'],),type='primary' if r['uid']==selected else 'secondary')
                     cols[1].write(submission)
                     for col,k in zip(cols[2:6],CODES):col.write(str(r['counts'][k]))
                     cols[6].write(f'{r["contracts"]}건');cols[7].caption(flags)
-    with st.expander('청약·계약 실적',key='manager_perf',on_change='rerun') as panel:
-        if panel.open:performance(db,day,members,bounds,selected_member=False,key='overview_perf',period_range=(start,end))
-    with st.expander('상담 전환',key='overview_conv_open',on_change='rerun') as panel:
-        if panel.open:conversions(db,start,end,members)
-    if admin:admin_settings(db,start,end)
+    if right is not None:
+        with right,st.container(key='manager_detail'):
+            ui.navigation(ids,selected,'manager_nav_')
+            st.subheader(members[selected]['label'])
+            ui.daily_reference(db,selected,start,end,today,'manager_daily_'+selected,records=reports,events=[e for e in events if e['owner']==selected])
+    with st.expander('추가 통계',key='manager_extra',on_change='rerun') as extra:
+        if extra.open:
+            performance(db,day,members,bounds,selected_member=False,key='overview_perf',period_range=(start,end))
+            with st.expander('상담 전환',key='overview_conv_open',on_change='rerun') as panel:
+                if panel.open:conversions(db,start,end,members)
+    if admin and not members:admin_settings(db,start,end)
 
 
 def styles():

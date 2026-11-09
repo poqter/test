@@ -81,7 +81,7 @@ def test_event_edit_preserves_duration_and_revision():
 def test_overview_and_member_detail_render():
     at=app('st.session_state.setdefault("sales_menu","구성원 현황")\ncenter.run()')
     assert not at.exception
-    button(at,"테스트 구성원 ›").click().run()
+    button(at,"테스트 구성원").click().run()
     assert not at.exception
     assert any(s.value=="테스트 구성원" for s in at.subheader)
 

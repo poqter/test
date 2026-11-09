@@ -50,7 +50,7 @@ if st.query_params.get("briefing_health") == "1":
     st.code("HWARANG_BRIEFING_RELEASE=" + release['engine_version'] +
             ";READY=" + str(release['code_matches_release']).lower())
     import hashlib
-    activity_files=("record_editor.py","weekly_review.py","read_state.py","center.py","redesign.py","manager.py","daily.py","daily_bridge.html","ux.py","contracts.py","calendar_view/index.html","mobile.py","calendar_bridge.html","device.py","calendar_service.py","calendar_view/persistent.js","calendar_view/sync.js","calendar_view/realtime.js","calendar_view/host.js","workspace_calendar.py","../shell/workspace_v2.py","../shell/home_briefing.py","../shared/workspace_design.css")
+    activity_files=("record_editor.py","manager_ui.py","weekly_review.py","read_state.py","center.py","redesign.py","manager.py","daily.py","daily_bridge.html","ux.py","contracts.py","calendar_view/index.html","mobile.py","calendar_bridge.html","device.py","calendar_service.py","calendar_view/persistent.js","calendar_view/sync.js","calendar_view/realtime.js","calendar_view/host.js","workspace_calendar.py","../shell/workspace_v2.py","../shell/home_briefing.py","../shared/workspace_design.css")
     activity_hash=hashlib.sha256(b"".join((Path(__file__).parent / "modules/activity" / name).read_bytes() for name in activity_files)).hexdigest()[:16]
     st.code("HWARANG_ACTIVITY_RELEASE="+activity_hash)
     org_files=("organization_picker.py","account_admin_ui.py","admin_center_ui.py","hwarang_auth.py")
@@ -391,16 +391,6 @@ def main() -> None:
     permission_role = st.session_state.get("login_user")
     permitted = allowed_ids(permission_role)
     st.session_state["ws_allowed_ids"] = permitted
-    if "sales_activity" in permitted:
-        # Upgrade cached command handlers in existing desktop/mobile sessions.
-        from modules.activity import calendar_service
-        if getattr(calendar_service, "NULLABLE_TIME_PROTOCOL", 0) < 3:
-            from importlib import reload
-            from threading import Lock
-            lock = calendar_service.__dict__.setdefault("_time_upgrade_lock", Lock())
-            with lock:
-                if getattr(calendar_service, "NULLABLE_TIME_PROTOCOL", 0) < 3:
-                    reload(calendar_service)
     if st.query_params.get("view") == "mobile-calendar":
         if "sales_activity" not in permitted:
             st.error("영업활동 관리 이용 권한을 확인해 주세요.")
@@ -466,18 +456,6 @@ def main() -> None:
     # Keep legacy embedded sessions working; the home now opens the separate app.
     host_slot = st.container(key="sales_calendar_host")
     hosted = "sales_activity" in permitted and active == "sales_activity"
-    if hosted:
-        # A long-lived Cloud session can retain the old lazy-imported center
-        # after a source deployment. Upgrade that module once, without dropping
-        # the user's authentication or drafts, before dispatching the page.
-        from modules.activity import center as activity_center
-        if getattr(activity_center, "WORKSPACE_HOST_PROTOCOL", 0) < 1:
-            from importlib import reload
-            from threading import Lock
-            lock = activity_center.__dict__.setdefault("_host_upgrade_lock", Lock())
-            with lock:
-                if getattr(activity_center, "WORKSPACE_HOST_PROTOCOL", 0) < 1:
-                    reload(activity_center)
     st.session_state["sales_workspace_host_enabled"] = hosted
     st.session_state.pop("sales_host_args", None)
     st.session_state.pop("sales_host_error", None)
