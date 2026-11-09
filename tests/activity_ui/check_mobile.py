@@ -25,6 +25,24 @@ try:
         assert page.locator('.st-key-mobile_header').bounding_box()['y'] < 24
         expect(page.locator('iframe[title="modules.activity.center.sales_calendar_view"]')).to_be_visible()
         assert page.locator('iframe[title="modules.activity.center.sales_calendar_view"]').bounding_box()['y'] < 200
+        # Seven-column month summaries must fit even on small phones.
+        cal.locator('.view-settings > summary').click()
+        cal.get_by_label('주말 표시',exact=True).check()
+        cal.get_by_role('button',name='보기 설정 닫기').click()
+        for narrow in (320,390,430):
+            page.set_viewport_size({'width':narrow,'height':844})
+            expect(cal.locator('.grid .chip').first).not_to_be_visible()
+            counts=cal.locator('.grid .more')
+            for count in counts.all():
+                assert count.evaluate('(e)=>e.scrollWidth<=e.clientWidth'), narrow
+                assert count.bounding_box()['height']<=34
+            assert cal.locator('body').evaluate('(e)=>e.scrollWidth<=innerWidth'), narrow
+        page.set_viewport_size({'width':390,'height':844})
+        import os
+        if os.environ.get('MOBILE_SEVEN_SCREENSHOT'):page.screenshot(path=os.environ['MOBILE_SEVEN_SCREENSHOT'],full_page=True)
+        cal.locator('.view-settings > summary').click()
+        cal.get_by_label('주말 표시',exact=True).uncheck()
+        cal.get_by_role('button',name='보기 설정 닫기').click()
         for mode in ('주간','월간','일별','월간'):
             cal.get_by_role('button',name=mode,exact=True).click()
             expect(cal.get_by_role('button',name=mode,exact=True)).to_have_attribute('aria-pressed','true')

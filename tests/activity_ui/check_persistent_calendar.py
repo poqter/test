@@ -57,6 +57,7 @@ try:
    click('이전 기간');expect(f.locator('#nav h2')).to_have_text('2026년 11월')
    click('주간');expect(f.locator('#grid')).to_have_class('grid weekends-off week')
    click('다음 기간');expect(f.locator('#nav h2')).to_have_text('11월 9일 – 11월 13일');click('월간')
+   click('2026-11-06 일정 보기');click('주간')
    f.get_by_role('button',name='14:00 · AP · 테스트 작성자 · 결과 미입력',exact=True).first.click()
    click('일정 수정');f.get_by_label('일정명',exact=True).fill('수정 확인 '+str(width))
    if width==390:
@@ -70,6 +71,7 @@ try:
    click('일정 등록');expect(f.get_by_role('heading',name='반복 일정 테스트',exact=True)).to_be_visible()
    click('일정 삭제');click('일정 삭제 확인');click('복구');expect(f.get_by_role('button',name='복구',exact=True)).to_have_count(0);click('팝업 닫기')
    # Settings and scope stay inside the mounted frame; no host widget recreation.
+   click('월간')
    f.locator('.view-settings > summary').click();f.get_by_label('주말 표시',exact=True).check();expect(f.locator('.cell')).to_have_count(42)
    f.get_by_label('주말 표시',exact=True).uncheck();expect(f.locator('.cell')).to_have_count(30);click('보기 설정 닫기')
    f.get_by_role('button',name='구성원 선택',exact=True).click();f.get_by_role('button',name='테스트 작성자 일정 보기',exact=True).click()
