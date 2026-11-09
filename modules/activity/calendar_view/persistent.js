@@ -2,7 +2,8 @@
 function retireDialog(node){
  node.inert=true;node.setAttribute('aria-hidden','true');node.style.pointerEvents='none';
  if(matchMedia('(prefers-reduced-motion: reduce)').matches){node.remove();return}
- setTimeout(()=>{if(!node.open)node.remove()},140);
+ const exitMs=parseFloat(getComputedStyle(node).getPropertyValue('--calendar-exit'))||0;
+ setTimeout(()=>{if(!node.open)node.remove()},exitMs+40);
 }
 /* One mounted calendar. Navigation and form lifetime belong to the browser.
  * Commands are serialized; only server-acknowledged saves are shown as saved.
