@@ -64,6 +64,20 @@ dialog.calendar-close-confirm::backdrop{background:#172b4066}.calendar-close-con
  .mobile-shell .row{white-space:normal;overflow-wrap:anywhere;line-height:1.5}
 }
 .drop-target{box-shadow:inset 0 0 0 3px #267a87;background:#e4f5eb}.feedback-card{padding:12px 0;border-bottom:1px solid #e2e8ed}.feedback-card p{white-space:pre-wrap;overflow-wrap:anywhere}#move-notice{padding:8px;background:#e4f5eb;margin-bottom:6px}@media(min-width:701px) and (pointer:fine){.draggable-event{cursor:grab}}
+
+/* Motion belongs to visibility/state changes, never data refreshes. */
+:root{--calendar-enter:200ms;--calendar-exit:120ms;--calendar-shift:8px}
+dialog.calendar-panel,dialog.calendar-close-confirm{opacity:0;transform:translateY(var(--calendar-shift));transition:opacity var(--calendar-exit) ease,transform var(--calendar-exit) ease,display var(--calendar-exit) allow-discrete,overlay var(--calendar-exit) allow-discrete}
+dialog.calendar-panel[open],dialog.calendar-close-confirm[open]{opacity:1;transform:translateY(0);transition-duration:var(--calendar-enter)}
+dialog.calendar-close-confirm{--calendar-shift:0px;--calendar-enter:140ms}
+dialog.calendar-panel::backdrop,dialog.calendar-close-confirm::backdrop{opacity:0;transition:opacity var(--calendar-exit) ease,display var(--calendar-exit) allow-discrete,overlay var(--calendar-exit) allow-discrete}
+dialog[open]::backdrop{opacity:1;transition-duration:var(--calendar-enter)}
+@starting-style{dialog.calendar-panel[open],dialog.calendar-close-confirm[open]{opacity:0;transform:translateY(var(--calendar-shift))}dialog[open]::backdrop{opacity:0}}
+.cell,.chip,.day-list-row,.day-list-done{transition:background-color 150ms ease,border-color 100ms ease,box-shadow 100ms ease,color 150ms ease}
+.calendar-completed{animation:calendar-complete 150ms ease-out}
+@keyframes calendar-complete{from{background-color:#bde5ce}to{background-color:transparent}}
+@media(max-width:650px){:root{--calendar-enter:160ms;--calendar-exit:100ms;--calendar-shift:6px}}
+@media(prefers-reduced-motion:reduce){dialog.calendar-panel,dialog.calendar-close-confirm,dialog::backdrop,.cell,.chip,.day-list-row,.day-list-done{transition:none!important;transform:none!important}.calendar-completed{animation:none!important}}
 </style><header><div class="nav" id="nav"></div><div class="tools" id="tools"></div></header><div class="legend" aria-label="활동 종류별 색상"><span data-kind="TA">TA 고객 연락</span><span data-kind="AP">AP 초회 상담</span><span data-kind="PC">PC 프레젠테이션 / 클로징</span><span data-kind="CS">CS 고객 관리</span></div><div id="refreshing" class="refreshing" role="status" aria-live="polite"></div><div id="move-notice" role="status" hidden></div><div id="grid" class="grid"></div><section class="agenda" id="agenda"></section><script>
 const post=(type,data)=>parent.postMessage({isStreamlitMessage:true,type,...data},location.origin);
 const emit=(action,value)=>calendarAction(action,value);

@@ -27,6 +27,7 @@ try:
    def backdrop():
     box=iframe.bounding_box();page.mouse.click(box['x']+2,box['y']+2)
    click('＋ 일정 등록');expect(f.get_by_role('dialog')).to_be_visible();expect(f.get_by_label('일정명',exact=True)).to_be_focused()
+   f.evaluate("async () => {await Promise.all(calendarPanel.getAnimations().map(a=>a.finished.catch(()=>{})))}")
    geometry=f.evaluate("({b:calendarPanel.getBoundingClientRect().toJSON(),w:innerWidth,h:innerHeight})")
    assert abs(geometry['b']['x']+geometry['b']['width']/2-geometry['w']/2)<3
    assert abs(geometry['b']['y']+geometry['b']['height']/2-geometry['h']/2)<3
@@ -34,6 +35,7 @@ try:
    assert f.evaluate("[...document.fonts].some(x=>x.family==='HW LINE Seed' && x.status==='loaded')")
    backdrop();expect(f.get_by_role('dialog')).to_have_count(0)
    click('＋ 일정 등록');f.get_by_label('일정명',exact=True).fill('배경 클릭 작성 보존')
+   f.evaluate("async () => {await Promise.all(calendarPanel.getAnimations().map(a=>a.finished.catch(()=>{})))}")
    before=f.locator('dialog.calendar-panel').bounding_box()
    backdrop();expect(f.get_by_role('dialog',name='저장하지 않은 변경이 있습니다.',exact=True)).to_be_visible()
    assert f.locator('dialog.calendar-panel dialog').count()==0
@@ -83,6 +85,10 @@ try:
    f.evaluate('''() => {const boot={...calendarBoot};calendarBoot=null;receiveCalendar({boot,bootFresh:false,mobileSession:latest.mobileSession});}''')
    f.wait_for_function('!calendarLoading && !calendarFlight')
    expect(page.locator('[data-testid="stException"]')).to_have_count(0)
+   page.emulate_media(reduced_motion='reduce')
+   click('＋ 일정 등록');expect(f.get_by_label('일정명',exact=True)).to_be_focused()
+   assert f.evaluate("getComputedStyle(calendarPanel).transitionDuration")== '0s'
+   click('팝업 닫기');expect(f.get_by_role('dialog')).to_have_count(0)
    assert not errors,errors
    page.screenshot(path=f'/tmp/calendar-persistent-{width}.png')
    print('PASS',width,'navigation/forms/drafts/save/repeat/delete/restore; persistent frame/grid/height',flush=True);browser.close()

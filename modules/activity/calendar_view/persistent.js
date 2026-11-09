@@ -1,3 +1,9 @@
+// Let native dialog close release focus immediately while its exit transition finishes.
+function retireDialog(node){
+ node.inert=true;node.setAttribute('aria-hidden','true');node.style.pointerEvents='none';
+ if(matchMedia('(prefers-reduced-motion: reduce)').matches){node.remove();return}
+ setTimeout(()=>{if(!node.open)node.remove()},140);
+}
 /* One mounted calendar. Navigation and form lifetime belong to the browser.
  * Commands are serialized; only server-acknowledged saves are shown as saved.
  * Data never enters localStorage; existing preference keys remain unchanged.
@@ -97,6 +103,7 @@ function calendarAction(action,value){
 }
 function createPanel(title){
  dismissCloseConfirm();
+ document.querySelectorAll('dialog.calendar-panel:not([open]),dialog.calendar-close-confirm:not([open])').forEach(node=>node.remove());
  if(calendarPanel){calendarPanel.remove();calendarPanel=null;}
  const returnFocus=document.activeElement;
  try{const fab=parent.document.querySelector('.mobile-new-event');if(fab)fab.style.visibility='hidden'}catch{}
@@ -106,13 +113,13 @@ function createPanel(title){
  const outside=e=>{const b=panel.getBoundingClientRect();return e.clientX<b.left||e.clientX>b.right||e.clientY<b.top||e.clientY>b.bottom};
  panel.addEventListener('pointerdown',e=>{backdropDown=e.target===panel&&outside(e)});
  panel.addEventListener('click',e=>{if(backdropDown&&e.target===panel&&outside(e))closePanel();backdropDown=false});
- panel.addEventListener('cancel',e=>{e.preventDefault();closePanel()});panel.addEventListener('close',()=>{panel.remove();if(calendarPanel===panel)calendarPanel=null;try{const fab=parent.document.querySelector('.mobile-new-event');if(fab)fab.style.visibility=''}catch{}returnFocus?.focus({preventScroll:true})});panel.showModal();calendarDraft=null;
+ panel.addEventListener('cancel',e=>{e.preventDefault();closePanel()});panel.addEventListener('close',()=>{retireDialog(panel);if(calendarPanel===panel)calendarPanel=null;try{const fab=parent.document.querySelector('.mobile-new-event');if(fab)fab.style.visibility=''}catch{}returnFocus?.focus({preventScroll:true})});panel.showModal();calendarDraft=null;
  return body;
 }
 let calendarCloseConfirm=null;
 function dismissCloseConfirm(){
  const box=calendarCloseConfirm;if(!box)return;
- calendarCloseConfirm=null;box.close();box.remove();
+ calendarCloseConfirm=null;box.close();retireDialog(box);
 }
 function closePanel(){
  if(calendarPanel?.dataset.busy)return;
@@ -201,7 +208,7 @@ function paintReviews(host,data){
   if(r.reviewer===calendarBoot.uid){
    const actions=el('div','','panel-actions');card.append(actions);
    actions.append(button('수정',()=>{actions.replaceChildren();const f=el('form');actions.append(f);const input=field(f,'피드백 수정','message',r.message,'textarea');input.maxLength=4000;const error=feedback(f),save=button('수정 저장',()=>runButton(save,error,async()=>{await rpc('review_edit',{id:row.id,review:r.id,version:r.edit_version,message:input.value});await refresh()}));f.append(save,button('취소',()=>paintReviews(host,data)));f.onsubmit=e=>e.preventDefault();input.focus()}));
-   actions.append(button('삭제',()=>{const confirmBox=el('dialog','','calendar-close-confirm');confirmBox.setAttribute('aria-label','피드백 삭제 확인');confirmBox.append(el('h3','이 피드백을 삭제할까요?'));const error=feedback(confirmBox),remove=button('피드백 삭제',()=>runButton(remove,error,async()=>{await rpc('review_delete',{id:row.id,review:r.id,version:r.edit_version});await refresh();confirmBox.close()}),'danger');confirmBox.append(remove,button('취소',()=>confirmBox.close()));confirmBox.addEventListener('close',()=>confirmBox.remove());document.body.append(confirmBox);confirmBox.showModal()}));
+   actions.append(button('삭제',()=>{const confirmBox=el('dialog','','calendar-close-confirm');confirmBox.setAttribute('aria-label','피드백 삭제 확인');confirmBox.append(el('h3','이 피드백을 삭제할까요?'));const error=feedback(confirmBox),remove=button('피드백 삭제',()=>runButton(remove,error,async()=>{await rpc('review_delete',{id:row.id,review:r.id,version:r.edit_version});await refresh();confirmBox.close()}),'danger');confirmBox.append(remove,button('취소',()=>confirmBox.close()));confirmBox.addEventListener('close',()=>retireDialog(confirmBox));document.body.append(confirmBox);confirmBox.showModal()}));
   }
  }
  if(!data.reviews.length)host.append(el('p','등록된 피드백이 없습니다.','hint'));
@@ -326,7 +333,10 @@ function paintDayList(){
     const result=await rpc('status',{id:item.id,revision:item.revision,status:'완료'});
     latest.events=latest.events.map(e=>e.id===item.id?{...e,done:true,status:result.status,revision:result.revision}:e);
     dayListUndo={id:item.id,revision:result.revision};
-    delete panel.dataset.busy;paintDayList();mutate();
+    delete panel.dataset.busy;paintDayList();
+    const completed=Array.from(panel.querySelectorAll('.day-list-row')).find(row=>row.dataset.key===item.id);
+    if(completed){completed.classList.add('calendar-completed');completed.addEventListener('animationend',()=>completed.classList.remove('calendar-completed'),{once:true})}
+    mutate();
    }),'day-list-complete',item.short+' 완료 처리');line.append(complete,error);
   }else line.append(el('small',item.status||''));
   line.append(button('›',()=>openDetail(item.id),'',item.short+' 상세 보기'));fresh.append(line);
