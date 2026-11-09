@@ -90,7 +90,7 @@ READER_CSS += CARD_CSS + """
 
 # Web reader only: PDF typography and document generation below remain unchanged.
 READER_CSS += """
-@font-face{font-family:'HW LINE Seed';src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_11-01@1.0/LINESeedKR-Bd.woff2') format('woff2');font-weight:100 900;font-display:swap}
+@font-face{font-family:'HW LINE Seed';src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_11-01@1.0/LINESeedKR-Bd.woff2') format('woff2');font-weight:100 900;font-display:block}
 body,button,.button{font-family:'HW LINE Seed','Malgun Gothic',sans-serif;font-weight:700;text-shadow:none;font-synthesis:none}
 .wrap{border-radius:18px}.panel,.metric{border-radius:12px}.value,.temps{font-variant-numeric:tabular-nums}
 button,.button,a{transition:background-color .18s ease,border-color .18s ease}
@@ -183,7 +183,7 @@ def public_html(packet,*,canonical_url='',image_url='',pdf_url=''):
     document.querySelectorAll('[data-weather-date]').forEach(p=>{if(p.dataset.weatherDate!==today){const h=p.querySelector('.weather-head span');if(h)h.textContent='공유일의 날씨';}});
     document.querySelectorAll('[data-stale-date]').forEach(p=>p.hidden=p.dataset.staleDate>=today);
     </script>'''
-    return '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">'+og+'<style>'+READER_CSS+'</style></head><body>'+''.join(parts)+script+'</body></html>'
+    return '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">'+og+'<link rel="preload" href="https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_11-01@1.0/LINESeedKR-Bd.woff2" as="font" type="font/woff2" crossorigin><style>'+READER_CSS+'</style></head><body>'+''.join(parts)+script+'</body></html>'
 
 def public_pdf(packet):return _cached_pdf(json.dumps(packet,ensure_ascii=False,sort_keys=True))
 
