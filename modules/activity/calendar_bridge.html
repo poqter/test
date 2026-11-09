@@ -5,8 +5,8 @@
  let navigationStyle=d.getElementById('calendar-sidebar-controls');
  if(!navigationStyle){navigationStyle=d.createElement('style');navigationStyle.id='calendar-sidebar-controls';d.head.append(navigationStyle)}
  navigationStyle.textContent=`
- @media(min-width:701px){body:has(.st-key-mobile_header) [data-testid="stSidebar"]{transition:margin-left 280ms ease-out,transform 280ms ease-out,width 280ms ease-out!important}
- body:has(.st-key-mobile_header) [data-testid="stMain"]{transition:width 280ms ease-out,margin-left 280ms ease-out!important}}
+ @media(min-width:701px){body:has(.st-key-mobile_header) [data-testid="stSidebar"]{transition:margin-left 320ms cubic-bezier(.4,0,.2,1),transform 320ms cubic-bezier(.4,0,.2,1),width 320ms cubic-bezier(.4,0,.2,1)!important}
+ body:has(.st-key-mobile_header) [data-testid="stMain"]{transition:width 320ms cubic-bezier(.4,0,.2,1),margin-left 320ms cubic-bezier(.4,0,.2,1)!important}}
  @keyframes calendar-drawer-enter{from{opacity:0;translate:-24px 0;box-shadow:0 0 0 100vmax #172b4000}to{opacity:1;translate:0 0;box-shadow:0 0 0 100vmax #172b4044}}
  @media(max-width:700px){[data-testid="stPopoverBody"]:has(.mobile-drawer){transform:none!important;translate:0 0;animation:calendar-drawer-enter 180ms ease-out;box-shadow:0 0 0 100vmax #172b4044}}
  @media(prefers-reduced-motion:reduce){body:has(.st-key-mobile_header) [data-testid="stSidebar"],body:has(.st-key-mobile_header) [data-testid="stMain"]{transition:none!important}[data-testid="stPopoverBody"]:has(.mobile-drawer){animation:none!important}}
@@ -31,6 +31,33 @@
    slot.append(button);
   };
   new w.MutationObserver(mountMenu).observe(d.body,{childList:true,subtree:true});mountMenu();
+ }
+ // A real overlay consumes the entire outside gesture, including iframe taps.
+ if(!w.__calendarDrawerBackdrop){
+  w.__calendarDrawerBackdrop=true;
+  const overlay=d.createElement('div');overlay.id='calendar-drawer-backdrop';
+  overlay.style.cssText='position:fixed;inset:0;z-index:999998;background:#172b4044;touch-action:none;display:none';
+  overlay.setAttribute('aria-hidden','true');d.body.append(overlay);
+  let closing=false;
+  const block=e=>{e.preventDefault();e.stopImmediatePropagation()};
+  overlay.addEventListener('pointerdown',block);
+  overlay.addEventListener('pointerup',block);
+  overlay.addEventListener('click',e=>{
+   block(e);if(closing)return;closing=true;
+   d.querySelector('[data-testid="stPopoverBody"]:has(.mobile-drawer) .calendar-panel-close')?.click();
+   setTimeout(()=>{closing=false;sync()},200);
+  });
+  overlay.addEventListener('wheel',block,{passive:false});
+  overlay.addEventListener('touchmove',block,{passive:false});
+  const sync=()=>{
+   const pop=d.querySelector('[data-testid="stPopoverBody"]:has(.mobile-drawer)');
+   const active=w.matchMedia('(max-width:700px)').matches&&!!pop;
+   const host=active?pop.parentElement:d.body;
+   if(overlay.parentElement!==host)host.append(overlay);
+   overlay.style.display=active||closing?'block':'none';
+   if(active){pop.style.setProperty('z-index','999999','important');pop.style.setProperty('box-shadow','none','important')}
+  };
+  new w.MutationObserver(sync).observe(d.body,{childList:true,subtree:true});w.addEventListener('resize',sync);sync();
  }
  // The installed app also has a same-origin outer Cloud frame. Hide its
  // authoring controls there, without changing the ordinary workspace theme.

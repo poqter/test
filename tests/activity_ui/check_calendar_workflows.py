@@ -21,7 +21,7 @@ try:
   expect(f.locator('#move-notice')).to_contain_text('2026-11-10로 이동했습니다.',timeout=20000)
   expect(target.locator('.chip')).to_have_count(1)
   click('되돌리기');expect(f.locator('.cell[data-key="2026-11-06"] .chip')).to_have_count(1,timeout=20000)
-  click('＋ 일정 등록');expect(f.get_by_label('시작 시간',exact=True)).to_be_visible();expect(f.get_by_label('종료 시간 · 선택',exact=True)).not_to_be_visible()
+  click('＋ 일정 등록');expect(f.get_by_label('시작 시간',exact=True)).to_be_visible();expect(f.get_by_label('종료 시간 · 선택',exact=True)).to_be_visible()
   f.get_by_label('일정명',exact=True).fill('숫자 시간 테스트');f.get_by_label('시작 시간',exact=True).fill('930');f.get_by_label('시작 시간',exact=True).press('Tab')
   expect(f.get_by_label('시작 시간',exact=True)).to_have_value('09:30');expect(f.get_by_text('09:30 · 오전 9시 30분',exact=True)).to_be_visible()
   click('일정 등록');expect(f.get_by_role('heading',name='숫자 시간 테스트',exact=True)).to_be_visible(timeout=20000)
