@@ -22,6 +22,7 @@ jobs:
       WORKSPACE_URL: https://hwarang-workspace.streamlit.app
       CALCULATOR_URL: https://hwarang-calculator.streamlit.app
       ACADEMY_URL: https://hwarang-academy.streamlit.app
+      CALENDAR_URL: https://hwarang-calendar.streamlit.app
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
 
