@@ -9,8 +9,26 @@ from modules.shell.navigation import allowed_ids, dispatch, logout as clear_work
 from modules.shared.hwarang_auth import HwarangAuthError, HwarangAuthService, SupabaseConfig
 from modules.shared.account_security import recovery_dialog, account_dialog, render_recovery_entry
 from modules.shared.ui_components import inject_global_styles
-from modules.shared.workbench import render_workbench, restore_page_draft
-from modules.shell.workspace_v2 import render_home, render_sidebar
+
+
+def render_home(*args, **kwargs):
+    from modules.shell.workspace_v2 import render_home as render
+    return render(*args, **kwargs)
+
+
+def render_sidebar(*args, **kwargs):
+    from modules.shell.workspace_v2 import render_sidebar as render
+    return render(*args, **kwargs)
+
+
+def render_workbench(*args, **kwargs):
+    from modules.shared.workbench import render_workbench as render
+    return render(*args, **kwargs)
+
+
+def restore_page_draft(*args, **kwargs):
+    from modules.shared.workbench import restore_page_draft as render
+    return render(*args, **kwargs)
 
 
 def sidebar_default():
