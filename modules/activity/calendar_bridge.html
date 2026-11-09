@@ -1,18 +1,44 @@
 <!doctype html><script type="text/plain" id="calendar-layout-source">
 (()=>{
  const w=window,d=w.document;
- // Keep the native reopen control reachable in the installed desktop/tablet app.
- // Install before the lifetime guard so already-open sessions receive CSS fixes.
+ // App-owned menu control stays in the title row, outside Cloud's clipped chrome.
  let navigationStyle=d.getElementById('calendar-sidebar-controls');
  if(!navigationStyle){navigationStyle=d.createElement('style');navigationStyle.id='calendar-sidebar-controls';d.head.append(navigationStyle)}
- navigationStyle.textContent=`@media(min-width:701px){
- body:has(.st-key-mobile_header) [data-testid="stHeader"]{display:flex!important;height:0!important;min-height:0!important;background:transparent!important;pointer-events:none}
- body:has(.st-key-mobile_header) [data-testid="stHeader"] button{pointer-events:auto}
- body:has(.st-key-mobile_header) :is([data-testid="stAppToolbar"],[data-testid="stToolbar"]):not(:has([data-testid="stExpandSidebarButton"])){display:none!important}
- body:has(.st-key-mobile_header) :is([data-testid="stAppToolbar"],[data-testid="stToolbar"]):has([data-testid="stExpandSidebarButton"]){display:flex!important;pointer-events:auto!important}
- body:has(.st-key-mobile_header) [data-testid="stSidebarCollapsedControl"]{display:flex!important;position:fixed!important;top:8px!important;left:12px!important;z-index:100!important;pointer-events:auto!important}
- body:has(.st-key-mobile_header) [data-testid="stExpandSidebarButton"]{display:flex!important;min-width:44px!important;min-height:44px!important;pointer-events:auto!important}
+ navigationStyle.textContent=`
+ .calendar-sidebar-open{display:none}
+ body:has(.st-key-mobile_header) [data-testid="stHeader"]{display:none!important}
+ @media(min-width:701px){
+ div:has(>.st-key-mobile_header){position:sticky;top:12px;z-index:20;background:#f5f7fa}
+ .st-key-mobile_header{padding-top:12px!important;padding-bottom:8px!important}
+ body:has(.st-key-mobile_header) .st-key-mobile_menu_toggle{display:block!important}
+ .st-key-mobile_menu_toggle [data-testid="stPopover"]{display:none!important}
+ body:has([data-testid="stSidebar"][aria-expanded="false"]) .calendar-sidebar-open{display:inline-flex;align-items:center;justify-content:center;min-width:88px;min-height:44px;border-radius:10px;color:#18334c;font:inherit;cursor:pointer;white-space:nowrap}
+ .calendar-sidebar-open:focus-visible{outline:3px solid #8eb5ed;outline-offset:2px}
  }`;
+ if(!w.__hwarangSidebarControls){
+  w.__hwarangSidebarControls=true;
+  const mountMenu=()=>{
+   const slot=d.querySelector('.st-key-mobile_menu_toggle');
+   if(!slot||slot.querySelector('.calendar-sidebar-open'))return;
+   const button=d.createElement('button');button.type='button';button.className='calendar-sidebar-open';button.textContent='☰ 메뉴';button.setAttribute('aria-label','사이드바 열기');
+   button.onclick=()=>{const native=d.querySelector('[data-testid="stExpandSidebarButton"]');(native?.querySelector('button')||native)?.click()};
+   slot.append(button);
+  };
+  new w.MutationObserver(mountMenu).observe(d.body,{childList:true,subtree:true});mountMenu();
+ }
+ // The installed app also has a same-origin outer Cloud frame. Hide its
+ // authoring controls there, without changing the ordinary workspace theme.
+ let chromeHost=w;
+ for(let i=0;i<5;i++){
+  try{
+   const doc=chromeHost.document;
+   if(!doc.getElementById('calendar-app-chrome')){
+    const style=doc.createElement('style');style.id='calendar-app-chrome';
+    style.textContent='[data-testid="stAppToolbar"],[data-testid="stToolbar"],[data-testid="stStatusWidget"],[data-testid="stMainMenu"],[data-testid="manage-app-button"],[class*="viewerBadge"],[class*="profilePreview"],a:has([data-testid="appCreatorAvatar"]){display:none!important;pointer-events:none!important}';doc.head.append(style);
+   }
+   if(chromeHost.parent===chromeHost)break;chromeHost=chromeHost.parent;
+  }catch{break}
+ }
  if(w.__hwarangCalendarLayout)return;
  w.__hwarangCalendarLayout=true;
  let hadDialog=false,queued=false;
