@@ -53,7 +53,8 @@ def menu_items(db,logout,prefix):
                   type='primary' if ('활동 기록' if st.session_state.get('mobile_page')=='주간 기록' else st.session_state.get('mobile_page','캘린더'))==name else 'secondary')
     st.divider()
     st.html('<button type="button" class="calendar-install" style="width:100%;min-height:44px;border:1px solid #d8e1e8;border-radius:8px;background:white;color:#18334c;font:inherit;cursor:pointer">홈 화면에 설치</button>')
-    st.link_button('WORKSPACE 열기','https://hwarang-workspace.streamlit.app/',width='stretch')
+    from modules.activity.launch import render_workspace_return
+    render_workspace_return(prefix + '_workspace_return')
     st.button('로그아웃',key=prefix+'_logout',on_click=logout,width='stretch')
 
 
