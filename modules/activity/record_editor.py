@@ -1,5 +1,6 @@
 """Daily/weekly editing with versioned saves and explicit submission snapshots."""
 from copy import deepcopy
+from html import escape
 from datetime import date, datetime, timedelta
 from pathlib import Path
 import streamlit as st
@@ -137,7 +138,8 @@ def render(db,today,period,fixed_day=None):
         with st.container(key='daily_layout_bridge'+suffix):components.html(Path(__file__).with_name('daily_bridge.html').read_text(),height=0)
         changed=v!=values_from(old.get('data',{}))
         state='제출 완료 · 수정 초안' if old.get('submitted') and (changed or d.get('server_draft')) else '제출 완료' if old.get('submitted') else '임시 저장' if old else '작성 전'
-        st.caption(f'{day:%Y.%m.%d}'+(f' – {day+6*DAY:%m.%d}' if period=='주간' else ' '+ '월화수목금토일'[day.weekday()])+' · '+state)
+        date_label=f'{day:%Y.%m.%d}'+(f' – {day+6*DAY:%m.%d}' if period=='주간' else ' '+ '월화수목금토일'[day.weekday()]+'요일')
+        st.html('<div class="record-meta"><span>'+date_label+'</span><span class="record-state'+(' is-submitted' if old.get('submitted') else '')+'">'+escape(state)+'</span></div>')
         status_slot=st.empty()
         if d.get('save_error'):
             status_slot.error(d['save_error'])
@@ -159,7 +161,6 @@ def render(db,today,period,fixed_day=None):
         contracts=db.period('sales_contracts',day,end,owner='eq.'+db.uid)
         source=weekly_source(daily) if period=='주간' else None
         mobile=ux.compact()
-        left,right=st.columns([1.85,1],gap='medium') if not mobile else (st.container(),None)
         def import_values(source):
             ux.set_values(d,merge_source(v,source));persist(db,d,day,period,slot=status_slot)
         if period=='주간':
@@ -167,15 +168,16 @@ def render(db,today,period,fixed_day=None):
             st.caption('일일 기록 · '+' · '.join(f'{label} {sum(s==label for _,s,_ in states)}일' for label in ('제출','임시 저장','미작성')))
             if v['source_versions'] and v['source_versions']!=source['source_versions']:st.info('일일 기록이 변경되었습니다. 직접 수정한 항목을 유지하며 초안을 갱신할 수 있습니다.')
             st.button('일일 기록에서 초안 가져오기',key=key+'import',on_click=import_values,args=(source,),disabled=not source['coverage'])
+        left,right=st.columns([1.85,1],gap='medium') if not mobile else (st.container(),None)
         with left:
             with st.container(border=True,key='daily_inputs'+suffix):
-                st.markdown('### 활동 건수')
+                st.html('<div class="record-section-heading" role="heading" aria-level="3">활동 건수</div>')
                 width=2 if mobile else 3
                 for offset in range(0,len(COUNTS),width):
                     for col,name in zip(st.columns(width),COUNTS[offset:offset+width]):
                         ux.field(d,name,col.number_input,name,min_value=0,max_value=99999999,step=1,format='%d',after_change=edit(name))
                 if period=='일일':ux.field(d,'no_activity',st.checkbox,'활동 없는 날',after_change=edit('no_activity'))
-                ux.field(d,'note',st.text_area,'주요 성과 · 진행사항',height=120,after_change=edit('note'))
+                ux.field(d,'note',st.text_area,'주요 성과 · 진행사항',height=140,placeholder='오늘의 성과와 진행 내용을 남겨주세요.' if period=='일일' else '이번 주의 주요 성과를 정리해 주세요.',after_change=edit('note'))
                 if period=='주간':
                     ux.field(d,'reflection',st.text_area,'이번 주 돌아보기',height=100,after_change=edit('reflection'))
                     ux.field(d,'plan',st.text_area,'다음 주 계획',height=100,after_change=edit('plan'))
@@ -219,32 +221,56 @@ def render(db,today,period,fixed_day=None):
         else:
             with st.expander('일정·집계·참고 자료',key=key+'references',on_change='rerun') as panel:
                 if panel.open:references()
-        with st.container(key='daily_footer'+suffix,horizontal=True,vertical_alignment='center'):
-            st.caption('수정 초안은 다시 제출하기 전까지 기존 제출 내용에 반영되지 않습니다.' if old.get('submitted') else '입력 후 자동 임시 저장 · 제출은 직접 선택')
-            if st.button('임시 저장',key=key+'draft',disabled=bool(d.get('saving'))):persist(db,d,day,period,slot=status_slot)
-            if st.button('수정 내용 제출' if old.get('submitted') else '제출하기',key=key+'submit',type='primary',disabled=bool(d.get('saving')) or bool(old.get('submitted') and not changed and not d.get('server_draft'))):
-                if persist(db,d,day,period,True,status_slot):
-                    if fixed_day is not None:ux.back()
-                    else:ux.refresh()
-        if old:
-            with st.expander('제출 이력·피드백',key=key+'history',on_change='rerun') as panel:
-                if panel.open:
-                    from modules.activity.center import report_detail
-                    report_detail(db,d.get('old') or old)
+        with left:
+            with st.container(key='daily_footer'+suffix,horizontal=True,vertical_alignment='center'):
+                st.caption('수정 초안은 다시 제출하기 전까지 기존 제출 내용에 반영되지 않습니다.' if old.get('submitted') else '자동 저장 · 제출 전까지 수정 가능')
+                if st.button('임시 저장',key=key+'draft',disabled=bool(d.get('saving'))):persist(db,d,day,period,slot=status_slot)
+                if st.button('수정 내용 제출' if old.get('submitted') else '제출하기',key=key+'submit',type='primary',disabled=bool(d.get('saving')) or bool(old.get('submitted') and not changed and not d.get('server_draft'))):
+                    if persist(db,d,day,period,True,status_slot):
+                        if fixed_day is not None:ux.back()
+                        else:ux.refresh()
+            if old:
+                with st.expander('제출 이력·피드백',key=key+'history',on_change='rerun') as panel:
+                    if panel.open:
+                        from modules.activity.center import report_detail
+                        report_detail(db,d.get('old') or old)
         return key
 
 
 def styles():
     st.html('''<style>
-[class*="st-key-daily_navigation"]{justify-content:flex-start!important;flex-wrap:nowrap!important}
+/* Keep headings in a real measured block, independent of markdown heading metrics. */
+[class*="st-key-daily_record"]{gap:12px!important}
+[class*="st-key-daily_record"] .record-meta{display:flex;align-items:center;flex-wrap:wrap;gap:10px;min-height:30px;color:#53657c;font-size:14px}
+[class*="st-key-daily_record"] .record-state{background:#eaf0f8;color:#426080;border:1px solid #dce6f1;padding:3px 10px;border-radius:20px;font-size:12px}
+[class*="st-key-daily_record"] .record-state.is-submitted{background:#e9f5f2;color:#216959;border-color:#cfe9e1}
+[class*="st-key-daily_inputs"]{padding:20px!important;border:1px solid #dce4ee!important;border-radius:16px!important;background:#fff;gap:14px!important;box-shadow:0 3px 12px #18365004}
+[class*="st-key-daily_inputs"] [data-testid="stElementContainer"]:has(.record-section-heading){height:auto!important;min-height:42px!important;flex-shrink:0!important}
+[class*="st-key-daily_inputs"] .record-section-heading{box-sizing:border-box;display:flex;align-items:center;min-height:42px;padding:0 0 12px;margin:0;font-size:20px;line-height:30px;color:#172f4a;font-weight:700}
+[class*="st-key-daily_inputs"] [data-testid="stNumberInput"]{padding:10px 12px!important;background:#f8fafd!important;border:1px solid #e0e7f0!important;border-radius:12px!important}
+[class*="st-key-daily_inputs"] [data-testid="stNumberInput"] input{font-size:22px!important;line-height:1.5!important;color:#183c64!important;background:transparent!important}
+[class*="st-key-daily_inputs"] [data-testid="stNumberInput"] label{margin-bottom:6px!important;color:#4a607b!important}
+[class*="st-key-daily_inputs"] [data-testid="stNumberInput"] button{min-width:30px!important;background:transparent!important}
+[class*="st-key-daily_inputs"] [data-testid="stTextArea"] textarea{background:#f9fbfd!important;border:1px solid #dce5ef!important;border-radius:10px!important;padding:12px!important;line-height:1.65!important}
+[class*="st-key-daily_inputs"] [data-testid="stTextArea"] label{margin-bottom:8px!important}
+[class*="st-key-daily_navigation"]{justify-content:flex-start!important;flex-wrap:nowrap!important;gap:8px!important}
 [class*="st-key-daily_navigation"]>[data-testid="stElementContainer"]{flex:0 0 auto!important;width:auto!important}
-[class*="st-key-daily_navigation"] [data-testid="stDateInput"]{width:200px!important}
-[class*="st-key-daily_inputs"] [data-testid="stNumberInput"]{padding:5px 8px!important}
-[class*="st-key-daily_inputs"] [data-testid="stNumberInput"] input{font-size:18px!important}
-[class*="st-key-daily_inputs"] [data-testid="stNumberInput"] label{margin-bottom:0!important}
-[class*="st-key-daily_footer"]{justify-content:flex-end!important;align-items:center!important;flex-wrap:wrap!important}
+[class*="st-key-daily_navigation"] [data-testid="stDateInput"]{width:190px!important}
+[class*="st-key-daily_navigation"] button{min-height:42px!important;border-radius:10px!important}
+[class*="st-key-daily_reference_card"]{padding:18px!important;border:1px solid #e0e7ef!important;border-radius:16px!important;gap:12px!important;background:#fff}
+[class*="st-key-daily_reference_card"] [data-testid="stCaptionContainer"]{font-size:12px!important;color:#718096!important}
+[class*="st-key-daily_footer"]{justify-content:flex-end!important;align-items:center!important;flex-wrap:wrap!important;padding:12px 14px!important;border:1px solid #dce5ef!important;border-radius:12px!important;background:#fff!important;box-shadow:none!important;gap:8px!important;margin-top:4px!important}
 [class*="st-key-daily_footer"]>[data-testid="stElementContainer"]{flex:0 0 auto!important;width:auto!important}
-[class*="st-key-daily_footer"] [data-testid="stCaptionContainer"]{margin-right:auto}
-[class*="st-key-daily_reference_card"]{padding:14px!important}
-@media(max-width:700px){[class*="st-key-daily_navigation"] [data-testid="stDateInput"]{width:150px!important}[class*="st-key-daily_footer"] button{min-width:110px}}
+[class*="st-key-daily_footer"] [data-testid="stCaptionContainer"]{font-size:12px!important;color:#718096!important}
+[class*="st-key-daily_footer"] button{min-height:44px!important;min-width:94px!important;border-radius:10px!important}
+.st-key-mobile_record_tab button{border:0!important;border-bottom:2px solid transparent!important;border-radius:0!important;background:transparent!important;padding:8px 18px!important}
+.st-key-mobile_record_tab button[aria-checked="true"]{border-bottom-color:#2d6ad5!important;color:#2d6ad5!important;background:#edf3ff!important}
+@media(max-width:700px){
+ [class*="st-key-daily_inputs"]{padding:14px!important;gap:12px!important}
+ [class*="st-key-daily_navigation"] [data-testid="stDateInput"]{width:150px!important}
+ [class*="st-key-daily_inputs"] [data-testid="stNumberInput"]{padding:8px!important}
+ [class*="st-key-daily_footer"]{position:static!important}
+ [class*="st-key-daily_footer"] button{min-width:104px!important}
+ [class*="st-key-daily_inputs"] .record-section-heading{font-size:18px;min-height:40px}
+}
 </style>''')
