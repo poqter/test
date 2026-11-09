@@ -288,8 +288,12 @@ def report_reference(db,day,period,events,daily):
                 ux.navigate({"type":"daily","day":str(target)},bool(st.session_state.get("sales_route")))
 
 def count_grid(values):
-    columns=st.columns(2)
-    for i,c in enumerate([*COUNTS,*[c for c in ("전화","메시지") if values.get(c)]]): columns[i%2].write(f'{ux.LABELS.get(c,c)} **{values.get(c,0):,}**')
+    from html import escape
+    items=[*COUNTS,*[c for c in ("전화","메시지") if values.get(c)]]
+    # A row-major CSS grid stays two columns on narrow screens as well.
+    st.html('<div class="report-count-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0 16px">'+''.join(
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px;border:1px solid #dce3ed;border-radius:10px;background:#f8fafc;min-width:0"><span>'+escape(ux.LABELS.get(c,c))+'</span><strong>'+format(values.get(c,0),',')+'</strong></div>'
+        for c in items)+'</div>')
 
 def reports(db,today,period,fixed_day=None):
     from modules.activity.record_editor import render
