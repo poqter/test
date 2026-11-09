@@ -116,7 +116,7 @@
   const ios=/iPhone|iPad|iPod/i.test(host.navigator.userAgent)||(host.navigator.maxTouchPoints>1&&/Macintosh/i.test(host.navigator.userAgent));
   msg.textContent=ios?'Safari에서 공유 버튼 → 홈 화면에 추가를 선택하세요.':'브라우저 메뉴(⋮)에서 앱 설치 또는 홈 화면에 추가를 선택하세요. 설치 항목이 없다면 바로가기로 추가할 수 있습니다.';
   const note=d.createElement('p');note.textContent='카카오톡 등 앱 안의 브라우저라면 Chrome 또는 Safari에서 열어 주세요. 실행하면 이 캘린더로 연결됩니다.';
-  const link=d.createElement('a');link.textContent='캘린더 주소 열기';link.href='https://hwarang-workspace.streamlit.app/calendar';link.target='_blank';link.rel='noopener';
+  const link=d.createElement('a');link.textContent='캘린더 주소 열기';link.href=new URL('/calendar',d.location.href).href;link.target='_blank';link.rel='noopener';
   const close=d.createElement('button');close.textContent='닫기';close.setAttribute('aria-label','설치 안내 닫기');close.style.cssText='min-height:44px;margin-left:20px;padding:8px 16px';close.onclick=()=>panel.close();
   panel.onclose=()=>panel.remove();panel.onclick=e=>{if(e.target===panel){const r=panel.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)panel.close()}};
   panel.append(title,msg,note,link,close);d.body.append(panel);panel.showModal();close.focus();
