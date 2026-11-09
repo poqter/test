@@ -21,14 +21,20 @@ try:
         page=browser.new_page(viewport={'width':390,'height':844},user_agent='Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148')
         page.goto('http://127.0.0.1:8504')
         expect(page.get_by_role('button',name='☰',exact=True)).to_be_visible()
+        expect(page.get_by_test_id('stApp')).to_have_attribute('data-test-script-state','notRunning')
         cal=page.frame_locator('iframe[title="modules.activity.center.sales_calendar_view"]')
         assert page.locator('.st-key-mobile_header').bounding_box()['y'] < 24
         expect(page.locator('iframe[title="modules.activity.center.sales_calendar_view"]')).to_be_visible()
         assert page.locator('iframe[title="modules.activity.center.sales_calendar_view"]').bounding_box()['y'] < 200
         page.wait_for_function("history.state?.hwarangCalendarBack === true")
+        frame=page.locator('iframe[title="modules.activity.center.sales_calendar_view"]').element_handle().content_frame()
+        frame.wait_for_function("calendarLayoutReady && calendarBoot && !calendarLoading")
+        # Retiring dialogs can remain in the DOM during the exit transition.
+        editor=cal.locator('dialog.calendar-panel[open]')
         base=page.url
         # Settings and drawer close before changing app pages.
         cal.locator('.view-settings > summary').click()
+        expect(cal.locator('.view-settings')).to_have_attribute('open','')
         page.go_back()
         expect(cal.locator('.view-settings')).not_to_have_attribute('open','')
         page.get_by_role('button',name='☰',exact=True).click()
@@ -38,17 +44,22 @@ try:
         expect(page.locator('[data-testid="stPopoverBody"]')).to_have_count(0)
         # Clean editor uses the same X handler.
         page.get_by_role('button',name='일정 등록',exact=True).click()
-        expect(cal.get_by_role('dialog')).to_be_visible()
+        expect(editor).to_be_visible()
         page.wait_for_timeout(400)
         page.go_back()
         expect(cal.get_by_role('dialog')).to_have_count(0)
         # Dirty editor is protected, including repeated Back.
         page.get_by_role('button',name='일정 등록',exact=True).click()
         expect(page.get_by_test_id('stApp')).to_have_attribute('data-test-script-state','notRunning')
-        cal.get_by_label('일정명',exact=True).fill('뒤로가기 보존')
-        cal.get_by_label('일정명',exact=True).press('Tab')
+        expect(editor).to_be_visible()
+        editor.get_by_label('일정명',exact=True).fill('뒤로가기 보존')
+        editor.get_by_label('일정명',exact=True).press('Tab')
         frame=page.locator('iframe[title="modules.activity.center.sales_calendar_view"]').element_handle().content_frame()
-        frame.wait_for_function("calendarDraft?.dirty && calendarDraft.values.title==='뒤로가기 보존'")
+        try:
+            frame.wait_for_function("calendarDraft?.dirty && calendarDraft.values.title==='뒤로가기 보존'",timeout=5000)
+        except Exception:
+            print('DRAFT_STATE',frame.evaluate("({draft:calendarDraft,panelOpen:calendarPanel?.open,inputs:[...document.querySelectorAll('input[name=title]')].map(e=>({value:e.value,open:e.closest('dialog')?.open,inert:e.closest('dialog')?.inert})),loading:calendarLoading})"),flush=True)
+            raise
         page.wait_for_function("history.state?.hwarangCalendarBack === true")
         page.wait_for_timeout(400)
         page.go_back()
