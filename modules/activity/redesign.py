@@ -223,7 +223,7 @@ def event_detail(db,row):
     if feedback.open:
         with feedback:review(db,row,"event")
 
-def event_list(db,events,prefix):
+def event_list(db,events,prefix,*,show_result_actions=True):
     if not events: st.caption("등록된 일정이 없습니다.")
     for row in events:
         with st.container(border=True):
@@ -231,7 +231,7 @@ def event_list(db,events,prefix):
             if st.button(row["title"],key=prefix+row["id"],width="stretch"):
                 ux.navigate({"type":"event","id":row["id"]},bool(st.session_state.get("sales_route")))
             if row.get("place"):st.caption(row["place"])
-            if row["owner"]==db.uid and row["status"]=="예정":
+            if show_result_actions and row["owner"]==db.uid and row["status"]=="예정":
                 if st.button("완료 · 연기 · 취소",key=prefix+"result"+row["id"]): ux.navigate({"type":"result","id":row["id"]},bool(st.session_state.get("sales_route")))
 
 def report_key(db,day,period): return f'report:{db.uid}:{period}:{day}'
@@ -446,7 +446,7 @@ def member_detail(db,uid,day,period):
         if not mobile or tab=="일정":
             with a:
                 st.markdown("**일정**")
-                event_list(db,[e for e in events if e["day"]==str(target)],"member_"+str(target))
+                event_list(db,[e for e in events if e["day"]==str(target)],"member_"+str(target),show_result_actions=False)
         if not mobile or tab=="활동 기록":
             with b:
                 st.markdown("**일일 활동 기록**")
