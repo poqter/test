@@ -72,8 +72,8 @@ try:
    # Settings and scope stay inside the mounted frame; no host widget recreation.
    f.locator('.view-settings > summary').click();f.get_by_label('주말 표시',exact=True).check();expect(f.locator('.cell')).to_have_count(42)
    f.get_by_label('주말 표시',exact=True).uncheck();expect(f.locator('.cell')).to_have_count(30);click('보기 설정 닫기')
-   f.get_by_role('button',name='조회 대상 · 내 일정',exact=True).click();f.get_by_label('직원 이름 검색 · 선택',exact=True).select_option('11111111-1111-4111-8111-111111111111');click('적용')
-   f.get_by_role('button',name='조회 대상 · 테스트 작성자',exact=True).click();f.get_by_label('직원 이름 검색 · 선택',exact=True).select_option('my');click('적용')
+   f.get_by_role('button',name='구성원 선택',exact=True).click();f.get_by_role('button',name='테스트 작성자 일정 보기',exact=True).click()
+   f.get_by_role('button',name='내 일정',exact=True).click()
    f.wait_for_function('!calendarLoading && !calendarFlight');assert f.evaluate('window.__calendarTest.token')==token
    assert f.evaluate('window.__calendarTest.blank')==0
    assert iframe.bounding_box()['height']==height

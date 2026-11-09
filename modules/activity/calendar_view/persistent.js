@@ -156,13 +156,26 @@ function section(form,title){const d=el('details');d.append(el('summary',title))
 function feedback(form){const e=el('div','','panel-error');e.setAttribute('role','status');form.append(e);return e}
 async function runButton(btn,error,fn){if(btn.disabled)return;btn.disabled=true;error.textContent='저장 중…';const form=btn.closest('form'),panel=btn.closest('dialog');if(panel)panel.dataset.busy='true';if(form)form.inert=true;try{await fn()}catch(e){error.textContent=e.message}finally{if(panel)delete panel.dataset.busy;if(form)form.inert=false;btn.disabled=false}}
 function mutate(){calendarEpoch++;calendarCache.clear();reloadCalendar(true)}
+function selectScope(value){
+ if(!calendarBoot)return;
+ const member=!['my','team'].includes(value)?value:null;
+ if(member&&(!calendarBoot.managed||!Object.hasOwn(calendarBoot.members,member)))return;
+ calendarBoot.member=member;calendarBoot.team=value==='team';calendarEpoch++;calendarCache.clear();
+ latest={...latest,events:[],roster:{},scopeLabel:member?calendarBoot.members[member]:value==='team'?'지점 일정':'내 일정'};
+ if(calendarPanel)calendarPanel.close();calendarLoading=true;render(latest);reloadCalendar(true);
+}
 function openScope(){
- const body=createPanel('조회 대상'),form=el('form');body.append(form);
- const options=[['my','내 일정'],['team','지점 일정'],...Object.entries(calendarBoot.members).map(([u,n])=>[u,n])];
- const input=field(form,'직원 이름 검색 · 선택','scope',calendarBoot.member||(calendarBoot.team?'team':'my'),'text',options);
- // A local search filters authorized names only.
- const search=field(form,'이름 검색','search');search.oninput=()=>{for(const o of input.options)o.hidden=!['my','team'].includes(o.value)&&!o.textContent.includes(search.value)};
- const apply=button('적용',()=>{calendarBoot.member=['my','team'].includes(input.value)?null:input.value;calendarBoot.team=input.value==='team';calendarEpoch++;calendarCache.clear();latest={...latest,events:[],roster:{},scopeLabel:input.selectedOptions[0].textContent};calendarPanel.close();reloadCalendar(true)},'primary');form.append(apply);form.onsubmit=e=>e.preventDefault();
+ if(!calendarBoot?.managed)return;
+ const body=createPanel('구성원 선택'),form=el('form');body.append(form);
+ const search=field(form,'이름 검색','search'),list=el('div','','member-options');list.setAttribute('role','group');list.setAttribute('aria-label','조회 가능한 구성원');form.append(list);
+ const draw=()=>{
+  list.replaceChildren();const query=search.value.trim().toLocaleLowerCase();
+  for(const [uid,name] of Object.entries(calendarBoot.members).sort((a,b)=>a[1].localeCompare(b[1],'ko'))){
+   if(!name.toLocaleLowerCase().includes(query))continue;
+   const choice=button(name+(calendarBoot.member===uid?' ✓':''),()=>selectScope(uid),'member-choice',name+' 일정 보기');choice.dataset.member=uid;choice.setAttribute('aria-pressed',String(calendarBoot.member===uid));list.append(choice);
+  }
+  if(!list.children.length)list.append(el('p','검색 결과가 없습니다.','hint'));
+ };search.oninput=draw;form.onsubmit=e=>e.preventDefault();draw();search.focus({preventScroll:true});
 }
 async function openDetail(id){
  const card=latest.events.find(e=>e.id===id),body=createPanel('일정 상세');body.append(el('p',card?.label||'일정을 불러오는 중…'));const panel=calendarPanel;

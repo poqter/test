@@ -8,9 +8,9 @@
  .calendar-sidebar-open{display:none}
  body:has(.st-key-mobile_header) [data-testid="stHeader"]{display:none!important}
  @media(min-width:701px){
- body:has(.st-key-mobile_header) [data-testid="stMainBlockContainer"]{max-width:none!important;padding-left:20px!important;padding-right:20px!important}
- div:has(>.st-key-mobile_header){position:sticky;top:12px;z-index:20;background:#f5f7fa}
- .st-key-mobile_header{padding-top:12px!important;padding-bottom:8px!important}
+ body:has(.st-key-mobile_header) [data-testid="stMain"] [data-testid="stMainBlockContainer"]{width:100%!important;max-width:none!important;padding:0 20px 12px!important}
+ div:has(>.st-key-mobile_header){position:sticky;top:0;z-index:20;background:#f5f7fa}
+ .st-key-mobile_header{padding-top:4px!important;padding-bottom:0!important}
  body:has(.st-key-mobile_header) .st-key-mobile_menu_toggle{display:block!important}
  .st-key-mobile_menu_toggle [data-testid="stPopover"]{display:none!important}
  body:has([data-testid="stSidebar"][aria-expanded="false"]) .calendar-sidebar-open{display:inline-flex;align-items:center;justify-content:center;min-width:88px;min-height:44px;border-radius:10px;color:#18334c;font:inherit;cursor:pointer;white-space:nowrap}

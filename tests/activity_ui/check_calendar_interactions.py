@@ -13,7 +13,7 @@ with sync_playwright() as p:
  day.click(position={'x':45,'y':3});page.wait_for_timeout(100);assert not page.evaluate('sent.some(x=>x.action==="new")')
  page.wait_for_timeout(450);day.click(position={'x':45,'y':3});page.wait_for_timeout(50);assert page.evaluate('sent.at(-1).action')=='new'
  page.get_by_role('button',name='주간',exact=True).click();page.wait_for_timeout(50);assert page.evaluate('sent.at(-1).value')=='주간'
- page.evaluate('a=>render({...a,mode:"주간"})',a);page.get_by_role('button',name='날짜별',exact=True).click();page.wait_for_timeout(50);assert page.evaluate('sent.at(-1).value')=='날짜별'
+ page.evaluate('a=>render({...a,mode:"주간"})',a);page.get_by_role('button',name='일별',exact=True).click();page.wait_for_timeout(50);assert page.evaluate('sent.at(-1).value')=='날짜별'
  assert page.evaluate('document.documentElement.scrollWidth<=innerWidth');assert not errors,errors
  page.screenshot(path='/tmp/calendar-final.png');b.close()
 print('PASS preferences, first/repeat tap, debounce, mode controls, mobile width')

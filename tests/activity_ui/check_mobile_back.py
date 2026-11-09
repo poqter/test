@@ -60,7 +60,7 @@ try:
         expect(page.get_by_text('남아 있는 후속 할 일이 없습니다.',exact=False)).to_be_visible()
         page.wait_for_timeout(400)
         page.go_back()
-        expect(cal.get_by_role('button',name='조회 대상 · 내 일정',exact=True)).to_be_visible()
+        expect(cal.get_by_role('button',name='내 일정',exact=True)).to_be_visible()
         expect(page.locator('.mobile-navigation-state')).to_have_attribute('data-page','캘린더')
         expect(page.locator('.mobile-navigation-state')).to_have_attribute('data-depth','0')
         page.wait_for_timeout(400)

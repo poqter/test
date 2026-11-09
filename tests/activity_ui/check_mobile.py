@@ -25,17 +25,18 @@ try:
         assert page.locator('.st-key-mobile_header').bounding_box()['y'] < 24
         expect(page.locator('iframe[title="modules.activity.center.sales_calendar_view"]')).to_be_visible()
         assert page.locator('iframe[title="modules.activity.center.sales_calendar_view"]').bounding_box()['y'] < 200
-        for mode in ('주간','월간','날짜별','월간'):
+        for mode in ('주간','월간','일별','월간'):
             cal.get_by_role('button',name=mode,exact=True).click()
             expect(cal.get_by_role('button',name=mode,exact=True)).to_have_attribute('aria-pressed','true')
-        cal.get_by_role('button',name='조회 대상 · 내 일정',exact=True).click()
-        expect(cal.get_by_role('dialog')).to_be_visible()
-        cal.get_by_label('직원 이름 검색 · 선택',exact=True).select_option('team')
-        cal.get_by_role('button',name='적용',exact=True).click()
-        expect(cal.get_by_role('button',name='조회 대상 · 지점 일정',exact=True)).to_be_visible()
-        cal.get_by_role('button',name='조회 대상 · 지점 일정',exact=True).click()
-        cal.get_by_label('직원 이름 검색 · 선택',exact=True).select_option('my')
-        cal.get_by_role('button',name='적용',exact=True).click()
+        cal.get_by_role('button',name='지점 일정',exact=True).click()
+        expect(cal.get_by_role('button',name='지점 일정',exact=True)).to_have_attribute('aria-pressed','true')
+        cal.get_by_role('button',name='구성원 선택',exact=True).click()
+        cal.get_by_label('이름 검색',exact=True).fill('구성원')
+        expect(cal.get_by_role('button',name='테스트 작성자 일정 보기',exact=True)).to_have_count(0)
+        cal.get_by_role('button',name='테스트 구성원 일정 보기',exact=True).click()
+        expect(cal.get_by_role('dialog')).to_have_count(0)
+        expect(cal.get_by_role('button',name='구성원 선택',exact=True)).to_contain_text('테스트 구성원')
+        cal.get_by_role('button',name='내 일정',exact=True).click()
         cal.locator('.view-settings > summary').click()
         expect(cal.get_by_label('주말 표시',exact=True)).not_to_be_checked()
         expect(cal.get_by_role('button',name='모바일 앱 열기',exact=True)).to_have_count(0)
@@ -86,11 +87,18 @@ try:
         expect(reference).not_to_be_visible()
         page.get_by_role('button',name='일일 기록',exact=True).click()
         page.close()
-        for width,agent in [(1440,None),(820,'Mozilla/5.0 (Linux; Android 14; Tablet) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36')]:
+        for width,agent in [(1920,None),(1440,None),(820,'Mozilla/5.0 (Linux; Android 14; Tablet) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36')]:
             page=browser.new_page(viewport={'width':width,'height':950},**({'user_agent':agent} if agent else {}))
             page.goto('http://127.0.0.1:8504')
             expect(page.locator('.st-key-mobile_header')).to_be_visible()
             cal=page.frame_locator('iframe[title="modules.activity.center.sales_calendar_view"]')
+            main=page.get_by_test_id('stMainBlockContainer').bounding_box()
+            sidebar_width=260 if page.get_by_test_id('stSidebar').get_attribute('aria-expanded')=='true' else 0
+            assert main['width']>=width-sidebar_width-40,(width,main)
+            daily=cal.get_by_role('button',name='일별',exact=True)
+            expect(daily).to_be_visible()
+            assert daily.bounding_box()['height']<=44
+            if width==1920 and os.environ.get('CALENDAR_WIDE_SCREENSHOT'):page.screenshot(path=os.environ['CALENDAR_WIDE_SCREENSHOT'])
             cal.get_by_role('button',name='2026-11-06 일정 목록',exact=True).click()
             expect(cal.get_by_role('dialog')).to_have_attribute('data-day-list','2026-11-06')
             cal.get_by_role('button',name='상담 테스트 완료 처리',exact=True).click()
