@@ -28,10 +28,14 @@ def summarize(members,rows):
         mine=[r for r in rows if r['user_id']==m['id']]
         scores=[s for (uid,_),s in latest.items() if uid==m['id']]
         state='미참여' if not mine else '학습 중' if any(r['status']=='active' for r in mine) else '학습 완료' if any(r['status']=='submitted' for r in mine) else '중단'
+        latest_attempt=max(mine,key=lambda r:(stamp(r['started_at']),r['id'])) if mine else None
         below=any(not s['passed'] for s in scores)
         people.append({**m,'attempts':mine,'scores':scores,'state':state,'below':below,
+                       'latest_aborted':bool(latest_attempt and latest_attempt['status']=='aborted'),
+                       'has_aborted':any(r['status']=='aborted' for r in mine),
                        'last':max((r.get('updated_at') or r['started_at'] for r in mine),default=None)})
     by_subject={}
     for (_,name),s in latest.items():
         item=by_subject.setdefault(name,{'total':0,'passed':0});item['total']+=1;item['passed']+=int(s['passed'])
     return people,by_subject
+

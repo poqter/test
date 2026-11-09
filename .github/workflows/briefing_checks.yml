@@ -44,6 +44,10 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 22
+      - name: CBT database and cancellation regression
+        run: |
+          npm ci --ignore-scripts --prefix tests/exams
+          node tests/exams/database.mjs
       - name: Academy learning authorization and persistence regression
         run: |
           npm ci --ignore-scripts --prefix tests/studio_db
@@ -65,3 +69,4 @@ jobs:
       - run: python -m playwright install --with-deps chromium
       - name: Verify deployed release and workspace entry
         run: python .github/scripts/verify_briefing_deployment.py
+
