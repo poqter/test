@@ -24,7 +24,7 @@ try:
    frame.locator('.view-settings > summary').click();frame.get_by_label('완료 일정 표시',exact=True).uncheck()
    page.wait_for_timeout(250);assert frame.evaluate('window.__continuity')=='same-calendar'
    frame.get_by_role('button',name='보기 설정 닫기').click()
-   page.get_by_text('결과 미입력 일정',exact=True).click();page.wait_for_timeout(250)
+   expect(page.get_by_text('결과 미입력 일정',exact=True)).to_have_count(0)
    assert frame.evaluate('window.__continuity')=='same-calendar'
    expect(page.locator('[data-testid="stException"]')).to_have_count(0)
    page.close()
