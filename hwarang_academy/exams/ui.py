@@ -116,7 +116,7 @@ def _dashboard(repo,profile):
     if subjects:
         for c,(name,v) in zip(st.columns(len(subjects)),subjects.items()):c.metric(name,f"{v['passed']/v['total']:.0%}");c.caption(f"합격 {v['passed']} / 응시 {v['total']}명")
     else:st.caption('선택 기간에 완료한 모의시험이 없습니다. 미응시를 0점으로 계산하지 않습니다.')
-    st.caption('참여: 기간 내 완료 또는 마지막 저장 기록 · 합격률: 기간 내 완료한 모의시험의 개인·과목별 최신 결과. 자유학습과 복습 제외.')
+    st.caption('참여: 기간 내 응시 기록이 있는 인원으로, 중단한 시험도 포함합니다. 합격률: 기간 내 완료한 모의시험의 개인·과목별 최신 결과. 중단·자유학습·복습 제외.')
     detail=st.session_state.get('_academy_exam_person')
     person=next((p for p in people if p['id']==detail),None)
     if detail and not person:st.session_state.pop('_academy_exam_person',None);st.session_state.pop('_academy_exam_review',None)
@@ -134,7 +134,7 @@ def _dashboard(repo,profile):
         st.caption('아래 이력은 선택한 조회 기간 기준입니다.')
         pno=st.number_input('개인 기록 페이지',min_value=1,max_value=max(1,(len(mine)+9)//10),value=1,key='_academy_exam_person_page_'+detail)
         for r in mine[(pno-1)*10:pno*10]:
-            cols=st.columns([4,1]);cols[0].write(f"{r['title']} · {mode_label(r)}");cols[0].caption(stamp(r['started_at']).strftime('%Y.%m.%d %H:%M'))
+            cols=st.columns([4,1]);cols[0].write(f"{r['title']} · {mode_label(r)}");cols[0].caption(stamp(r['started_at']).strftime('%Y.%m.%d %H:%M')+' · '+dict(active='진행 중',submitted='완료',aborted='중단').get(r['status'],r['status']))
             if cols[1].button('결과 보기',key='manager_'+r['id'],disabled=r['status']!='submitted'):st.session_state['_academy_exam_review']=r['id']
         aid=st.session_state.get('_academy_exam_review')
         if aid and any(r['id']==aid for r in mine):_result(repo,repo.call('get',id=aid),manager=True)
@@ -155,8 +155,8 @@ def _dashboard(repo,profile):
             else:st.caption('비교할 하위 조직이 없습니다. 아래 학습자 목록을 확인해 주세요.')
     pending=sum(p['below'] for p in people)
     st.info(f"미참여 {len(people)-participant}명 · 최근 모의시험 기준 미달 {pending}명")
-    x,y=st.columns([2,1]);query=x.text_input('이름 검색',key='_academy_exam_search');status=y.selectbox('학습 상태',['전체','미참여','학습 중','합격 기준 미달'],key='_academy_exam_filter')
-    visible=[p for p in people if query.casefold() in p['display_name'].casefold() and (status=='전체' or status=='합격 기준 미달' and p['below'] or status==p['state'])]
+    x,y=st.columns([2,1]);query=x.text_input('이름 검색',key='_academy_exam_search');status=y.selectbox('학습 상태',['전체','미참여','학습 중','중단 이력 있음','합격 기준 미달'],key='_academy_exam_filter')
+    visible=[p for p in people if query.casefold() in p['display_name'].casefold() and (status=='전체' or status=='합격 기준 미달' and p['below'] or status=='중단 이력 있음' and p['has_aborted'] or status==p['state'])]
     if not visible:st.info('조건에 맞는 학습자가 없습니다. 검색어나 필터를 변경해 주세요.');return
     # Stable pagination resets when query context changes.
     context=(query,status,org,str(dates));old=st.session_state.get('_academy_exam_page_context')
@@ -168,7 +168,7 @@ def _dashboard(repo,profile):
         with st.container(border=True,key='exam_person_'+p['id']):
             left,right=st.columns([3,1])
             if left.button(p['display_name']+' →',key='person_'+p['id']):st.session_state['_academy_exam_person']=p['id'];st.rerun()
-            left.caption((p.get('organization_name') or '소속 미지정')+' · '+p['state'])
+            left.caption((p.get('organization_name') or '소속 미지정')+' · '+p['state']+(' · 최근 시험 중단' if p['latest_aborted'] and p['state']!='중단' else ''))
             right.caption('최근 활동 '+(stamp(p['last']).strftime('%m.%d %H:%M') if p['last'] else '없음'))
             st.write(' · '.join(f"{s['name']} {s['score']}점{' · 기준 미달' if not s['passed'] else ''}" for s in p['scores']) or '모의시험 성적 없음')
             if p['state']=='학습 중' and p['last'] and datetime.now(KST)-stamp(p['last'])>timedelta(days=1):st.caption('마지막 활동 후 24시간 이상 · 학습 중단으로 단정하지 않고 확인이 필요합니다.')
@@ -230,3 +230,4 @@ def render(auth,owner,permissions,profile):
     except Exception:
         st.error('자료를 불러오거나 저장하지 못했습니다. 입력 상태를 유지하고 다시 시도해 주세요.')
         st.button('다시 시도',key='exam_retry')
+
