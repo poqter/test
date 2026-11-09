@@ -27,10 +27,10 @@ def write_event(db,old,body,follow=None):
         pass
     # An exact state match resolves a lost successful response, not a conflicting edit.
     current=db.request("GET","sales_events",{"id":"eq."+old["id"],"limit":"1"})
-    if current and all(current[0].get(k)==v for k,v in body.items()):
+    if current and all(current[0].get(k)==v for k,v in body.items() if not k.startswith('follow_')):
         if not follow:return
         linked=db.request("GET","sales_events",{"id":"eq."+follow_id,"limit":"1"})
-        if linked and linked[0].get("previous_event")==old["id"]:return
+        if linked and linked[0].get("previous_event")==old["id"] and all(linked[0].get(k.removeprefix('follow_'))==v for k,v in body.items() if k.startswith('follow_')):return
     raise HwarangAuthError("다른 화면의 변경 또는 통신 오류가 있습니다. 작성 내용은 유지됩니다. 최신 기록을 확인한 뒤 다시 시도해 주세요.")
 
 def event_body(values):
@@ -48,6 +48,7 @@ def event_errors(v):
         if not v["start"]:errors["start"]="시작 시간을 입력해 주세요."
         elif v["end"] and v["end"]<=v["start"]:errors["end"]="종료 시간은 시작 시간보다 늦어야 합니다."
     if v["follow"] and v["follow"]<v["day"]:errors["follow"]="후속 일정 날짜를 확인해 주세요."
+    if v.get('follow') and v.get('follow_end') and (not v.get('follow_start') or v['follow_end']<=v['follow_start']):errors['follow']='새 일정 종료 시간은 시작 시간보다 늦어야 합니다.'
     return errors
 
 
@@ -60,9 +61,13 @@ def event_editor(db,day,event=None,parent=None,copy=None):
         end=time.fromisoformat(old["end_time"]) if old.get("end_time") else None,place=old.get("place","") or "",note=old.get("note","") or "",
         help=old.get("help","") if event else "",support=bool(event and old.get("help")),companion=old.get("companion"),
         repeat=False,repeats=1,common=old.get("common",False) if event else False,status=old.get("status","예정") if event else "예정",
-        result=old.get("result","") if event else "",follow=None)
+        result=old.get("result","") if event else "",follow=None,
+        follow_start=time.fromisoformat(old['start_time']) if old.get('start_time') else None,
+        follow_end=time.fromisoformat(old['end_time']) if old.get('end_time') else None)
     initial["mode"]="시간 지정" if old.get("start_time") else "시간 미정" if not old or old.get("time_pending") else "종일"
     d=ux.draft(key,initial,event)
+    for name in ('follow_start','follow_end'):
+        d['values'].setdefault(name,initial[name])
     ux.conflict_recovery(d,key)
     v=d["values"]
     if copy:st.caption("날짜와 시간을 확인한 뒤 새 일정으로 저장해 주세요.")
@@ -117,10 +122,13 @@ def event_editor(db,day,event=None,parent=None,copy=None):
             if db.me["managed"]: ux.field(d,"common",st.checkbox,"지점 공통 일정")
     if populated:st.caption("추가 정보 · 입력됨")
     if event:
-        with st.expander("처리 상태 · 활동 결과",expanded=d["baseline"]["status"]!="예정",key=d["epoch"]+"state",on_change="rerun"):
+        with st.container(key="sales_status_emphasis"), st.expander("처리 상태 · 활동 결과",expanded=d["baseline"]["status"]!="예정",key=d["epoch"]+"state",on_change="rerun"):
             ux.field(d,"status",st.selectbox,"처리 상태",options=["예정","완료","연기","취소"])
             ux.field(d,"result",st.text_area,"활동 결과",height=80)
             ux.field(d,"follow",st.date_input,"후속 일정 날짜 · 선택")
+            if v['follow']:
+                ux.field(d,'follow_start',st.time_input,'새 일정 시작 시간')
+                ux.field(d,'follow_end',st.time_input,'새 일정 종료 시간 · 선택')
             if v["follow"] and v["follow"]<v["day"]:st.error("후속 일정 날짜는 현재 일정 날짜 이후로 선택해 주세요.")
     with st.container(key="sales_event_save"):
         save_slot=st.empty()
@@ -130,6 +138,8 @@ def event_editor(db,day,event=None,parent=None,copy=None):
             ux.focus_field(d,next(iter(errors)))
             return key
         body=event_body(v)
+        if event and v.get('follow'):
+            body.update(follow_start_time=str(v['follow_start']) if v['follow_start'] else None,follow_end_time=str(v['follow_end']) if v['follow_end'] else None,follow_time_pending=not bool(v['follow_start']))
         repeat=v["repeats"] if v["repeat"] and not event else 1
         if body["start_time"] and body["status"]=="예정":
             candidates=db.period("sales_events",v["day"],v["day"]+7*(repeat-1)*DAY,owner="eq."+db.uid,status="eq.예정")
@@ -174,11 +184,16 @@ def event_editor(db,day,event=None,parent=None,copy=None):
 
 def quick_result(db,row):
     key="result:"+row["id"]
-    d=ux.draft(key,{"status":"완료","result":row.get("result", ""),"follow":max(date.fromisoformat(row["day"]),datetime.now(KST).date())+DAY},row)
+    d=ux.draft(key,{"status":"완료","result":row.get("result", ""),"follow":max(date.fromisoformat(row["day"]),datetime.now(KST).date())+DAY,"follow_start":time.fromisoformat(row['start_time']) if row.get('start_time') else None,"follow_end":time.fromisoformat(row['end_time']) if row.get('end_time') else None},row)
+    for name,source in (('follow_start','start_time'),('follow_end','end_time')):
+        d['values'].setdefault(name,time.fromisoformat(row[source]) if row.get(source) else None)
     ux.conflict_recovery(d,key)
     ux.field(d,"status",st.segmented_control,"처리 결과",options=["완료","연기","취소"],required=True)
     ux.field(d,"result",st.text_area,"활동 결과 · 선택",height=80)
-    if d["values"]["status"]=="연기": ux.field(d,"follow",st.date_input,"새 일정 날짜",min_value=date.fromisoformat(row["day"]))
+    if d["values"]["status"]=="연기":
+        ux.field(d,"follow",st.date_input,"새 일정 날짜",min_value=date.fromisoformat(row["day"]))
+        ux.field(d,"follow_start",st.time_input,"새 일정 시작 시간")
+        ux.field(d,"follow_end",st.time_input,"새 일정 종료 시간 · 선택")
     save_slot=st.empty()
     if save_slot.button("결과 저장",type="primary"):
         save_slot.button("저장 중…",disabled=True,key=key+"busy")
@@ -186,6 +201,12 @@ def quick_result(db,row):
         old=d["old"];v=d["values"];body={k:old.get(k) for k in ux.EVENT_FIELDS}
         body.update(status=v["status"],result=v["result"])
         follow=v["follow"] if v["status"]=="연기" else None
+        if follow:
+            if v['follow_end'] and (not v['follow_start'] or v['follow_end']<=v['follow_start']):
+                st.session_state['sales_write_in_progress']=False
+                st.error('새 일정 종료 시간은 시작 시간보다 늦어야 합니다.')
+                return key
+            body.update(follow_start_time=str(v['follow_start']) if v['follow_start'] else None,follow_end_time=str(v['follow_end']) if v['follow_end'] else None,follow_time_pending=not bool(v['follow_start']))
         try:write_event(db,old,body,follow)
         except HwarangAuthError:
             d["conflict"]=True;raise
@@ -194,14 +215,17 @@ def quick_result(db,row):
 
 def event_detail(db,row):
     from modules.activity.center import review
-    st.subheader(row["title"])
+    title_slot,result_slot=st.columns([3,1])
+    title_slot.subheader(row["title"])
+    if row['owner']==db.uid:
+        with result_slot.popover('완료 · 결과 처리',width='stretch'):
+            quick_result(db,row)
     ux.summary([row["day"],ux.schedule_time(row),TYPES.get(row["kind"],row["kind"]),row["status"]])
     people={r["member"]:r["label"] for r in db.request("POST","rpc/sales_branch_members",body={})} if row.get("companion") else {}
     ux.details([("장소",row.get("place") or "미입력"),("동행자",people.get(row.get("companion"))), ("메모",row.get("note")),("활동 결과",row.get("result")),("지원 요청",row.get("help"))])
     if row["owner"]==db.uid:
-        a,b,c=st.columns(3)
+        a,c=st.columns(2)
         if a.button("일정 수정",width="stretch"): ux.navigate({"type":"edit","id":row["id"]},True)
-        if b.button("완료 · 결과 처리",type="primary",width="stretch"): ux.navigate({"type":"result","id":row["id"]},True)
         if c.button("일정 복사",width="stretch"): ux.navigate({"type":"copy","id":row["id"]},True)
         delete_control(db,row)
         with st.expander("다음 활동 추가"):
@@ -232,7 +256,10 @@ def event_list(db,events,prefix,*,show_result_actions=True):
                 ux.navigate({"type":"event","id":row["id"]},bool(st.session_state.get("sales_route")))
             if row.get("place"):st.caption(row["place"])
             if show_result_actions and row["owner"]==db.uid and row["status"]=="예정":
-                if st.button("완료 · 연기 · 취소",key=prefix+"result"+row["id"]): ux.navigate({"type":"result","id":row["id"]},bool(st.session_state.get("sales_route")))
+                if st.button("✓ 완료",key=prefix+"result"+row["id"]):
+                    from modules.activity.calendar_service import command
+                    command(db,'status',{'id':row['id'],'revision':row['revision'],'status':'완료'})
+                    notify();ux.refresh()
 
 def report_key(db,day,period): return f'report:{db.uid}:{period}:{day}'
 
