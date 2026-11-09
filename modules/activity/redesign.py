@@ -41,6 +41,13 @@ def event_body(values):
                 note=values["note"],help=values["help"] if values["support"] else "",common=values["common"],
                 companion=values["companion"],status=values["status"],result=values["result"])
 
+def follow_time_body(v):
+    from modules.activity.calendar_service import parse_clock
+    start=parse_clock(str(v['follow_start'])) if v.get('follow_start') else None
+    end=parse_clock(str(v['follow_end'])) if v.get('follow_end') else None
+    if end and (not start or end<=start):raise ValueError('새 일정 종료 시간은 시작 시간보다 늦어야 합니다.')
+    return dict(follow_start_time=start,follow_end_time=end,follow_time_pending=not bool(start))
+
 def event_errors(v):
     errors={}
     if not v["title"].strip():errors["title"]="일정명을 입력해 주세요."
@@ -48,7 +55,9 @@ def event_errors(v):
         if not v["start"]:errors["start"]="시작 시간을 입력해 주세요."
         elif v["end"] and v["end"]<=v["start"]:errors["end"]="종료 시간은 시작 시간보다 늦어야 합니다."
     if v["follow"] and v["follow"]<v["day"]:errors["follow"]="후속 일정 날짜를 확인해 주세요."
-    if v.get('follow') and v.get('follow_end') and (not v.get('follow_start') or v['follow_end']<=v['follow_start']):errors['follow']='새 일정 종료 시간은 시작 시간보다 늦어야 합니다.'
+    if v.get('follow'):
+        try:follow_time_body(v)
+        except ValueError as exc:errors['follow']=str(exc)
     return errors
 
 
@@ -62,8 +71,7 @@ def event_editor(db,day,event=None,parent=None,copy=None):
         help=old.get("help","") if event else "",support=bool(event and old.get("help")),companion=old.get("companion"),
         repeat=False,repeats=1,common=old.get("common",False) if event else False,status=old.get("status","예정") if event else "예정",
         result=old.get("result","") if event else "",follow=None,
-        follow_start=time.fromisoformat(old['start_time']) if old.get('start_time') else None,
-        follow_end=time.fromisoformat(old['end_time']) if old.get('end_time') else None)
+        follow_start=(old.get('start_time') or '')[:5],follow_end=(old.get('end_time') or '')[:5])
     initial["mode"]="시간 지정" if old.get("start_time") else "시간 미정" if not old or old.get("time_pending") else "종일"
     d=ux.draft(key,initial,event)
     for name in ('follow_start','follow_end'):
@@ -127,8 +135,8 @@ def event_editor(db,day,event=None,parent=None,copy=None):
             ux.field(d,"result",st.text_area,"활동 결과",height=80)
             ux.field(d,"follow",st.date_input,"후속 일정 날짜 · 선택")
             if v['follow']:
-                ux.field(d,'follow_start',st.time_input,'새 일정 시작 시간')
-                ux.field(d,'follow_end',st.time_input,'새 일정 종료 시간 · 선택')
+                ux.field(d,'follow_start',st.text_input,'새 일정 시작 시간')
+                ux.field(d,'follow_end',st.text_input,'새 일정 종료 시간 · 선택')
             if v["follow"] and v["follow"]<v["day"]:st.error("후속 일정 날짜는 현재 일정 날짜 이후로 선택해 주세요.")
     with st.container(key="sales_event_save"):
         save_slot=st.empty()
@@ -139,7 +147,7 @@ def event_editor(db,day,event=None,parent=None,copy=None):
             return key
         body=event_body(v)
         if event and v.get('follow'):
-            body.update(follow_start_time=str(v['follow_start']) if v['follow_start'] else None,follow_end_time=str(v['follow_end']) if v['follow_end'] else None,follow_time_pending=not bool(v['follow_start']))
+            body.update(follow_time_body(v))
         repeat=v["repeats"] if v["repeat"] and not event else 1
         if body["start_time"] and body["status"]=="예정":
             candidates=db.period("sales_events",v["day"],v["day"]+7*(repeat-1)*DAY,owner="eq."+db.uid,status="eq.예정")
@@ -184,16 +192,16 @@ def event_editor(db,day,event=None,parent=None,copy=None):
 
 def quick_result(db,row):
     key="result:"+row["id"]
-    d=ux.draft(key,{"status":"완료","result":row.get("result", ""),"follow":max(date.fromisoformat(row["day"]),datetime.now(KST).date())+DAY,"follow_start":time.fromisoformat(row['start_time']) if row.get('start_time') else None,"follow_end":time.fromisoformat(row['end_time']) if row.get('end_time') else None},row)
+    d=ux.draft(key,{"status":"완료","result":row.get("result", ""),"follow":max(date.fromisoformat(row["day"]),datetime.now(KST).date())+DAY,"follow_start":(row.get('start_time') or '')[:5],"follow_end":(row.get('end_time') or '')[:5]},row)
     for name,source in (('follow_start','start_time'),('follow_end','end_time')):
-        d['values'].setdefault(name,time.fromisoformat(row[source]) if row.get(source) else None)
+        d['values'].setdefault(name,(row.get(source) or '')[:5])
     ux.conflict_recovery(d,key)
     ux.field(d,"status",st.segmented_control,"처리 결과",options=["완료","연기","취소"],required=True)
     ux.field(d,"result",st.text_area,"활동 결과 · 선택",height=80)
     if d["values"]["status"]=="연기":
         ux.field(d,"follow",st.date_input,"새 일정 날짜",min_value=date.fromisoformat(row["day"]))
-        ux.field(d,"follow_start",st.time_input,"새 일정 시작 시간")
-        ux.field(d,"follow_end",st.time_input,"새 일정 종료 시간 · 선택")
+        ux.field(d,"follow_start",st.text_input,"새 일정 시작 시간")
+        ux.field(d,"follow_end",st.text_input,"새 일정 종료 시간 · 선택")
     save_slot=st.empty()
     if save_slot.button("결과 저장",type="primary"):
         save_slot.button("저장 중…",disabled=True,key=key+"busy")
@@ -202,11 +210,11 @@ def quick_result(db,row):
         body.update(status=v["status"],result=v["result"])
         follow=v["follow"] if v["status"]=="연기" else None
         if follow:
-            if v['follow_end'] and (not v['follow_start'] or v['follow_end']<=v['follow_start']):
+            try:body.update(follow_time_body(v))
+            except ValueError as exc:
                 st.session_state['sales_write_in_progress']=False
-                st.error('새 일정 종료 시간은 시작 시간보다 늦어야 합니다.')
+                st.error(str(exc))
                 return key
-            body.update(follow_start_time=str(v['follow_start']) if v['follow_start'] else None,follow_end_time=str(v['follow_end']) if v['follow_end'] else None,follow_time_pending=not bool(v['follow_start']))
         try:write_event(db,old,body,follow)
         except HwarangAuthError:
             d["conflict"]=True;raise
