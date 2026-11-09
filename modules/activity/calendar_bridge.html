@@ -1,6 +1,18 @@
 <!doctype html><script type="text/plain" id="calendar-layout-source">
 (()=>{
  const w=window,d=w.document;
+ // Keep the native reopen control reachable in the installed desktop/tablet app.
+ // Install before the lifetime guard so already-open sessions receive CSS fixes.
+ let navigationStyle=d.getElementById('calendar-sidebar-controls');
+ if(!navigationStyle){navigationStyle=d.createElement('style');navigationStyle.id='calendar-sidebar-controls';d.head.append(navigationStyle)}
+ navigationStyle.textContent=`@media(min-width:701px){
+ body:has(.st-key-mobile_header) [data-testid="stHeader"]{display:flex!important;height:0!important;min-height:0!important;background:transparent!important;pointer-events:none}
+ body:has(.st-key-mobile_header) [data-testid="stHeader"] button{pointer-events:auto}
+ body:has(.st-key-mobile_header) :is([data-testid="stAppToolbar"],[data-testid="stToolbar"]):not(:has([data-testid="stExpandSidebarButton"])){display:none!important}
+ body:has(.st-key-mobile_header) :is([data-testid="stAppToolbar"],[data-testid="stToolbar"]):has([data-testid="stExpandSidebarButton"]){display:flex!important;pointer-events:auto!important}
+ body:has(.st-key-mobile_header) [data-testid="stSidebarCollapsedControl"]{display:flex!important;position:fixed!important;top:8px!important;left:12px!important;z-index:100!important;pointer-events:auto!important}
+ body:has(.st-key-mobile_header) [data-testid="stExpandSidebarButton"]{display:flex!important;min-width:44px!important;min-height:44px!important;pointer-events:auto!important}
+ }`;
  if(w.__hwarangCalendarLayout)return;
  w.__hwarangCalendarLayout=true;
  let hadDialog=false,queued=false;
