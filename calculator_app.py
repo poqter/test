@@ -1,4 +1,5 @@
 """Protected, separately deployed entrypoint for HWARANG CALCULATOR."""
+# Deployment: hwarang-2026.11.09-validated-fixes-2
 from __future__ import annotations
 
 import html
