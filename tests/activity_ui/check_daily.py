@@ -71,6 +71,15 @@ try:
             assert abs(footer.get_by_role('button',name='임시 저장',exact=True).bounding_box()['y']-footer.get_by_role('button',name='수정 내용 제출',exact=True).bounding_box()['y'])<2
             assert page.evaluate('!!window.__hwarangDailyLayout')
 
+            if mobile:
+                record.get_by_role('radiogroup',name='일일 기록 화면').get_by_role('radio').nth(1).click()
+            record.get_by_role('button',name='✓ 완료',exact=True).click()
+            expect(record.get_by_role('button',name='✓ 완료',exact=True)).to_have_count(0)
+            expect(page.get_by_role('dialog')).to_have_count(0)
+            if mobile:
+                record.get_by_role('radio',name='기록 작성',exact=True).click()
+            expect(field).to_have_value('7')
+            expect(note).to_have_value('일정 참고 후에도 유지할 내용')
             page.close()
         browser.close()
     print('DAILY_UI_OK: six fields, desktop/mobile grids, reference tabs, stable help, persistence, single submission and fragment isolation')
