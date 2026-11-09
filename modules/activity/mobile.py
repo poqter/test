@@ -152,6 +152,8 @@ def run(logout):
     body:has(.st-key-mobile_header) [data-testid="stMain"] [data-testid="stMainBlockContainer"]>[data-testid="stVerticalBlock"]{gap:.4rem!important}
     body:has(.st-key-mobile_header) [data-testid="stElementContainer"]:has(> [data-testid="stEmpty"]){display:none!important}
     .st-key-mobile_content [data-testid="stVerticalBlock"]{gap:6px}
+    .st-key-mobile_stage{position:relative;min-height:min(620px,78vh)}
+    .st-key-mobile_stage .st-key-mobile_content{min-height:min(620px,78vh)}
     .st-key-mobile_header button{border:0!important;background:transparent!important;min-height:40px!important;padding:4px 10px!important}
     .st-key-mobile_header h3{margin:0;padding:0;font-size:1.15rem;white-space:nowrap}
     .st-key-mobile_header [data-testid="stHorizontalBlock"],.st-key-mobile_work_counts [data-testid="stHorizontalBlock"]{flex-wrap:nowrap!important;gap:6px!important}
@@ -164,45 +166,59 @@ def run(logout):
     .st-key-mobile_header{position:sticky;top:0;z-index:20;background:#f5f7fa;padding:0}
     .st-key-mobile_content input,.st-key-mobile_content textarea{font-size:16px!important}}
     </style>''')
-    db=center.Records();today=datetime.now(center.KST).date()
-    st.session_state['sales_dialog_rendered']=False
-    # Preserve navigation widgets when another menu temporarily unmounts them.
-    for key in ('sales_calendar_member','sales_calendar_team','sales_day_일일','sales_day_주간','sales_overview_day','sales_overview_period','sales_overview_unit','sales_member_search','sales_member_status','mobile_work_mode','mobile_work_tab'):
-        if key in st.session_state:st.session_state[key]=st.session_state[key]
-    st.session_state['mobile_back_stack']=[p for p in st.session_state.get('mobile_back_stack',[]) if p!='오늘의 업무']
-    page=st.session_state.get('mobile_page','캘린더')
-    allowed=[*menus(db),'주간 기록','알림·피드백']
-    if page not in allowed:page='캘린더';st.session_state['mobile_page']=page
-    if page in ('활동 기록','주간 기록'):st.session_state['mobile_report_page']=page
-    with st.sidebar:menu_items(db,logout,'side')
-    with st.container(key='mobile_header'):
-        a,b,c=st.columns([1,3,1])
-        with a.container(key='mobile_menu_toggle'):
-            with st.popover('☰',key='mobile_drawer_'+page+str(bool(st.session_state.get('mobile_pending')))):
-                st.html('<span class="mobile-drawer"></span>');menu_items(db,logout,'drawer')
-        b.subheader('화랑 캘린더')
-        alerts_slot=c.empty()
-    st.html('<span class="mobile-navigation-state" data-page="'+page+'" data-depth="'+str(len(st.session_state.get('mobile_back_stack',[])))+'"></span>')
-    st.button('이전 메뉴',key='mobile_history_back',on_click=previous_page)
-    st.html('<style>.st-key-mobile_history_back{display:none!important}.mobile-navigation-state{display:none}</style>')
-    pending_navigation()
-    with st.container(key='mobile_content'):
-        if page=='캘린더':
-            st.html("""<button class="mobile-new-event" aria-label="일정 등록" title="일정 등록">＋</button><style>.mobile-new-event{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));width:52px;height:52px;border:0;border-radius:50%;background:#155461;color:white;font-size:28px;z-index:40;box-shadow:0 3px 12px #1234;cursor:pointer}</style><script>document.querySelector('.mobile-new-event').onclick=()=>document.querySelectorAll('iframe').forEach(f=>f.contentWindow.postMessage({type:'hwarang.activity.new'},location.origin));</script>""",unsafe_allow_javascript=True)
-            center.calendar(db,today)
-        elif page=='후속 할 일':tasks_view(db,today)
-        elif page=='구성원 현황':center.overview(db,today)
-        elif page=='알림·피드백':alerts(db)
-        else:
-            a,b=st.columns(2)
-            a.button('일일 기록',on_click=choose,args=('활동 기록',),key='mobile_daily',type='primary' if page=='활동 기록' else 'secondary')
-            b.button('주간 기록',on_click=choose,args=('주간 기록',),key='mobile_weekly',type='primary' if page=='주간 기록' else 'secondary')
-            center.reports(db,today,'주간' if page=='주간 기록' else '일일')
-            personal_performance(db,today)
-    unread=db.request('GET','sales_notices',{'seen':'eq.false','select':'id','limit':'50'})
-    with alerts_slot.container():
-        st.button('알림 '+(str(len(unread))+'+' if len(unread)==50 else str(len(unread))) if unread else '알림',icon=':material/notifications:',type='tertiary',on_click=choose,args=('알림·피드백',),key='mobile_alerts')
-    if st.session_state.get('sales_route') and not st.session_state.get('sales_dialog_rendered'):redesign.dialog(db)
+    from contextlib import nullcontext
+    standalone = bool(st.session_state.get('_calendar_deployment'))
+    with st.container(key='mobile_stage') if standalone else nullcontext():
+        shell_slot = None
+        if standalone:
+            from modules.activity.loading import calendar_shell
+            shell_slot = st.empty()
+            requested_page = st.session_state.get('mobile_page', '캘린더')
+            if st.session_state.get('_calendar_shell_page') != requested_page:
+                calendar_shell(requested_page, slot=shell_slot)
+        try:
+            db=center.Records();today=datetime.now(center.KST).date()
+        finally:
+            if shell_slot is not None: shell_slot.empty()
+        if standalone: st.session_state['_calendar_shell_page'] = requested_page
+        st.session_state['sales_dialog_rendered']=False
+        # Preserve navigation widgets when another menu temporarily unmounts them.
+        for key in ('sales_calendar_member','sales_calendar_team','sales_day_일일','sales_day_주간','sales_overview_day','sales_overview_period','sales_overview_unit','sales_member_search','sales_member_status','mobile_work_mode','mobile_work_tab'):
+            if key in st.session_state:st.session_state[key]=st.session_state[key]
+        st.session_state['mobile_back_stack']=[p for p in st.session_state.get('mobile_back_stack',[]) if p!='오늘의 업무']
+        page=st.session_state.get('mobile_page','캘린더')
+        allowed=[*menus(db),'주간 기록','알림·피드백']
+        if page not in allowed:page='캘린더';st.session_state['mobile_page']=page
+        if page in ('활동 기록','주간 기록'):st.session_state['mobile_report_page']=page
+        with st.sidebar:menu_items(db,logout,'side')
+        with st.container(key='mobile_header'):
+            a,b,c=st.columns([1,3,1])
+            with a.container(key='mobile_menu_toggle'):
+                with st.popover('☰',key='mobile_drawer_'+page+str(bool(st.session_state.get('mobile_pending')))):
+                    st.html('<span class="mobile-drawer"></span>');menu_items(db,logout,'drawer')
+            b.subheader('화랑 캘린더')
+            alerts_slot=c.empty()
+        st.html('<span class="mobile-navigation-state" data-page="'+page+'" data-depth="'+str(len(st.session_state.get('mobile_back_stack',[])))+'"></span>')
+        st.button('이전 메뉴',key='mobile_history_back',on_click=previous_page)
+        st.html('<style>.st-key-mobile_history_back{display:none!important}.mobile-navigation-state{display:none}</style>')
+        pending_navigation()
+        with st.container(key='mobile_content'):
+            if page=='캘린더':
+                st.html("""<button class="mobile-new-event" aria-label="일정 등록" title="일정 등록">＋</button><style>.mobile-new-event{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));width:52px;height:52px;border:0;border-radius:50%;background:#155461;color:white;font-size:28px;z-index:40;box-shadow:0 3px 12px #1234;cursor:pointer}</style><script>document.querySelector('.mobile-new-event').onclick=()=>document.querySelectorAll('iframe').forEach(f=>f.contentWindow.postMessage({type:'hwarang.activity.new'},location.origin));</script>""",unsafe_allow_javascript=True)
+                center.calendar(db,today)
+            elif page=='후속 할 일':tasks_view(db,today)
+            elif page=='구성원 현황':center.overview(db,today)
+            elif page=='알림·피드백':alerts(db)
+            else:
+                a,b=st.columns(2)
+                a.button('일일 기록',on_click=choose,args=('활동 기록',),key='mobile_daily',type='primary' if page=='활동 기록' else 'secondary')
+                b.button('주간 기록',on_click=choose,args=('주간 기록',),key='mobile_weekly',type='primary' if page=='주간 기록' else 'secondary')
+                center.reports(db,today,'주간' if page=='주간 기록' else '일일')
+                personal_performance(db,today)
+        unread=db.request('GET','sales_notices',{'seen':'eq.false','select':'id','limit':'50'})
+        with alerts_slot.container():
+            st.button('알림 '+(str(len(unread))+'+' if len(unread)==50 else str(len(unread))) if unread else '알림',icon=':material/notifications:',type='tertiary',on_click=choose,args=('알림·피드백',),key='mobile_alerts')
+        if st.session_state.get('sales_route') and not st.session_state.get('sales_dialog_rendered'):redesign.dialog(db)
 
 
 @st.fragment

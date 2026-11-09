@@ -35,6 +35,7 @@ function sendNext(){
 }
 function calendarStatus(text){document.getElementById('refreshing').textContent=text||''}
 function receiveCalendar(a){
+ document.body.dataset.shellFirst=a.shellFirst?"true":"false";
  const hostEntering=typeof receiveHost==='function'?receiveHost(a):false;
  if(a.hosted&&!a.hostActive)return;
  if(!a.boot)return;
@@ -113,13 +114,14 @@ function calendarAction(action,value){
  if(action==='refresh'){reloadCalendar(true);return}
  if(action==='reauth'){if(calendarFlight){setTimeout(()=>calendarAction('reauth'),1000);return}post('streamlit:setComponentValue',{value:{action:'reauth',nonce:crypto.randomUUID()},dataType:'json'});return}
 }
-function createPanel(title){
+function createPanel(title, spacious=false){
  dismissCloseConfirm();
  document.querySelectorAll('dialog.calendar-panel:not([open]),dialog.calendar-close-confirm:not([open])').forEach(node=>node.remove());
  if(calendarPanel){calendarPanel.remove();calendarPanel=null;}
  const returnFocus=document.activeElement;
  try{const fab=parent.document.querySelector('.mobile-new-event');if(fab)fab.style.visibility='hidden'}catch{}
  const panel=calendarPanel=el('dialog','','calendar-panel');panel.setAttribute('aria-label',title);
+ if(spacious&&document.body.dataset.shellFirst==='true')panel.classList.add('calendar-spacious');
  const head=el('div','','panel-head'),body=el('div','','panel-content');head.append(el('h3',title),button('×',()=>closePanel(),'','팝업 닫기'));panel.append(head,body);document.body.append(panel);
  let backdropDown=false;
  const outside=e=>{const b=panel.getBoundingClientRect();return e.clientX<b.left||e.clientX>b.right||e.clientY<b.top||e.clientY>b.bottom};
@@ -197,9 +199,21 @@ function openScope(){
  };search.oninput=draw;form.onsubmit=e=>e.preventDefault();draw();search.focus({preventScroll:true});
 }
 async function openDetail(id){
- const card=latest.events.find(e=>e.id===id),body=createPanel('일정 상세');body.append(el('p',card?.label||'일정을 불러오는 중…'));const panel=calendarPanel;
+ const card=latest.events.find(e=>e.id===id),body=createPanel('일정 상세',card?.readable!==false);const panel=calendarPanel;
+ if(document.body.dataset.shellFirst==='true'&&card?.readable!==false)detailPlaceholder(body,card);
+ else body.append(el('p',card?.label||'일정을 불러오는 중…'));
  if(card&&card.readable===false){body.prepend(el('h2',card.short));body.append(el('p','이 일정은 공개된 요약 정보만 조회할 수 있습니다.'));return}
- try{const data=await rpc('detail',{id});if(calendarPanel!==panel)return;showDetail(data,body)}catch(e){if(calendarPanel===panel)body.append(el('p',e.message,'panel-error'))}
+ try{panel.setAttribute('aria-busy','true');const data=await rpc('detail',{id});if(calendarPanel!==panel)return;showDetail(data,body)}catch(e){if(calendarPanel===panel){body.querySelector('[role=status]')?.remove();body.append(el('p',e.message,'panel-error'),button('다시 불러오기',()=>openDetail(id)))}}finally{panel.removeAttribute('aria-busy')}
+}
+function detailPlaceholder(body,card){
+ body.append(el('h2',card?.short||'일정 상세'));
+ for(const [label,value] of [['날짜',card?.day],['시간',card?.timePending?'시간 미정':card?.start?.slice(0,5)||''],['활동 종류',card?.kind],['상태',card?.status],['장소',card?.place],['메모',''],['활동 결과',''],['피드백','']]){
+  const line=el('div','','detail-line');line.append(el('strong',label));
+  if(value)line.append(document.createTextNode(value));
+  else {const placeholder=el('span','','calendar-placeholder');placeholder.setAttribute('aria-hidden','true');line.append(placeholder)}
+  body.append(line);
+ }
+ const status=el('p','상세 내용을 불러오고 있습니다.','hint');status.setAttribute('role','status');body.append(status);
 }
 function showDetail(data,body){
  const row=data.row;body.replaceChildren();if(dayListReturn)body.append(button('‹ 목록으로',()=>openDayList(dayListReturn)));body.append(el('h2',row.title));
@@ -286,7 +300,7 @@ function wireCalendarDrop(box,day){
 }
 function openEditor(row,kind,day){
  const editing=['edit','result'].includes(kind),key=kind+':'+(row?.id||day),saved=calendarDrafts.get(key);
- const body=createPanel({edit:'일정 수정',result:'완료 · 결과 처리',copy:'일정 복사',follow:'다음 활동 추가',new:'일정 등록'}[kind]);
+ const body=createPanel({edit:'일정 수정',result:'완료 · 결과 처리',copy:'일정 복사',follow:'다음 활동 추가',new:'일정 등록'}[kind],true);
  let initial={day:day||row?.day||selected,title:row?.title||'',kind:kind==='follow'?({TA:'AP',AP:'PC'}[row.kind]||'미분류'):row?.kind||'미분류',mode:row?.start_time?'시간 지정':row?.time_pending||!row?'시간 미정':'종일',start:row?.start_time?.slice(0,5)||'',end:row?.end_time?.slice(0,5)||'',place:row?.place||'',note:row?.note||'',support:editing&&!!row.help,help:editing?row.help||'':'',companion:row?.companion||'',common:editing&&row.common,status:editing?row.status:'예정',result:editing?row.result||'':'',repeat:false,repeats:1,follow:''};
  if(kind==='follow')initial={...initial,mode:'시간 미정',start:'',end:'',place:'',note:'',companion:''};
  if(kind==='result')initial.status='완료';
@@ -328,15 +342,15 @@ function openEditor(row,kind,day){
  const remember=()=>{draft.values={...v,...values(form)};draft.dirty=true};form.addEventListener('input',remember);form.addEventListener('change',remember);form.onsubmit=e=>{e.preventDefault();save.click()};
 }
 async function calendarTrash(){
- const body=createPanel('삭제한 일정');body.append(el('p','삭제 후 30일 동안 개별 복구할 수 있습니다. 연결된 계약·후속 기록은 보존됩니다.'));const panel=calendarPanel;
- try{const rows=await rpc('trash');if(panel!==calendarPanel)return;if(!rows.length)body.append(el('p','복구할 일정이 없습니다.'));for(const row of rows){const line=el('div','','detail-line'),error=feedback(line),restore=button('복구',()=>runButton(restore,error,async()=>{await rpc('archive',{id:row.id,revision:row.revision,restore:true});line.remove();mutate()}));line.prepend(el('p',row.day+' · '+row.title));line.append(restore);body.append(line)}}catch(e){if(panel===calendarPanel)body.append(el('p',e.message,'panel-error'))}
+ const body=createPanel('삭제한 일정',true);body.append(el('p','삭제 후 30일 동안 개별 복구할 수 있습니다. 연결된 계약·후속 기록은 보존됩니다.'));const panel=calendarPanel,loading=el('p','삭제한 일정을 불러오고 있습니다.','hint');loading.setAttribute('role','status');if(document.body.dataset.shellFirst==='true')body.append(loading);
+ try{const rows=await rpc('trash');loading.remove();if(panel!==calendarPanel)return;if(!rows.length)body.append(el('p','복구할 일정이 없습니다.'));for(const row of rows){const line=el('div','','detail-line'),error=feedback(line),restore=button('복구',()=>runButton(restore,error,async()=>{await rpc('archive',{id:row.id,revision:row.revision,restore:true});line.remove();mutate()}));line.prepend(el('p',row.day+' · '+row.title));line.append(restore);body.append(line)}}catch(e){loading.remove();if(panel===calendarPanel)body.append(el('p',e.message,'panel-error'),button('다시 불러오기',calendarTrash))}
 }
 function deleteEvent(row){
  const body=createPanel('일정 삭제');body.append(el('p',row.day+' · '+row.title),el('p','달력과 활동 집계에서 제외됩니다. 계약·후속 활동은 보존되며, 30일 동안 개별 복구할 수 있습니다.'));
  const f=el('form');body.append(f);if(row.series_id)field(f,'삭제 범위','scope','one','text',[['one','이번 일정만'],['future','이후 반복 일정까지']]);const error=feedback(f),save=button('일정 삭제 확인',()=>runButton(save,error,async()=>{await rpc('archive',{id:row.id,revision:row.revision,future:values(f).scope==='future'});for(const [k,d] of calendarDrafts)if(d.row?.id===row.id)calendarDrafts.delete(k);mutate();calendarTrash()}),'danger');f.append(save);f.onsubmit=e=>e.preventDefault();
 }
 function openContract(row,old){
- const key='contract:'+(old?.id||row.id),saved=calendarDrafts.get(key),body=createPanel('청약·계약 입력 및 수정'),f=el('form');body.append(f);
+ const key='contract:'+(old?.id||row.id),saved=calendarDrafts.get(key),body=createPanel('청약·계약 입력 및 수정',true),f=el('form');body.append(f);
  const draft=calendarDraft=saved||{key,seed:crypto.randomUUID(),dirty:false,values:old||{},row:old};calendarDrafts.set(key,draft);old=draft.row;const v=draft.values;
  field(f,'보험사','insurer',v.insurer||calendarBoot.insurers[0],'text',calendarBoot.insurers);field(f,'보험 구분','category',v.category||'인보험','text',['인보험','일반보험','자동차보험']);field(f,'납입 방식','payment',v.payment||'월납','text',['월납','연납','일시납']);const amount=field(f,'보험료 · 원','amount',v.amount||0,'number');amount.min=1;amount.required=true;
  field(f,'접수일','day',v.day||row.day,'date').required=true;const status=field(f,'청약 상태','status',v.status||'청약 접수','text',['청약 접수','심사 중','성립','철회','미성립']);const effective=field(f,'성립일','effective',v.effective||v.day||row.day,'date');effective.parentElement.hidden=status.value!=='성립';status.onchange=()=>effective.parentElement.hidden=status.value!=='성립';field(f,'상품명 · 선택','product',v.product||'');field(f,'계약 메모 · 선택','note',v.note||'','textarea');
@@ -352,16 +366,16 @@ function openDayList(day){
  dayListReturn=day;dayListUndo=null;
  if(day<latest.rangeStart||day>latest.rangeEnd){latest={...latest,day};selected=day;context=null;reloadCalendar()}
  const title=Number(day.slice(5,7))+'월 '+Number(day.slice(8))+'일 '+'일월화수목금토'[date(day).getUTCDay()]+'요일';
- const body=createPanel(title);calendarPanel.dataset.dayList=day;paintDayList();
+ const body=createPanel(title,true);calendarPanel.dataset.dayList=day;paintDayList();
 }
 function paintDayList(){
  const panel=calendarPanel,day=panel?.dataset.dayList;
  if(!day||panel.dataset.busy)return;
  const body=panel.querySelector('.panel-content'),scroll=body.scrollTop;
  const items=latest.events.filter(e=>e.day===day&&(prefs.showCompleted||!e.done)).sort((a,b)=>Number(!!a.timePending)-Number(!!b.timePending)||(a.start||'').localeCompare(b.start||'')||a.id.localeCompare(b.id));
- const fresh=el('div');fresh.append(el('p',(latest.scopeLabel||'내 일정')+' · '+items.length+'건','hint'));
+ const fresh=el('div');fresh.append(el('p',(latest.scopeLabel||'내 일정')+(calendarLoading?' · 조회 중':' · '+items.length+'건'),'hint'));
  const nav=el('div','','day-list-nav');nav.append(button('‹ 이전 날짜',()=>openDayList(iso(add(date(day),-1)))),button('오늘',()=>openDayList(latest.today)),button('다음 날짜 ›',()=>openDayList(iso(add(date(day),1)))));fresh.append(nav);
- if(calendarLoading)fresh.append(el('p','일정을 불러오는 중입니다.','hint'));
+ if(calendarLoading){const loading=el('p','일정을 불러오는 중입니다.','hint');loading.setAttribute('role','status');fresh.append(loading)}
  if(calendarLoadError)fresh.append(button('다시 불러오기',()=>reloadCalendar(true)));
  if(!items.length&&!calendarLoading&&!calendarLoadError)fresh.append(el('p','등록된 일정이 없습니다.','hint'));
  let pending=false;

@@ -268,9 +268,16 @@ def render_task_content(active, permission_role, permitted):
 
 def main() -> None:
     initialize_state()
+    entry_shell = None
+    if st.session_state.get('_calendar_deployment'):
+        from modules.activity.loading import calendar_shell
+        entry_shell = st.empty()
+        if not st.session_state.get('password_correct'):
+            calendar_shell(authenticating=True, slot=entry_shell)
     try:
         auth = auth_service()
     except HwarangAuthError as exc:
+        if entry_shell is not None: entry_shell.empty()
         st.error(str(exc))
         st.info("Streamlit Secrets에서 SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY / SUPABASE_SECRET_KEY를 확인해 주세요.")
         return
@@ -299,9 +306,10 @@ def main() -> None:
     try:
         device.synchronize(auth, _set_authenticated)
         if st.query_params.get("view") == "mobile-calendar" and st.session_state.get("device_check_pending"):
-            st.caption("캘린더를 불러오는 중…")
+            if entry_shell is None: st.caption("캘린더를 불러오는 중…")
             st.stop()
     except HwarangAuthError as exc:
+        if entry_shell is not None: entry_shell.empty()
         st.error(str(exc))
         st.stop()
     if st.session_state.get("calendar_launch_error"):
@@ -330,6 +338,7 @@ def main() -> None:
     # Keep the authentication screen at one stable delta path, including the
     # one-time password-change notice. Explicitly remove it before rendering
     # the workspace so interrupted reruns cannot leave a stale login container.
+    if entry_shell is not None: entry_shell.empty()
     login_slot = st.empty()
     if not (st.session_state.get("hwarang_auth") and st.session_state.get("password_correct")):
         with login_slot.container():
