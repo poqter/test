@@ -77,3 +77,21 @@ def test_records_restore_cache_and_write_invalidate(monkeypatch):
     assert read_state.consume() is None
     second.request('GET','sales_events',{'limit':'10'})
     assert len(calls)==before+2
+
+
+def test_manager_reuses_reads_until_ttl_or_scope_change(monkeypatch):
+    state,db=setup(monkeypatch)
+    clock=[0]
+    monkeypatch.setattr(read_state,'monotonic',lambda:clock[0])
+    context=('manager',read_state.identity(),'week','branch')
+    read_state.refresh(db,context,seconds=15)
+    db._reads['events']=[{'id':'saved'}]
+    clock[0]=5
+    read_state.refresh(db,context,seconds=15)
+    assert db._reads['events']==[{'id':'saved'}]
+    clock[0]=16
+    read_state.refresh(db,context,seconds=15)
+    assert not db._reads
+    db._reads['events']=[{'id':'new'}]
+    read_state.refresh(db,('manager','different_scope'),seconds=15)
+    assert not db._reads
