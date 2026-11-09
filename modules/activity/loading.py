@@ -30,3 +30,32 @@ body:has(iframe[title="modules.activity.center.sales_calendar_view"]) .hw-calend
 <div class="hw-calendar-grid">''' + ''.join('<div class="hw-calendar-weekday">'+day+'</div>' for day in '월화수목금토일')
         + cells + '</div></section>', unsafe_allow_html=True)
     return slot
+
+
+def calendar_shell(page='캘린더', *, authenticating=False, slot=None):
+    """Public labels only; never imply an empty result or expose cached identity."""
+    from html import escape
+    labels = {
+        '캘린더': ('월간 · 주간 · 일간', '일정'),
+        '활동 기록': ('일일 기록 · 주간 기록', '활동 기록'),
+        '주간 기록': ('일일 기록 · 주간 기록', '주간 기록'),
+        '후속 할 일': ('후속 할 일', '할 일 목록'),
+        '구성원 현황': ('구성원 현황', '활동 현황'),
+        '알림·피드백': ('알림·피드백', '알림 목록'),
+    }
+    if authenticating or page not in labels:
+        page = '캘린더'
+    nav, section = labels[page]
+    status = '로그인 상태를 확인하고 있습니다.' if authenticating else '내용을 불러오고 있습니다.'
+    slot = slot if slot is not None else st.empty()
+    slot.markdown('''<style>
+.hw-calendar-shell{box-sizing:border-box;min-height:min(620px,78vh);padding:18px;background:#fff;border:1px solid #dce4ef;border-radius:16px;color:#18334c}
+.hw-calendar-shell h2{font-size:20px;margin:0 0 20px}.hw-calendar-shell nav{padding:12px 0;border-bottom:1px solid #e2e8ed}
+.hw-calendar-shell h3{font-size:17px;margin:20px 0}.hw-calendar-shell .placeholder{height:48px;margin:12px 0;background:#f2f5f8;border-radius:8px}
+.st-key-mobile_content,.st-key-mobile_stage{min-height:min(620px,78vh)}
+.st-key-mobile_stage{position:relative}
+.st-key-mobile_stage .hw-calendar-shell{position:absolute;inset:0;z-index:3}
+</style><section class="hw-calendar-shell" aria-busy="true" aria-label="화랑 캘린더 준비">
+<h2>화랑 캘린더</h2><nav>''' + escape(nav) + '</nav><h3>' + escape(section) + '</h3><p role="status">' + status + '</p>'
+        + '<div class="placeholder" aria-hidden="true"></div>' * 4 + '</section>', unsafe_allow_html=True)
+    return slot
