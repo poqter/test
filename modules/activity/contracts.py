@@ -7,6 +7,7 @@ import streamlit as st
 
 
 def contract_editor(db, day, event=None, expanded=False):
+    contract_styles()
     prefix="contract_"+str(event or day)
     # Keep unsaved widget inputs when the lazily rendered section is collapsed.
     for name in list(st.session_state):
@@ -15,42 +16,57 @@ def contract_editor(db, day, event=None, expanded=False):
     panel=st.expander("청약·계약 입력 및 수정",key=prefix+"panel",expanded=expanded,on_change="rerun")
     if not panel.open:return
     with panel:
-        query = {"owner":"eq."+db.uid, "order":"day.desc"}
-        query.update({"event":"eq."+event} if event else {"day":"eq."+str(day)})
-        rows = db.request("GET", "sales_contracts", query)
-        key = "contract_"+str(event or day)
-        old = st.selectbox("청약 선택", [None,*rows], key=key+"_pick",
-                           format_func=lambda r: f'{r["insurer"]} · {r["amount"]:,}원 · {r["status"]}' if r else "새 청약") or {}
-        key += str(old.get("id","new"))+str(old.get("revision",0))
-        catalog = json.loads((Path(__file__).resolve().parents[2]/"data/portal_catalog.json").read_text())
-        insurers = [r["name"] for r in catalog["insurers"] if r["group"] in ("생명보험","손해보험")]
-        def choice(label, options, field):
-            value=old.get(field) or options[0]
-            options=list(dict.fromkeys([*options,value]))
-            return st.selectbox(label,options,index=options.index(value),key=key+field)
-        insurer=choice("보험사",insurers,"insurer")
-        category=choice("보험 구분",["인보험","일반보험","자동차보험"],"category")
-        payment=choice("납입 방식",["월납","연납","일시납"],"payment")
-        amount=st.number_input("보험료 · 원",min_value=0,value=old.get("amount",0),step=1000,key=key+"amount")
-        received=st.date_input("접수일",date.fromisoformat(old.get("day",str(day))),key=key+"day")
-        status=choice("청약 상태",["청약 접수","심사 중","성립","철회","미성립"],"status")
-        effective=st.date_input("성립일",date.fromisoformat(old["effective"]) if old.get("effective") else max(received,day),min_value=received,key=key+"effective") if status=="성립" else None
-        product=st.text_input("상품명 · 선택",old.get("product",""),key=key+"product")
-        note=st.text_area("계약 메모 · 선택",old.get("note",""),key=key+"note")
-        if st.button("청약 저장",key=key+"save"):
-            if not amount:
-                st.warning("보험료를 입력해 주세요.")
-                return
-            body=dict(day=str(received),insurer=insurer,category=category,payment=payment,amount=amount,status=status,effective=str(effective) if effective else None,product=product,note=note,event=old.get("event",event))
-            if old:
-                db.save("sales_contracts",body,old)
-            else:
-                body["id"]=st.session_state.setdefault(key+"seed",str(uuid4()))
-                db.request("POST","sales_contracts",body=body,prefer="resolution=ignore-duplicates")
-                del st.session_state[key+"seed"]
-            from modules.activity import ux
-            st.session_state["sales_dialog_notice"]="청약을 저장했습니다."
-            ux.refresh()
+        with st.container(key="contract_fields_"+str(event or day)):
+            query = {"owner":"eq."+db.uid, "order":"day.desc"}
+            query.update({"event":"eq."+event} if event else {"day":"eq."+str(day)})
+            rows = db.request("GET", "sales_contracts", query)
+            key = "contract_"+str(event or day)
+            old = st.selectbox("청약 선택", [None,*rows], key=key+"_pick",
+                               format_func=lambda r: f'{r["insurer"]} · {r["amount"]:,}원 · {r["status"]}' if r else "새 청약") or {}
+            st.divider()
+            key += str(old.get("id","new"))+str(old.get("revision",0))
+            catalog = json.loads((Path(__file__).resolve().parents[2]/"data/portal_catalog.json").read_text())
+            insurers = [r["name"] for r in catalog["insurers"] if r["group"] in ("생명보험","손해보험")]
+            def choice(label, options, field):
+                value=old.get(field) or options[0]
+                options=list(dict.fromkeys([*options,value]))
+                return st.selectbox(label,options,index=options.index(value),key=key+field)
+            left,right=st.columns(2)
+            with left:
+                insurer=choice("보험사",insurers,"insurer")
+            with right:
+                category=choice("보험 구분",["인보험","일반보험","자동차보험"],"category")
+            left,right=st.columns(2)
+            with left:
+                payment=choice("납입 방식",["월납","연납","일시납"],"payment")
+            with right:
+                amount=st.number_input("보험료 · 원",min_value=0,value=old.get("amount",0),step=1000,key=key+"amount")
+            left,right=st.columns(2)
+            with left:
+                received=st.date_input("접수일",date.fromisoformat(old.get("day",str(day))),key=key+"day")
+            with right:
+                status=choice("청약 상태",["청약 접수","심사 중","성립","철회","미성립"],"status")
+            st.divider()
+            left,right=st.columns(2)
+            with left:
+                product=st.text_input("상품명 · 선택",old.get("product",""),key=key+"product")
+            with right:
+                effective=st.date_input("성립일",date.fromisoformat(old["effective"]) if old.get("effective") else max(received,day),min_value=received,key=key+"effective") if status=="성립" else None
+            note=st.text_area("계약 메모 · 선택",old.get("note",""),key=key+"note")
+            if st.button("청약 저장",key=key+"save"):
+                if not amount:
+                    st.warning("보험료를 입력해 주세요.")
+                    return
+                body=dict(day=str(received),insurer=insurer,category=category,payment=payment,amount=amount,status=status,effective=str(effective) if effective else None,product=product,note=note,event=old.get("event",event))
+                if old:
+                    db.save("sales_contracts",body,old)
+                else:
+                    body["id"]=st.session_state.setdefault(key+"seed",str(uuid4()))
+                    db.request("POST","sales_contracts",body=body,prefer="resolution=ignore-duplicates")
+                    del st.session_state[key+"seed"]
+                from modules.activity import ux
+                st.session_state["sales_dialog_notice"]="청약을 저장했습니다."
+                ux.refresh()
 
 
 def performance(db, day, members, bounds, selected_member=None, key="performance", period_range=None):
@@ -125,3 +141,30 @@ def conversions(db,start,end,members):
                 state="완료" if case in completed else "예정" if case in planned else "후속 일정 없음" if case in cases else "연결 미확인"
                 st.write(e["day"],members[e["owner"]]["label"],e["title"],state)
     if cohort:st.bar_chart(chart,x="단계",y="전환율(%)",horizontal=True)
+
+
+def contract_styles():
+    st.html('''<style>
+/* Only contract editor fields: no changes to calendar, login or other forms. */
+body [class*="st-key-contract_fields_"]{gap:16px!important}
+body [class*="st-key-contract_fields_"] label{margin-bottom:6px!important;color:#344963!important}
+body [class*="st-key-contract_fields_"] [data-baseweb="select"]>div,
+body [class*="st-key-contract_fields_"] [data-testid="stTextInputRootElement"],
+body [class*="st-key-contract_fields_"] [data-testid="stNumberInputContainer"],
+body [class*="st-key-contract_fields_"] [data-testid="stDateInput"] [data-baseweb="input"],
+body [class*="st-key-contract_fields_"] [data-testid="stTextArea"] textarea{
+ border:1px solid #aebdd0!important;background:#f7f9fc!important;border-radius:10px!important;box-shadow:none!important;min-height:44px;
+}
+body [class*="st-key-contract_fields_"] [data-testid="stTextInputRootElement"] [data-baseweb="input"],
+body [class*="st-key-contract_fields_"] [data-testid="stNumberInputContainer"] [data-baseweb="input"]{border:0!important;background:transparent!important}
+body [class*="st-key-contract_fields_"] :is(input,textarea){background:transparent!important;line-height:1.5!important}
+body [class*="st-key-contract_fields_"] [data-baseweb="select"]>div:focus-within,
+body [class*="st-key-contract_fields_"] [data-testid="stTextInputRootElement"]:focus-within,
+body [class*="st-key-contract_fields_"] [data-testid="stNumberInputContainer"]:focus-within,
+body [class*="st-key-contract_fields_"] [data-testid="stDateInput"] [data-baseweb="input"]:focus-within,
+body [class*="st-key-contract_fields_"] textarea:focus{border-color:#2d6ad5!important;box-shadow:0 0 0 2px #2d6ad51a!important}
+body [class*="st-key-contract_fields_"] hr{border-color:#dce4ee!important;margin:4px 0!important}
+@media(max-width:700px){body [class*="st-key-contract_fields_"]{gap:12px!important}
+body [class*="st-key-contract_fields_"] [data-testid="stHorizontalBlock"]{flex-wrap:wrap!important}
+body [class*="st-key-contract_fields_"] [data-testid="stColumn"]{width:100%!important;flex:1 1 100%!important;min-width:0!important}}
+</style>''')
