@@ -73,12 +73,13 @@ dialog.calendar-panel[open],dialog.calendar-close-confirm[open]{opacity:1;transf
 dialog.calendar-close-confirm{--calendar-shift:0px;--calendar-enter:180ms}
 dialog.calendar-panel::backdrop,dialog.calendar-close-confirm::backdrop{opacity:0;transition:opacity var(--calendar-exit) var(--calendar-ease),display var(--calendar-exit) allow-discrete,overlay var(--calendar-exit) allow-discrete}
 dialog[open]::backdrop{opacity:1;transition-duration:var(--calendar-enter)}
-@starting-style{dialog.calendar-panel[open],dialog.calendar-close-confirm[open]{opacity:0;transform:translateY(var(--calendar-shift))}dialog[open]::backdrop{opacity:0}}
+@keyframes calendar-backdrop-enter{from{opacity:0}to{opacity:1}}
+dialog[open]::backdrop{animation:calendar-backdrop-enter var(--calendar-enter) var(--calendar-ease)}
 .cell,.chip,.day-list-row,.day-list-done{transition:background-color 150ms ease,border-color 100ms ease,box-shadow 100ms ease,color 150ms ease}
 .calendar-completed{animation:calendar-complete 150ms ease-out}
 @keyframes calendar-complete{from{background-color:#bde5ce}to{background-color:transparent}}
 @media(max-width:650px){:root{--calendar-enter:160ms;--calendar-exit:100ms;--calendar-shift:6px;--calendar-ease:ease}dialog.calendar-close-confirm{--calendar-enter:140ms}}
-@media(prefers-reduced-motion:reduce){dialog.calendar-panel,dialog.calendar-close-confirm,dialog::backdrop,.cell,.chip,.day-list-row,.day-list-done{transition:none!important;transform:none!important}.calendar-completed{animation:none!important}}
+@media(prefers-reduced-motion:reduce){dialog.calendar-panel,dialog.calendar-close-confirm,dialog::backdrop,.cell,.chip,.day-list-row,.day-list-done{transition:none!important;transform:none!important}.calendar-completed,dialog::backdrop{animation:none!important}}
 </style><header><div class="nav" id="nav"></div><div class="tools" id="tools"></div></header><div class="legend" aria-label="활동 종류별 색상"><span data-kind="TA">TA 고객 연락</span><span data-kind="AP">AP 초회 상담</span><span data-kind="PC">PC 프레젠테이션 / 클로징</span><span data-kind="CS">CS 고객 관리</span></div><div id="refreshing" class="refreshing" role="status" aria-live="polite"></div><div id="move-notice" role="status" hidden></div><div id="grid" class="grid"></div><section class="agenda" id="agenda"></section><script>
 const post=(type,data)=>parent.postMessage({isStreamlitMessage:true,type,...data},location.origin);
 const emit=(action,value)=>calendarAction(action,value);

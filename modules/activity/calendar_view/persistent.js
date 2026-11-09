@@ -1,3 +1,14 @@
+// Explicit entrance: run after the synchronous form build, without delaying focus.
+function showCalendarDialog(panel){
+ panel.showModal();
+ queueMicrotask(()=>{
+  if(!panel.isConnected||!panel.open||matchMedia('(prefers-reduced-motion: reduce)').matches||typeof panel.animate!=='function')return;
+  const style=getComputedStyle(panel),duration=parseFloat(style.getPropertyValue('--calendar-enter'))||180;
+  const shift=style.getPropertyValue('--calendar-shift').trim()||'0px';
+  const animation=panel.animate([{opacity:0,transform:`translateY(${shift})`},{opacity:1,transform:'translateY(0)'}],{duration,easing:style.getPropertyValue('--calendar-ease').trim()||'ease'});
+  panel.addEventListener('close',()=>animation.cancel(),{once:true});
+ });
+}
 // Let native dialog close release focus immediately while its exit transition finishes.
 function retireDialog(node){
  node.inert=true;node.setAttribute('aria-hidden','true');node.style.pointerEvents='none';
@@ -114,7 +125,7 @@ function createPanel(title){
  const outside=e=>{const b=panel.getBoundingClientRect();return e.clientX<b.left||e.clientX>b.right||e.clientY<b.top||e.clientY>b.bottom};
  panel.addEventListener('pointerdown',e=>{backdropDown=e.target===panel&&outside(e)});
  panel.addEventListener('click',e=>{if(backdropDown&&e.target===panel&&outside(e))closePanel();backdropDown=false});
- panel.addEventListener('cancel',e=>{e.preventDefault();closePanel()});panel.addEventListener('close',()=>{retireDialog(panel);if(calendarPanel===panel)calendarPanel=null;try{const fab=parent.document.querySelector('.mobile-new-event');if(fab)fab.style.visibility=''}catch{}returnFocus?.focus({preventScroll:true})});panel.showModal();calendarDraft=null;
+ panel.addEventListener('cancel',e=>{e.preventDefault();closePanel()});panel.addEventListener('close',()=>{retireDialog(panel);if(calendarPanel===panel)calendarPanel=null;try{const fab=parent.document.querySelector('.mobile-new-event');if(fab)fab.style.visibility=''}catch{}returnFocus?.focus({preventScroll:true})});showCalendarDialog(panel);calendarDraft=null;
  return body;
 }
 let calendarCloseConfirm=null;
@@ -147,7 +158,7 @@ function closePanel(){
   box.addEventListener('click',e=>{if(backdropDown&&e.target===box&&outside(e))resume();backdropDown=false});
   box.addEventListener('cancel',e=>{e.preventDefault();e.stopPropagation();resume()});
   panel.addEventListener('close',dismissCloseConfirm,{once:true});
-  box.showModal();keepWriting.focus({preventScroll:true});return;
+  showCalendarDialog(box);keepWriting.focus({preventScroll:true});return;
  }
  calendarDraft=null;calendarPanel?.close();
 }
@@ -209,7 +220,7 @@ function paintReviews(host,data){
   if(r.reviewer===calendarBoot.uid){
    const actions=el('div','','panel-actions');card.append(actions);
    actions.append(button('수정',()=>{actions.replaceChildren();const f=el('form');actions.append(f);const input=field(f,'피드백 수정','message',r.message,'textarea');input.maxLength=4000;const error=feedback(f),save=button('수정 저장',()=>runButton(save,error,async()=>{await rpc('review_edit',{id:row.id,review:r.id,version:r.edit_version,message:input.value});await refresh()}));f.append(save,button('취소',()=>paintReviews(host,data)));f.onsubmit=e=>e.preventDefault();input.focus()}));
-   actions.append(button('삭제',()=>{const confirmBox=el('dialog','','calendar-close-confirm');confirmBox.setAttribute('aria-label','피드백 삭제 확인');confirmBox.append(el('h3','이 피드백을 삭제할까요?'));const error=feedback(confirmBox),remove=button('피드백 삭제',()=>runButton(remove,error,async()=>{await rpc('review_delete',{id:row.id,review:r.id,version:r.edit_version});await refresh();confirmBox.close()}),'danger');confirmBox.append(remove,button('취소',()=>confirmBox.close()));confirmBox.addEventListener('close',()=>retireDialog(confirmBox));document.body.append(confirmBox);confirmBox.showModal()}));
+   actions.append(button('삭제',()=>{const confirmBox=el('dialog','','calendar-close-confirm');confirmBox.setAttribute('aria-label','피드백 삭제 확인');confirmBox.append(el('h3','이 피드백을 삭제할까요?'));const error=feedback(confirmBox),remove=button('피드백 삭제',()=>runButton(remove,error,async()=>{await rpc('review_delete',{id:row.id,review:r.id,version:r.edit_version});await refresh();confirmBox.close()}),'danger');confirmBox.append(remove,button('취소',()=>confirmBox.close()));confirmBox.addEventListener('close',()=>retireDialog(confirmBox));document.body.append(confirmBox);showCalendarDialog(confirmBox)}));
   }
  }
  if(!data.reviews.length)host.append(el('p','등록된 피드백이 없습니다.','hint'));

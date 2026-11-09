@@ -13,6 +13,11 @@ with sync_playwright() as p:
  ctx.route('**/*',route)
  page=ctx.new_page();page.goto('https://calendar.test/index.html')
  page.evaluate("""()=>{calendarBoot={uid:'me',kinds:['AP','미분류'],people:{},managed:false};latest={events:[],day:'2026-11-09',today:'2026-11-09'};selected=latest.day;openEditor(null,'new',selected)}""")
+ assert page.evaluate("calendarPanel.getAnimations().some(a=>a.effect.getTiming().duration===300)")
+ # A close/reopen during entrance must not let old cleanup remove the new form.
+ page.evaluate("calendarDraft=null;closePanel();openEditor(null,'new',selected)")
+ page.wait_for_timeout(220)
+ assert page.evaluate("calendarPanel.open && document.activeElement.name==='title'")
  start=page.get_by_label('시작 시간',exact=True);end=page.get_by_label('종료 시간 · 선택',exact=True)
 
  for width in (390,1440):
@@ -32,6 +37,13 @@ with sync_playwright() as p:
  page.set_viewport_size({'width':390,'height':844})
  assert page.evaluate("getComputedStyle(calendarPanel).getPropertyValue('--calendar-enter')")=='160ms'
  page.evaluate("calendarDraft=null;closePanel()")
+ # Sample the sidebar's real width interpolation, using the app's shared styles.
+ sidebar_page=ctx.new_page()
+ sidebar_css=(ROOT/'modules/activity/calendar_bridge.html').read_text().split('navigationStyle.textContent=`',1)[1].split('`;',1)[0]
+ sidebar_page.set_content('<style>body{display:flex}section{position:relative}</style><style>'+(ROOT/'modules/shared/workspace_design.css').read_text()+sidebar_css+'</style><div class="hw-design-2026 st-key-mobile_header"></div><section data-testid="stSidebar" aria-expanded="true">menu</section>')
+ widths=sidebar_page.evaluate("async()=>{const e=document.querySelector('section');await new Promise(requestAnimationFrame);e.getBoundingClientRect();e.setAttribute('aria-expanded','false');const values=[];for(let i=0;i<28;i++){await new Promise(requestAnimationFrame);values.push(e.getBoundingClientRect().width)}return values}")
+ assert any(5<x<255 for x in widths) and widths[-1]<1,widths
+ sidebar_page.close()
  # Exercise the actual overlay bridge against a locally-created popover.
  bridge=(ROOT/'modules/activity/calendar_bridge.html').read_text().split('id="calendar-layout-source">',1)[1].split('</script>',1)[0]
  page.evaluate("""()=>{document.body.innerHTML='<div class="st-key-mobile_header"></div><button id="under" style="position:fixed;inset:0;width:100%;height:100%">under</button><div data-testid="stPopoverBody" style="position:fixed;left:0;top:0;width:250px;height:100%;background:white"><span class="mobile-drawer"></span></div>';window.underClicks=0;document.getElementById('under').onclick=()=>underClicks++;const trigger=document.createElement('div');trigger.dataset.testid='stPopover';trigger.innerHTML='<button aria-expanded="true">menu</button>';trigger.firstChild.onclick=()=>document.querySelector('[data-testid=stPopoverBody]').remove();document.body.append(trigger)}""")
