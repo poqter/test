@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    paths: ['.github/scripts/**', 'app.py', 'hwarang_academy/**', 'supabase/migrations/**', 'modules/briefing/**', 'modules/shared/**', 'modules/activity/**', 'modules/calculators/**', 'modules/consultation/**', 'modules/performance/**', 'public_reader/**', 'tests/**', 'requirements.txt', 'constraints.txt', 'STAGE1_CHANGED_FILES.json', '.github/workflows/**']
+    paths: ['.github/scripts/**', 'app.py', 'hwarang_academy/**', 'supabase/migrations/**', 'modules/briefing/**', 'modules/shared/**', 'modules/activity/**', 'modules/calculators/**', 'modules/consultation/**', 'modules/performance/**', 'data/calculator*.json', 'FINANCIAL_CALCULATORS_CATALOG.json', 'public_reader/**', 'tests/**', 'requirements.txt', 'constraints.txt', 'STAGE1_CHANGED_FILES.json', '.github/workflows/**']
   workflow_dispatch:
 permissions:
   contents: read

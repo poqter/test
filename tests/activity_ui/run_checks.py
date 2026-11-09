@@ -78,4 +78,4 @@ if __name__=='__main__':
             print(output,flush=True)
             results.append({'case':name,'exit_code':code})
             (OUT/'summary.json').write_text(json.dumps(results,indent=2))
-            if code:raise SystemExit(code)
+        raise SystemExit(1 if any(result['exit_code'] for result in results) else 0)
