@@ -26,7 +26,7 @@ try:
             page.get_by_role('button',name='테스트 작성자 ›',exact=True).click()
             dlg=page.get_by_role('dialog')
             expect(dlg.locator('.st-key-member_date_strip')).to_be_visible()
-            expect(dlg.get_by_role('button',name='완료 · 연기 · 취소',exact=True)).to_have_count(0)
+            expect(dlg.get_by_role('button',name='✓ 완료',exact=True)).to_have_count(0)
             full_runs=page.get_by_text('전체 실행 횟수',exact=False).inner_text()
             strip=dlg.locator('.st-key-member_date_strip')
             expect(strip.locator('button')).to_have_count(5)
