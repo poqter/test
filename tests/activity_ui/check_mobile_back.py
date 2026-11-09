@@ -1,6 +1,7 @@
 """Real browser against Streamlit with synthetic records; no production access."""
 from pathlib import Path
 import socket
+import os
 import subprocess
 import sys
 import time
@@ -17,7 +18,8 @@ try:
             with socket.create_connection(('127.0.0.1',8504),timeout=.2):break
         except OSError:time.sleep(.2)
     with sync_playwright() as p:
-        browser=p.chromium.launch(headless=True,args=['--no-sandbox'])
+        engine=os.environ.get('HW_TEST_BROWSER','chromium')
+        browser=getattr(p,engine).launch(headless=True,args=['--no-sandbox'] if engine=='chromium' else [])
         page=browser.new_page(viewport={'width':390,'height':844},user_agent='Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148')
         page.goto('http://127.0.0.1:8504')
         expect(page.get_by_role('button',name='☰',exact=True)).to_be_visible()

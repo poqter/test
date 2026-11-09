@@ -10,7 +10,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -25,6 +25,10 @@ jobs:
           python -m pip install playwright==1.55.0
           python -m playwright install --with-deps chromium
           python tests/activity_ui/run_checks.py
+      - name: WebKit mobile navigation and device simulation
+        run: |
+          python -m playwright install --with-deps webkit
+          HW_TEST_BROWSER=webkit python tests/activity_ui/run_checks.py check_mobile_back.py check_calendar_devices.py
       - name: Preserve synthetic browser failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
