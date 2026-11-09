@@ -160,6 +160,7 @@ def calendar(db,today):
         state["sales_persistent_boot"]=calendar_service.bootstrap(db,today,state.get("sales_anchor",today),state.get("sales_view","월간"),team,member)
     # No conditional Streamlit elements before this mount: its position and key are fixed.
     args=dict(boot=state["sales_persistent_boot"],bootFresh=boot_fresh,reply=reply,
+        shellFirst=bool(state.get("_calendar_deployment")),
         hideMobileApp=st.query_params.get("view")=="mobile-calendar",
         changeNonce=state.pop("sales_calendar_refresh",None),
         mobileSession=dict(url=db.auth.config.url,key=db.auth.config.publishable_key,token=db.token,uid=db.uid),
