@@ -149,6 +149,17 @@ def alerts_dialog(db):
         st.rerun()
 
 
+@st.fragment
+def alert_button(db):
+    # Keep the trigger in the header's normal layout; only this fragment reruns
+    # when opening notifications, rather than rebuilding the entire page.
+    unread=db.request('GET','sales_notices',{'seen':'eq.false','select':'id','limit':'50'})
+    label='알림'+(' '+str(len(unread))+('+' if len(unread)==50 else '') if unread else '')
+    with st.container(key='mobile_alert_trigger'):
+        if st.button(label,icon=':material/notifications:',key='mobile_alerts',width='stretch'):
+            alerts_dialog(db)
+
+
 def run(logout):
     ux.styles()
     import streamlit.components.v1 as components
@@ -169,6 +180,10 @@ def run(logout):
     .st-key-mobile_header [data-testid="stColumn"],.st-key-mobile_work_counts [data-testid="stColumn"]{min-width:0!important;flex:1 1 0!important;width:0!important}
     .st-key-mobile_header [data-testid="stColumn"]:nth-child(2){flex:2 1 0!important}
     .st-key-mobile_work_counts button p,.st-key-mobile_header button p{font-size:12px!important}
+    .st-key-mobile_alert_trigger{min-height:48px!important;min-width:92px!important}
+    .st-key-mobile_alert_trigger button{min-height:48px!important;border:1px solid #d5dfed!important;border-radius:12px!important;background:#fff!important;padding:8px 12px!important}
+    .st-key-mobile_header .st-key-mobile_alert_trigger button p{font-size:15px!important;font-weight:650!important;white-space:nowrap}
+    .st-key-mobile_alert_trigger [data-testid="stIconMaterial"]{font-size:24px!important}
     @media(min-width:701px){.st-key-mobile_menu_toggle{display:none}}
     @media(max-width:700px){[data-testid="stSidebar"]{display:none!important}
     [data-testid="stPopoverBody"]:has(.mobile-drawer){position:fixed!important;inset:0 auto 0 0!important;width:min(84vw,320px)!important;max-height:100dvh!important;overflow:auto;border-radius:0!important;padding-top:env(safe-area-inset-top,12px)}
@@ -206,7 +221,7 @@ def run(logout):
                 with st.popover('☰',key='mobile_drawer_'+page+str(bool(st.session_state.get('mobile_pending')))):
                     st.html('<span class="mobile-drawer"></span>');menu_items(db,logout,'drawer')
             b.subheader('화랑 캘린더')
-            alerts_slot=c.empty()
+            with c:alert_button(db)
         st.html('<span class="mobile-navigation-state" data-page="'+page+'" data-depth="'+str(len(st.session_state.get('mobile_back_stack',[])))+'"></span>')
         st.button('이전 메뉴',key='mobile_history_back',on_click=previous_page)
         st.html('<style>.st-key-mobile_history_back{display:none!important}.mobile-navigation-state{display:none}</style>')
@@ -224,10 +239,6 @@ def run(logout):
                 st.segmented_control('기록 구분',['일일 기록','주간 기록'],key=tab_key,required=True,on_change=select_record,label_visibility='collapsed')
                 center.reports(db,today,'주간' if page=='주간 기록' else '일일')
                 personal_performance(db,today)
-        unread=db.request('GET','sales_notices',{'seen':'eq.false','select':'id','limit':'50'})
-        with alerts_slot.container():
-            if st.button('알림 '+(str(len(unread))+'+' if len(unread)==50 else str(len(unread))) if unread else '알림',icon=':material/notifications:',type='tertiary',key='mobile_alerts'):
-                alerts_dialog(db)
         if st.session_state.get('sales_route') and not st.session_state.get('sales_dialog_rendered'):redesign.dialog(db)
 
 
