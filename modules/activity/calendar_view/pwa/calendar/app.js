@@ -73,25 +73,10 @@ $('deleteEvent').onclick=async()=>{
  if(!draft?.revision||!session)return;
  let future=false;
  if(draft.series)future=confirm('이후 반복 일정도 함께 삭제할까요? 취소를 누르면 이번 일정만 선택합니다.');
- if(!confirm(f.day.value+' · '+f.title.value+'\n'+(future?'이후 반복 일정까지':'이번 일정만')+' 삭제합니다. 연결된 기록은 보존하며 30일 동안 복구할 수 있습니다.'))return;
+ if(!confirm(f.day.value+' · '+f.title.value+'\n'+(future?'이후 반복 일정까지':'이번 일정만')+' 삭제합니다. 즉시 삭제되며 복구할 수 없습니다. 연결된 계약·후속 활동은 보존됩니다.'))return;
  $('deleteEvent').disabled=true;
  try{
- await api('rpc/sales_archive_event','POST',{p_id:draft.id,p_revision:draft.revision,p_future:future,p_restore:false});
+ await api('rpc/sales_delete_event','POST',{p_id:draft.id,p_revision:draft.revision,p_future:future});
  localStorage.removeItem(draftKey());draft=null;$('restore').hidden=true;$('sheet').close();await load();
  }catch(e){$('error').textContent=e.message}finally{$('deleteEvent').disabled=false}
-};
-$('trash').onclick=async()=>{
- if(!session)return;
- try{
- const cutoff=new Date(Date.now()-30*86400000).toISOString();
- const items=await api('sales_events?owner=eq.'+session.uid+'&deleted_at=gte.'+encodeURIComponent(cutoff)+'&order=deleted_at.desc');
- $('listTitle').textContent='삭제한 일정 · 30일 이내 복구';$('agenda').replaceChildren();
- if(!items.length)$('agenda').textContent='복구할 일정이 없습니다.';
- for(const item of items){const restoreButton=button(item.day+' · '+item.title+' · 복구',async()=>{
- restoreButton.disabled=true;
- try{await api('rpc/sales_archive_event','POST',{p_id:item.id,p_revision:item.revision,p_future:false,p_restore:true});restoreButton.remove();await load()}
- catch(e){$('msg').textContent=e.message;restoreButton.disabled=false}
- });$('agenda').append(restoreButton)}
- $('list').showModal();
- }catch(e){$('msg').textContent=e.message}
 };

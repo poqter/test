@@ -110,7 +110,7 @@ function calendarAction(action,value){
  if(action==='weekends'){render(latest);return}
  if(action==='new'){openEditor(null,'new',value||selected);return}
  if(action==='event'){dayListReturn=null;openDetail(value);return}
- if(action==='scope'){openScope();return}
+ if(action==='scope'){document.querySelector('.member-search input')?.focus();return}
  if(action==='refresh'){reloadCalendar(true);return}
  if(action==='reauth'){if(calendarFlight){setTimeout(()=>calendarAction('reauth'),1000);return}post('streamlit:setComponentValue',{value:{action:'reauth',nonce:crypto.randomUUID()},dataType:'json'});return}
 }
@@ -181,22 +181,25 @@ function selectScope(value){
  if(!calendarBoot)return;
  const member=!['my','team'].includes(value)?value:null;
  if(member&&(!calendarBoot.managed||!Object.hasOwn(calendarBoot.members,member)))return;
- calendarBoot.member=member;calendarBoot.team=value==='team';calendarEpoch++;calendarCache.clear();
+ if(!member)memberSearchText='';calendarBoot.member=member;calendarBoot.team=value==='team';calendarEpoch++;calendarCache.clear();
  latest={...latest,events:[],roster:{},scopeLabel:member?calendarBoot.members[member]:value==='team'?(calendarBoot.viewLabel||'지점 일정'):'내 일정'};
  if(calendarPanel)calendarPanel.close();calendarLoading=true;render(latest);reloadCalendar(true);
 }
-function openScope(){
- if(!calendarBoot?.managed)return;
- const body=createPanel('구성원 선택'),form=el('form');body.append(form);
- const search=field(form,'이름 검색','search'),list=el('div','','member-options');list.setAttribute('role','group');list.setAttribute('aria-label','조회 가능한 구성원');form.append(list);
- const draw=()=>{
-  list.replaceChildren();const query=search.value.trim().toLocaleLowerCase();
+let memberSearchText='';
+function memberSearchControl(){
+ const wrap=el('div','','member-search'),input=el('input'),list=el('div','','member-search-results');
+ input.type='search';input.placeholder='구성원 검색';input.setAttribute('aria-label','구성원 검색');input.value=memberSearchText||(calendarBoot.member?calendarBoot.members[calendarBoot.member]:'');
+ list.setAttribute('role','group');list.setAttribute('aria-label','구성원 검색 결과');list.hidden=true;wrap.append(input,list);
+ const draw=()=>{list.replaceChildren();const query=input.value.trim().toLocaleLowerCase();memberSearchText=input.value;
   for(const [uid,name] of Object.entries(calendarBoot.members).sort((a,b)=>a[1].localeCompare(b[1],'ko'))){
-   if(!name.toLocaleLowerCase().includes(query))continue;
-   const choice=button(name+(calendarBoot.member===uid?' ✓':''),()=>selectScope(uid),'member-choice',name+' 일정 보기');choice.dataset.member=uid;choice.setAttribute('aria-pressed',String(calendarBoot.member===uid));list.append(choice);
+   if(query&&!name.toLocaleLowerCase().includes(query))continue;
+   list.append(button(name,()=>{memberSearchText=name;list.hidden=true;selectScope(uid)},'',name+' 일정 보기'));
   }
-  if(!list.children.length)list.append(el('p','검색 결과가 없습니다.','hint'));
- };search.oninput=draw;form.onsubmit=e=>e.preventDefault();draw();search.focus({preventScroll:true});
+  if(!list.children.length)list.append(el('p','검색 결과가 없습니다.','hint'));list.hidden=false;
+ };
+ input.oninput=draw;input.onfocus=draw;input.onkeydown=e=>{if(e.key==='Escape'){list.hidden=true;input.blur()}if(e.key==='Enter'){e.preventDefault();list.querySelector('button')?.click()}};
+ wrap.addEventListener('focusout',()=>setTimeout(()=>{if(!wrap.contains(document.activeElement))list.hidden=true},0));
+ return wrap;
 }
 async function openDetail(id){
  const card=latest.events.find(e=>e.id===id),body=createPanel('일정 상세',card?.readable!==false);const panel=calendarPanel;
@@ -341,13 +344,9 @@ function openEditor(row,kind,day){
  if(editing){form.append(button('최신 기록 불러오기',()=>{if(confirm('현재 입력 대신 최신 저장 내용을 불러올까요?')){calendarDrafts.delete(key);if(calendarDraft===draft){calendarDraft=null;openDetail(row.id)}}}));}
  const remember=()=>{draft.values={...v,...values(form)};draft.dirty=true};form.addEventListener('input',remember);form.addEventListener('change',remember);form.onsubmit=e=>{e.preventDefault();save.click()};
 }
-async function calendarTrash(){
- const body=createPanel('삭제한 일정',true);body.append(el('p','삭제 후 30일 동안 개별 복구할 수 있습니다. 연결된 계약·후속 기록은 보존됩니다.'));const panel=calendarPanel,loading=el('p','삭제한 일정을 불러오고 있습니다.','hint');loading.setAttribute('role','status');if(document.body.dataset.shellFirst==='true')body.append(loading);
- try{const rows=await rpc('trash');loading.remove();if(panel!==calendarPanel)return;if(!rows.length)body.append(el('p','복구할 일정이 없습니다.'));for(const row of rows){const line=el('div','','detail-line'),error=feedback(line),restore=button('복구',()=>runButton(restore,error,async()=>{await rpc('archive',{id:row.id,revision:row.revision,restore:true});line.remove();mutate()}));line.prepend(el('p',row.day+' · '+row.title));line.append(restore);body.append(line)}}catch(e){loading.remove();if(panel===calendarPanel)body.append(el('p',e.message,'panel-error'),button('다시 불러오기',calendarTrash))}
-}
 function deleteEvent(row){
- const body=createPanel('일정 삭제');body.append(el('p',row.day+' · '+row.title),el('p','달력과 활동 집계에서 제외됩니다. 계약·후속 활동은 보존되며, 30일 동안 개별 복구할 수 있습니다.'));
- const f=el('form');body.append(f);if(row.series_id)field(f,'삭제 범위','scope','one','text',[['one','이번 일정만'],['future','이후 반복 일정까지']]);const error=feedback(f),save=button('일정 삭제 확인',()=>runButton(save,error,async()=>{await rpc('archive',{id:row.id,revision:row.revision,future:values(f).scope==='future'});for(const [k,d] of calendarDrafts)if(d.row?.id===row.id)calendarDrafts.delete(k);mutate();calendarTrash()}),'danger');f.append(save);f.onsubmit=e=>e.preventDefault();
+ const body=createPanel('일정 삭제');body.append(el('p',row.day+' · '+row.title),el('p','일정은 즉시 삭제되며 복구할 수 없습니다. 연결된 계약·후속 활동은 보존됩니다.'));
+ const f=el('form');body.append(f);if(row.series_id)field(f,'삭제 범위','scope','one','text',[['one','이번 일정만'],['future','이후 반복 일정까지']]);const error=feedback(f),save=button('일정 삭제 확인',()=>runButton(save,error,async()=>{await rpc('delete',{id:row.id,revision:row.revision,future:values(f).scope==='future'});for(const [k,d] of calendarDrafts)if(d.row?.id===row.id)calendarDrafts.delete(k);calendarPanel?.close();mutate()}),'danger');f.append(save);f.onsubmit=e=>e.preventDefault();
 }
 function openContract(row,old){
  const key='contract:'+(old?.id||row.id),saved=calendarDrafts.get(key),body=createPanel('청약·계약 입력 및 수정',true),f=el('form');body.append(f);

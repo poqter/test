@@ -59,3 +59,15 @@ def test_weekly_and_alerts_empty_state():
     button(at,'알림').click().run()
     assert not at.exception
     assert any(i.value=='일정 알림이 없습니다.' for i in at.info)
+
+
+def test_alerts_dialog_keeps_page_and_closes():
+    at=app(TAIL)
+    page=at.session_state.get('mobile_page','캘린더')
+    button(at,'알림').click().run()
+    assert not at.exception
+    assert at.session_state.get('mobile_page','캘린더')==page
+    button(at,'닫기').click().run()
+    assert not at.exception
+    assert at.session_state.get('mobile_page','캘린더')==page
+    assert not any(i.value=='일정 알림이 없습니다.' for i in at.info)

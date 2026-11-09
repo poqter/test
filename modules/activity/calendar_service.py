@@ -168,13 +168,10 @@ def command(db,op,a):
         write_event(db,row,body)
         current=event(db,row['id'],own=True)
         return {'id':current['id'],'status':current['status'],'revision':current['revision']}
-    if op=='trash':
-        return db.request('GET','sales_events',{'owner':'eq.'+db.uid,'deleted_at':'gte.'+(datetime.now(KST)-30*DAY).isoformat(),'order':'deleted_at.desc,day.asc'})
-    if op=='archive':
-        row=event(db,a['id'],own=True,archived=bool(a.get('restore')))
+    if op=='delete':
+        row=event(db,a['id'],own=True)
         if row['revision']!=int(a['revision']):raise HwarangAuthError('다른 화면에서 변경했습니다. 최신 기록을 확인해 주세요.')
-        count=db.request('POST','rpc/sales_archive_event',body={'p_id':row['id'],'p_revision':row['revision'],'p_future':bool(a.get('future')) and not a.get('restore'),'p_restore':bool(a.get('restore'))})
-        if not count:raise HwarangAuthError('변경 결과를 확인하지 못했습니다. 최신 기록을 확인해 주세요.')
+        db.request('POST','rpc/sales_delete_event',body={'p_id':row['id'],'p_revision':row['revision'],'p_future':bool(a.get('future'))})
         return {'ok':True}
     if op=='task':
         row=event(db,a['id'],own=True);title=str(a.get('title','')).strip()

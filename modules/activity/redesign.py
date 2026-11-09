@@ -632,28 +632,17 @@ def delete_control(db,row):
         future=False
         if row.get('series_id'):
             future=st.radio('삭제 범위',['이번 일정만','이후 반복 일정까지'],key=key+'_scope')=='이후 반복 일정까지'
-        st.caption('달력과 활동 집계에서 제외됩니다. 계약·후속 활동은 보존되며, 삭제한 일정 메뉴에서 30일 동안 복구할 수 있습니다.')
+        st.caption('일정은 즉시 삭제되며 복구할 수 없습니다. 연결된 계약·후속 활동은 보존됩니다.')
         if st.button('일정 삭제 확인',key=key+'_submit'):
-            db.request('POST','rpc/sales_archive_event',body={'p_id':row['id'],'p_revision':row['revision'],'p_future':future,'p_restore':False})
-            st.session_state['sales_route']={'type':'trash'}
+            db.request('POST','rpc/sales_delete_event',body={'p_id':row['id'],'p_revision':row['revision'],'p_future':future})
+            st.session_state.pop('sales_route',None)
             st.session_state['sales_route_stack']=[]
             for k in list(st.session_state.get('sales_drafts',{})):
                 if k in ('event:'+db.uid+':'+row['id'],'result:'+row['id']):ux.clear_draft(k)
-            st.session_state['sales_dialog_notice']='삭제했습니다. 30일 동안 복구할 수 있습니다.'
+            st.session_state['sales_dialog_notice']='삭제했습니다.'
             st.session_state['sales_calendar_refresh']=str(uuid4())
             ux.refresh()
 
 
 def trash(db):
-    st.subheader('삭제한 일정')
-    st.caption('본인의 일정만 표시됩니다. 삭제 후 30일 동안 개별 복구할 수 있습니다. 연결된 계약·후속 기록은 삭제하지 않습니다.')
-    cutoff=(datetime.now(KST)-timedelta(days=30)).isoformat()
-    rows=db.request('GET','sales_events',{'owner':'eq.'+db.uid,'deleted_at':'gte.'+cutoff,'order':'deleted_at.desc,day.asc'})
-    if not rows:st.info('복구할 일정이 없습니다.')
-    for row in rows:
-        with st.container(border=True):
-            st.write(row['day']+' · '+row['title'])
-            if st.button('복구',key='restore_'+row['id']):
-                db.request('POST','rpc/sales_archive_event',body={'p_id':row['id'],'p_revision':row['revision'],'p_future':False,'p_restore':True})
-                st.session_state['sales_dialog_notice']='일정을 복구했습니다.'
-                st.session_state['sales_calendar_refresh']=str(uuid4());ux.refresh()
+    st.info('삭제한 일정 보관·복구 기능은 종료되었습니다.')

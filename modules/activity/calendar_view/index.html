@@ -89,6 +89,13 @@ body[data-shell-first="true"] .calendar-spacious>.panel-head{flex:none}
 body[data-shell-first="true"] .calendar-spacious>.panel-content{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}
 .calendar-placeholder{display:block;height:18px;width:65%;max-width:280px;background:#edf1f5;border-radius:4px;margin-top:5px}
 @media(max-width:650px){body[data-shell-first="true"] dialog.calendar-panel.calendar-spacious{height:calc(100dvh - 24px);max-height:calc(100dvh - 24px)}}
+
+.scope-switch{margin-left:auto;flex:1;justify-content:flex-end;flex-wrap:nowrap}
+.member-search{position:relative;flex:1;min-width:110px;max-width:320px;margin-right:auto}
+.member-search input{width:100%;box-sizing:border-box;min-height:38px;border:1px solid #cbdcde;border-radius:8px;padding:7px 10px;font:inherit}
+.member-search-results{position:absolute;top:100%;left:0;right:0;z-index:50;background:white;border:1px solid #cbdcde;border-radius:8px;box-shadow:0 6px 18px #1232;max-height:250px;overflow:auto;display:grid}
+.member-search-results[hidden]{display:none}.member-search-results button{max-width:none;text-align:left;border:0;min-height:40px}
+@media(max-width:700px){.scope-switch .member-search{max-width:none;min-width:100px}.scope-switch>button{flex:0 0 auto}.scope-switch{gap:5px}}
 </style><header><div class="nav" id="nav"></div><div class="tools" id="tools"></div></header><div class="legend" aria-label="활동 종류별 색상"><span data-kind="TA">TA 고객 연락</span><span data-kind="AP">AP 초회 상담</span><span data-kind="PC">PC 프레젠테이션 / 클로징</span><span data-kind="CS">CS 고객 관리</span></div><div id="refreshing" class="refreshing" role="status" aria-live="polite"></div><div id="move-notice" role="status" hidden></div><div id="grid" class="grid"></div><section class="agenda" id="agenda"></section><script>
 const post=(type,data)=>parent.postMessage({isStreamlitMessage:true,type,...data},location.origin);
 const emit=(action,value)=>calendarAction(action,value);
@@ -182,13 +189,14 @@ function render(a){
  const guide=el('details');guide.dataset.key='color-guide';guide.append(el('summary','활동 색상 안내'),document.querySelector('.legend').cloneNode(true));panel.append(guide);
  panel.append(button('기본값으로 되돌리기',()=>changePrefs({showCompleted:true,showWeekends:false})),el('p','변경한 설정은 자동으로 저장됩니다.','settings-save'));settings.append(panel);
  const scopes=el('div','','scope-switch');scopes.setAttribute('role','group');scopes.setAttribute('aria-label','조회 대상');
- for(const [key,label] of [['my','내 일정'],['team','지점 일정'],...(calendarBoot?.managed?[['member',calendarBoot.member?'구성원 · '+calendarBoot.members[calendarBoot.member]+' ▾':'구성원 ▾']]:[])]){
-  const active=key==='member'?!!calendarBoot?.member:key==='team'?!!calendarBoot?.team:!calendarBoot?.member&&!calendarBoot?.team;
-  const b=button(label,()=>key==='member'?openScope():selectScope(key),active?'active':'',key==='member'?'구성원 선택':label);b.setAttribute('aria-pressed',String(active));scopes.append(b);
+ if(calendarBoot?.managed)scopes.append(memberSearchControl());
+ for(const [key,label] of [['my','내 일정'],['team','지점 일정']]){
+  const active=key==='team'?!!calendarBoot?.team:!calendarBoot?.member&&!calendarBoot?.team;
+  const b=button(label,()=>selectScope(key),active?'active':'',label);b.setAttribute('aria-pressed',String(active));scopes.append(b);
  }tools.append(scopes);
  if(!a.hideMobileApp)tools.append(button('모바일 앱 열기',()=>openMobile(latest.mobileSession)));
  tools.append(sw,settings);
- tools.append(button('＋ 일정 등록',()=>emit('new',selected),'primary'));tools.append(button('삭제한 일정',()=>calendarTrash()));
+ tools.append(button('＋ 일정 등록',()=>emit('new',selected),'primary'));
  if(!calendarBoot||(typeof calendarAccessPending!=='undefined'&&calendarAccessPending)){for(const b of tools.querySelectorAll('button'))b.disabled=true;}
  grid.hidden=mode==='날짜별';
  grid.className='grid'+(hide?' weekends-off':'')+(mode==='주간'?' week':'')+(mode==='날짜별'?' strip':'');

@@ -6,7 +6,12 @@ def test_entry_reuses_initial_reads_and_invalidates_after_write():
 import streamlit as st
 from unittest.mock import patch
 from types import SimpleNamespace
-from modules.activity.center import Records
+import importlib.util
+from modules.activity import center as original
+spec=importlib.util.spec_from_file_location('entry_records_test',original.__file__)
+center=importlib.util.module_from_spec(spec)
+spec.loader.exec_module(center)
+Records=center.Records
 st.session_state['hwarang_auth']={'access_token':'test','profile':{'id':'me','role':'user'}}
 calls=[]
 def request(method,path,**kw):
@@ -16,7 +21,7 @@ def request(method,path,**kw):
         'entry':{'day':'2026-11-10','summary':[],'empty_days':[],
         'notices':[{'id':'n','message':'notice','sales_events':None}]}}
     return []
-with patch('modules.activity.center.SupabaseConfig.from_mapping',return_value=None), patch('modules.activity.center.HwarangAuthService',return_value=SimpleNamespace(http=SimpleNamespace(headers={}),_request=request)):
+with patch.object(center.SupabaseConfig,'from_mapping',return_value=None), patch.object(center,'HwarangAuthService',return_value=SimpleNamespace(http=SimpleNamespace(headers={}),_request=request)):
     db=Records()
     assert len(calls)==1
     db.request('POST','rpc/sales_calendar_days',body={'first_day':'2026-11-10','last_day':'2026-11-10'})

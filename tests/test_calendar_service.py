@@ -31,7 +31,7 @@ def test_revision_conflict_does_not_overwrite(db):
 
 def test_cannot_write_another_person(db):
  st.session_state['fixture_events'][0]['owner']=OTHER
- for op,args in [('save',dict(payload(),id=EVENT,revision=1)),('archive',{'id':EVENT,'revision':1}),('task',{'id':EVENT,'seed':'44444444-4444-4444-8444-444444444444','title':'x','due':'2026-11-09'})]:
+ for op,args in [('save',dict(payload(),id=EVENT,revision=1)),('delete',{'id':EVENT,'revision':1}),('task',{'id':EVENT,'seed':'44444444-4444-4444-8444-444444444444','title':'x','due':'2026-11-09'})]:
   with pytest.raises(HwarangAuthError):command(db,op,args)
 
 def test_scope_is_validated_on_server(db):
@@ -46,10 +46,9 @@ def test_overlap_requires_matching_confirmation(db):
  a['overlap']=response['overlap'];assert command(db,'save',a)['id'];assert len(st.session_state['fixture_events'])==2
 
 def test_deleted_event_cannot_be_edited(db):
- command(db,'archive',{'id':EVENT,'revision':1})
+ command(db,'delete',{'id':EVENT,'revision':1})
  with pytest.raises(HwarangAuthError):command(db,'save',dict(payload(),id=EVENT,revision=1))
- command(db,'archive',{'id':EVENT,'revision':2,'restore':True})
- assert st.session_state['fixture_events'][0]['deleted_at'] is None
+ assert not st.session_state['fixture_events']
 
 def test_data_validation(db):
  for patch in [{'title':''},{'mode':'시간 지정','start':'15:00','end':'14:00'},{'repeat':True,'repeats':53},{'follow':'2026-11-01'}]:

@@ -1,17 +1,13 @@
 from test_activity_redesign import app, button
 
 
-def test_delete_requires_confirmation_and_restore_preserves_record():
+def test_delete_requires_confirmation_and_removes_record():
     at=app('st.session_state.setdefault("sales_route",{"type":"event","id":EVENT})\ncenter.run()')
     button(at,'일정 삭제').click().run()
+    assert len(at.session_state['fixture_events'])==1
     button(at,'일정 삭제 확인').click().run()
     assert not at.exception
-    assert at.session_state['sales_route']['type']=='trash'
-    assert at.session_state['fixture_events'][0]['deleted_at']
-    button(at,'복구').click().run()
-    assert not at.exception
-    assert at.session_state['fixture_events'][0]['deleted_at'] is None
-    assert at.session_state['fixture_events'][0]['title']=='상담 테스트'
+    assert not at.session_state['fixture_events']
 
 
 def test_other_member_does_not_get_delete_control():

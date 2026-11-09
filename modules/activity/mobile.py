@@ -142,6 +142,13 @@ def alerts(db):
                     choose('활동 기록' if period=='일일' else '주간 기록');st.rerun()
 
 
+@st.dialog('알림·피드백', width='large', dismissible=True, on_dismiss='rerun')
+def alerts_dialog(db):
+    alerts(db)
+    if st.button('닫기', key='mobile_alerts_close', use_container_width=True):
+        st.rerun()
+
+
 def run(logout):
     ux.styles()
     import streamlit.components.v1 as components
@@ -219,7 +226,8 @@ def run(logout):
                 personal_performance(db,today)
         unread=db.request('GET','sales_notices',{'seen':'eq.false','select':'id','limit':'50'})
         with alerts_slot.container():
-            st.button('알림 '+(str(len(unread))+'+' if len(unread)==50 else str(len(unread))) if unread else '알림',icon=':material/notifications:',type='tertiary',on_click=choose,args=('알림·피드백',),key='mobile_alerts')
+            if st.button('알림 '+(str(len(unread))+'+' if len(unread)==50 else str(len(unread))) if unread else '알림',icon=':material/notifications:',type='tertiary',key='mobile_alerts'):
+                alerts_dialog(db)
         if st.session_state.get('sales_route') and not st.session_state.get('sales_dialog_rendered'):redesign.dialog(db)
 
 

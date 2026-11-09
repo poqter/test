@@ -38,10 +38,8 @@ class FakeRecords:
                 trash=(params or {}).get("deleted_at", "is.null")!="is.null"
                 rows=[r for r in rows if bool(r.get("deleted_at"))==trash]
             return deepcopy(rows)
-        if method=="POST" and table=="rpc/sales_archive_event":
-            for r in st.session_state["fixture_events"]:
-                if r['id']==body['p_id'] and r['owner']==self.uid:
-                    r['deleted_at']=None if body['p_restore'] else '2026-11-06T12:00:00+09:00';r['revision']+=1
+        if method=="POST" and table=="rpc/sales_delete_event":
+            st.session_state['fixture_events']=[r for r in st.session_state['fixture_events'] if not (r['id']==body['p_id'] and r['owner']==self.uid)]
             st.session_state['fixture_writes'].append(deepcopy(body));return 1
         if method=="POST" and table=="sales_reviews":
             if not any(r['id']==body['id'] for r in st.session_state['fixture_reviews']):
