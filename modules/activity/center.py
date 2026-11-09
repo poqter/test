@@ -33,9 +33,24 @@ class Records:
         from modules.activity.view_scope import current
         self.view_scope=current()
         self.auth.http.headers["X-Hwarang-View-Scope"]=self.view_scope
+        calendar_entry = (st.session_state.get('mobile_page', '캘린더') == '캘린더'
+            if st.query_params.get('view') == 'mobile-calendar'
+            else st.session_state.get('sales_menu', '캘린더') == '캘린더')
+        if calendar_entry:
+            self.auth.http.headers['X-Hwarang-Calendar-Entry'] = '1'
         self.token=identity["access_token"]
         self.uid=identity["profile"]["id"]
         context=self.request("POST","rpc/sales_calendar_context",body={})
+        entry=context.get('entry')
+        if isinstance(entry, dict):
+            day=entry['day']
+            def seed(method, table, params, value, body=None):
+                key=json.dumps([method,table,params,body,None],sort_keys=True)
+                self._reads[key]=value
+            seed('POST','rpc/sales_calendar_days',None,entry['summary'],{'first_day':day,'last_day':day})
+            seed('GET','sales_empty_days',{'day':'eq.'+day,'select':'owner'},entry['empty_days'])
+            seed('GET','sales_notices',{'seen':'eq.false','order':'created_at.desc','limit':'20','select':'id,message,sales_events(day,kind)'},entry['notices'][:20])
+            seed('GET','sales_notices',{'seen':'eq.false','select':'id','limit':'50'},[{'id':n['id']} for n in entry['notices']])
         rows=context["members"]
         self.branch={r["member"]:r for r in context["branch"]}
         self.fast_calendar=True
@@ -57,6 +72,9 @@ class Records:
             value=self.auth._request(method,"/rest/v1/"+table,access_token=self.token,params=query,json=body,prefer=prefer)
             if readonly:self._reads[key]=deepcopy(value)
             return value
+        if readonly:
+            cached_key=json.dumps([method,table,params,body,prefer],sort_keys=True)
+            if cached_key in self._reads:return deepcopy(self._reads[cached_key])
         if table in {"rpc/sales_calendar_stamp","rpc/sales_calendar_context","rpc/sales_calendar_payload"} or not readonly or "limit" in (params or {}):
             return fetch(params)
         from modules.shared.collection_pages import collect_pages

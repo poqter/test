@@ -81,6 +81,7 @@ def initialize_state() -> None:
 def _set_authenticated(auth: HwarangAuthService, state: dict) -> None:
     st.session_state.pop("calendar_view_scope", None)
     st.session_state.pop("calendar_view_label", None)
+    st.session_state.pop("_calendar_shell_page", None)
     profile = dict(state.get("profile") or {})
     st.session_state["hwarang_auth"] = state
     st.session_state["login_profile"] = profile
@@ -167,7 +168,15 @@ def render_signup_dialog(auth: HwarangAuthService) -> None:
 
 def submit_login(auth, login_id, password, remember, feedback):
     try:
+        if feedback is not None:
+            feedback.info("로그인 중…")
         identity = auth.sign_in(login_id, password)
+        if feedback is not None:
+            if st.query_params.get("view") == "mobile-calendar":
+                from modules.activity.loading import calendar_shell
+                calendar_shell(slot=feedback)
+            else:
+                feedback.info("로그인 완료 · 화면을 준비하고 있습니다…")
         if remember:
             from modules.activity.device import enroll
             enroll(auth, identity)

@@ -53,7 +53,7 @@ def test_records_restore_cache_and_write_invalidate(monkeypatch):
     spec.loader.exec_module(center)
     state,db=setup(monkeypatch)
     state['hwarang_auth']['profile']['id']='one'
-    monkeypatch.setattr(center,'st',SimpleNamespace(session_state=state,secrets={}))
+    monkeypatch.setattr(center,'st',SimpleNamespace(session_state=state,secrets={},query_params={}))
     calls=[]
     def request(method,path,**kwargs):
         calls.append((method,path))
