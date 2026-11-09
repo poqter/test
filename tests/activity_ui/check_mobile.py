@@ -68,10 +68,15 @@ try:
         expect(cal.get_by_role('dialog')).to_be_visible()
         assert cal.get_by_role('dialog').bounding_box()['height'] <= page.viewport_size['height']
         expect(cal.get_by_label('날짜',exact=True)).to_have_value('2026-11-05')
+        expect(cal.get_by_label('시작 시간',exact=True)).to_have_attribute('placeholder','--:--')
         cal.get_by_role('button',name='팝업 닫기',exact=True).click()
         expect(cal.get_by_role('dialog')).to_have_count(0)
         page.get_by_role('button',name='☰',exact=True).click()
         drawer=page.locator('[data-testid="stPopoverBody"]').filter(has=page.locator('.mobile-drawer'))
+        # Popover positioning must not return when the entrance animation ends.
+        motion=drawer.evaluate("async e=>{let points=[];for(let i=0;i<35;i++){await new Promise(requestAnimationFrame);let r=e.getBoundingClientRect();points.push([r.x,r.y])}return points}")
+        assert all(abs(y)<1 for x,y in motion), motion
+        assert all(abs(x)<1 for x,y in motion[-10:]), motion
         expect(drawer.get_by_role('button',name='오늘의 업무',exact=True)).to_have_count(0)
         drawer.get_by_role('button',name='패널 닫기').click()
         expect(drawer).not_to_be_visible()
