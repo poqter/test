@@ -287,12 +287,12 @@ def main() -> None:
 
     if render_recovery_entry(auth):
         st.stop()
-    if st.session_state.get("_calendar_deployment") and st.query_params.get("launch"):
+    if st.query_params.get("launch"):
         from modules.activity.launch import accept_launch
         ticket = str(st.query_params["launch"])
         del st.query_params["launch"]
         try:
-            _set_authenticated(auth, accept_launch(auth, ticket, st.session_state.get("hwarang_auth")))
+            _set_authenticated(auth, accept_launch(auth, ticket, st.session_state.get("hwarang_auth"), calendar=bool(st.session_state.get("_calendar_deployment"))))
         except HwarangAuthError as exc:
             st.session_state["calendar_launch_error"] = str(exc)
     from modules.activity import device
