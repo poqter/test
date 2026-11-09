@@ -24,6 +24,7 @@ try:
         cal=page.frame_locator('iframe[title="modules.activity.center.sales_calendar_view"]')
         assert page.locator('.st-key-mobile_header').bounding_box()['y'] < 24
         expect(page.locator('iframe[title="modules.activity.center.sales_calendar_view"]')).to_be_visible()
+        expect(page.get_by_text('결과 미입력 일정',exact=True)).to_have_count(0)
         assert page.locator('iframe[title="modules.activity.center.sales_calendar_view"]').bounding_box()['y'] < 200
         # Seven-column month summaries must fit even on small phones.
         cal.locator('.view-settings > summary').click()

@@ -189,7 +189,6 @@ def run(logout):
         if page=='캘린더':
             st.html("""<button class="mobile-new-event" aria-label="일정 등록" title="일정 등록">＋</button><style>.mobile-new-event{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));width:52px;height:52px;border:0;border-radius:50%;background:#155461;color:white;font-size:28px;z-index:40;box-shadow:0 3px 12px #1234;cursor:pointer}</style><script>document.querySelector('.mobile-new-event').onclick=()=>document.querySelectorAll('iframe').forEach(f=>f.contentWindow.postMessage({type:'hwarang.activity.new'},location.origin));</script>""",unsafe_allow_javascript=True)
             center.calendar(db,today)
-            missing_results(db,today)
         elif page=='후속 할 일':tasks_view(db,today)
         elif page=='구성원 현황':center.overview(db,today)
         elif page=='알림·피드백':alerts(db)
@@ -203,14 +202,6 @@ def run(logout):
     with alerts_slot.container():
         st.button('알림 '+(str(len(unread))+'+' if len(unread)==50 else str(len(unread))) if unread else '알림',icon=':material/notifications:',type='tertiary',on_click=choose,args=('알림·피드백',),key='mobile_alerts')
     if st.session_state.get('sales_route') and not st.session_state.get('sales_dialog_rendered'):redesign.dialog(db)
-
-
-@st.fragment
-def missing_results(db,today):
-    with st.expander('결과 미입력 일정',key='calendar_missing_results',on_change='rerun') as missing_panel:
-        if missing_panel.open:
-            rows=db.request('GET','sales_events',{'owner':'eq.'+db.uid,'day':'lte.'+str(today),'status':'eq.예정','order':'day.desc'})
-            redesign.event_list(db,[r for r in rows if overdue(r,today)],'calendar_missing_')
 
 
 @st.fragment

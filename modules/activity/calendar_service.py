@@ -93,6 +93,12 @@ def save_event(db,a):
     common=bool(v.get('common'))
     if common and not db.me['managed'] and (not old or not old.get('common')):raise HwarangAuthError('공통 일정 권한을 확인해 주세요.')
     body=dict(day=str(day),title=title,kind=kind,start_time=start,end_time=end,time_pending=mode=='시간 미정',place=str(v.get('place','')),note=str(v.get('note','')),help=str(v.get('help','')) if v.get('support') else '',companion=companion,common=common,status=status,result=str(v.get('result','')) if old else '')
+    if follow and 'follow_start' in v:
+        follow_start=parse_clock(v['follow_start']) if str(v.get('follow_start','')).strip() else None
+        follow_end=parse_clock(v['follow_end']) if str(v.get('follow_end','')).strip() else None
+        if follow_end and (not follow_start or follow_end<=follow_start):
+            raise ValueError('새 일정 종료 시간은 시작 시간보다 늦어야 합니다.')
+        body.update(follow_start_time=follow_start,follow_end_time=follow_end,follow_time_pending=not bool(follow_start))
     repeat=int(v.get('repeats',1)) if v.get('repeat') and not old else 1
     if not 1<=repeat<=52:raise ValueError('반복 횟수는 1~52회입니다.')
     if start and status=='예정':

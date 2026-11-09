@@ -161,3 +161,18 @@ def test_fp_branch_summary_has_title_without_detail_access(db,monkeypatch):
  data=command(db,'load',{'first':'2026-11-01','last':'2026-11-30','team':True})
  assert data['events'][0]['short'].startswith('상담 테스트')
  assert data['events'][0]['readable'] is False
+
+
+def test_followup_time_does_not_replace_original_time(db,monkeypatch):
+ from unittest.mock import Mock
+ write=Mock();monkeypatch.setattr('modules.activity.calendar_service.write_event',write)
+ a=payload(day='2026-11-06',mode='시간 지정',start='14:00',end='15:00',note='기존 메모',status='연기',follow='2026-11-12',follow_start='16:10',follow_end='17:20')
+ a.update(id=EVENT,revision=1)
+ command(db,'save',a)
+ body=write.call_args.args[2]
+ assert body['start_time']=='14:00:00' and body['end_time']=='15:00:00'
+ assert body['follow_start_time']=='16:10:00' and body['follow_end_time']=='17:20:00'
+ assert body['note']=='기존 메모'
+ a['data']['follow_end']='15:00'
+ with pytest.raises(ValueError):command(db,'save',a)
+ assert write.call_count==1
