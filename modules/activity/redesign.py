@@ -218,8 +218,8 @@ def event_detail(db,row):
     title_slot,result_slot=st.columns([3,1])
     title_slot.subheader(row["title"])
     if row['owner']==db.uid:
-        with result_slot.popover('완료 · 결과 처리',width='stretch'):
-            quick_result(db,row)
+        with result_slot.popover('완료 · 결과 처리',width='stretch',key='result_popover_'+row['id'],on_change='rerun') as result_popover:
+            if result_popover.open:quick_result(db,row)
     ux.summary([row["day"],ux.schedule_time(row),TYPES.get(row["kind"],row["kind"]),row["status"]])
     people={r["member"]:r["label"] for r in db.request("POST","rpc/sales_branch_members",body={})} if row.get("companion") else {}
     ux.details([("장소",row.get("place") or "미입력"),("동행자",people.get(row.get("companion"))), ("메모",row.get("note")),("활동 결과",row.get("result")),("지원 요청",row.get("help"))])
@@ -246,6 +246,8 @@ def event_detail(db,row):
     feedback=st.expander("확인 · 피드백",key="event_feedback_"+row["id"],on_change="rerun")
     if feedback.open:
         with feedback:review(db,row,"event")
+    result_key='result:'+row['id']
+    return result_key if result_key in st.session_state.get('sales_drafts',{}) else None
 
 def event_list(db,events,prefix,*,show_result_actions=True):
     if not events: st.caption("등록된 일정이 없습니다.")
@@ -595,7 +597,7 @@ def dialog(db):
                 if not rows:st.info("일정을 조회할 수 없습니다.")
                 else:
                     row=rows[0]
-                    if kind=="event":event_detail(db,row)
+                    if kind=="event":key=event_detail(db,row)
                     elif row["owner"]!=db.uid:st.error("본인의 일정만 변경할 수 있습니다.")
                     elif kind=="result":key=quick_result(db,row)
                     elif kind=="edit":key=event_editor(db,date.fromisoformat(row["day"]),event=row)
