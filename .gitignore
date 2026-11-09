@@ -32,3 +32,6 @@ tests/*_results.json
 scripts/calendar_client/node_modules/
 supabase/.temp/
 tests/studio_db/node_modules/
+
+# Synthetic browser diagnostics are CI artifacts, never source.
+test-results/

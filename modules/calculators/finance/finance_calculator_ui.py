@@ -144,7 +144,7 @@ def run(name):
 
 
 def _rows_for_display(result):
-    return [{k:(f'{v.quantize(Decimal(1),rounding=result.rounding):,}' if isinstance(v,Decimal) else v) for k,v in row.items()} for row in result.rows]
+    return [{k:(engine.format_decimal(v, rounding=result.rounding) if isinstance(v,Decimal) else v) for k,v in row.items()} for row in result.rows]
 
 
 def render_result(name,result,calculated_on,args,prefix):

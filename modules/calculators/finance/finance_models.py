@@ -10,6 +10,13 @@ D = Decimal
 ZERO = D(0)
 ONE = D(1)
 
+def format_decimal(value, places=ONE, rounding=ROUND_HALF_UP):
+    """Keep display rounding independent of the caller's Decimal precision."""
+    number = D(value)
+    with localcontext() as ctx:
+        ctx.prec = max(ctx.prec, number.adjusted() + 1 - places.as_tuple().exponent + 1)
+        return f'{number.quantize(places, rounding=rounding):,}'
+
 @dataclass
 class FinanceResult:
     metrics: dict[str, Any]
@@ -27,7 +34,7 @@ class FinanceResult:
                 result[key] = value
             else:
                 places = D('.01') if unit == '%' else D('.1') if unit in ('개월','년') else ONE
-                result[key] = f'{D(value).quantize(places,rounding=self.rounding):,}{unit}'
+                result[key] = format_decimal(value, places, self.rounding) + unit
         return result
 
 
