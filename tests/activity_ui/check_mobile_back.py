@@ -44,8 +44,12 @@ try:
         expect(cal.get_by_role('dialog')).to_have_count(0)
         # Dirty editor is protected, including repeated Back.
         page.get_by_role('button',name='일정 등록',exact=True).click()
+        expect(page.get_by_test_id('stApp')).to_have_attribute('data-test-script-state','notRunning')
         cal.get_by_label('일정명',exact=True).fill('뒤로가기 보존')
         cal.get_by_label('일정명',exact=True).press('Tab')
+        frame=page.locator('iframe[title="modules.activity.center.sales_calendar_view"]').element_handle().content_frame()
+        frame.wait_for_function("calendarDraft?.dirty && calendarDraft.values.title==='뒤로가기 보존'")
+        page.wait_for_function("history.state?.hwarangCalendarBack === true")
         page.wait_for_timeout(400)
         page.go_back()
         expect(cal.get_by_role('button',name='계속 작성',exact=True)).to_be_visible()
