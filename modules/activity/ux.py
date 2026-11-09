@@ -197,6 +197,7 @@ def dialog_styles():
     [role="dialog"]:has(.sales-dialog-marker)>div{padding:0!important;overflow:hidden!important}
     [role="dialog"] [data-testid="stElementContainer"]:has(>.stHtml>.sales-dialog-marker){display:none}
     [role="dialog"] [data-testid="stVerticalBlock"]:has(>[data-testid="stLayoutWrapper"]>.st-key-sales_dialog_header){gap:0!important}
+    .st-key-sales_status_emphasis{border:1px solid #b7d5dc;border-radius:10px;background:#f1f8fa;padding:8px}
     .st-key-sales_dialog_header{padding:10px 20px!important;gap:12px!important;min-height:64px;background:#fff;border-bottom:1px solid #e6ebf1}
     .st-key-sales_dialog_header .st-key-sales_close_top{margin-left:auto;flex:0 0 auto!important}
     .st-key-sales_dialog_header button{min-width:44px;min-height:44px}
