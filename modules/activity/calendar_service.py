@@ -7,7 +7,7 @@ from modules.shared.hwarang_auth import HwarangAuthError
 from modules.activity.redesign import write_event, KST, KINDS
 
 DAY = timedelta(days=1)
-NULLABLE_TIME_PROTOCOL = 1
+NULLABLE_TIME_PROTOCOL = 2
 
 def identity(value):
     return str(UUID(str(value)))
@@ -43,7 +43,7 @@ def snapshot(db, args):
         label=f"{stamp} · {row['kind']} · {owner} · {status}"
         if row.get('companion'):label+=' · 동행 '+branch.get(row['companion'],{}).get('label','')
         if row.get('help'):label+=' · 지원 요청'
-        cards.append(dict(id=row['id'],day=row['day'],kind=row['kind'],member=row['owner'],allDay=not row.get('start_time'),short=(row.get('title') or row['kind'])+(' · '+owner if team else ''),label=label,done=row['status']=='완료',soon=bool(row['day']==str(now.date()) and row['status']=='예정' and row.get('start_time') and 0<=(datetime.combine(now.date(),time.fromisoformat(row['start_time']),KST)-now).total_seconds()<=1800),readable=row['id'] in details))
+        cards.append(dict(start=row.get('start_time'),timePending=bool(row.get('time_pending')),place=row.get('place',''),status=row['status'],revision=row.get('revision'),id=row['id'],day=row['day'],kind=row['kind'],member=row['owner'],allDay=not row.get('start_time'),short=(row.get('title') or row['kind'])+(' · '+owner if team else ''),label=label,done=row['status']=='완료',soon=bool(row['day']==str(now.date()) and row['status']=='예정' and row.get('start_time') and 0<=(datetime.combine(now.date(),time.fromisoformat(row['start_time']),KST)-now).total_seconds()<=1800),readable=row['id'] in details))
     unit=db.members[member]['unit'] if member else db.me['unit']
     stamp=db.request('POST','rpc/sales_calendar_stamp',body={'first_day':str(first),'last_day':str(last),'p_unit':unit})
     return dict(events=cards,rangeStart=str(first),rangeEnd=str(last),syncUnit=unit,syncStamp=stamp,scopeLabel=db.members[member]['label'] if member else '지점 일정' if team else '내 일정',roster={u:r['label'] for u,r in branch.items() if not member or u==member} if team or member else {})
@@ -115,6 +115,18 @@ def command(db,op,a):
     if op=='load':return snapshot(db,a)
     if op=='detail':return detail(db,a['id'])
     if op=='save':return save_event(db,a)
+    if op=='status':
+        row=event(db,a['id'],own=True)
+        target=a.get('status')
+        if target not in ('완료','예정') or row['status'] not in ('완료','예정'):
+            raise ValueError('이 일정은 상세 화면에서 상태를 변경해 주세요.')
+        if row['revision']!=int(a['revision']):
+            raise HwarangAuthError('다른 화면에서 변경했습니다. 최신 목록을 확인한 뒤 다시 시도해 주세요.')
+        body={k:row.get(k) for k in ('day','start_time','end_time','time_pending','title','kind','place','note','help','companion','common','status','result')}
+        body['status']=target
+        write_event(db,row,body)
+        current=event(db,row['id'],own=True)
+        return {'id':current['id'],'status':current['status'],'revision':current['revision']}
     if op=='trash':
         return db.request('GET','sales_events',{'owner':'eq.'+db.uid,'deleted_at':'gte.'+(datetime.now(KST)-30*DAY).isoformat(),'order':'deleted_at.desc,day.asc'})
     if op=='archive':

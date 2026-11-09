@@ -102,3 +102,20 @@ def test_optional_times_are_nullable_on_create_and_edit(db,editing,mode,start,en
  row=next(r for r in st.session_state['fixture_events'] if r['id']==result['id'])
  assert (row['start_time'],row['end_time'])==expected
  assert row['time_pending']==(mode=='시간 미정')
+
+
+def test_quick_complete_preserves_fields_and_undo(db):
+ before=deepcopy(st.session_state['fixture_events'][0])
+ result=command(db,'status',{'id':EVENT,'revision':1,'status':'완료'})
+ current=st.session_state['fixture_events'][0]
+ assert current['status']=='완료' and result['revision']==2
+ assert all(current[k]==v for k,v in before.items() if k not in ('status','revision'))
+ command(db,'status',{'id':EVENT,'revision':2,'status':'예정'})
+ assert current['status']=='예정'
+
+def test_quick_complete_rejects_other_owner_and_stale_undo(db):
+ command(db,'status',{'id':EVENT,'revision':1,'status':'완료'})
+ with pytest.raises(HwarangAuthError):command(db,'status',{'id':EVENT,'revision':1,'status':'예정'})
+ assert st.session_state['fixture_events'][0]['status']=='완료'
+ st.session_state['fixture_events'][0]['owner']=OTHER
+ with pytest.raises(HwarangAuthError):command(db,'status',{'id':EVENT,'revision':2,'status':'예정'})
