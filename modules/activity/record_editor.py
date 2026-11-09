@@ -170,7 +170,6 @@ def render(db,today,period,fixed_day=None):
         with left:
             with st.container(border=True,key='daily_inputs'+suffix):
                 st.markdown('### 활동 건수')
-                st.caption('입력값 · 자동 집계와 구분해서 관리합니다.')
                 width=2 if mobile else 3
                 for offset in range(0,len(COUNTS),width):
                     for col,name in zip(st.columns(width),COUNTS[offset:offset+width]):
