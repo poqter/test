@@ -32,6 +32,7 @@ try:
         page.go_back()
         expect(cal.locator('.view-settings')).not_to_have_attribute('open','')
         page.get_by_role('button',name='☰',exact=True).click()
+        expect(page.locator('[data-testid="stPopoverBody"]')).to_be_visible()
         page.wait_for_timeout(400)
         page.go_back()
         expect(page.locator('[data-testid="stPopoverBody"]')).to_have_count(0)
