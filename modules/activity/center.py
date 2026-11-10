@@ -273,9 +273,6 @@ def overview(db,today):
     context=('manager',read_state.identity(),today,
         *(st.session_state.get('manager_pref_'+name) for name in ('date','period','unit','team')))
     read_state.refresh(db,context,seconds=15)
-    if st.button('최신 조회',key='manager_refresh',help='다른 직원의 최신 변경 내용을 지금 불러옵니다.'):
-        db._reads.clear()
-        read_state.invalidate()
     from modules.activity.redesign import overview as render
     return render(db,today)
 

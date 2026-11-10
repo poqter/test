@@ -99,6 +99,8 @@ body[data-shell-first="true"] .calendar-spacious>.panel-content{flex:1;min-heigh
 .member-search-results[hidden]{display:none}.member-search-results button{max-width:none;text-align:left;border:0;min-height:40px}
 @media(max-width:700px){.scope-switch .member-search{max-width:none;min-width:100px}.scope-switch>button{flex:0 0 auto}.scope-switch{gap:5px}}
 @media(min-width:701px){header>.tools{margin-left:auto;justify-content:flex-end}}
+.chip[data-kind="휴무"],.row[data-kind="휴무"]{background:#eef0f3;color:#4b5563;border-color:#a3aab4}
+.chip[data-kind="휴무"]:before{content:none}.leave-switch{margin-bottom:14px}.leave-switch button{flex:1}
 </style><header><div class="nav" id="nav"></div><div class="tools" id="tools"></div></header><div class="legend" aria-label="활동 종류별 색상"><span data-kind="TA">TA 고객 연락</span><span data-kind="AP">AP 초회 상담</span><span data-kind="PC">PC 프레젠테이션 / 클로징</span><span data-kind="CS">CS 고객 관리</span></div><div id="refreshing" class="refreshing" role="status" aria-live="polite"></div><div id="move-notice" role="status" hidden></div><div id="grid" class="grid"></div><section class="agenda" id="agenda"></section><script>
 const post=(type,data)=>parent.postMessage({isStreamlitMessage:true,type,...data},location.origin);
 const emit=(action,value)=>calendarAction(action,value);
@@ -207,7 +209,7 @@ function render(a){
  for(let w of (hide?'월화수목금':'월화수목금토일'))grid.append(el('div',w,'weekday'));
  const first=month?date(day.slice(0,7)+'-01'):anchor, monday=add(first,-((first.getUTCDay()+6)%7)),last=new Date(Date.UTC(anchor.getUTCFullYear(),anchor.getUTCMonth()+1,0,12));
  let cells=month?42:7;
- for(let i=0;i<cells;i++){let d=add(monday,i),s=iso(d);if(hide&&isWeekend(s))continue;let items=events.filter(e=>e.day===s),box=el('div','','cell'+(s===selected?' selected':'')+(month&&s.slice(0,7)!==day.slice(0,7)?' outside':''));
+ for(let i=0;i<cells;i++){let d=add(monday,i),s=iso(d);if(hide&&isWeekend(s))continue;let items=events.filter(e=>e.day===s).sort((a,b)=>(b.kind==='휴무')-(a.kind==='휴무')),box=el('div','','cell'+(s===selected?' selected':'')+(month&&s.slice(0,7)!==day.slice(0,7)?' outside':''));
  box.dataset.key=s;wireCalendarDrop(box,s);
  const openDay=()=>{
    const now=Date.now();if(now<suppressClickUntil||now-lastTap<400)return;lastTap=now;
@@ -215,7 +217,10 @@ function render(a){
    selectedByUser=s;choose(s);
  };box.onclick=openDay;box.ondblclick=ev=>{if(ev.target.closest('.chip,.more')||calendarPanel)return;ev.preventDefault();emit('new',s)};let num=button(String(d.getUTCDate()),ev=>{ev.stopPropagation();openDay()},'day'+(s===today?' today':''),s+' 일정 보기');if(mode==='주간')num.textContent=fmt(s)+' ('+'일월화수목금토'[d.getUTCDay()]+')';box.append(num);
  if(mode==='날짜별'&&items.length)box.append(el('span','•','daydot'));
- if(mode!=='날짜별'){for(let item of (month&&items[0]?.allDay&&items.some(e=>!e.allDay)?[items[0],items.find(e=>!e.allDay)]:items.slice(0,2))){let b=button(mode==='주간'?item.label+' · '+item.short:(item.start?item.start.slice(0,5)+' ': '')+item.short,ev=>{ev.stopPropagation();selected=item.day;emit('event',item.id)},'chip'+(item.done?' done':''),item.label);b.dataset.key=item.id;b.dataset.kind=item.kind;b.title=item.label;wireCalendarDrag(b,item);box.append(b)}if(items.length){const dots=el('div','','mobile-event-dots');dots.setAttribute('aria-hidden','true');for(const kind of [...new Set(items.map(e=>e.kind))]){const dot=el('span');dot.dataset.kind=kind;dots.append(dot)}box.append(dots);const count=button('',ev=>{ev.stopPropagation();selected=s;openDayList(s)},'more',s+' 일정 목록');count.append(el('span','일정 '+items.length+'건 ›','desktop-count'),el('span',items.length+'건 ›','mobile-count'));box.append(count)}}
+ if(mode!=='날짜별'){
+ const off=items.filter(e=>e.kind==='휴무'),work=items.filter(e=>e.kind!=='휴무');
+ const shown=off.length>1?[{...off[0],short:'휴무 '+new Set(off.map(e=>e.member)).size+'명',label:'휴무 명단',groupLeave:true},...work]:items;
+ for(let item of (month&&shown[0]?.allDay&&shown.some(e=>!e.allDay)?[shown[0],shown.find(e=>!e.allDay)]:shown.slice(0,2))){let b=button(mode==='주간'?item.label+' · '+item.short:(item.start?item.start.slice(0,5)+' ': '')+item.short,ev=>{ev.stopPropagation();selected=item.day;if(item.groupLeave)openDayList(item.day);else emit('event',item.id)},'chip'+(item.done?' done':''),item.label);b.dataset.key=item.id;b.dataset.kind=item.kind;b.title=item.label;wireCalendarDrag(b,item);box.append(b)}if(items.length){const dots=el('div','','mobile-event-dots');dots.setAttribute('aria-hidden','true');for(const kind of [...new Set(items.map(e=>e.kind))]){const dot=el('span');dot.dataset.kind=kind;dots.append(dot)}box.append(dots);const count=button('',ev=>{ev.stopPropagation();selected=s;openDayList(s)},'more',s+' 일정 목록');count.append(el('span',(work.length?'일정 '+work.length+'건':'')+(off.length?(work.length?' · ':'')+'휴무':'')+' ›','desktop-count'),el('span',(work.length?work.length+'건':'')+(off.length?(work.length?' · ':'')+'휴무':'')+' ›','mobile-count'));box.append(count)}}
  grid.append(box)}
  }
 
@@ -226,16 +231,16 @@ function render(a){
  for(const [uid,name] of Object.entries(a.roster)){const row=el('tr');row.append(el('th',name));for(let i=0;i<(hide?5:7);i++)row.append(el('td',events.filter(e=>e.member===uid&&e.day===iso(add(weekStart,i))).map(e=>e.label.split(' · ').slice(0,2).join(' ')).join(' / ')));table.append(row)}wrap.append(table);group.append(wrap);agenda.append(group);
  }
  const soon=events.filter(e=>e.day===today&&e.soon);if(soon.length)agenda.append(el('p','30분 이내 시작 · '+soon.map(e=>e.short).join(' / '),'hint'));
- const list=events.filter(e=>e.day===selected);if(mode==='날짜별'&&Object.keys(a.roster||{}).length){
+ const list=events.filter(e=>e.day===selected).sort((a,b)=>(b.kind==='휴무')-(a.kind==='휴무'));if(mode==='날짜별'&&Object.keys(a.roster||{}).length){
  const group=el('details');group.open=!matchMedia('(max-width:650px)').matches;group.append(el('summary','구성원별 일정 · '+Object.keys(a.roster).length+'명'));
  for(const [uid,name] of Object.entries(a.roster)){const own=list.filter(e=>e.member===uid);group.append(el('div',name+' · '+(own.map(e=>e.short.split(' · ')[0]).join(' / ')||'일정 없음'),'memberline'))}
  agenda.append(group)
  }
  if(calendarLoadError)agenda.append(el('p','최신 일정을 확인하지 못했습니다.','hint'),button('다시 불러오기',()=>{if(typeof calendarAccessPending!=='undefined'&&calendarAccessPending)post('streamlit:setComponentValue',{value:{action:'reauth',nonce:crypto.randomUUID()},dataType:'json'});else reloadCalendar(true)}));
  if(calendarLoading)agenda.append(el('p','일정을 불러오는 중입니다.','hint'));
- agenda.append(el('h3',Number(selected.slice(5,7))+'월 '+Number(selected.slice(8))+'일 일정'+(calendarLoading?'':' · '+list.length+'건')));
+ agenda.append(el('h3',Number(selected.slice(5,7))+'월 '+Number(selected.slice(8))+'일 일정'+(calendarLoading?'':' · 일정 '+list.filter(e=>e.kind!=='휴무').length+'건'+(list.some(e=>e.kind==='휴무')?' · 휴무':''))));
  if(month&&selectedByUser===selected)agenda.append(el('p','선택한 날짜의 빈 공간을 한 번 더 누르면 일정 등록','hint'));
- for(let item of (mode!=='날짜별'&&list.length>2?list.slice(0,2):list)){let row=button(item.label+'  ›',()=>emit('event',item.id),'row');row.prepend(el('strong',item.short,'mobile-row-title'));row.dataset.key=item.id;row.dataset.kind=item.kind;agenda.append(row);if(mode==='날짜별'&&calendarBoot&&item.member===calendarBoot.uid&&item.status==='예정'&&item.revision!=null){const error=el('span','','panel-error'),done=button('✓ 완료',()=>runButton(done,error,async()=>{const result=await rpc('status',{id:item.id,revision:item.revision,status:'완료'});latest.events=latest.events.map(e=>e.id===item.id?{...e,done:true,status:result.status,revision:result.revision}:e);render(latest);mutate()}),'day-list-complete',item.short+' 완료 처리');agenda.append(done,error)}}
+ for(let item of (mode!=='날짜별'&&list.length>2?list.slice(0,2):list)){let row=button(item.label+'  ›',()=>emit('event',item.id),'row');row.prepend(el('strong',item.short,'mobile-row-title'));row.dataset.key=item.id;row.dataset.kind=item.kind;agenda.append(row);if(mode==='날짜별'&&calendarBoot&&item.member===calendarBoot.uid&&item.kind!=='휴무'&&item.status==='예정'&&item.revision!=null){const error=el('span','','panel-error'),done=button('✓ 완료',()=>runButton(done,error,async()=>{const result=await rpc('status',{id:item.id,revision:item.revision,status:'완료'});latest.events=latest.events.map(e=>e.id===item.id?{...e,done:true,status:result.status,revision:result.revision}:e);render(latest);mutate()}),'day-list-complete',item.short+' 완료 처리');agenda.append(done,error)}}
  if(!list.length&&!calendarLoading&&!calendarLoadError)agenda.append(el('p','등록된 일정이 없습니다.','hint'),button('이 날짜에 일정 등록',()=>emit('new',selected)));
  for(const [id,fresh] of [['nav',nav],['tools',tools],['grid',grid],['agenda',agenda]]){
    const old=document.getElementById(id);

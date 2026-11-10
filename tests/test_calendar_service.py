@@ -175,3 +175,18 @@ def test_followup_time_does_not_replace_original_time(db,monkeypatch):
  a['data']['follow_end']='15:00'
  with pytest.raises(ValueError):command(db,'save',a)
  assert write.call_count==1
+
+
+def test_leave_range_is_daily_all_day_and_retry_safe(db):
+ a=payload(kind='휴무',title='',mode='시간 지정',start='10:00',end='11:00',leave_end='2026-11-11')
+ before=deepcopy(st.session_state['fixture_events'])
+ command(db,'save',a);command(db,'save',a)
+ rows=st.session_state['fixture_events']
+ assert rows[:len(before)]==before
+ assert [r['day'] for r in rows[len(before):]]==['2026-11-09','2026-11-10','2026-11-11']
+ assert all(r['title']=='휴무' and r['start_time'] is None and not r['time_pending'] for r in rows[len(before):])
+
+
+def test_leave_range_rejects_reversed_dates(db):
+ with pytest.raises(ValueError):command(db,'save',payload(kind='휴무',leave_end='2026-11-08'))
+ assert len(st.session_state['fixture_events'])==1

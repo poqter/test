@@ -93,59 +93,81 @@ def event_editor(db,day,event=None,parent=None,copy=None):
             updates={"mode":"종일"}
             if not v["title"].strip():updates["title"]="휴무"
             ux.set_values(d,updates)
-    errors=event_errors(v) if d.get("attempted") else {}
-    ux.field(d,"title",st.text_input,"일정명",max_chars=200,placeholder="예: 소개 고객 첫 상담",after_change=infer_kind)
-    if "title" in errors:st.error(errors["title"])
-    a,b=st.columns(2)
-    ux.field(d,"day",a.date_input,"날짜")
-    options=list(dict.fromkeys([*KINDS,v["kind"]]))
-    ux.field(d,"kind",b.selectbox,"활동 종류",options=options,format_func=lambda k:TYPES.get(k,k),after_change=select_kind)
-    ux.field(d,"mode",st.segmented_control,"시간",options=["시간 지정","종일","시간 미정"],selection_mode="single",required=True)
-    if v["mode"]=="시간 지정":
+    d['values'].setdefault('entry_type','휴무' if v['kind']=='휴무' else '일정')
+    d['values'].setdefault('leave_multiple',False)
+    d['values'].setdefault('leave_end',v['day'])
+    for name in ('entry_type','leave_multiple','leave_end'):d['baseline'].setdefault(name,d['values'][name])
+    def entry_changed():
+        off=v['entry_type']=='휴무'
+        updates={'kind':'휴무' if off else '미분류'}
+        if off:updates.update(title='휴무',mode='종일',support=False,help='',help_recipient=None,companion=None,common=False,repeat=False,follow=None,status='예정',result='')
+        elif v['title']=='휴무':updates['title']=''
+        ux.set_values(d,updates)
+    ux.field(d,'entry_type',st.segmented_control,'등록 구분',options=['일정','휴무'],required=True,label_visibility='collapsed',after_change=entry_changed)
+    off=v['entry_type']=='휴무'
+    if off:
+        ux.field(d,'day',st.date_input,'날짜')
+        if not event:
+            ux.field(d,'leave_multiple',st.checkbox,'여러 날')
+            if v['leave_multiple']:
+                if v['leave_end']<v['day']:ux.set_values(d,{'leave_end':v['day']})
+                ux.field(d,'leave_end',st.date_input,'종료일',min_value=v['day'],max_value=v['day']+365*DAY)
+        existing=[e for e in d['recent'] if e.get('kind')!='휴무' and e.get('day')==str(v['day'])]
+        if existing:st.caption(f'기존 일정 {len(existing)}건이 있습니다. 기존 일정은 유지됩니다.')
+    else:
+        errors=event_errors(v) if d.get("attempted") else {}
+        ux.field(d,"title",st.text_input,"일정명",max_chars=200,placeholder="예: 소개 고객 첫 상담",after_change=infer_kind)
+        if "title" in errors:st.error(errors["title"])
         a,b=st.columns(2)
-        previous=d.get("last_start",v["start"])
-        # on_change ran before this render; move end only when the start changed.
-        if previous!=v["start"]:
-            ux.set_values(d,{"end":ux.shifted_end(previous,v["start"],v["end"])})
-        d["last_start"]=v["start"]
-        ux.field(d,"start",a.time_input,"시작 시간")
-        ux.field(d,"end",b.time_input,"종료 시간 · 선택")
-        if v["end"] and (not v["start"] or v["end"]<=v["start"]): st.error("종료 시간은 시작 시간보다 늦어야 합니다.")
-        if "start" in errors:st.error(errors["start"])
-        if not v["start"]: st.caption("시작 시간을 입력하거나 ‘시간 미정’을 선택해 주세요.")
-    ux.field(d,"place",st.text_input,"장소 · 선택",placeholder="예: 지점 상담실, 고객 방문, 전화 상담")
-    populated=any((v["note"],v["companion"],v["support"],v["repeat"],v["common"]))
-    extra=st.expander("추가 정보 · 선택",key=d["epoch"]+"extra",on_change="rerun")
-    if extra.open:
-        with extra:
-            ux.field(d,"note",st.text_area,"메모",height=90)
-            people={r["member"]:r["label"] for r in db.request("POST","rpc/sales_branch_members",body={}) if r["member"]!=db.uid}
-            recent_people=list(dict.fromkeys(r.get("companion") for r in d["recent"] if r.get("companion") in people))[:5]
-            choices=list(dict.fromkeys([None,*recent_people,*people,*([v["companion"]] if v["companion"] else [])]))
-            ux.field(d,"companion",st.selectbox,"동행자",options=choices,format_func=lambda u:(("최근 · " if u in recent_people else "")+people.get(u,"기존 동행자")) if u else "선택 안 함")
-            ux.field(d,"support",st.toggle,"지원 요청")
-            if v["support"]:
-                from modules.activity.support_request import picker
-                picker(db,d)
-                ux.field(d,"help",st.text_input,"지원받을 내용")
-                if errors.get("help_recipient"):st.error(errors["help_recipient"])
-            if not event:
-                ux.field(d,"repeat",st.toggle,"매주 반복")
-                if v["repeat"]: ux.field(d,"repeats",st.number_input,"총 등록 횟수 · 이번 일정 포함",min_value=1,max_value=52)
-            if db.me["managed"]: ux.field(d,"common",st.checkbox,"지점 공통 일정")
-    if populated:st.caption("추가 정보 · 입력됨")
-    if event:
-        with st.container(key="sales_status_emphasis"), st.expander("처리 상태 · 활동 결과",expanded=d["baseline"]["status"]!="예정",key=d["epoch"]+"state",on_change="rerun"):
-            ux.field(d,"status",st.selectbox,"처리 상태",options=["예정","완료","연기","취소"])
-            ux.field(d,"result",st.text_area,"활동 결과",height=80)
-            ux.field(d,"follow",st.date_input,"후속 일정 날짜 · 선택")
-            if v['follow']:
-                ux.field(d,'follow_start',st.text_input,'새 일정 시작 시간')
-                ux.field(d,'follow_end',st.text_input,'새 일정 종료 시간 · 선택')
-            if v["follow"] and v["follow"]<v["day"]:st.error("후속 일정 날짜는 현재 일정 날짜 이후로 선택해 주세요.")
+        ux.field(d,"day",a.date_input,"날짜")
+        options=list(dict.fromkeys([*KINDS,v["kind"]]))
+        ux.field(d,"kind",b.selectbox,"활동 종류",options=options,format_func=lambda k:TYPES.get(k,k),after_change=select_kind)
+        ux.field(d,"mode",st.segmented_control,"시간",options=["시간 지정","종일","시간 미정"],selection_mode="single",required=True)
+        if v["mode"]=="시간 지정":
+            a,b=st.columns(2)
+            previous=d.get("last_start",v["start"])
+            # on_change ran before this render; move end only when the start changed.
+            if previous!=v["start"]:
+                ux.set_values(d,{"end":ux.shifted_end(previous,v["start"],v["end"])})
+            d["last_start"]=v["start"]
+            ux.field(d,"start",a.time_input,"시작 시간")
+            ux.field(d,"end",b.time_input,"종료 시간 · 선택")
+            if v["end"] and (not v["start"] or v["end"]<=v["start"]): st.error("종료 시간은 시작 시간보다 늦어야 합니다.")
+            if "start" in errors:st.error(errors["start"])
+            if not v["start"]: st.caption("시작 시간을 입력하거나 ‘시간 미정’을 선택해 주세요.")
+        ux.field(d,"place",st.text_input,"장소 · 선택",placeholder="예: 지점 상담실, 고객 방문, 전화 상담")
+        populated=any((v["note"],v["companion"],v["support"],v["repeat"],v["common"]))
+        extra=st.expander("추가 정보 · 선택",key=d["epoch"]+"extra",on_change="rerun")
+        if extra.open:
+            with extra:
+                ux.field(d,"note",st.text_area,"메모",height=90)
+                people={r["member"]:r["label"] for r in db.request("POST","rpc/sales_branch_members",body={}) if r["member"]!=db.uid}
+                recent_people=list(dict.fromkeys(r.get("companion") for r in d["recent"] if r.get("companion") in people))[:5]
+                choices=list(dict.fromkeys([None,*recent_people,*people,*([v["companion"]] if v["companion"] else [])]))
+                ux.field(d,"companion",st.selectbox,"동행자",options=choices,format_func=lambda u:(("최근 · " if u in recent_people else "")+people.get(u,"기존 동행자")) if u else "선택 안 함")
+                ux.field(d,"support",st.toggle,"지원 요청")
+                if v["support"]:
+                    from modules.activity.support_request import picker
+                    picker(db,d)
+                    ux.field(d,"help",st.text_input,"지원받을 내용")
+                    if errors.get("help_recipient"):st.error(errors["help_recipient"])
+                if not event:
+                    ux.field(d,"repeat",st.toggle,"매주 반복")
+                    if v["repeat"]: ux.field(d,"repeats",st.number_input,"총 등록 횟수 · 이번 일정 포함",min_value=1,max_value=52)
+                if db.me["managed"]: ux.field(d,"common",st.checkbox,"지점 공통 일정")
+        if populated:st.caption("추가 정보 · 입력됨")
+        if event:
+            with st.container(key="sales_status_emphasis"), st.expander("처리 상태 · 활동 결과",expanded=d["baseline"]["status"]!="예정",key=d["epoch"]+"state",on_change="rerun"):
+                ux.field(d,"status",st.selectbox,"처리 상태",options=["예정","완료","연기","취소"])
+                ux.field(d,"result",st.text_area,"활동 결과",height=80)
+                ux.field(d,"follow",st.date_input,"후속 일정 날짜 · 선택")
+                if v['follow']:
+                    ux.field(d,'follow_start',st.text_input,'새 일정 시작 시간')
+                    ux.field(d,'follow_end',st.text_input,'새 일정 종료 시간 · 선택')
+                if v["follow"] and v["follow"]<v["day"]:st.error("후속 일정 날짜는 현재 일정 날짜 이후로 선택해 주세요.")
     with st.container(key="sales_event_save"):
         save_slot=st.empty()
-    if save_slot.button("변경 저장" if event else "일정 등록",type="primary",key=key+"save",on_click=lambda:d.update(attempted=True)):
+    if save_slot.button(("휴무 변경 저장" if event else "휴무 등록") if off else ("변경 저장" if event else "일정 등록"),type="primary",key=key+"save",on_click=lambda:d.update(attempted=True)):
         errors=event_errors(v)
         if errors:
             ux.focus_field(d,next(iter(errors)))
@@ -154,6 +176,10 @@ def event_editor(db,day,event=None,parent=None,copy=None):
         if event and v.get('follow'):
             body.update(follow_time_body(v))
         repeat=v["repeats"] if v["repeat"] and not event else 1
+        interval=7
+        if off and not event and v['leave_multiple']:
+            repeat=(v['leave_end']-v['day']).days+1;interval=1
+            if not 1<=repeat<=366:st.error('휴무 기간은 1~366일로 선택해 주세요.');return key
         if body["start_time"] and body["status"]=="예정":
             candidates=db.period("sales_events",v["day"],v["day"]+7*(repeat-1)*DAY,owner="eq."+db.uid,status="eq.예정")
             days={str(v["day"]+7*i*DAY) for i in range(repeat)}
@@ -180,7 +206,7 @@ def event_editor(db,day,event=None,parent=None,copy=None):
                 d["conflict"]=True;raise
         else:
             seed=d.setdefault("seed",str(uuid4()))
-            rows=[{**body,"unit":db.me["unit"],"previous_event":parent["id"] if parent else None,"series_id":seed if repeat>1 else None,"day":str(v["day"]+i*7*DAY),"id":str(uuid5(NAMESPACE_URL,seed+str(i)))} for i in range(repeat)]
+            rows=[{**body,"unit":db.me["unit"],"previous_event":parent["id"] if parent else None,"series_id":seed if repeat>1 else None,"day":str(v["day"]+i*interval*DAY),"id":str(uuid5(NAMESPACE_URL,seed+str(i)))} for i in range(repeat)]
             try:
                 db.request("POST","sales_events",body=rows,prefer="resolution=ignore-duplicates")
                 stored=db.request("GET","sales_events",{"id":"in.("+",".join(r["id"] for r in rows)+")"})
@@ -230,7 +256,7 @@ def event_detail(db,row):
     from modules.activity.center import review
     title_slot,result_slot=st.columns([3,1])
     title_slot.subheader(row["title"])
-    if row['owner']==db.uid:
+    if row['owner']==db.uid and row['kind']!='휴무':
         with result_slot.popover('완료 · 결과 처리',width='stretch',key='result_popover_'+row['id'],on_change='rerun') as result_popover:
             if result_popover.open:quick_result(db,row)
     ux.summary([row["day"],ux.schedule_time(row),TYPES.get(row["kind"],row["kind"]),row["status"]])
@@ -257,7 +283,7 @@ def event_list(db,events,prefix,*,show_result_actions=True):
             if st.button(row["title"],key=prefix+row["id"],width="stretch"):
                 ux.navigate({"type":"event","id":row["id"]},bool(st.session_state.get("sales_route")))
             if row.get("place"):st.caption(row["place"])
-            if show_result_actions and row["owner"]==db.uid and row["status"]=="예정":
+            if show_result_actions and row["kind"]!="휴무" and row["owner"]==db.uid and row["status"]=="예정":
                 if st.button("✓ 완료",key=prefix+"result"+row["id"]):
                     from modules.activity.calendar_service import command
                     command(db,'status',{'id':row['id'],'revision':row['revision'],'status':'완료'})
@@ -321,22 +347,30 @@ def member_detail(db,uid,day,period):
         if previous or following:
             target_uid=peers[index+(-1 if previous else 1)]
             st.session_state['manager_selected']=target_uid
-            ux.navigate({'type':'member','uid':target_uid,'day':str(day),'period':period})
+            ux.navigate({'type':'member','uid':target_uid,'day':str(st.session_state[anchor_key]),'period':st.session_state.get('member_period_'+uid,period),'selected_day':route.get('selected_day'),'range_start':route.get('range_start'),'range_end':route.get('range_end')})
     st.subheader(member["label"])
     period=st.segmented_control("보기",["일일","주간"],default=period,key="member_period_"+uid,required=True,label_visibility="collapsed")
     def shift(amount):
         st.session_state[anchor_key]+=DAY*amount
         route.pop("selected_day",None)
+        route.pop("range_start",None);route.pop("range_end",None)
     def current():
         st.session_state[anchor_key]=today
         route.pop("selected_day",None)
+        route.pop("range_start",None);route.pop("range_end",None)
     with st.container(key="member_navigation",horizontal=True,vertical_alignment="bottom"):
         st.button("‹",help="이전 주" if period=="주간" else "이전 날",key="member_previous",on_click=shift,args=(-7 if period=="주간" else -1,))
-        day=st.date_input("조회 기준일",key=anchor_key,label_visibility="collapsed")
+        anchor=st.session_state[anchor_key]
+        first=anchor-DAY*anchor.weekday()
+        date_label=f'{first:%m/%d} – {first+6*DAY:%m/%d}' if period=='주간' else f'{anchor:%m/%d} ({"월화수목금토일"[anchor.weekday()]})'
+        with st.popover(date_label):
+            day=st.date_input("조회 기준일",key=anchor_key)
         st.button("›",help="다음 주" if period=="주간" else "다음 날",key="member_next",on_click=shift,args=(7 if period=="주간" else 1,))
         st.button("이번 주" if period=="주간" else "오늘",key="member_current",on_click=current)
     if route.get("type")=="member":route.update(period=period,day=str(day))
     start,end=bounds(day,"주간" if period=="주간" else "날짜별")
+    if route.get("range_start") and route.get("range_end") and period=="주간":
+        start=date.fromisoformat(route["range_start"]);end=date.fromisoformat(route["range_end"])
     events=db.period("sales_events",start,end,owner="eq."+uid,order="day.asc,start_time.asc.nullsfirst")
     records=db.period("sales_reports",start,end,owner="eq."+uid)
     submitted=[r for r in records if r["period"]=="일일" and r["submitted"]]
@@ -374,16 +408,17 @@ def member_detail(db,uid,day,period):
     if period=="일일":one(day)
     else:
         weekend=st.toggle("주말 포함",value=False,key="member_weekends_"+uid,help="주말 표시를 바꿔도 주간 합계는 유지됩니다.")
-        days=[start+i*DAY for i in range(7 if weekend else 5)]
+        days=[start+i*DAY for i in range((end-start).days+1) if weekend or (start+i*DAY).weekday()<5]
+        if not days:days=[start]
         selection_key="member_week_day_"+uid+str(start)
         remembered=route.get("selected_day")
         fallback=today if today in days else day if day in days else days[0]
-        if st.session_state.get(selection_key) not in days:
+        if st.session_state.get(selection_key) not in days or remembered and not route.get("selected_initialized"):
+            route["selected_initialized"]=True
             st.session_state[selection_key]=next((d for d in days if str(d)==remembered),fallback)
         with st.container(key="member_date_strip"):
             target=st.segmented_control("날짜 선택",days,key=selection_key,required=True,label_visibility="collapsed",
-                format_func=lambda d:f'{"월화수목금토일"[d.weekday()]} {d:%m/%d}  \n{sum(e["day"]==str(d) for e in events)}건 · '+
-                    ("제출" if any(r["day"]==str(d) for r in submitted) else "임시 저장" if any(r["day"]==str(d) and r["period"]=="일일" for r in records) else "예정" if d>today else "미제출"),width="stretch")
+                format_func=lambda d:f'{"월화수목금토일"[d.weekday()]} {d:%m/%d}  \n일정 {sum(e["day"]==str(d) and e["kind"]!="휴무" for e in events)}건',width="stretch")
         if route.get("type")=="member":route["selected_day"]=str(target)
         row=next((r for r in records if r["period"]=="일일" and r["day"]==str(target)),None)
         state="제출 완료" if row and row["submitted"] else "임시 저장" if row else "예정" if target>today else "미제출"

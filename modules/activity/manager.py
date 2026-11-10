@@ -21,7 +21,7 @@ def summarize(members,events,reports,contracts,tasks,start,end,today,now):
         own=[e for e in grouped['events'][uid] if not e.get('deleted_at')]
         daily=[r for r in grouped['reports'][uid] if r['period']=='일일' and r['submitted']]
         submitted={r['day'] for r in daily}&due
-        missing=[e for e in own if e['status']=='예정' and (e['day']<str(today) or e['day']==str(today) and (e.get('end_time') or e.get('start_time') or '23:59:59')<now.strftime('%H:%M:%S'))]
+        missing=[e for e in own if e['kind']!='휴무' and e['status']=='예정' and (e['day']<str(today) or e['day']==str(today) and (e.get('end_time') or e.get('start_time') or '23:59:59')<now.strftime('%H:%M:%S'))]
         support=[dict(type='event',id=e['id'],day=e['day'],text=e['help']) for e in own if e.get('help') and e['status'] not in ('취소','연기')]
         support += [dict(type='report',id=r['id'],day=r['day'],text=r['data']['help']) for r in grouped['reports'][uid] if r['submitted'] and r['data'].get('help')]
         overdue=[t for t in grouped['tasks'][uid] if not t.get('scheduled') and t['due']<str(today)]
@@ -54,8 +54,13 @@ def render(db,today):
     from datetime import datetime
     styles()
     ux.feedback()
-    st.subheader('구성원 현황')
-    screen=st.segmented_control('관리 화면',['활동 현황','주간 기록 검토'],default='활동 현황',required=True,key='manager_screen')
+    with st.container(horizontal=True,vertical_alignment='center'):
+        st.subheader('구성원 현황')
+        if st.button('새로고침',key='manager_refresh',help='최신 변경 내용을 조회합니다.'):
+            from modules.activity import read_state
+            db._reads.clear();read_state.invalidate()
+
+    screen=st.segmented_control('관리 화면',['활동 현황','주간 기록 검토'],default='활동 현황',required=True,key='manager_screen',label_visibility='collapsed')
     if screen=='주간 기록 검토':
         from modules.activity.weekly_review import render as weekly_review
         weekly_review(db,today)
@@ -81,12 +86,17 @@ def render(db,today):
         for r in summary:r['unregistered']=int(r['uid'] not in registered and r['uid'] not in confirmations and r['uid'] not in excluded)
         filters.append(('일정 미등록','unregistered'));labels.append('일정 미등록')
         counts['일정 미등록']=sum(r['unregistered'] for r in summary)
-    status=st.segmented_control('표시',labels,default='전체',required=True,key='manager_status_v2',format_func=lambda label:label+' '+str(counts[label])+'명')
+    status=st.segmented_control('표시',labels,label_visibility='collapsed',default='전체',required=True,key='manager_status_v2',format_func=lambda label:label+' '+str(counts[label])+'명')
     st.caption('활동은 완료 일정 기준 · 청약은 접수일 기준')
     field=dict(filters).get(status)
     visible=[r for r in summary if query in r['name'].casefold() and (not field or r[field]>0)]
     st.caption(f'검색 결과 {len(visible)}명 / 조회 범위 {len(summary)}명')
-    if not visible:st.info('조건에 맞는 구성원이 없습니다.')
+    if not visible:
+        st.info('조건에 맞는 구성원이 없습니다.')
+        def reset():
+            st.session_state['manager_pref_search']=''
+            st.session_state['manager_status_v2']='전체'
+        st.button('필터 초기화',on_click=reset)
     if not visible:return
     ids=[r['uid'] for r in visible]
     st.session_state['manager_visible_members']=ids
@@ -109,11 +119,11 @@ def render(db,today):
             for col,label in zip(cols,['직원','기록 제출',*CODES,'청약','확인할 사항']):col.markdown('**'+label+'**')
         for r in visible:
             flags=' · '.join(f'{label} {r[field]}' for label,field in filters[:3] if r[field]) or '없음'
-            submission=f"{r['submitted']}/{r['required']}일 제출" if r['required'] else '예정'
+            submission=('제출' if r['submitted'] else '미제출') if start==end and r['required'] else f"{r['submitted']}/{r['required']}일 제출" if r['required'] else '예정'
             with st.container(key='manager_row_'+r['uid']):
                 if ux.compact():
                     if st.button(r['name']+' ›',key='member_open_'+r['uid'],width='stretch'):
-                        select(r['uid']);ux.navigate({'type':'member','uid':r['uid'],'day':str(day),'period':period})
+                        select(r['uid']);ux.navigate({'type':'member','uid':r['uid'],'day':str(day),'period':period,'range_start':str(start),'range_end':str(end)})
                     st.caption(submission+' · '+' · '.join(f'{k} {r["counts"][k]}' for k in CODES)+f' · 청약 {r["contracts"]}건')
                     st.caption(flags)
                 else:
@@ -144,13 +154,17 @@ def styles():
     [class*="st-key-manager_row_"] button{border:0;background:transparent;text-align:left;color:#234b72}
     .st-key-member_navigation{gap:8px!important}
     .st-key-member_navigation [data-testid="stDateInput"]{max-width:240px}
-    .st-key-member_date_strip [data-testid="stButtonGroup"]{overflow-x:auto;padding-bottom:4px}
-    .st-key-member_date_strip [data-testid="stButtonGroup"]>div{flex-wrap:nowrap!important;min-width:max-content}
-    .st-key-member_date_strip button{min-height:64px!important;min-width:125px;flex:1;white-space:normal}
-    .st-key-member_date_strip button p{white-space:pre-line;text-align:center}
+    .st-key-member_date_strip [data-testid="stButtonGroup"]{padding-bottom:4px}
+    .st-key-member_date_strip [data-testid="stButtonGroup"]>div{display:grid!important;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);width:100%}
+    .st-key-member_date_strip button{min-height:64px!important;min-width:0;flex:1;white-space:normal}
+    .st-key-member_date_strip button p{white-space:pre-line;text-align:center;line-height:1.4;margin:0}
     .st-key-member_date_strip button[aria-checked="true"]{background:#e7f3ef!important;border-color:#397e68!important;color:#245f4d!important}
     @media(max-width:700px){
       .st-key-manager_table{padding:10px 12px}
+      .st-key-member_date_strip [data-testid="stButtonGroup"]>div{grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-auto-flow:row;gap:8px}
+      .st-key-member_date_strip button{width:100%!important;height:72px!important;padding:8px!important;border-radius:8px!important}
+      .st-key-manager_status_v2 [data-testid="stButtonGroup"]>div,.st-key-review_filter_v2 [data-testid="stButtonGroup"]>div{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-auto-flow:row;gap:8px}
+
       .st-key-member_navigation [data-testid="stDateInput"]{max-width:160px}
       [class*="st-key-member_content_"] button{border:0!important;border-radius:0!important;background:transparent!important;border-bottom:2px solid transparent!important}
       [class*="st-key-member_content_"] button[aria-checked="true"]{border-bottom-color:#2870aa!important;color:#225f91!important}

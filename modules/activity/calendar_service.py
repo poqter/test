@@ -40,10 +40,10 @@ def snapshot(db, args):
         stamp=(row.get('start_time') or ('시간 미정' if row.get('time_pending') else '종일'))[:5]
         status=row['status']
         if status=='예정' and (row['day']<str(now.date()) or row['day']==str(now.date()) and row.get('start_time') and row['start_time']<now.strftime('%H:%M:%S')): status='결과 미입력'
-        label=f"{stamp} · {row['kind']} · {owner} · {status}"
+        label=f"{owner} · 휴무" if row['kind']=='휴무' else f"{stamp} · {row['kind']} · {owner} · {status}"
         if row.get('companion'):label+=' · 동행 '+branch.get(row['companion'],{}).get('label','')
         if row.get('help'):label+=' · 지원 요청'
-        cards.append(dict(start=row.get('start_time'),timePending=bool(row.get('time_pending')),place=row.get('place',''),status=row['status'],revision=row.get('revision'),id=row['id'],day=row['day'],kind=row['kind'],member=row['owner'],allDay=not row.get('start_time'),short=(row.get('title') or row['kind'])+(' · '+owner if team else ''),label=label,done=row['status']=='완료',soon=bool(row['day']==str(now.date()) and row['status']=='예정' and row.get('start_time') and 0<=(datetime.combine(now.date(),time.fromisoformat(row['start_time']),KST)-now).total_seconds()<=1800),readable=row['id'] in details))
+        cards.append(dict(start=row.get('start_time'),timePending=bool(row.get('time_pending')),place=row.get('place',''),status=row['status'],revision=row.get('revision'),id=row['id'],day=row['day'],kind=row['kind'],member=row['owner'],allDay=not row.get('start_time'),short=(owner+' · 휴무' if team else '휴무') if row['kind']=='휴무' else (row.get('title') or row['kind'])+(' · '+owner if team else ''),label=label,done=row['kind']!='휴무' and row['status']=='완료',soon=bool(row['day']==str(now.date()) and row['status']=='예정' and row.get('start_time') and 0<=(datetime.combine(now.date(),time.fromisoformat(row['start_time']),KST)-now).total_seconds()<=1800),readable=row['id'] in details))
     unit=db.members[member]['unit'] if member else db.me['unit']
     stamp=db.request('POST','rpc/sales_calendar_stamp',body={'first_day':str(first),'last_day':str(last),'p_unit':unit})
     return dict(events=cards,rangeStart=str(first),rangeEnd=str(last),syncUnit=unit,syncStamp=stamp,scopeLabel=db.members[member]['label'] if member else '지점 일정' if team else '내 일정',roster={u:r['label'] for u,r in branch.items() if not member or u==member} if team or member else {})
@@ -67,7 +67,9 @@ def parse_clock(value):
 def save_event(db,a):
     old=event(db,a['id'],own=True) if a.get('id') else None
     parent=event(db,a['parent'],own=True) if a.get('parent') else None
-    v=a['data']; day=date.fromisoformat(v['day'])
+    v=dict(a['data']); day=date.fromisoformat(v['day'])
+    if v.get('kind')=='휴무':
+        v.update(title='휴무',mode='종일',all_day=True,start='',end='',support=False,help='',help_recipient=None,companion=None,common=False,follow='',status='예정',result='')
     title=str(v.get('title','')).strip()
     if not title or len(title)>200:raise ValueError('일정명을 200자 이내로 입력해 주세요.')
     kind=v.get('kind','미분류')
@@ -101,6 +103,11 @@ def save_event(db,a):
         body.update(follow_start_time=follow_start,follow_end_time=follow_end,follow_time_pending=not bool(follow_start))
     repeat=int(v.get('repeats',1)) if v.get('repeat') and not old else 1
     if not 1<=repeat<=52:raise ValueError('반복 횟수는 1~52회입니다.')
+    interval=7
+    if kind=='휴무' and v.get('leave_end') and not old:
+        last=date.fromisoformat(v['leave_end'])
+        repeat=(last-day).days+1;interval=1
+        if not 1<=repeat<=366:raise ValueError('휴무 기간은 1~366일로 선택해 주세요.')
     if start and status=='예정':
         stop=day+7*(repeat-1)*DAY; days={str(day+7*i*DAY) for i in range(repeat)}
         candidates=db.period('sales_events',day,stop,owner='eq.'+db.uid,status='eq.예정')
@@ -121,7 +128,7 @@ def save_event(db,a):
         key=old['id']
     else:
         seed=identity(a['seed'])
-        rows=[{**body,'unit':db.me['unit'],'previous_event':parent['id'] if parent else None,'series_id':seed if repeat>1 else None,'day':str(day+i*7*DAY),'id':str(uuid5(NAMESPACE_URL,seed+str(i)))} for i in range(repeat)]
+        rows=[{**body,'unit':db.me['unit'],'previous_event':parent['id'] if parent else None,'series_id':seed if repeat>1 else None,'day':str(day+i*interval*DAY),'id':str(uuid5(NAMESPACE_URL,seed+str(i)))} for i in range(repeat)]
         db.request('POST','sales_events',body=rows,prefer='resolution=ignore-duplicates')
         stored=db.request('GET','sales_events',{'id':'in.('+','.join(r['id'] for r in rows)+')'})
         indexed={r['id']:r for r in stored}

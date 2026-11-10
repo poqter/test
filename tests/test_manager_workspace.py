@@ -71,3 +71,16 @@ db=Failing()''')
     assert not at.exception
     assert len(at.session_state['fixture_reviews'])==1
     assert len(at.session_state['fixture_checks'])==1
+
+
+def test_activity_period_presets_and_custom_range():
+    at=app('from modules.activity.manager import render\nrender(FakeRecords(),date(2026,11,6))')
+    control=next(c for c in at.segmented_control if c.label=='조회 기간')
+    control.set_value('오늘').run()
+    assert not at.exception
+    assert at.session_state['manager_pref_period']=='일일'
+    next(c for c in at.segmented_control if c.label=='조회 기간').set_value('기간 선택').run()
+    next(d for d in at.date_input if d.label=='조회 기준일').set_value(__import__('datetime').date(2026,10,30)).run()
+    assert not at.exception
+    assert at.session_state['manager_pref_period']=='주간'
+    assert next(d for d in at.date_input if d.label=='종료일').value==__import__('datetime').date(2026,11,6)
