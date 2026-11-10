@@ -193,6 +193,10 @@ def run(logout):
     body:has(.st-key-mobile_header) [data-testid="stMain"] [data-testid="stMainBlockContainer"]>[data-testid="stVerticalBlock"]{gap:.4rem!important}
     body:has(.st-key-mobile_header) [data-testid="stElementContainer"]:has(> [data-testid="stEmpty"]){display:none!important}
     .st-key-mobile_content [data-testid="stVerticalBlock"]{gap:6px}
+    /* Calendar owns the scroll inside its viewport; other pages keep normal page scrolling. */
+    [data-testid="stMain"]:has(.st-key-mobile_content iframe[title="modules.activity.center.sales_calendar_view"]){overflow-y:hidden!important}
+    [data-testid="stMainBlockContainer"]:has(.st-key-mobile_content iframe[title="modules.activity.center.sales_calendar_view"]){padding-bottom:0!important}
+    .st-key-mobile_stage:has(.st-key-mobile_content iframe[title="modules.activity.center.sales_calendar_view"]),.st-key-mobile_content:has(iframe[title="modules.activity.center.sales_calendar_view"]){min-height:0!important}
     .st-key-mobile_stage{position:relative;min-height:min(620px,78vh)}
     .st-key-mobile_stage .st-key-mobile_content{min-height:min(620px,78vh)}
     .st-key-mobile_header button{border:0!important;background:transparent!important;min-height:40px!important;padding:4px 10px!important}
