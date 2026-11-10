@@ -1,0 +1,39 @@
+<script type="text/plain" id="workspace-install-source">
+(()=>{
+ const w=window,d=w.document;
+ if(w.__workspaceInstallReady)return;
+ w.__workspaceInstallReady=true;
+ let host=w;try{while(host.parent!==host&&host.parent.location.origin===w.location.origin)host=host.parent}catch{}
+ const assets=new URL('app/static/',d.location.href);
+ const link=(rel,url)=>{let e=host.document.querySelector('link[rel="'+rel+'"]');if(!e){e=host.document.createElement('link');e.rel=rel;host.document.head.append(e)}e.href=new URL(url,assets).href;};
+ link('manifest','workspace-manifest.json');link('apple-touch-icon','workspace-icon-180.png');link('icon','workspace-icon-192.png');
+ let prompt=null,installed=false;
+ const standalone=()=>installed||host.matchMedia('(display-mode: standalone)').matches||!!host.navigator.standalone;
+ const update=()=>{d.querySelectorAll('.workspace-install').forEach(b=>{const label=standalone()?'홈 화면에 추가됨':'홈 화면에 추가';if(b.textContent!==label)b.textContent=label;b.disabled=standalone()})};
+ host.addEventListener('beforeinstallprompt',e=>{e.preventDefault();prompt=e});
+ host.addEventListener('appinstalled',()=>{installed=true;prompt=null;update();d.getElementById('workspace-install-help')?.close()});
+ host.matchMedia('(display-mode: standalone)').addEventListener('change',update);
+ new MutationObserver(update).observe(d.body,{childList:true,subtree:true});
+ d.addEventListener('click',async e=>{
+  if(!e.target.closest('.workspace-install')||standalone())return;
+  if(prompt){const request=prompt;prompt=null;try{await request.prompt();await request.userChoice;return}catch{}}
+  if(d.getElementById('workspace-install-help'))return;
+  const panel=d.createElement('dialog');panel.id='workspace-install-help';panel.setAttribute('aria-label','홈 화면에 추가');
+  panel.style.cssText='border:1px solid #d8e1e8;border-radius:16px;padding:24px;width:380px;max-width:calc(100vw - 32px);color:#17233c;background:white;font:inherit';
+  const icon=d.createElement('img');icon.src=new URL('workspace-icon-192.png',assets).href;icon.width=56;icon.height=56;icon.alt='화랑 WORKSPACE';icon.style.borderRadius='12px';
+  const title=d.createElement('h3');title.textContent='화랑 WORKSPACE 홈 화면에 추가';
+  const message=d.createElement('p'),note=d.createElement('p');
+  const agent=host.navigator.userAgent,ios=/iPhone|iPad|iPod/i.test(agent)||(host.navigator.maxTouchPoints>1&&/Macintosh/i.test(agent));
+  message.textContent=ios?'Safari의 공유 버튼 → 홈 화면에 추가 → 추가를 선택하세요.':/Android/i.test(agent)?'Chrome 메뉴(⋮) → 홈 화면에 추가 또는 앱 설치를 선택하세요.':'Chrome·Edge 주소창의 설치 아이콘 또는 브라우저 메뉴의 앱 설치를 선택하세요. 설치가 제공되지 않으면 바로가기 만들기를 이용해 주세요.';
+  note.textContent='추가한 아이콘을 누르면 화랑 WORKSPACE가 열립니다. 카카오톡 등 앱 안의 브라우저에서는 Chrome 또는 Safari로 열어 주세요.';
+  const close=d.createElement('button');close.textContent='닫기';close.style.cssText='min-height:44px;padding:8px 20px;border:1px solid #d8e1e8;border-radius:8px;background:white;color:#17233c;font:inherit';close.onclick=()=>panel.close();
+  panel.onclose=()=>panel.remove();panel.onclick=e=>{if(e.target===panel){const r=panel.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)panel.close()}};
+  panel.append(icon,title,message,note,close);d.body.append(panel);panel.showModal();close.focus();
+ });update();
+})();
+</script>
+<script>
+const script=parent.document.createElement('script');
+script.textContent=document.getElementById('workspace-install-source').textContent;
+parent.document.head.append(script);script.remove();
+</script>

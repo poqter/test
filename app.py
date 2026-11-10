@@ -41,7 +41,7 @@ from modules.activity.entry_route import select_entry
 select_entry()
 calendar_entry = st.query_params.get("view") in ("my-calendar","mobile-calendar")
 calendar_icon = Path(__file__).parent / "modules/activity/calendar_view/pwa/calendar/brand-v2-192.png"
-st.set_page_config(page_title="화랑 캘린더" if calendar_entry else "화랑WORKSPACE", page_icon=str(calendar_icon) if calendar_entry else "H", layout="wide", initial_sidebar_state=sidebar_default() if st.session_state.get("password_correct") else "collapsed")
+st.set_page_config(page_title="화랑 캘린더" if calendar_entry else "화랑WORKSPACE", page_icon=str(calendar_icon) if calendar_entry else str(Path(__file__).parent / "static/workspace-icon-192.png"), layout="wide", initial_sidebar_state=sidebar_default() if st.session_state.get("password_correct") else "collapsed")
 st.set_option("client.toolbarMode", "minimal")
 # Public release probe exposes code readiness only; no credentials, DB or AI calls.
 if st.query_params.get("briefing_health") == "1":
@@ -60,6 +60,9 @@ if st.query_params.get("briefing_health") == "1":
     from modules.shared.build_info import BUILD_ID
     st.code("HWARANG_UI_RELEASE=" + BUILD_ID)
     st.stop()
+if not calendar_entry:
+    from modules.shell.workspace_install import setup as setup_workspace_install
+    setup_workspace_install()
 inject_global_styles()
 from modules.shared.workspace_design import apply_workspace_design
 apply_workspace_design()

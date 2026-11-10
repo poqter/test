@@ -175,7 +175,7 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
     allowed = set(allowed_ids)
     with st.sidebar:
         with st.container(key="hw_sidebar_header"):
-            st.markdown('<div class="sig-brand"><span class="sig-mark">H</span><div><strong>화랑</strong><small>WORKSPACE</small></div></div>', unsafe_allow_html=True)
+            st.markdown('<div class="sig-brand"><img class="sig-mark" src="app/static/workspace-icon-192.png" alt="화랑 WORKSPACE"><div><strong>화랑</strong><small>WORKSPACE</small></div></div>', unsafe_allow_html=True)
             st.button(
                 "홈", icon=":material/home:", key="v2_nav_home", use_container_width=True,
                 type="primary" if st.session_state.get("active_app") == "home" else "secondary",
@@ -212,6 +212,8 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
         if query and not any_match:
             st.caption("검색 결과가 없습니다.")
         st.divider()
+        from modules.shell.workspace_install import sidebar_button
+        sidebar_button()
         if st.button("이용 안내", icon=":material/help_outline:", key="sig_usage", use_container_width=True):
             usage_dialog()
         if st.button("최근 업데이트", icon=":material/history:", key="sig_update", use_container_width=True):
