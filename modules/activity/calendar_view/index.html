@@ -98,6 +98,7 @@ body[data-shell-first="true"] .calendar-spacious>.panel-content{flex:1;min-heigh
 .member-search-results{position:absolute;top:100%;left:0;right:0;z-index:50;background:white;border:1px solid #cbdcde;border-radius:8px;box-shadow:0 6px 18px #1232;max-height:250px;overflow:auto;display:grid}
 .member-search-results[hidden]{display:none}.member-search-results button{max-width:none;text-align:left;border:0;min-height:40px}
 @media(max-width:700px){.scope-switch .member-search{max-width:none;min-width:100px}.scope-switch>button{flex:0 0 auto}.scope-switch{gap:5px}}
+@media(min-width:701px){header>.tools{margin-left:auto;justify-content:flex-end}}
 </style><header><div class="nav" id="nav"></div><div class="tools" id="tools"></div></header><div class="legend" aria-label="활동 종류별 색상"><span data-kind="TA">TA 고객 연락</span><span data-kind="AP">AP 초회 상담</span><span data-kind="PC">PC 프레젠테이션 / 클로징</span><span data-kind="CS">CS 고객 관리</span></div><div id="refreshing" class="refreshing" role="status" aria-live="polite"></div><div id="move-notice" role="status" hidden></div><div id="grid" class="grid"></div><section class="agenda" id="agenda"></section><script>
 const post=(type,data)=>parent.postMessage({isStreamlitMessage:true,type,...data},location.origin);
 const emit=(action,value)=>calendarAction(action,value);
