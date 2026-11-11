@@ -26,6 +26,10 @@ st.set_page_config(
     initial_sidebar_state="auto",
 )
 
+if st.query_params.get("stability_health") == "1":
+    st.code("HWARANG_UI_RELEASE=" + PLATFORM_BUILD_ID)
+    st.stop()
+
 
 @lru_cache(maxsize=1)
 def component():
@@ -104,6 +108,7 @@ def render_workspace_gate(message: str | None = None) -> None:
     else:
         st.info("ACADEMY 앱의 Streamlit Secrets에 external_apps.workspace_url을 설정해 주세요.")
     st.caption("Planned & Built by 박병선 팀장")
+    st.caption("버전 " + PLATFORM_BUILD_ID)
 
 
 def base_url() -> str:
