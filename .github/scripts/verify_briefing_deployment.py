@@ -4,6 +4,7 @@ from playwright.sync_api import sync_playwright
 from pathlib import Path
 import json
 import hashlib
+import ast
 # Read release metadata without importing the app's optional runtime dependencies.
 ENGINE_VERSION = json.loads(
     (Path(__file__).resolve().parents[2] / 'STAGE1_CHANGED_FILES.json').read_text()
@@ -13,7 +14,15 @@ expected=f'HWARANG_BRIEFING_RELEASE={ENGINE_VERSION};READY=true'
 import runpy
 ui_expected='HWARANG_UI_RELEASE='+runpy.run_path(str(Path(__file__).resolve().parents[2]/'modules/shared/build_info.py'))['BUILD_ID']
 activity_root=Path(__file__).resolve().parents[2]/'modules/activity'
-activity_expected='HWARANG_ACTIVITY_RELEASE='+hashlib.sha256(b''.join((activity_root/name).read_bytes() for name in ('read_state.py','center.py','redesign.py','manager.py','daily.py','daily_bridge.html','ux.py','contracts.py','calendar_view/index.html','mobile.py','calendar_bridge.html','device.py','calendar_service.py','calendar_view/persistent.js','calendar_view/sync.js','calendar_view/realtime.js','calendar_view/host.js','workspace_calendar.py','../shell/workspace_v2.py','../shell/home_briefing.py','../shared/workspace_design.css'))).hexdigest()[:16]
+# Read the app's exact manifest without importing Streamlit or its runtime.
+app_tree = ast.parse((activity_root.parents[1] / 'app.py').read_text())
+activity_files = next(
+    ast.literal_eval(node.value) for node in ast.walk(app_tree)
+    if isinstance(node, ast.Assign)
+    and any(isinstance(target, ast.Name) and target.id == 'activity_files'
+            for target in node.targets)
+)
+activity_expected='HWARANG_ACTIVITY_RELEASE='+hashlib.sha256(b''.join((activity_root/name).read_bytes() for name in activity_files)).hexdigest()[:16]
 login_expected='HWARANG_LOGIN_RELEASE='+hashlib.sha256((activity_root.parents[1]/'app.py').read_bytes()).hexdigest()[:16]
 with sync_playwright() as p:
     browser=p.chromium.launch(headless=True)
