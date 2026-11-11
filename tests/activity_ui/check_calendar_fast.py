@@ -27,7 +27,10 @@ with sync_playwright() as p:
  bundle=dict(rows=[row],summary=[row],branch=[dict(member='owner',label='작성자')],unit='unit',stamp='v1')
  def resolve(data):page.evaluate('(data)=>testPending.shift()({ok:true,json:async()=>data})',data)
  resolve(bundle);expect(page.locator('.chip')).to_have_text('처음 일정 · 작성자')
- page.get_by_role('button',name='＋ 일정 등록',exact=True).click();expect(page.get_by_label('일정명',exact=True)).to_be_focused();page.get_by_label('일정명',exact=True).fill('작성 중 보존')
+ page.get_by_role('button',name='＋ 일정 등록',exact=True).click()
+ page.wait_for_function("calendarFlight?.op==='support_recipients'")
+ page.evaluate("receiveCalendar({boot:calendarBoot,mobileSession:latest.mobileSession,reply:{nonce:calendarFlight.nonce,ok:true,result:[]}})")
+ expect(page.get_by_label('일정명',exact=True)).to_be_focused();page.get_by_label('일정명',exact=True).fill('작성 중 보존')
  # Subscription acknowledgment validates the visible range; same stamp does not reload.
  page.evaluate("testSubscribe('SUBSCRIBED')");page.wait_for_function('testPending.length===1');resolve('v1')
  page.wait_for_function('!syncBusy');assert page.evaluate('testRequests.length')==2
