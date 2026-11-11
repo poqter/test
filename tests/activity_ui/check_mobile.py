@@ -157,7 +157,7 @@ try:
             expect(sidebar).to_have_attribute('aria-expanded','true')
             sidebar.get_by_role('button',name='구성원 현황',exact=True).click()
             page.get_by_role('radio',name='직원별',exact=True).click()
-            expect(page.get_by_role('button',name='테스트 구성원 ›',exact=True)).to_be_visible()
+            expect(page.get_by_role('button',name='테스트 구성원 ›' if agent else '테스트 구성원',exact=True)).to_be_visible()
             print(f'PASS sidebar close/reopen and navigation at {width}px',flush=True)
             page.close()
         page=browser.new_page(viewport={'width':1440,'height':950})
