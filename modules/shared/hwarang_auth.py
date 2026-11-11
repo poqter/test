@@ -92,7 +92,7 @@ class HwarangAuthService:
                 timeout=self.timeout,
             )
         except requests.RequestException as exc:
-            raise HwarangAuthError("계정 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.") from exc
+            raise HwarangAuthError("계정 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.", code="transport_error") from exc
         if 200 <= response.status_code < 300:
             if not response.content:
                 return None

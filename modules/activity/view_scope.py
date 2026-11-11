@@ -20,7 +20,7 @@ def switch(mode):
     read_state.invalidate()
     generation = st.session_state.get('calendar_scope_generation', 0)
     for key in list(st.session_state):
-        if key.startswith(('sales_persistent_', 'sales_host_', 'sales_route', 'sales_overview_', 'sales_member_', 'calendar_scope_')) or key in ('sales_calendar_member', 'sales_calendar_team', 'sales_interactive_calendar'):
+        if key.startswith(('sales_persistent_', 'sales_host_', 'sales_route', 'sales_overview_', 'sales_member_', 'calendar_scope_', 'sales_period_cache', 'activity_live_', 'manager_selected', 'manager_date_member')) or key in ('sales_calendar_member', 'sales_calendar_team', 'sales_interactive_calendar'):
             st.session_state.pop(key, None)
     st.session_state[KEY] = mode
     st.session_state['calendar_scope_generation'] = generation + 1

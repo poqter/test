@@ -25,6 +25,7 @@ from modules.shared.ai_guardrails import (
 )
 from modules.shared.external_apps import academy_url, calculator_url
 from modules.shared.hwarang_auth import HwarangAuthError, HwarangAuthService
+from modules.shared import admin_assets
 
 
 _KST = ZoneInfo("Asia/Seoul")
@@ -129,10 +130,19 @@ def _safe_rows(
     params: dict[str, Any],
 ) -> list[dict[str, Any]]:
     rows = auth._request("GET", path, admin=True, params=params)
-    return rows if isinstance(rows, list) else []
+    if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+        raise HwarangAuthError("조회 결과를 확인하지 못했습니다. 다시 조회해 주세요.")
+    return rows
 
 
 def _safe_rpc(auth: HwarangAuthService, path: str, payload: dict[str, Any]) -> Any:
+    if path in admin_assets.RPC_NAMES:
+        try:
+            return admin_assets.apply(auth, st.session_state, path, payload)
+        finally:
+            # An uncertain write may already have committed. Never reuse old balances.
+            _clear_admin_read_cache()
+            st.session_state.pop("hw_admin_reference_cache", None)
     result = auth._request("POST", f"/rest/v1/rpc/{path}", admin=True, json=payload)
     # Only successful writes invalidate reads; failed writes keep the last
     # confirmed state. RPCs here retain the existing server Audit/Ledger logic.
@@ -169,6 +179,10 @@ def _statistics_status(summary: dict | None, key: str) -> None:
 
 def _cached_admin_read(cache_key: str, ttl_seconds: int, loader):
     """Cache short-lived admin read results within the current Streamlit session."""
+    actor = str((st.session_state.get("login_profile") or {}).get("id") or "")
+    if st.session_state.get("hw_admin_read_cache_owner") != actor:
+        st.session_state.pop(_ADMIN_READ_CACHE_KEY, None)
+        st.session_state["hw_admin_read_cache_owner"] = actor
     cache = st.session_state.get(_ADMIN_READ_CACHE_KEY)
     if not isinstance(cache, dict):
         cache = {}
@@ -182,7 +196,10 @@ def _cached_admin_read(cache_key: str, ttl_seconds: int, loader):
             return entry.get("data")
 
     data = loader()
-    cache[str(cache_key)] = {"at": now, "data": data}
+    if data is not None:
+        cache[str(cache_key)] = {"at": now, "data": data}
+        while len(cache) > 32:
+            cache.pop(next(iter(cache)))
     return data
 
 
@@ -378,10 +395,10 @@ def _cached_reference_data(auth: HwarangAuthService, actor_id: str) -> dict[str,
     key = "hw_admin_reference_cache"
     cached = st.session_state.get(key)
     now = time.time()
-    if isinstance(cached, dict) and now - float(cached.get("at") or 0) < 60:
+    if isinstance(cached, dict) and cached.get('actor') == actor_id and 0 <= now - float(cached.get("at") or 0) < 60:
         return dict(cached.get("data") or {})
     data = auth.admin_reference_data(actor_id)
-    st.session_state[key] = {"at": now, "data": data}
+    st.session_state[key] = {"at": now, "data": data, "actor": actor_id}
     return data
 
 
@@ -809,11 +826,9 @@ def _render_accounts(auth: HwarangAuthService, actor_id: str) -> None:
                 }
 
             result = _safe_rpc(auth, rpc_name, payload)
-            if isinstance(result, list) and len(result) == 1 and isinstance(result[0], dict):
-                result = result[0]
-            result = result if isinstance(result, dict) else {}
-            success_count = int(result.get("success_count") or 0)
-            failed_count = int(result.get("failed_count") or 0)
+            result = admin_assets.validate_result(result, pending['user_ids'])
+            success_count = result['success_count']
+            failed_count = result['failed_count']
             st.session_state.pop("hw_admin_bulk_asset_pending_v4", None)
 
             if failed_count:
@@ -830,7 +845,7 @@ def _render_accounts(auth: HwarangAuthService, actor_id: str) -> None:
                         failed_names.append(display_name)
                         failures.append({
                             "사용자": display_name,
-                            "실패 사유": row.get("error") or "처리 실패",
+                            "실패 사유": admin_assets.failure_message(row.get("error")),
                         })
                 if failures:
                     st.dataframe(failures, hide_index=True, use_container_width=True)
@@ -920,10 +935,14 @@ def _user_overview(auth: HwarangAuthService, uid: str, user: dict[str, Any]) -> 
 def _apply_user_changes(auth: HwarangAuthService, actor_id: str, uid: str, changes: dict[str, Any]) -> None:
     updated = auth.admin_apply_user_changes(actor_user_id=actor_id, target_user_id=uid, **changes)
     if uid == actor_id:
-        state = st.session_state.get("hwarang_auth") or {}
+        from modules.shared.identity_state import reconcile_identity
+        previous = st.session_state.get("hwarang_auth") or {}
+        state = dict(previous)
         state.update(profile=updated["profile"], app_access=updated["app_access"],
                      feature_permissions=updated["feature_permissions"], profile_checked_at=0)
+        reconcile_identity(st.session_state, previous, state)
         st.session_state.update(hwarang_auth=state, login_profile=updated["profile"],
+                                password_correct=True, login_user=auth.workspace_permission_role(updated['profile']),
                                 hw_app_access=updated["app_access"], hw_feature_permissions=set(updated["feature_permissions"]))
     st.session_state.pop("hw_admin_reference_cache", None); _clear_admin_read_cache()
     st.success("계정과 권한을 저장했습니다.")
@@ -1635,6 +1654,50 @@ def _render_settings(auth: HwarangAuthService, actor_id: str) -> None:
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+def _render_asset_recovery(auth):
+    pending = st.session_state.get(admin_assets.PENDING)
+    if pending:
+        st.warning('결과 확인이 필요한 자산 처리가 있습니다. 확인 전에는 새로운 자산 처리를 실행할 수 없습니다.')
+        st.caption(f"대상 {len(pending['p_target_user_ids'])}명 · "
+                   f"{_ASSET_TYPE_LABELS[pending['p_asset']]} · "
+                   f"{_ASSET_OPERATION_LABELS[pending['p_operation']]} · 1인당 {pending['p_amount']:,}")
+        left, right = st.columns(2)
+        check = left.button('처리 결과 확인', key='hw_asset_check')
+        retry = right.button('같은 요청 안전하게 재시도', key='hw_asset_retry')
+        if check or retry:
+            try:
+                result = admin_assets.resolve(auth,st.session_state,send=retry)
+                if result is None:
+                    st.info('아직 확인된 결과가 없습니다. 진행 중일 수 있으므로 잠시 후 확인하거나 같은 요청을 재시도해 주세요.')
+                else:
+                    st.session_state.pop('hw_admin_bulk_asset_pending_v4',None)
+                    st.session_state.pop('hw_admin_bulk_asset_retry_v4',None)
+                    _clear_admin_read_cache()
+                    refresh_current()
+            except HwarangAuthError as exc:
+                st.error(str(exc))
+    receipt = st.session_state.get(admin_assets.RESULT)
+    if receipt:
+        result, request = receipt['result'], receipt['request']
+        st.info(f"최근 자산 처리 · 성공 {result['success_count']}명 / 실패 {result['failed_count']}명")
+        failures = [row for row in result['results'] if row['status']=='failed']
+        if failures:
+            try:
+                names = {str(u['user_id']):str(u.get('display_name') or u.get('login_id') or '대상 계정') for u in _fetch_users(auth)}
+            except HwarangAuthError:
+                names = {}
+            st.dataframe([{'대상 계정':names.get(r['user_id'],'대상 계정'),'실패 사유':admin_assets.failure_message(r.get('error'))}
+                          for r in failures],hide_index=True,use_container_width=True)
+            if st.button('실패 대상만 다시 검토', key='hw_asset_failed_review'):
+                st.session_state['hw_admin_bulk_asset_pending_v4'] = dict(
+                    user_ids=[r['user_id'] for r in failures],user_names=[names.get(r['user_id'],'대상 계정') for r in failures],
+                    asset_type=request['p_asset'],operation=request['p_operation'],
+                    source_type=request['p_source_type'],amount=request['p_amount'],note=request['p_note'])
+                st.session_state.pop('hw_admin_selected_user_id',None)
+                st.session_state['hw_admin_center_page']='accounts'
+                refresh_current()
+
+
 @st.fragment
 def render(auth: HwarangAuthService) -> None:
     _inject_css()
@@ -1649,17 +1712,20 @@ def render(auth: HwarangAuthService) -> None:
         page = "dashboard"
         st.session_state["hw_admin_center_page"] = page
 
-    _top_header(page)
-    try:
-        if page == "dashboard":
-            _render_dashboard(auth, actor_id)
-        elif page == "accounts":
-            _render_accounts(auth, actor_id)
-        elif page == "academy":
-            _render_academy(auth)
-        elif page == "ai":
-            _render_ai(auth)
-        else:
-            _render_settings(auth, actor_id)
-    except HwarangAuthError as exc:
-        st.error(str(exc))
+    from modules.shell.page_slot import page_slot
+    with page_slot('admin:'+page):
+        _top_header(page)
+        _render_asset_recovery(auth)
+        try:
+            if page == "dashboard":
+                _render_dashboard(auth, actor_id)
+            elif page == "accounts":
+                _render_accounts(auth, actor_id)
+            elif page == "academy":
+                _render_academy(auth)
+            elif page == "ai":
+                _render_ai(auth)
+            else:
+                _render_settings(auth, actor_id)
+        except HwarangAuthError as exc:
+            st.error(str(exc))

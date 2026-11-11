@@ -133,9 +133,11 @@ def _remove_query_param(key: str) -> None:
 
 
 def _consume_workspace_launch(auth: AcademyAuthService) -> dict | None:
+    from modules.shared.identity_state import reconcile_identity, clear_protected_state
     state = st.session_state.get("_hwarang_launch_identity")
+    previous = state
     raw = str(st.query_params.get("launch", "") or "").strip()
-    if not state and raw:
+    if raw:
         try:
             state = auth.consume_launch_ticket(raw, "academy")
         except AcademyAuthError as exc:
@@ -150,10 +152,14 @@ def _consume_workspace_launch(auth: AcademyAuthService) -> dict | None:
     try:
         state = auth.refresh_launch_identity(state, "academy")
     except AcademyAuthError as exc:
-        st.session_state.pop("_hwarang_launch_identity", None)
+        if exc.code != "transport_error" and exc.status != 429 and (exc.status or 0) < 500:
+            clear_protected_state(st.session_state)
         render_workspace_gate(str(exc))
         st.stop()
+    changed = reconcile_identity(st.session_state, previous, state)
     st.session_state["_hwarang_launch_identity"] = state
+    if changed:
+        st.rerun()
     return state
 
 

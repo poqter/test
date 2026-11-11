@@ -27,6 +27,11 @@ def tool(*args,**kwargs):
     text=st.text_input('도구 입력',key='tool_input')
     st.write('입력값: '+text)
 workspace.dispatch=tool
+class Auth:
+ def refresh(self,state):return state
+ def workspace_permission_role(self,profile):return 'user'
+workspace.auth_service=lambda:Auth()
+st.session_state['hwarang_auth']={{'profile':{{'id':'synthetic','role':'user'}}}}
 workspace.render_task_content('synthetic','user',['synthetic'])
 ''')
     process=subprocess.Popen([sys.executable,'-m','streamlit','run',str(script),'--server.headless=true','--server.port=8505','--server.address=127.0.0.1','--browser.gatherUsageStats=false'],cwd=root,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
@@ -36,10 +41,21 @@ workspace.render_task_content('synthetic','user',['synthetic'])
                 with socket.create_connection(('127.0.0.1',8505),timeout=.2):break
             except OSError:time.sleep(.2)
         with sync_playwright() as p:
-            b=p.chromium.launch(headless=True);page=b.new_page();page.goto('http://127.0.0.1:8505')
-            expect(page.get_by_text('SHELL_RUNS=1',exact=True)).to_be_visible()
+            b=p.chromium.launch(headless=True);page=b.new_page()
+            # The isolated temporary entrypoint has no production static route.
+            page.route('**/app/static/LINESeedKR-Bd.woff2',lambda route:route.fulfill(path=str(root/'static/LINESeedKR-Bd.woff2'),content_type='font/woff2'))
+            page.goto('http://127.0.0.1:8505')
+            try:
+                expect(page.get_by_text('SHELL_RUNS=1',exact=True)).to_be_visible(timeout=15000)
+            except AssertionError:
+                print(page.locator('body').inner_text())
+                raise
             page.get_by_label('도구 입력').fill('입력 유지');page.get_by_label('도구 입력').press('Tab')
-            expect(page.get_by_text('입력값: 입력 유지',exact=True)).to_be_visible()
+            try:
+                expect(page.get_by_text('입력값: 입력 유지',exact=True)).to_be_visible()
+            except AssertionError:
+                print(page.locator('body').inner_text())
+                raise
             expect(page.get_by_text('SHELL_RUNS=1',exact=True)).to_be_visible()
             expect(page.get_by_test_id('stException')).to_have_count(0)
             for width in (1280,390):

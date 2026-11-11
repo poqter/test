@@ -9,6 +9,7 @@ from modules.shell.navigation import allowed_ids, dispatch, logout as clear_work
 from modules.shared.hwarang_auth import HwarangAuthError, HwarangAuthService, SupabaseConfig
 from modules.shared.account_security import recovery_dialog, account_dialog, render_recovery_entry
 from modules.shared.ui_components import inject_global_styles
+from modules.shared.identity_state import reconcile_identity, clear_protected_state
 
 
 def render_home(*args, **kwargs):
@@ -100,6 +101,7 @@ def initialize_state() -> None:
 
 
 def _set_authenticated(auth: HwarangAuthService, state: dict) -> None:
+    reconcile_identity(st.session_state, st.session_state.get("hwarang_auth"), state)
     st.session_state.pop("calendar_view_scope", None)
     st.session_state.pop("calendar_view_label", None)
     st.session_state.pop("_calendar_shell_page", None)
@@ -292,10 +294,46 @@ def _open_admin_center() -> None:
     st.session_state["hw_admin_center_page"] = "dashboard"
 
 
+def refresh_authenticated(auth):
+    """Revalidate even on fragment-only interactions before using cached permissions."""
+    from modules.activity import device
+    state = st.session_state.get("hwarang_auth")
+    if not state:
+        raise HwarangAuthError("다시 로그인해 주세요.")
+    previous_token = state.get("refresh_token")
+    previous_state = state
+    state = auth.refresh(state)
+    identity_changed = reconcile_identity(st.session_state, previous_state, state)
+    # Retain a rotated token even if persisting the device copy temporarily fails.
+    st.session_state["hwarang_auth"] = state
+    # Periodic profile revalidation can change role/organization while
+    # the user is signed in. Keep the UI and permission bridge in sync.
+    refreshed_profile = dict(state.get("profile") or {})
+    if refreshed_profile:
+        st.session_state["login_profile"] = refreshed_profile
+        st.session_state["login_user"] = auth.workspace_permission_role(refreshed_profile)
+        st.session_state["hw_app_access"] = dict(state.get("app_access") or {})
+        st.session_state["hw_feature_permissions"] = set(state.get("feature_permissions") or ())
+    st.session_state["password_correct"] = True
+    if st.session_state.get("device_handle") and previous_token != state.get("refresh_token"):
+        st.session_state['device_rotation_pending'] = True
+    if st.session_state.get("device_handle") and st.session_state.get('device_rotation_pending'):
+        device.save_rotation(auth,st.session_state["device_handle"],state)
+        st.session_state.pop('device_rotation_pending',None)
+    return identity_changed
+
+
 @st.fragment
 def render_task_content(active, permission_role, permitted):
     # Input changes rerun the active tool, keeping the shell/sidebar mounted.
-    dispatch(active, role=permission_role, allowed=permitted)
+    try:
+        changed = refresh_authenticated(auth_service())
+    except HwarangAuthError:
+        st.rerun()  # Full auth gate handles retry versus permanent revocation.
+    if changed:
+        st.session_state["password_correct"] = True
+        st.rerun()
+    dispatch(active, role=st.session_state.get("login_user"), allowed=allowed_ids(st.session_state.get("login_user")))
 
 
 def main() -> None:
@@ -350,21 +388,19 @@ def main() -> None:
     state = st.session_state.get("hwarang_auth")
     if state:
         try:
-            previous_token = state.get("refresh_token")
-            state = auth.refresh(state)
-            if st.session_state.get("device_handle") and previous_token != state.get("refresh_token"):
-                device.save_rotation(auth,st.session_state["device_handle"],state)
-            st.session_state["hwarang_auth"] = state
-            # Periodic profile revalidation can change role/organization while
-            # the user is signed in. Keep the UI and permission bridge in sync.
-            refreshed_profile = dict(state.get("profile") or {})
-            if refreshed_profile:
-                st.session_state["login_profile"] = refreshed_profile
-                st.session_state["login_user"] = auth.workspace_permission_role(refreshed_profile)
-                st.session_state["hw_app_access"] = dict(state.get("app_access") or {})
-                st.session_state["hw_feature_permissions"] = set(state.get("feature_permissions") or ())
-        except HwarangAuthError:
-            clear_workspace_session()
+            identity_changed = refresh_authenticated(auth)
+            if identity_changed:
+                st.session_state["password_correct"] = True
+                st.rerun()
+        except HwarangAuthError as exc:
+            if exc.code == "transport_error" or exc.status == 429 or (exc.status or 0) >= 500:
+                if entry_shell is not None: entry_shell.empty()
+                st.warning("계정 연결을 확인하지 못했습니다. 작성 내용은 보존되어 있습니다.")
+                if st.button("계정 연결 다시 확인", key="hw_auth_retry"):
+                    st.rerun()
+                st.stop()
+            clear_protected_state(st.session_state)
+            st.session_state["device_action"] = "clear"
             st.warning("로그인 시간이 만료되었거나 계정 권한이 변경되었습니다. 다시 로그인해 주세요.")
 
     # Keep the authentication screen at one stable delta path, including the
