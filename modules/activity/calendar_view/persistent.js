@@ -200,7 +200,7 @@ function memberSearchControl(){
  const draw=()=>{list.replaceChildren();const query=input.value.trim().toLocaleLowerCase();memberSearchText=input.value;
   for(const [uid,name] of Object.entries(calendarBoot.members).sort((a,b)=>a[1].localeCompare(b[1],'ko'))){
    if(query&&!name.toLocaleLowerCase().includes(query))continue;
-   list.append(button(name,()=>{memberSearchText=name;list.hidden=true;selectScope(uid)},'',name+' 일정 보기'));
+   list.append(button(name,()=>{memberSearchText=name;input.value=name;list.hidden=true;selectScope(uid)},'',name+' 일정 보기'));
   }
   if(!list.children.length)list.append(el('p','검색 결과가 없습니다.','hint'));list.hidden=false;
  };

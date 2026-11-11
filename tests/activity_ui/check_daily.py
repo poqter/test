@@ -45,11 +45,13 @@ try:
                 expect(field).to_have_value('7')
                 expect(note).to_have_value('일정 참고 후에도 유지할 내용')
                 inputs=record.locator('[data-testid="stNumberInput"]')
-                assert abs(inputs.nth(0).bounding_box()['y']-inputs.nth(1).bounding_box()['y'])<2
-                assert inputs.nth(2).bounding_box()['y']>inputs.nth(0).bounding_box()['y']
+                positions=inputs.evaluate_all('(nodes)=>nodes.map(e=>e.getBoundingClientRect().y)')
+                assert abs(positions[0]-positions[1])<2
+                assert positions[2]>positions[0]
             else:
                 inputs=record.locator('[data-testid="stNumberInput"]')
-                assert abs(inputs.nth(0).bounding_box()['y']-inputs.nth(1).bounding_box()['y'])<2
+                positions=inputs.evaluate_all('(nodes)=>nodes.map(e=>e.getBoundingClientRect().y)')
+                assert abs(positions[0]-positions[1])<2
             record.get_by_role('button',name='임시 저장',exact=True).click()
             expect(page.get_by_text('임시 저장됨 · ',exact=False)).to_be_visible()
             expect(note).to_have_value('일정 참고 후에도 유지할 내용')

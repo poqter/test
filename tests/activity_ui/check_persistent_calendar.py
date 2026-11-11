@@ -91,11 +91,16 @@ try:
    click('＋ 일정 등록');f.get_by_label('일정명',exact=True).fill('반복 일정 테스트')
    f.locator('summary').filter(has_text='추가 정보 · 선택').click();f.get_by_label('매주 반복',exact=True).check();f.get_by_label('총 등록 횟수 · 이번 일정 포함',exact=True).fill('2')
    click('일정 등록');expect(f.get_by_role('heading',name='반복 일정 테스트',exact=True)).to_be_visible()
+   f.wait_for_function('!calendarLoading && !calendarFlight')
+   repeat_ids=f.evaluate("latest.events.filter(e=>e.short==='반복 일정 테스트').map(e=>e.id)")
+   assert len(repeat_ids)==2
    click('일정 삭제')
    expect(f.get_by_role('dialog')).to_contain_text('즉시 삭제되며 복구할 수 없습니다')
    click('일정 삭제 확인');expect(f.get_by_role('dialog')).to_have_count(0)
    expect(f.get_by_role('button',name='복구',exact=True)).to_have_count(0)
    f.wait_for_function('!calendarLoading && !calendarFlight')
+   remaining=f.evaluate("latest.events.filter(e=>e.short==='반복 일정 테스트').map(e=>e.id)")
+   assert len(remaining)==1 and remaining[0] in repeat_ids
    # Settings and scope stay inside the mounted frame; no host widget recreation.
    click('월간')
    f.locator('.view-settings > summary').click();f.get_by_label('주말 표시',exact=True).check();expect(f.locator('.cell')).to_have_count(42)

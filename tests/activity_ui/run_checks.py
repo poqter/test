@@ -7,7 +7,7 @@ import subprocess
 import sys
 
 ROOT=Path(__file__).resolve().parents[2]
-CASES=('check_mobile_menu.py','check_mobile_back.py','check_calendar_devices.py','check_calendar.py',
+CASES=('check_alert_back.py','check_mobile_menu.py','check_mobile_back.py','check_calendar_devices.py','check_calendar.py',
  'check_persistent_calendar.py','check_calendar_fast.py','check_home_speed.py','check_stability.py',
  'check_calendar_loading.py','check_calendar_host.py','check_entry_routes.py',
  'check_calendar_entry.py','check_install.py','check_workspace.py','check_manager.py',

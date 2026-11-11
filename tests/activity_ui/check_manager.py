@@ -19,6 +19,8 @@ try:
             page.route('**/app/static/LINESeedKR-Bd.woff2',lambda route:route.fulfill(path=str(ROOT/'static/LINESeedKR-Bd.woff2'),content_type='font/woff2'))
             page.goto('http://127.0.0.1:8506')
             page.get_by_role('tab',name='구성원 현황',exact=True).click()
+            expect(page.get_by_label('상세 직원',exact=True)).to_be_visible()
+            page.get_by_role('button',name='직원별',exact=True).click()
             expect(page.locator('.st-key-manager_table')).to_be_visible()
             page.evaluate('document.fonts.ready')
             full_runs=page.get_by_text('전체 실행 횟수',exact=False).inner_text()
