@@ -20,7 +20,7 @@ try:
             page.wait_for_timeout(700) # Let the menu's app run finish before measuring fragment runs.
             full_runs=page.get_by_text('전체 실행 횟수',exact=False).inner_text()
             record=page.locator('.st-key-daily_record')
-            expect(record.locator('.sales-summary')).to_contain_text('2026.11.06')
+            expect(record.locator('.record-meta')).to_contain_text('2026.11.06')
             expect(record.locator('.st-key-daily_inputs').get_by_role('spinbutton')).to_have_count(6)
             assert record.get_by_label('전화',exact=True).count()==0
             field=record.get_by_label('AP',exact=True)
@@ -32,9 +32,8 @@ try:
             record.get_by_label('지원받을 내용',exact=True).press('Tab')
             expect(record.get_by_label('지원받을 내용',exact=True)).to_be_visible()
             if mobile:
-                options=record.get_by_role('radiogroup',name='일일 기록 화면')
-                options.get_by_role('radio').nth(1).click()
-                expect(record.locator('.st-key-daily_inputs').get_by_role('spinbutton')).to_have_count(0)
+                record.get_by_text('일정·집계·참고 자료',exact=True).click()
+                expect(record.locator('.st-key-daily_inputs').get_by_role('spinbutton')).to_have_count(6)
                 record.get_by_role('button',name='상담 테스트',exact=True).click()
                 dlg=page.get_by_role('dialog')
                 expect(dlg).to_be_visible()
@@ -42,22 +41,23 @@ try:
                 expect(dlg).not_to_be_visible()
                 page.wait_for_timeout(700) # Native dialog close completes an app run.
                 full_runs=page.get_by_text('전체 실행 횟수',exact=False).inner_text()
-                options.get_by_role('radio',name='기록 작성',exact=True).click()
+                record.get_by_text('일정·집계·참고 자료',exact=True).click()
                 expect(field).to_have_value('7')
                 expect(note).to_have_value('일정 참고 후에도 유지할 내용')
                 inputs=record.locator('[data-testid="stNumberInput"]')
-                assert abs(inputs.nth(0).bounding_box()['y']-inputs.nth(1).bounding_box()['y'])<2
-                assert inputs.nth(2).bounding_box()['y']>inputs.nth(0).bounding_box()['y']
+                positions=inputs.evaluate_all('(nodes)=>nodes.map(e=>e.getBoundingClientRect().y)')
+                assert abs(positions[0]-positions[1])<2
+                assert positions[2]>positions[0]
             else:
                 inputs=record.locator('[data-testid="stNumberInput"]')
-                assert abs(inputs.nth(0).bounding_box()['y']-inputs.nth(1).bounding_box()['y'])<2
+                positions=inputs.evaluate_all('(nodes)=>nodes.map(e=>e.getBoundingClientRect().y)')
+                assert abs(positions[0]-positions[1])<2
             record.get_by_role('button',name='임시 저장',exact=True).click()
-            expect(page.get_by_text('임시 저장했습니다. 서버에 보관된 기록입니다.',exact=True)).to_be_visible()
+            expect(page.get_by_text('임시 저장됨 · ',exact=False)).to_be_visible()
             expect(note).to_have_value('일정 참고 후에도 유지할 내용')
             expect(field).to_have_value('7')
             expect(page.get_by_text(full_runs,exact=True)).to_be_visible()
             record.get_by_role('button',name='제출하기',exact=True).click()
-            record.get_by_role('button',name='제출 확인',exact=True).click()
             expect(record.get_by_role('button',name='수정 내용 제출',exact=True)).to_be_disabled()
             expect(page.locator('[data-testid="stException"]')).to_have_count(0)
             assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
@@ -72,16 +72,16 @@ try:
             assert page.evaluate('!!window.__hwarangDailyLayout')
 
             if mobile:
-                record.get_by_role('radiogroup',name='일일 기록 화면').get_by_role('radio').nth(1).click()
+                record.get_by_text('일정·집계·참고 자료',exact=True).click()
             record.get_by_role('button',name='✓ 완료',exact=True).click()
             expect(record.get_by_role('button',name='✓ 완료',exact=True)).to_have_count(0)
             expect(page.get_by_role('dialog')).to_have_count(0)
             if mobile:
-                record.get_by_role('radio',name='기록 작성',exact=True).click()
+                record.get_by_text('일정·집계·참고 자료',exact=True).click()
             expect(field).to_have_value('7')
             expect(note).to_have_value('일정 참고 후에도 유지할 내용')
             if mobile:
-                record.get_by_role('radiogroup',name='일일 기록 화면').get_by_role('radio').nth(1).click()
+                record.get_by_text('일정·집계·참고 자료',exact=True).click()
             record.get_by_role('button',name='상담 테스트',exact=True).click()
             page.get_by_role('button',name='완료 · 결과 처리',exact=True).click()
             page.get_by_role('radio',name='연기',exact=True).click()
@@ -95,6 +95,6 @@ try:
             expect(page.get_by_test_id('stException')).to_have_count(0)
             page.close()
         browser.close()
-    print('DAILY_UI_OK: six fields, desktop/mobile grids, reference tabs, stable help, persistence, single submission and fragment isolation')
+    print('DAILY_UI_OK: six fields, desktop/mobile grids, reference expander, stable help, persistence, single submission and fragment isolation')
 finally:
     server.terminate();server.wait(timeout=10)

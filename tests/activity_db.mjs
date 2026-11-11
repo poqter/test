@@ -114,4 +114,55 @@ await assert.rejects(()=>db.query('select public.sales_edit_event($1,$2,$3::json
 assert.equal((await db.query('select revision from public.sales_events where id=$1',[event])).rows[0].revision,after.revision,'invalid follow-up rolls back original update');
 console.log('PASS: selected follow-up times, original time/note preservation, atomic invalid-time rollback');
 }
+// Apply the current deletion policy after exercising the historical migrations.
+await db.exec('reset role');
+await db.exec(`
+create function private.sales_version() returns trigger language plpgsql as $$begin new.revision=old.revision+1;return new;end$$;
+create table public.sales_reviews(id uuid primary key default gen_random_uuid(),event uuid references public.sales_events,reviewer uuid,message text);
+`);
+for(const name of ['34_Sales_Contracts.sql','36_Sales_Followups.sql','31_Sales_Activity_Notifications.sql','20261109180504_calendar_immediate_delete.sql'])
+ await db.exec(fs.readFileSync(new URL('../supabase/migrations/'+name,import.meta.url),'utf8'));
+await db.exec(`set role authenticated;set request.jwt.claim.sub='${owner}'`);
+const erase=async(id,revision,future=false)=>(await db.query('select public.sales_delete_event($1,$2,$3) as n',[id,revision,future])).rows[0].n;
+const original=(await db.query('select * from public.sales_events where id=$1',[event])).rows[0];
+await db.query("insert into public.sales_contracts(id,event,day,insurer,category,payment,amount,status) values(gen_random_uuid(),$1,'2026-11-06','fixture','인보험','월납',50000,'청약 접수')",[event]);
+const task=(await db.query("insert into public.sales_followups(id,source,due,title) values(gen_random_uuid(),$1,'2026-11-20','보존할 후속 활동') returning id",[event])).rows[0].id;
+await db.exec('reset role');
+await db.query("insert into public.sales_notices(recipient,event,message) values($1,$2,'삭제 대상 알림')",[owner,event]);
+await db.query("insert into public.sales_reviews(event,reviewer,message) values($1,$2,'삭제 대상 의견')",[event,owner]);
+await db.exec(`set role authenticated;set request.jwt.claim.sub='${other}'`);
+await assert.rejects(()=>erase(event,original.revision),'another owner cannot delete');
+await db.exec(`set request.jwt.claim.sub='${owner}'`);
+await assert.rejects(()=>erase(event,original.revision-1),'stale revision cannot delete');
+await assert.rejects(()=>archive(event,original.revision,false,true),'restoration is retired');
+const stampBeforeDelete=await stamp();
+const signalBeforeDelete=Number((await db.query('select version from public.sales_calendar_signals where unit=$1',[owner])).rows[0].version);
+assert.equal(await erase(event,original.revision),1);
+assert.notEqual(await stamp(),stampBeforeDelete,'physical deletion invalidates the visible-range stamp');
+assert.ok(Number((await db.query('select version from public.sales_calendar_signals where unit=$1',[owner])).rows[0].version)>signalBeforeDelete,'physical deletion emits a realtime signal');
+assert.equal((await db.query('select count(*)::int as n from public.sales_events where id=$1',[event])).rows[0].n,0);
+const contract=(await db.query('select * from public.sales_contracts')).rows[0];
+assert.equal(contract.event,null);assert.equal(Number(contract.amount),50000,'contract survives deletion');
+assert.equal((await db.query('select source from public.sales_followups where id=$1',[task])).rows[0].source,null);
+const preserved=(await db.query('select previous_event,case_id from public.sales_events where id=$1',[follow])).rows[0];
+assert.equal(preserved.previous_event,null);assert.equal(preserved.case_id,event,'linked history retains its case identity');
+assert.ok(!(await payload()).rows.some(r=>r.id===event),'deleted event removed from calendar payload');
+await assert.rejects(()=>erase(event,original.revision),'repeated deletion cannot delete another event');
+const scheduled=(await db.query("select public.schedule_sales_followup($1,'2026-11-20','AP') as id",[task])).rows[0].id;
+assert.equal((await db.query('select unit from public.sales_events where id=$1',[scheduled])).rows[0].unit,owner,'detached task remains schedulable');
+await db.exec('reset role');
+assert.equal((await db.query('select count(*)::int as n from public.sales_reviews where event=$1',[event])).rows[0].n,0);
+assert.equal((await db.query('select count(*)::int as n from public.sales_notices where event=$1',[event])).rows[0].n,0);
+const repeatIds=['aaaaaaa1-aaaa-4aaa-8aaa-aaaaaaaaaaaa','aaaaaaa2-aaaa-4aaa-8aaa-aaaaaaaaaaaa','aaaaaaa3-aaaa-4aaa-8aaa-aaaaaaaaaaaa','aaaaaaa4-aaaa-4aaa-8aaa-aaaaaaaaaaaa'];
+const repeatSeries='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+for(const [i,id] of repeatIds.entries())await db.query("insert into public.sales_events(id,owner,unit,day,kind,title,series_id) values($1,$2,$2,$3,'AP','current repeat',$4)",[id,owner,['2026-11-10','2026-11-17','2026-11-24','2026-12-01'][i],repeatSeries]);
+await db.exec(`set role authenticated;set request.jwt.claim.sub='${owner}'`);
+assert.equal(await erase(repeatIds[1],1),1,'single deletion retains other occurrences');
+assert.equal((await db.query('select count(*)::int as n from public.sales_events where series_id=$1',[repeatSeries])).rows[0].n,3);
+assert.equal(await erase(repeatIds[2],1,true),2,'future deletion preserves earlier occurrences');
+assert.equal((await db.query('select id from public.sales_events where series_id=$1',[repeatSeries])).rows[0].id,repeatIds[0]);
+assert.equal(await archive(repeatIds[0],1),1,'old clients also delete immediately');
+await db.exec('reset role;set role anon');
+await assert.rejects(()=>erase(follow,1),'anonymous caller denied');
+console.log('PASS: current permanent deletion, revision/owner/anonymous guards, single/future repeat, retired restore, contract/task/case preservation, calendar payload/stamp/realtime invalidation');
 await db.close();

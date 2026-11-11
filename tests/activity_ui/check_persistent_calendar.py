@@ -23,7 +23,7 @@ try:
    def click(name):
     try:f.get_by_role('button',name=name,exact=True).click()
     except Exception:
-     page.screenshot(path='/tmp/calendar-failure.png');print('GEOMETRY',iframe.bounding_box(),f.evaluate('({inner:innerHeight,frame:lastFrameHeight,body:document.body.getBoundingClientRect().toJSON(),panel:calendarPanel.getBoundingClientRect().toJSON(),client:calendarPanel.clientHeight,scroll:calendarPanel.scrollHeight,scrollTop:calendarPanel.scrollTop})'),flush=True);raise
+     page.screenshot(path='/tmp/calendar-failure.png');print('GEOMETRY',iframe.bounding_box(),f.evaluate('({inner:innerHeight,frame:lastFrameHeight,body:document.body.getBoundingClientRect().toJSON(),panel:calendarPanel?.getBoundingClientRect().toJSON(),client:calendarPanel?.clientHeight,scroll:calendarPanel?.scrollHeight,scrollTop:calendarPanel?.scrollTop})'),flush=True);raise
    def backdrop():
     box=iframe.bounding_box();page.mouse.click(box['x']+2,box['y']+2)
    click('＋ 일정 등록');expect(f.get_by_role('dialog')).to_be_visible();expect(f.get_by_label('일정명',exact=True)).to_be_focused()
@@ -91,12 +91,21 @@ try:
    click('＋ 일정 등록');f.get_by_label('일정명',exact=True).fill('반복 일정 테스트')
    f.locator('summary').filter(has_text='추가 정보 · 선택').click();f.get_by_label('매주 반복',exact=True).check();f.get_by_label('총 등록 횟수 · 이번 일정 포함',exact=True).fill('2')
    click('일정 등록');expect(f.get_by_role('heading',name='반복 일정 테스트',exact=True)).to_be_visible()
-   click('일정 삭제');click('일정 삭제 확인');click('복구');expect(f.get_by_role('button',name='복구',exact=True)).to_have_count(0);click('팝업 닫기')
+   f.wait_for_function('!calendarLoading && !calendarFlight')
+   repeat_ids=f.evaluate("latest.events.filter(e=>e.short==='반복 일정 테스트').map(e=>e.id)")
+   assert len(repeat_ids)==2
+   click('일정 삭제')
+   expect(f.get_by_role('dialog')).to_contain_text('즉시 삭제되며 복구할 수 없습니다')
+   click('일정 삭제 확인');expect(f.get_by_role('dialog')).to_have_count(0)
+   expect(f.get_by_role('button',name='복구',exact=True)).to_have_count(0)
+   f.wait_for_function('!calendarLoading && !calendarFlight')
+   remaining=f.evaluate("latest.events.filter(e=>e.short==='반복 일정 테스트').map(e=>e.id)")
+   assert len(remaining)==1 and remaining[0] in repeat_ids
    # Settings and scope stay inside the mounted frame; no host widget recreation.
    click('월간')
    f.locator('.view-settings > summary').click();f.get_by_label('주말 표시',exact=True).check();expect(f.locator('.cell')).to_have_count(42)
    f.get_by_label('주말 표시',exact=True).uncheck();expect(f.locator('.cell')).to_have_count(30);click('보기 설정 닫기')
-   f.get_by_role('button',name='구성원 선택',exact=True).click();f.get_by_role('button',name='테스트 작성자 일정 보기',exact=True).click()
+   f.get_by_label('구성원 검색',exact=True).fill('테스트 작성자');f.get_by_role('button',name='테스트 작성자 일정 보기',exact=True).click()
    f.get_by_role('button',name='내 일정',exact=True).click()
    f.wait_for_function('!calendarLoading && !calendarFlight');assert f.evaluate('window.__calendarTest.token')==token
    assert f.evaluate('window.__calendarTest.blank')==0
@@ -111,7 +120,7 @@ try:
    click('팝업 닫기');expect(f.get_by_role('dialog')).to_have_count(0)
    assert not errors,errors
    page.screenshot(path=f'/tmp/calendar-persistent-{width}.png')
-   print('PASS',width,'navigation/forms/drafts/save/repeat/delete/restore; persistent frame/grid/height',flush=True);browser.close()
+   print('PASS',width,'navigation/forms/drafts/save/repeat/permanent delete; persistent frame/grid/height',flush=True);browser.close()
   browser.close()
 finally:
  server.terminate();server.wait(timeout=10);log.close()

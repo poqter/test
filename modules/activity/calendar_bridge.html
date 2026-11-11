@@ -173,6 +173,8 @@
   const installHelp=d.getElementById('calendar-install-help');if(installHelp){installHelp.close();return;}
   // An already-visible unsaved-change prompt is kept; Back never discards it.
   if(d.querySelector('.st-key-sales_keep,.st-key-mobile_continue'))return;
+  const alerts=d.querySelector('[role="dialog"] .st-key-mobile_alerts_close button');
+  if(alerts){alerts.click();return;}
   const dialog=d.querySelector('[role="dialog"]:has(.sales-dialog-marker)');
   if(dialog){dialog.querySelector('.st-key-sales_close_top button')?.click();return;}
   const reference=d.querySelector('[data-testid="stPopoverBody"]:has(.sales-reference) .calendar-panel-close');

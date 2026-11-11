@@ -7,11 +7,11 @@ import subprocess
 import sys
 
 ROOT=Path(__file__).resolve().parents[2]
-CASES=('check_mobile_menu.py','check_mobile_back.py','check_calendar_devices.py','check_calendar.py',
+CASES=('check_workspace.py','check_mobile.py','check_member_search.py','check_alert_back.py','check_mobile_menu.py','check_mobile_back.py','check_calendar_devices.py','check_calendar.py',
  'check_persistent_calendar.py','check_calendar_fast.py','check_home_speed.py','check_stability.py',
  'check_calendar_loading.py','check_calendar_host.py','check_entry_routes.py',
- 'check_calendar_entry.py','check_install.py','check_workspace.py','check_manager.py',
- 'check_daily.py','check_mobile.py','check_mobile_back_host.py','check_shell.py','check_legacy_calendar.py')
+ 'check_calendar_entry.py','check_install.py','check_manager.py',
+ 'check_daily.py','check_mobile_back_host.py','check_shell.py','check_legacy_calendar.py')
 OUT=ROOT/'test-results'/'activity-ui'
 
 def run_case(name):

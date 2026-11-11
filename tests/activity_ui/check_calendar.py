@@ -65,6 +65,7 @@ with sync_playwright() as p:
     page.evaluate('checkSync()')
     page.wait_for_timeout(50)
     assert page.evaluate('syncCalls')==1 and page.evaluate('syncChanges')==0
+    page.wait_for_timeout(2100)
     page.evaluate("window.mockStamp='v2';checkSync()")
     page.wait_for_timeout(50)
     page.evaluate('checkSync()');page.wait_for_timeout(50)
@@ -72,6 +73,7 @@ with sync_playwright() as p:
     assert page.evaluate('keptCell===document.querySelector(\'[data-key="2026-11-06"]\')')
     page.evaluate('parentVisible=false;checkSync()');before=page.evaluate('syncCalls')
     page.evaluate('checkSync()');assert page.evaluate('syncCalls')==before
+    page.wait_for_timeout(2100)
     page.evaluate("parentVisible=true;window.fetch=async()=>{throw Error('offline')};checkSync()")
     assert '연결 확인 중' in page.locator('#refreshing').inner_text()
     assert page.evaluate('keptCell===document.querySelector(\'[data-key="2026-11-06"]\')')

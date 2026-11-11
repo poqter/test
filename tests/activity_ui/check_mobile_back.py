@@ -74,8 +74,8 @@ try:
         # Menu history returns to the actual prior page.
         page.get_by_role('button',name='☰',exact=True).click()
         drawer=page.locator('[data-testid="stPopoverBody"]')
-        drawer.get_by_role('button',name='후속 할 일',exact=True).click()
-        expect(page.get_by_text('남아 있는 후속 할 일이 없습니다.',exact=False)).to_be_visible()
+        drawer.get_by_role('button',name='활동 기록',exact=True).click()
+        expect(page.get_by_label('주요 성과 · 진행사항',exact=True)).to_be_visible()
         page.wait_for_timeout(400)
         page.go_back()
         expect(cal.get_by_role('button',name='내 일정',exact=True)).to_be_visible()
@@ -88,10 +88,12 @@ try:
         assert page.url==base
         # Alerts cause full app reruns; handlers must survive component replacement.
         page.locator('.st-key-mobile_alerts button').click()
-        expect(page.locator('.mobile-navigation-state')).to_have_attribute('data-page','알림·피드백')
+        expect(page.get_by_role('dialog',name='알림·피드백',exact=True)).to_be_visible()
+        expect(page.locator('.mobile-navigation-state')).to_have_attribute('data-page','캘린더')
         page.evaluate("document.querySelectorAll('iframe[srcdoc]').forEach(f=>{if(f.srcdoc.includes('calendar-layout-source'))f.remove()})")
         page.wait_for_timeout(400)
         page.go_back()
+        expect(page.get_by_role('dialog',name='알림·피드백',exact=True)).to_have_count(0)
         expect(page.locator('.mobile-navigation-state')).to_have_attribute('data-page','캘린더')
         browser.close()
     print('PASS browser Back: settings, drawer, clean/dirty editor, menu history, exit cancellation')
