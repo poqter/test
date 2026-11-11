@@ -21,6 +21,14 @@ class FakeRecords:
         st.session_state.setdefault("fixture_checks",[])
     def request(self,method,table,params=None,body=None,prefer=None):
         st.session_state.setdefault("fixture_reads",[]).append((method,table))
+        if table=='rpc/sales_check_daily_period':
+            from modules.shared.hwarang_auth import HwarangAuthError
+            rows=[r for r in st.session_state['fixture_reports'] if r['owner']==body['p_owner'] and r['period']=='일일' and r['submitted'] and body['p_first']<=r['day']<=body['p_last']]
+            if {r['id']:r['revision'] for r in rows}!=body['p_versions']:raise HwarangAuthError('changed')
+            for row in rows:self.request('POST','rpc/sales_check_report',body={'p_report':row['id'],'p_revision':row['revision']})
+            if body['p_message']:
+                row=rows[-1];self.request('POST','sales_reviews',body={'id':body['p_request'],'report':row['id'],'revision':row['revision'],'message':body['p_message']})
+            return True
         if table=='rpc/sales_support_recipients':return st.session_state.get('fixture_support_candidates',[])
         if table=="rpc/sales_calendar_stamp":return "fixture-stamp"
         if method=="POST" and table in ("rpc/sales_members","rpc/sales_branch_members"):return list(self.members.values())

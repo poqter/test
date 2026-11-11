@@ -60,7 +60,7 @@ def test_invalid_title_has_field_error_without_write():
 def test_week_labels_include_counts_and_submission_state():
     at=app('st.session_state.setdefault("sales_route",{"type":"member","uid":UID,"day":"2026-11-06","period":"주간"})\nredesign.dialog(FakeRecords())')
     selector=next(s for s in at.segmented_control if s.label=='날짜 선택')
-    assert any('11/06' in label and '1건 · 미제출' in label for label in selector.options)
+    assert any('11/06' in label and '일정 1건' in label for label in selector.options)
 
 
 def test_calendar_boot_is_stable_across_host_runs():

@@ -259,9 +259,9 @@ def run(logout):
             elif page=='알림·피드백':alerts(db)
             else:
                 tab_key='mobile_record_tab'
-                st.session_state[tab_key]='주간 기록' if page=='주간 기록' else '일일 기록'
-                def select_record():choose('주간 기록' if st.session_state[tab_key]=='주간 기록' else '활동 기록')
-                st.segmented_control('기록 구분',['일일 기록','주간 기록'],key=tab_key,required=True,on_change=select_record,label_visibility='collapsed')
+                st.session_state[tab_key]='주간 요약' if page=='주간 기록' else '일일 기록'
+                def select_record():choose('주간 기록' if st.session_state[tab_key]=='주간 요약' else '활동 기록')
+                st.segmented_control('기록 구분',['일일 기록','주간 요약'],key=tab_key,required=True,on_change=select_record,label_visibility='collapsed')
                 center.reports(db,today,'주간' if page=='주간 기록' else '일일')
                 personal_performance(db,today)
         if st.session_state.get('sales_route') and not st.session_state.get('sales_dialog_rendered'):redesign.dialog(db)

@@ -68,6 +68,13 @@ async function reloadCalendar(force=false){
  if(cached&&!force){calendarLoading=false;render({...latest,...cached,day:latest.day,mode:latest.mode});calendarStatus('최신 일정 확인 중…');}
  calendarLoading=!cached;calendarLoadError=false;if(!cached)calendarStatus('일정을 불러오는 중…');render(latest);
  try{
+  if(cached&&!force&&calendarBoot.fast){
+   const session=latest.mobileSession,controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
+   try{
+    const response=await fetch(session.url+'/rest/v1/rpc/sales_calendar_stamp',{method:'POST',headers:{apikey:session.key,Authorization:'Bearer '+session.token,'Content-Type':'application/json','X-Hwarang-View-Scope':session.viewScope||'daily'},body:JSON.stringify({first_day:first,last_day:last,p_unit:cached.syncUnit}),signal:controller.signal});
+    if(response.ok&&await response.json()===cached.syncStamp){if(seq===calendarSeq&&epoch===calendarEpoch){calendarLoading=false;calendarStatus('');configureSync(latest)}return;}
+   }finally{clearTimeout(timer)}
+  }
   const data=calendarBoot.fast?await loadPayload(first,last,calendarBoot.team,calendarBoot.member):await rpc('load',{first,last,team:calendarBoot.team,member:calendarBoot.member});
   if(epoch!==calendarEpoch)return;
   calendarCache.set(key,data);while(calendarCache.size>8)calendarCache.delete(calendarCache.keys().next().value);
@@ -301,7 +308,15 @@ function wireCalendarDrop(box,day){
  box.ondragleave=e=>e.currentTarget.classList.remove('drop-target');
  box.ondrop=e=>{e.preventDefault();e.currentTarget.classList.remove('drop-target');const item=calendarDrag;calendarDrag=null;suppressClickUntil=Date.now()+450;if(item)moveCalendarEvent(item,day)};
 }
-function openEditor(row,kind,day){
+let recipientFlight=null,editorOpenSeq=0;
+async function openEditor(row,kind,day){
+ const openSeq=++editorOpenSeq;
+ if(!calendarBoot.supportRecipients){
+  try{recipientFlight??=rpc('support_recipients');calendarBoot.supportRecipients=await recipientFlight;}
+  catch(e){calendarStatus(e.message);return}finally{recipientFlight=null}
+ }
+
+ if(openSeq!==editorOpenSeq)return;
  const editing=['edit','result'].includes(kind),key=kind+':'+(row?.id||day),saved=calendarDrafts.get(key);
  const body=createPanel({edit:'일정 수정',result:'완료 · 결과 처리',copy:'일정 복사',follow:'다음 활동 추가',new:'일정 등록'}[kind],true);
  let initial={day:day||row?.day||selected,title:row?.title||'',kind:kind==='follow'?({TA:'AP',AP:'PC'}[row.kind]||'미분류'):row?.kind||'미분류',mode:row?.start_time?'시간 지정':row?.time_pending||!row?'시간 미정':'종일',start:row?.start_time?.slice(0,5)||'',end:row?.end_time?.slice(0,5)||'',place:row?.place||'',note:row?.note||'',support:editing&&!!row.help,help:editing?row.help||'':'',help_recipient:editing?row.help_recipient||'':'',companion:row?.companion||'',common:editing&&row.common,status:editing?row.status:'예정',result:editing?row.result||'':'',repeat:false,repeats:1,follow:''};

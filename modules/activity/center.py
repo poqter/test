@@ -62,8 +62,10 @@ class Records:
     def request(self,method,table,params=None,body=None,prefer=None):
         if method == "GET" and table == "sales_events":
             params={"deleted_at":"is.null",**(params or {})}
-        readonly = method == "GET" or (method == "POST" and table in {"rpc/sales_support_recipients", "rpc/sales_members", "rpc/sales_branch_members", "rpc/sales_calendar_days", "rpc/sales_calendar_days_v2", "rpc/sales_calendar_stamp", "rpc/sales_calendar_context", "rpc/sales_calendar_payload"})
+        readonly = method == "GET" or (method == "POST" and table in {"rpc/sales_support_recipients", "rpc/sales_members", "rpc/sales_branch_members", "rpc/sales_calendar_days", "rpc/sales_calendar_days_v2", "rpc/sales_calendar_stamp", "rpc/sales_calendar_context", "rpc/sales_calendar_payload", "rpc/sales_activity_stamp", "rpc/sales_activity_bundle"})
         if not readonly:
+            self._activity_bundle=None
+            st.session_state.pop('sales_period_cache',None)
             self._reads.clear()
             read_state.invalidate()
         def fetch(query):
@@ -75,14 +77,42 @@ class Records:
         if readonly:
             cached_key=json.dumps([method,table,params,body,prefer],sort_keys=True)
             if cached_key in self._reads:return deepcopy(self._reads[cached_key])
-        if table in {"rpc/sales_support_recipients","rpc/sales_calendar_stamp","rpc/sales_calendar_context","rpc/sales_calendar_payload"} or not readonly or "limit" in (params or {}):
+        if table in {"rpc/sales_support_recipients","rpc/sales_calendar_stamp","rpc/sales_calendar_context","rpc/sales_calendar_payload", "rpc/sales_activity_stamp", "rpc/sales_activity_bundle"} or not readonly or "limit" in (params or {}):
             return fetch(params)
         from modules.shared.collection_pages import collect_pages
         keys={"sales_empty_days":("owner","day"), "sales_report_history":("report","revision"), "sales_team_assignments":("member",), "sales_deputy_assignments":("member",), "sales_report_checks":("report","reviewer"), "rpc/sales_members":("member",), "rpc/sales_branch_members":("member",)}.get(table,("id",))
         return collect_pages(fetch, params, keys)
 
 
+    def activity_bundle(self,start,end,owner=None):
+        from time import monotonic
+        params={'p_first':str(start),'p_last':str(end),'p_owner':owner}
+        key=json.dumps([self.uid,self.view_scope,params],sort_keys=True)
+        bucket=st.session_state.setdefault('sales_period_cache',{})
+        scope=json.dumps(self.members,sort_keys=True)
+        if st.session_state.get('sales_period_cache_scope')!=(self.uid,scope):
+            bucket.clear();st.session_state['sales_period_cache_scope']=(self.uid,scope)
+        entry=bucket.get(key)
+        stamp=self.request('POST','rpc/sales_activity_stamp',body=params) if entry else None
+        if entry and entry['stamp']==stamp:
+            data=deepcopy(entry['data'])
+        else:
+            data=self.request('POST','rpc/sales_activity_bundle',body=params)
+            bucket[key]={'stamp':data['stamp'],'data':deepcopy(data),'at':monotonic()}
+            while len(bucket)>8:bucket.pop(next(iter(bucket)))
+        self._activity_bundle=(str(start),str(end),owner,data)
+        return data
+
     def period(self,table,start,end,**params):
+        bundle=getattr(self,'_activity_bundle',None)
+        mapping={'sales_reports':'reports','sales_events':'events','sales_contracts':'contracts'}
+        if bundle and table in mapping and bundle[0]<=str(start)<=str(end)<=bundle[1] and (bundle[2] is None or params.get('owner')=='eq.'+bundle[2]):
+            rows=deepcopy(bundle[3][mapping[table]])
+            for name,value in params.items():
+                if name=='order':continue
+                if not str(value).startswith('eq.'):break
+                rows=[r for r in rows if str(r.get(name))==str(value)[3:]]
+            else:return [r for r in rows if str(start)<=r['day']<=str(end)]
         return self.request("GET",table,{"and":f"(day.gte.{start},day.lte.{end})","order":"day.asc",**params})
 
     def save(self,table,body,old=None):
@@ -272,7 +302,7 @@ def report_detail(db,row,show_content=True):
 def overview(db,today):
     context=('manager',read_state.identity(),today,
         *(st.session_state.get('manager_pref_'+name) for name in ('date','period','unit','team')))
-    read_state.refresh(db,context,seconds=15)
+    read_state.refresh(db,context,seconds=300)
     from modules.activity.redesign import overview as render
     return render(db,today)
 

@@ -53,20 +53,14 @@ def test_daily_keeps_manual_input_and_saves_all_fields():
     assert saved["data"]["counts"]["AP"]==7 and saved["data"]["note"]=="직접 입력한 활동"
     assert saved["submitted"] is False
 
-def test_weekly_daily_roundtrip_retains_week_draft():
+def test_weekly_summary_has_no_duplicate_submission():
     at=app('st.session_state.setdefault("sales_menu","주간 기록")\ncenter.run()')
     assert not at.exception
-    text(at,"주요 성과 · 진행사항").input("주간 작성 중").run()
-    next(b for b in at.button if b.label=="미작성 · 작성").click().run()
+    assert not at.text_area
+    assert not any(b.label=='제출하기' for b in at.button)
+    button(at,'일일 기록 작성').click().run()
     assert not at.exception
-    # Daily modal and weekly background each have one note field.
-    at.text_area[-1].input("일일 추가 기록").run()
-    # Use last draft button (dialog) rather than background weekly draft.
-    [b for b in at.button if b.label=="임시 저장"][-1].click().run()
-    assert not at.exception
-    assert text(at,"주요 성과 · 진행사항").value=="주간 작성 중"
-    button(at,"닫기").click().run()
-    assert not at.session_state.get("sales_route")
+    assert any(b.label=='제출하기' for b in at.button)
 
 def test_event_edit_preserves_duration_and_revision():
     at=app('st.session_state.setdefault("sales_route",{"type":"edit","id":EVENT})\ncenter.run()')
@@ -81,6 +75,7 @@ def test_event_edit_preserves_duration_and_revision():
 def test_overview_and_member_detail_render():
     at=app('st.session_state.setdefault("sales_menu","구성원 현황")\ncenter.run()')
     assert not at.exception
+    next(c for c in at.segmented_control if c.label=="집계 보기").set_value("직원별").run()
     button(at,"테스트 구성원").click().run()
     assert not at.exception
     assert any(s.value=="테스트 구성원" for s in at.subheader)

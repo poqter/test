@@ -4,7 +4,7 @@ REVIEW='''from modules.activity.weekly_review import render
 from activity_fixture import OTHER
 db=FakeRecords()
 if not st.session_state['fixture_reports']:
- db.save('sales_reports',dict(id='week',day='2026-11-02',period='주간',submitted=True,data={'counts':{'TA':4},'note':'제출 본문'}))
+ db.save('sales_reports',dict(id='week',day='2026-11-02',period='일일',submitted=True,data={'counts':{'TA':4},'note':'제출 본문'}))
  st.session_state['fixture_reports'][0]['owner']=OTHER
  st.session_state['fixture_writes']=[]
 render(db,date(2026,11,6))
@@ -46,7 +46,7 @@ def test_shared_search_and_employee_survive_tab_switch():
     at=app('from modules.activity.manager import render\nrender(FakeRecords(),date(2026,11,6))')
     next(t for t in at.text_input if t.label=='직원 이름 검색').input('구성원').run()
     selected=at.session_state['manager_selected']
-    next(t for t in at.segmented_control if t.label=='관리 화면').set_value('주간 기록 검토').run()
+    next(t for t in at.segmented_control if t.label=='관리 화면').set_value('활동 기록 검토').run()
     assert not at.exception
     assert next(t for t in at.text_input if t.label=='직원 이름 검색').value=='구성원'
     assert at.session_state['manager_selected']==selected
@@ -65,7 +65,7 @@ db=Failing()''')
     button(at,'확인 완료').click().run()
     assert not at.exception and at.error
     assert text(at,'피드백 · 선택').value=='재시도할 피드백'
-    assert len(at.session_state['fixture_reviews'])==1
+    assert len(at.session_state['fixture_reviews'])==0
     assert not at.session_state['fixture_checks']
     button(at,'확인 완료').click().run()
     assert not at.exception

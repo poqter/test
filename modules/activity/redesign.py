@@ -426,10 +426,11 @@ def member_detail(db,uid,day,period):
         one(target)
         with st.expander("일일 기록 합계",key="member_week_totals_"+uid,on_change="rerun"):
             count_grid(ux.report_totals(submitted,COUNTS))
-        with st.expander("주간 제출 기록"):
-            weekly=next((r for r in records if r["period"]=="주간" and r["day"]==str(start) and r["submitted"]),None)
-            if weekly:report_detail(db,weekly)
-            else:st.caption("제출된 주간 기록이 없습니다.")
+        weekly=[r for r in records if r['period']=='주간' and r.get('submitted')]
+        if weekly:
+            with st.expander('이전 주간 제출 기록 · 보관',key='member_legacy_week',on_change='rerun') as panel:
+                if panel.open:
+                    for old in weekly:report_detail(db,old)
     perf=st.expander("개인 청약·계약 실적",key="member_perf_open",on_change="rerun")
     if perf.open:
         with perf:performance(db,day,{uid:member},bounds,selected_member=uid,key="member_perf_"+uid)

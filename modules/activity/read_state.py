@@ -29,7 +29,7 @@ def consume():
         return snapshot[2]
     return None
 
-def refresh(db, context, seconds=15):
+def refresh(db, context, seconds=300):
     """Retain reads across input reruns, never across writes or scope changes."""
     now = monotonic()
     if getattr(db, '_resumed', False):

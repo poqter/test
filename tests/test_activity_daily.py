@@ -96,9 +96,9 @@ redesign.reports(db,date(2026,11,6),'주간')
     assert not at.exception
     values=[m.value for m in at.markdown]
     assert not any(m.startswith(('상담 **','제안 **')) for m in values)
-    assert number(at,'AP').value==2 and number(at,'PC').value==1
-    text(at,'주요 성과 · 진행사항').input('과거 실적 보존').run()
-    button(at,'임시 저장').click().run()
-    assert not at.exception
+    assert not at.number_input
+    frame=at.dataframe[0].value
+    assert frame.iloc[-1]['AP']==3 and frame.iloc[-1]['PC']==4
     week=next(r for r in at.session_state['fixture_reports'] if r['period']=='주간')
-    assert week['data']['counts']=={'AP':2,'PC':1,'상담':9,'제안':8,'TA':0,'CS':0,'약속 확보':0,'청약':0}
+    assert week['data']['counts']=={'AP':2,'PC':1,'상담':9,'제안':8}
+    assert any(e.label=='이전 주간 제출 기록 · 보관' for e in at.expander)

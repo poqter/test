@@ -52,9 +52,10 @@ def test_menu_discard_does_not_write_records():
 def test_weekly_and_alerts_empty_state():
     at=app(TAIL)
     button(at,'활동 기록').click().run()
-    next(s for s in at.segmented_control if s.label=='기록 구분').set_value('주간 기록').run()
+    next(s for s in at.segmented_control if s.label=='기록 구분').set_value('주간 요약').run()
     assert not at.exception
-    assert any(s.label=='이번 주 돌아보기' for s in at.text_area)
+    assert not at.text_area
+    assert any('일일 기록을 제출하면' in i.value for i in at.info)
     button(at,'알림').click().run()
     assert not at.exception
     assert any(i.value=='알림이 없습니다.' for i in at.info)

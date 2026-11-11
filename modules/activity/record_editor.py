@@ -96,6 +96,9 @@ def contract_dialog(db,day):
 
 
 def render(db,today,period,fixed_day=None):
+    if period=="주간":
+        from modules.activity.period_summary import render as summary
+        return summary(db,today)
     from modules.activity.redesign import report_key,event_list
     from modules.activity.daily import styles as daily_styles
     daily_styles();styles()
@@ -120,6 +123,8 @@ def render(db,today,period,fixed_day=None):
                     st.info('저장이 완료될 때까지 이전 기록을 유지합니다.')
             st.session_state[active]=str(day)
         else:day=fixed_day
+        from modules.activity.live_sync import attach
+        attach(db,day,day,db.uid)
         key=report_key(db,day,period)
         if fixed_day is None:st.session_state['sales_active_draft']=key
         rows=db.period('sales_reports',day,day,owner='eq.'+db.uid,period='eq.'+period)

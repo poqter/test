@@ -41,7 +41,7 @@ def test_typing_reuses_reads_but_date_change_and_expiry_clear(monkeypatch):
     read_state.refresh(db,('reports','day2'))
     assert not db._reads
     db._reads['report']='value'
-    monkeypatch.setattr(read_state,'monotonic',lambda:116)
+    monkeypatch.setattr(read_state,'monotonic',lambda:401)
     read_state.refresh(db,('reports','day2'))
     assert not db._reads
 

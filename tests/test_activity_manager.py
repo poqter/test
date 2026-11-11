@@ -6,14 +6,14 @@ from test_activity_redesign import app, button
 def test_summary_uses_authorized_members_unique_submissions_and_elapsed_weekdays():
     start,end,today=date(2026,11,2),date(2026,11,8),date(2026,11,4)
     event=dict(id='e',owner='a',day='2026-11-03',kind='AP',status='완료',help='지원')
-    report=dict(id='r',owner='a',day='2026-11-02',period='일일',submitted=True,data={})
+    report=dict(id='r',owner='a',day='2026-11-02',period='일일',submitted=True,data={'counts':{'AP':3}})
     rows=summarize({'a':{'label':'직원'}},[event,dict(event,id='deleted',deleted_at='now'),dict(event,id='outside',owner='b'),dict(event,id='pending',status='예정',help='')],
         [report,dict(report,id='duplicate'),dict(report,day='2026-11-05'),dict(report,day='2026-11-03',submitted=False)],[],
         [dict(owner='a',due='2026-11-03',scheduled=None),dict(owner='a',due='2026-11-03',scheduled='done')],start,end,today,datetime(2026,11,4,12))
     assert len(rows)==1
     r=rows[0]
     assert (r['submitted'],r['required'],r['unsubmitted'])==(1,3,2)
-    assert (r['counts']['AP'],r['help'],r['missing'],r['late'])==(1,1,1,1)
+    assert (r['counts']['AP'],r['help'],r['missing'],r['late'])==(6,1,1,1)
     assert required_days(start,end,date(2026,11,1))==[]
     assert len(required_days(start,end,date(2026,11,8)))==5
     assert required_days(end,end,end)==[end]
@@ -55,6 +55,7 @@ st.session_state.setdefault("sales_menu","구성원 현황")
 center.run()
 ''')
     assert not at.exception
+    next(c for c in at.segmented_control if c.label=='집계 보기').set_value('직원별').run()
     assert len([b for b in at.button if b.key and b.key.startswith('member_open_')])==25
     next(s for s in at.selectbox if s.label=='목록 페이지').set_value(3).run()
     assert not at.exception

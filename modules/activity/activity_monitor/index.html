@@ -1,0 +1,50 @@
+<!doctype html><html><head><meta charset="utf-8"><script src="../modules.activity.center.sales_calendar_view/realtime.js"></script></head><body><script>
+const post=(type,more={})=>parent.postMessage({isStreamlitMessage:true,type,...more},'*');
+let config=null,client=null,ready=false,timer=null,batch=null,busy=false,again=false,failures=0,last=0,hidden=false,stamp=null,key='',pending=false,scopeChanged=false,nonce=null;
+const visible=()=>!document.hidden&&!hidden;
+const editing=()=>{try{const d=parent.document,a=d.activeElement;return !!d.querySelector('[data-testid="stDialog"]')||!!a&&a.matches('input,textarea,[contenteditable="true"]')}catch{return false}};
+function notify(){
+ if(!pending||!visible()||(!scopeChanged&&editing()))return;
+ pending=false;nonce=crypto.randomUUID();
+ const scope=scopeChanged;scopeChanged=false;
+ post('streamlit:setComponentValue',{value:{nonce,scope},dataType:'json'});
+}
+function schedule(){clearTimeout(timer);timer=null;if(!visible())return;timer=setTimeout(check,(ready?300000:Math.min(60000,15000*2**Math.min(failures,2)))+Math.random()*300);}
+async function check(){
+ clearTimeout(timer);timer=null;if(!visible()||!config)return;
+ if(busy){again=true;return}const wait=2000-(Date.now()-last);if(wait>0){timer=setTimeout(check,wait);return}
+ busy=true;last=Date.now();const localKey=key,c=config,controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
+ try{
+  const r=await fetch(c.url+'/rest/v1/rpc/sales_activity_stamp',{method:'POST',headers:{apikey:c.apiKey,Authorization:'Bearer '+c.token,'Content-Type':'application/json','X-Hwarang-View-Scope':c.viewScope},body:JSON.stringify({p_first:c.first,p_last:c.last,p_owner:c.owner}),signal:controller.signal});
+  if(!r.ok){if(r.status===401||r.status===403){scopeChanged=true;pending=true;notify()}throw Error('sync')}
+  const value=await r.json();if(localKey!==key)return;
+  failures=0;if(value!==stamp){stamp=value;pending=true;notify()}
+ }catch{failures++}finally{clearTimeout(timeout);busy=false;schedule();if(again){again=false;clearTimeout(timer);timer=setTimeout(check,2000)}}
+}
+function stop(){clearTimeout(timer);clearTimeout(batch);timer=batch=null;ready=false;const old=client;client=null;if(old)old.removeAllChannels().then(()=>old.disconnect()).catch(()=>old.disconnect());}
+function connect(){
+ if(!visible()||!config){stop();return}if(client)return;
+ if(!window.HwarangRealtime){schedule();return}
+ const c=config,local=client=new HwarangRealtime.RealtimeClient(c.url+'/realtime/v1',{params:{apikey:c.apiKey},accessToken:async()=>config.token});
+ local.channel('activity:'+c.uid).on('postgres_changes',{event:'*',schema:'public',table:'sales_activity_signals'},payload=>{
+  const r=payload.new||payload.old;
+  if(r.topic==='scope')scopeChanged=true;
+  else if((c.owner&&r.owner!==c.owner)||(r.day!=='1900-01-01'&&(r.day<c.first||r.day>c.last)))return;
+  if(!batch)batch=setTimeout(()=>{batch=null;check()},500+Math.random()*300);
+ }).subscribe(status=>{if(client!==local)return;ready=status==='SUBSCRIBED';if(ready)check();else schedule()});
+ schedule();
+}
+addEventListener('message',e=>{
+ if(e.source!==parent||e.origin!==location.origin)return;
+ if(e.data.type==='streamlit:render'){
+  const c=e.data.args,k=JSON.stringify([c.uid,c.viewScope,c.first,c.last,c.owner]);
+  if(k!==key){stop();key=k;stamp=c.stamp;pending=false;scopeChanged=false;}else if(c.ack===nonce){stamp=c.stamp;}
+  config=c;connect();post('streamlit:setFrameHeight',{height:0});
+ }
+ if(e.data.type==='hwarang.activity.visibility'){hidden=!e.data.visible;if(hidden)stop();else{connect();check();notify()}}
+});
+addEventListener('visibilitychange',()=>{if(!visible())stop();else{connect();check();notify()}});
+addEventListener('online',()=>{connect();check()});addEventListener('pagehide',stop);
+try{parent.document.addEventListener('focusout',()=>setTimeout(notify,250));parent.document.addEventListener('click',()=>setTimeout(notify,250));}catch{}
+post('streamlit:componentReady',{apiVersion:1});
+</script></body></html>

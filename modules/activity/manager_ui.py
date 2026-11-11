@@ -12,7 +12,7 @@ def controls(db,today,weekly=False):
         state.setdefault('manager_pref_'+name,default)
     def changed(name,key):
         state['manager_pref_'+name]=state[key]
-        if name=='range' and state[key] in ('오늘','이번 주'):state['manager_pref_date']=today
+        if name=='range' and state[key] in ('오늘','이번 주','이번 달'):state['manager_pref_date']=today
     def field(name,render,*args,**kwargs):
         key='manager_control_'+name
         state[key]=state['manager_pref_'+name]
@@ -21,29 +21,38 @@ def controls(db,today,weekly=False):
     units={r['id']:r['name'] for r in db.request('GET','organization_units',{'select':'id,name'})}
     options=['',*sorted({m['unit'] for m in members.values() if m.get('unit')})]
     if state['manager_pref_unit'] not in options:state['manager_pref_unit']=''
-    if not weekly:
-        state.setdefault('manager_pref_range','이번 주')
-        mode=field('range',st.segmented_control,'조회 기간',['오늘','이번 주','기간 선택'],required=True,label_visibility='collapsed')
-    else:mode='이번 주'
-    def shift(n):state['manager_pref_date']=min(today,state['manager_pref_date']+timedelta(days=n))
+    state.setdefault('manager_pref_range','이번 주')
+    if weekly and state['manager_pref_range'] not in ('이번 주','이번 달'):state['manager_pref_range']='이번 주'
+    mode=field('range',st.segmented_control,'조회 기간',(['이번 주','이번 달'] if weekly else ['오늘','이번 주','이번 달','기간 선택']),required=True,label_visibility='collapsed')
+    def shift(n):
+        if mode=='이번 달':
+            anchor=state['manager_pref_date'].replace(day=1)
+            state['manager_pref_date']=min(today,(anchor+timedelta(days=32)).replace(day=1) if n>0 else (anchor-timedelta(days=1)).replace(day=1))
+        else:state['manager_pref_date']=min(today,state['manager_pref_date']+timedelta(days=n))
     with st.container(horizontal=True,vertical_alignment='bottom'):
         step=7 if mode=='이번 주' else 1
         st.button('‹',key='manager_date_prev',on_click=shift,args=(-step,),help='이전 기간')
         anchor=state['manager_pref_date']
         first=anchor-timedelta(days=anchor.weekday()) if mode=='이번 주' else anchor
         label=f'{first:%m/%d} – {first+timedelta(days=6):%m/%d}' if mode=='이번 주' else f'{anchor:%m/%d} ({"월화수목금토일"[anchor.weekday()]})'
+        if mode=='이번 달':label=f'{anchor:%Y년 %m월}'
         with st.popover(label):
             day=field('date',st.date_input,'조회 기준일',max_value=today)
         st.button('›',key='manager_date_next',on_click=shift,args=(step,),disabled=day>=today,help='다음 기간')
         def current():state['manager_pref_date']=today
-        st.button('이번 주' if mode=='이번 주' else '오늘',key='manager_today',on_click=current)
+        st.button(mode if mode in ('이번 주','이번 달') else '오늘',key='manager_today',on_click=current)
     start=day-timedelta(days=day.weekday()) if mode=='이번 주' else day
     end=start+timedelta(days=6) if mode=='이번 주' else day
     if mode=='기간 선택':
         state.setdefault('manager_pref_end',day)
         if state['manager_pref_end']<day:state['manager_pref_end']=day
-        end=field('end',st.date_input,'종료일',min_value=day,max_value=today)
-    period='일일' if start==end else '주간'
+        limit=min(today,day+timedelta(days=365))
+        state['manager_pref_end']=min(state['manager_pref_end'],limit)
+        end=field('end',st.date_input,'종료일',min_value=day,max_value=limit)
+    if mode=='이번 달':
+        from modules.activity.period_summary import period_bounds
+        start,end=period_bounds(day,mode)
+    period='일일' if start==end else '월간' if mode=='이번 달' else '주간'
     state['manager_pref_period']=period
     st.caption(f'{start:%Y.%m.%d} – {end:%m.%d}' if start!=end else f'{day:%Y.%m.%d} ({"월화수목금토일"[day.weekday()]})')
     # Explicit row order prevents desktop columns from interleaving on mobile.
@@ -95,7 +104,9 @@ def daily_reference(db,uid,start,end,today,key,records=None,events=None):
         states.extend(item for item in day_states(start+timedelta(days=offset),today,daily,events) if item[0]<=end)
     options=[d for d,_,_ in states]
     statuses={d:s for d,s,_ in states}
-    target=st.segmented_control('날짜별 일정·기록',options,default=today if today in options else options[0],required=True,key=key+'day',format_func=lambda d:f'{d:%m.%d} {statuses[d]}')
+    if len(options)>7:
+        target=st.selectbox('날짜별 일정·기록',options,index=options.index(today) if today in options else 0,key=key+'day_month',format_func=lambda d:f'{d:%m.%d} {statuses[d]}')
+    else:target=st.segmented_control('날짜별 일정·기록',options,default=today if today in options else options[0],required=True,key=key+'day',format_func=lambda d:f'{d:%m.%d} {statuses[d]}')
     st.markdown('**일정**')
     event_list(db,[e for e in events if e['day']==str(target)],key+'event',show_result_actions=False)
     st.markdown('**제출된 일일 기록**')
