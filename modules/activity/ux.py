@@ -92,7 +92,9 @@ def clear_draft(key): st.session_state.get("sales_drafts",{}).pop(key,None)
 
 def field(d,name,renderer,label,after_change=None,**kwargs):
     key="sales_input_"+d["epoch"]+"_"+name
-    if key not in st.session_state: st.session_state[key]=d["values"].get(name)
+    # Rebind retained widget state when navigation changes its fragment identity.
+    # Streamlit otherwise treats the remounted field as new and sends its default.
+    st.session_state[key]=st.session_state.get(key,d["values"].get(name))
     def changed():
         d["values"][name]=st.session_state[key]
         if after_change:after_change()
