@@ -56,6 +56,34 @@ def day_states(start,today,reports,events):
     return result
 
 
+def confirmed_save(db, request, old):
+    """Resolve a lost response only when the expected server snapshot is present."""
+    rows = db.request('GET', 'sales_reports', {
+        'owner': 'eq.' + db.uid, 'day': 'eq.' + request['p_day'],
+        'period': 'eq.' + request['p_period'], 'limit': '1',
+    })
+    if not rows:
+        return None
+    report = rows[0]
+    base_revision = request['p_base_revision']
+    if old.get('id') and report.get('id') != old['id']:
+        return None
+    if old.get('submitted') and not request['p_submit']:
+        if not report.get('submitted') or report.get('revision') != base_revision:
+            return None
+        drafts = db.request('GET', 'sales_report_drafts', {'report': 'eq.' + report['id'], 'limit': '1'})
+        draft = drafts[0] if drafts else {}
+        if (draft.get('revision'), draft.get('base_revision'), draft.get('data')) == (
+            request['p_draft_revision'] + 1, base_revision, request['p_data']
+        ):
+            return {'report': report, 'draft': draft}
+    elif (report.get('revision'), report.get('submitted'), report.get('data')) == (
+        base_revision + 1, request['p_submit'], request['p_data']
+    ):
+        return {'report': report, 'draft': None}
+    return None
+
+
 def persist(db,d,day,period,submit=False,slot=None):
     if d.get('saving'):return False
     if submit and period=='일일' and not any(d['values'][c] for c in COUNTS) and not d['values']['no_activity']:
@@ -69,20 +97,40 @@ def persist(db,d,day,period,submit=False,slot=None):
     try:
         # Use the latest authenticated token, even after a long editing session.
         if hasattr(db,'token'):db.token=st.session_state.get('hwarang_auth',{}).get('access_token',db.token)
-        result=db.request('POST','rpc/sales_save_report',body={
+        request = {
             'p_day':str(day),'p_period':period,'p_data':pack(d),
             'p_base_revision':(d.get('old') or {}).get('revision',0),
-            'p_draft_revision':(d.get('server_draft') or {}).get('revision',0),'p_submit':submit})
-        if not isinstance(result,dict) or not isinstance(result.get('report'),dict):
-            raise HwarangAuthError('서버 저장 결과를 확인하지 못했습니다.')
+            'p_draft_revision':(d.get('server_draft') or {}).get('revision',0),'p_submit':submit,
+        }
+        try:
+            result = db.request('POST', 'rpc/sales_save_report', body=request)
+            if not isinstance(result, dict) or not isinstance(result.get('report'), dict):
+                raise HwarangAuthError('서버 저장 결과를 확인하지 못했습니다.', code='save_unconfirmed')
+        except HwarangAuthError as exc:
+            uncertain = exc.code in ('transport_error', 'save_unconfirmed') or (exc.status or 0) >= 500
+            same_retry = exc.code == '40001' and d.get('unconfirmed_request') == request
+            if not (uncertain or same_retry):
+                raise
+            try:
+                result = confirmed_save(db, request, d.get('old') or {})
+            except HwarangAuthError:
+                result = None
+            if result is None:
+                raise HwarangAuthError('서버에서 처리 여부를 확인하지 못했습니다.', code='save_unconfirmed') from exc
         d['old']=result['report'];d['server_draft']=result.get('draft')
         d['baseline']=deepcopy(d['values']);d['saved_at']=datetime.now(KST).strftime('%H:%M:%S')
-        d.pop('save_error',None);d.pop('conflict',None)
+        d.pop('save_error',None);d.pop('conflict',None);d.pop('retry_submit',None);d.pop('unconfirmed_request',None)
         if submit:d['notice']='제출했습니다.'
         if slot is not None:slot.caption('제출 완료' if submit else '임시 저장됨 · '+d['saved_at'])
         return True
     except HwarangAuthError as exc:
-        d['save_error']='저장 실패 · 입력 내용은 유지됩니다. '+str(exc);d['conflict']=True
+        prefix = '처리 결과 미확인' if exc.code == 'save_unconfirmed' else '저장 실패'
+        d['save_error']=prefix+' · 입력 내용은 유지됩니다. '+str(exc);d['conflict']=True
+        d['retry_submit'] = submit
+        if exc.code == 'save_unconfirmed':
+            d['unconfirmed_request'] = request
+        else:
+            d.pop('unconfirmed_request', None)
         if slot is not None:slot.error(d['save_error'])
         return False
     finally:d['saving']=False
@@ -150,7 +198,11 @@ def render(db,today,period,fixed_day=None):
         status_slot=st.empty()
         if d.get('save_error'):
             status_slot.error(d['save_error'])
-            if st.button('다시 저장',key=key+'retry'):persist(db,d,day,period,slot=status_slot)
+            retry_submit = d.get('retry_submit', False)
+            if st.button('다시 제출' if retry_submit else '다시 저장', key=key+'retry'):
+                if persist(db,d,day,period,submit=retry_submit,slot=status_slot) and retry_submit:
+                    if fixed_day is not None:ux.back()
+                    else:ux.refresh()
             with st.expander('최신 저장 내용 확인',key=key+'conflict_view'):
                 st.write(rows[0].get('data',{}) if rows else {})
                 if st.button('현재 입력을 버리고 서버 저장본 불러오기',key=key+'reload'):
@@ -233,11 +285,13 @@ def render(db,today,period,fixed_day=None):
         with left:
             with st.container(key='daily_footer'+suffix,horizontal=True,vertical_alignment='center'):
                 st.caption('수정 초안은 다시 제출하기 전까지 기존 제출 내용에 반영되지 않습니다.' if old.get('submitted') else '자동 저장 · 제출 전까지 수정 가능')
-                if st.button('임시 저장',key=key+'draft',disabled=bool(d.get('saving'))):persist(db,d,day,period,slot=status_slot)
+                if st.button('임시 저장',key=key+'draft',disabled=bool(d.get('saving'))):
+                    if not persist(db,d,day,period,slot=status_slot) and 'retry_submit' in d:ux.refresh()
                 if st.button('수정 내용 제출' if old.get('submitted') else '제출하기',key=key+'submit',type='primary',disabled=bool(d.get('saving')) or bool(old.get('submitted') and not changed and not d.get('server_draft'))):
                     if persist(db,d,day,period,True,status_slot):
                         if fixed_day is not None:ux.back()
                         else:ux.refresh()
+                    elif 'retry_submit' in d:ux.refresh()
             if old:
                 with st.expander('제출 이력·피드백',key=key+'history',on_change='rerun') as panel:
                     if panel.open:
