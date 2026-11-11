@@ -116,11 +116,15 @@ try:
             page.goto('http://127.0.0.1:8504')
             expect(page.locator('.st-key-mobile_header')).to_be_visible()
             cal=page.frame_locator('iframe[title="modules.activity.center.sales_calendar_view"]')
-            main=page.get_by_test_id('stMainBlockContainer').bounding_box()
-            sidebar_width=260 if page.get_by_test_id('stSidebar').get_attribute('aria-expanded')=='true' else 0
-            assert main['width']>=width-sidebar_width-40,(width,main)
             daily=cal.get_by_role('button',name='일별',exact=True)
             expect(daily).to_be_visible()
+            # Wait for the calendar layout and sample sidebar state and width in the same frame.
+            page.wait_for_function("""viewportWidth => {
+                const main = document.querySelector('[data-testid="stMainBlockContainer"]');
+                const sidebar = document.querySelector('[data-testid="stSidebar"]');
+                const sidebarWidth = sidebar?.getAttribute('aria-expanded') === 'true' ? 260 : 0;
+                return main && main.getBoundingClientRect().width >= viewportWidth - sidebarWidth - 40;
+            }""", arg=width, timeout=10000)
             assert daily.bounding_box()['height']<=44
             if width==1920 and os.environ.get('CALENDAR_WIDE_SCREENSHOT'):page.screenshot(path=os.environ['CALENDAR_WIDE_SCREENSHOT'])
             cal.get_by_role('button',name='2026-11-06 일정 목록',exact=True).click()
