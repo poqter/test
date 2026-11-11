@@ -85,8 +85,7 @@ def render(db, today):
             from modules.activity.mobile import choose
             choose('활동 기록')
         else:st.session_state['sales_menu']='일일 기록'
-    if st.button('일일 기록 작성',key='summary_write'):
-        write_daily()
+    if st.button('일일 기록 작성',key='summary_write',on_click=write_daily):
         # This view runs inside the reports fragment; the parent owns its menu.
         st.rerun()
     legacy=[r for r in rows if r.get('period')=='주간']
