@@ -1,3 +1,4 @@
+from textwrap import dedent
 from datetime import date
 from test_activity_redesign import app, button, text, number
 from modules.activity.daily import COUNTS
@@ -102,3 +103,37 @@ redesign.reports(db,date(2026,11,6),'주간')
     week=next(r for r in at.session_state['fixture_reports'] if r['period']=='주간')
     assert week['data']['counts']=={'AP':2,'PC':1,'상담':9,'제안':8}
     assert any(e.label=='이전 주간 제출 기록 · 보관' for e in at.expander)
+
+
+def test_lost_save_response_is_reconciled_and_submit_retry_stays_submit():
+    seed = '''
+    from modules.shared.hwarang_auth import HwarangAuthError
+    class LostReplyRecords(FakeRecords):
+        def request(self, method, table, *args, **kwargs):
+            if table == 'rpc/sales_save_report' and st.session_state.get('failure') == 'before':
+                st.session_state['failure'] = None
+                raise HwarangAuthError('offline', code='transport_error')
+            result = super().request(method, table, *args, **kwargs)
+            if table == 'rpc/sales_save_report' and st.session_state.get('failure') == 'after':
+                st.session_state['failure'] = None
+                raise HwarangAuthError('offline', code='transport_error')
+            return result
+    redesign.reports(LostReplyRecords(), date(2026,11,6), '일일')
+    '''
+    at=app(dedent(seed))
+    number(at,'AP').set_value(7).run()
+    at.session_state['failure']='after'
+    button(at,'제출하기').click().run()
+    assert not at.error and at.session_state['fixture_reports'][0]['submitted']
+    revision=at.session_state['fixture_reports'][0]['revision']
+    at.session_state['failure']='after'
+    number(at,'AP').set_value(9).run()
+    assert not at.error and at.session_state['fixture_drafts'][0]['data']['counts']['AP']==9
+    at.session_state['failure']='before'
+    button(at,'수정 내용 제출').click().run()
+    assert any('처리 결과 미확인' in e.value for e in at.error)
+    assert at.session_state['fixture_reports'][0]['revision']==revision
+    button(at,'다시 제출').click().run()
+    assert not at.error and not at.exception
+    row=at.session_state['fixture_reports'][0]
+    assert row['revision']==revision+1 and row['data']['counts']['AP']==9 and row['submitted']
