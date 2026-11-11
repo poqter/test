@@ -129,6 +129,11 @@ function weekday(s,direction=1){while(isWeekend(s))s=iso(add(date(s),direction))
 function syncNode(old,fresh){
  if(old.nodeType!==fresh.nodeType||old.nodeName!==fresh.nodeName){old.replaceWith(fresh);return fresh}
  if(old.nodeType===3){if(old.data!==fresh.data)old.data=fresh.data;return old}
+ // A background calendar refresh must not erase an active member search.
+ if(old.classList.contains('member-search')&&fresh.classList.contains('member-search')){
+  if(old.searchContext===fresh.searchContext)return old;
+  old.replaceWith(fresh);return fresh;
+ }
  for(const a of [...old.attributes])if(!fresh.hasAttribute(a.name)&&!(old.tagName==='DETAILS'&&a.name==='open'))old.removeAttribute(a.name);
  for(const a of [...fresh.attributes])if(!(old.tagName==='DETAILS'&&a.name==='open')&&old.getAttribute(a.name)!==a.value)old.setAttribute(a.name,a.value);
  for(const key of ['ondragstart','ondragend','ondragover','ondragleave','ondrop'])old[key]=fresh[key];old.onclick=fresh.onclick;old.ondblclick=fresh.ondblclick;old.onchange=fresh.onchange;if(old.tagName==='INPUT')old.checked=fresh.checked;

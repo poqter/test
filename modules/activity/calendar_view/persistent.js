@@ -189,18 +189,21 @@ function selectScope(value){
  const member=!['my','team'].includes(value)?value:null;
  if(member&&(!calendarBoot.managed||!Object.hasOwn(calendarBoot.members,member)))return;
  if(!member)memberSearchText='';calendarBoot.member=member;calendarBoot.team=value==='team';calendarEpoch++;calendarCache.clear();
+ const search=document.querySelector('.member-search');
+ if(search){search.querySelector('input').value=member?calendarBoot.members[member]:'';search.querySelector('.member-search-results').hidden=true;}
  latest={...latest,events:[],roster:{},scopeLabel:member?calendarBoot.members[member]:value==='team'?(calendarBoot.viewLabel||'지점 일정'):'내 일정'};
  if(calendarPanel)calendarPanel.close();calendarLoading=true;render(latest);reloadCalendar(true);
 }
 let memberSearchText='';
 function memberSearchControl(){
  const wrap=el('div','','member-search'),input=el('input'),list=el('div','','member-search-results');
+ wrap.dataset.key='member-search';wrap.searchContext=JSON.stringify([calendarBoot.uid,calendarBoot.access,calendarBoot.members]);
  input.type='search';input.placeholder='구성원 검색';input.setAttribute('aria-label','구성원 검색');input.value=memberSearchText||(calendarBoot.member?calendarBoot.members[calendarBoot.member]:'');
  list.setAttribute('role','group');list.setAttribute('aria-label','구성원 검색 결과');list.hidden=true;wrap.append(input,list);
  const draw=()=>{list.replaceChildren();const query=input.value.trim().toLocaleLowerCase();memberSearchText=input.value;
   for(const [uid,name] of Object.entries(calendarBoot.members).sort((a,b)=>a[1].localeCompare(b[1],'ko'))){
    if(query&&!name.toLocaleLowerCase().includes(query))continue;
-   list.append(button(name,()=>{memberSearchText=name;input.value=name;list.hidden=true;selectScope(uid)},'',name+' 일정 보기'));
+   list.append(button(name,()=>{memberSearchText=name;list.hidden=true;selectScope(uid)},'',name+' 일정 보기'));
   }
   if(!list.children.length)list.append(el('p','검색 결과가 없습니다.','hint'));list.hidden=false;
  };
