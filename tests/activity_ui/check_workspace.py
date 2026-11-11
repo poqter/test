@@ -86,6 +86,10 @@ try:
         expect(page.get_by_text('임시 저장됨 · ',exact=False)).to_be_visible()
         expect(page.get_by_text('전체 실행 횟수 1',exact=True)).to_be_visible()
         expect(page.get_by_label('주요 성과 · 진행사항',exact=True)).to_have_value('보고서 부분 갱신 확인')
+        page.get_by_role('tab',name='주간 기록',exact=True).click()
+        page.get_by_role('button',name='일일 기록 작성',exact=True).click()
+        expect(page.get_by_role('tab',name='일일 기록',exact=True)).to_have_attribute('aria-selected','true')
+        expect(page.get_by_label('주요 성과 · 진행사항',exact=True)).to_have_value('보고서 부분 갱신 확인')
         browser.close()
     print('PASS draft discard, field focus, saved detail, immediate calendar refresh and report fragment isolation')
 finally:

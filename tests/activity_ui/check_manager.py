@@ -34,6 +34,8 @@ try:
                 expect(dlg.get_by_text('일정',exact=True)).to_be_visible()
                 assert dlg.bounding_box()['width']<=page.viewport_size['width']
                 assert dlg.locator('.st-key-sales_dialog_body').evaluate('e=>e.scrollWidth<=e.clientWidth+1')
+                expect(page.get_by_test_id('stApp')).to_have_attribute('data-test-script-state','notRunning')
+                full_runs=page.get_by_text('전체 실행 횟수',exact=False).inner_text()
                 weekend=dlg.get_by_role('switch',name='주말 포함',exact=True)
                 weekend.focus();weekend.press('Space')
                 expect(weekend).to_be_checked()
