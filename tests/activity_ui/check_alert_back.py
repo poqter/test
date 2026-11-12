@@ -12,20 +12,26 @@ html='''<div class="st-key-mobile_header"></div>
 window.closeCalls=0;window.navigationCalls=0;
 document.getElementById('open').onclick=()=>{
  const dialog=document.createElement('div');dialog.setAttribute('role','dialog');
- dialog.innerHTML='<div class="st-key-mobile_alerts_close"><button>close</button></div>';
- dialog.querySelector('button').onclick=()=>{closeCalls++;dialog.remove()};document.body.append(dialog);
+ dialog.setAttribute('aria-labelledby','alert-title');
+ dialog.innerHTML='<h2 id="alert-title">알림·피드백</h2>';
+ document.body.append(dialog);
+ window.finishOpening=()=>{
+  dialog.insertAdjacentHTML('beforeend','<div class="st-key-mobile_alerts_close"><button>close</button></div>');
+  dialog.querySelector('button').onclick=()=>{closeCalls++;dialog.remove()};
+ };
 };
 </script>'''
 with sync_playwright() as p:
  browser=p.chromium.launch(headless=True,args=['--no-sandbox'])
  for embedded in (False,True):
   page=browser.new_page(viewport={'width':390,'height':844})
-  page.route('https://back.test/**',lambda r:r.fulfill(body='<iframe id="app" src="/app"></iframe>' if r.request.url.endswith('/wrapper') else html,content_type='text/html'))
+  page.route('https://back.test/**',lambda r:r.fulfill(body='<iframe id="app" src="/app"></iframe>' if r.request.url.endswith('/wrapper') else html,content_type='text/html; charset=utf-8'))
   page.goto('https://back.test/wrapper' if embedded else 'https://back.test/app')
   frame=page.frame_locator('#app') if embedded else page
   frame.locator('#open').click()
   app=page.locator('#app').element_handle().content_frame() if embedded else page.main_frame
   app.evaluate(bridge)
+  app.evaluate('finishOpening()')
   page.wait_for_function('history.state?.hwarangCalendarBack===true')
   for expected in (1,2):
    if expected==2:
@@ -33,6 +39,10 @@ with sync_playwright() as p:
     page.wait_for_timeout(400) # Back's double-press guard must expire.
    expect(frame.get_by_role('dialog')).to_be_visible()
    page.go_back()
+   if expected==2:
+    # The dialog shell is visible but Streamlit has not mounted its close button.
+    expect(frame.locator('#calendar-exit-confirm')).to_have_count(0)
+    app.evaluate('finishOpening()')
    expect(frame.get_by_role('dialog')).to_have_count(0)
    expect(frame.locator('#calendar-exit-confirm')).to_have_count(0)
    expect(frame.get_by_label('retained draft')).to_have_value('unsaved calendar draft')
