@@ -89,8 +89,15 @@ try:
         page.get_by_role('tab',name='주간 기록',exact=True).click()
         page.get_by_role('button',name='일일 기록 작성',exact=True).click()
         expect(page.locator('[data-testid="stApp"]')).to_have_attribute('data-test-script-state','notRunning')
-        expect(page.get_by_role('tab',name='일일 기록',exact=True)).to_have_count(1)
-        expect(page.get_by_role('tab',name='일일 기록',exact=True)).to_have_attribute('aria-selected','true')
+        # The old and new tab lists can briefly overlap during the full rerun.
+        # Check uniqueness and selection in the same rendered state.
+        page.wait_for_function('''() => {
+            const tabs = [...document.querySelectorAll('[role="tab"]')].filter(
+                tab => tab.textContent.trim() === '일일 기록' && tab.getClientRects().length
+                    && !tab.closest('[aria-hidden="true"]')
+            );
+            return tabs.length === 1 && tabs[0].getAttribute('aria-selected') === 'true';
+        }''')
         expect(page.get_by_label('주요 성과 · 진행사항',exact=True)).to_have_value('보고서 부분 갱신 확인')
         browser.close()
     print('PASS draft discard, field focus, saved detail, immediate calendar refresh and report fragment isolation')
