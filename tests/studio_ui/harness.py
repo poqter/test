@@ -28,5 +28,10 @@ class Runtime:
   out=deepcopy(s);out['hint_cache'][f"{s['branch']}:{len(s['turns'])}:{s['stage']}"]={'direction':'걱정을 먼저 확인하세요.','intention':'실제 부담을 파악합니다.','example':'어떤 부분이 가장 부담스러우세요?'};return self.repo.save(out)
  def evaluate(self,s):
   out=deepcopy(s);out['report']={'status':'피드백 완료','notice':'검증용 예시','rows':[],'strengths':['고객의 걱정을 물었습니다.'],'improvements':['통화 가능한지 먼저 확인해 보세요.']};return self.repo.save(out)
-with patch.object(ui,'Repository',Repo),patch.object(ui,'Runtime',Runtime),patch.object(Config,'from_mapping',return_value=Config(api_key='fake-non-network')):
+def render_test_chat(state, **kwargs):
+ st.session_state['_test_chat_model']={'messages':deepcopy(state['messages']),'signals':list(kwargs['signals']),'disabled':bool(state['stage_complete'] or state['ended']),'version':state['version']}
+ return st.session_state.pop('_test_chat_event',None)
+
+from hwarang_academy.studio import chat_component
+with patch.object(chat_component,'render',render_test_chat),patch.object(ui,'Repository',Repo),patch.object(ui,'Runtime',Runtime),patch.object(Config,'from_mapping',return_value=Config(api_key='fake-non-network')):
  ui.render(object(),OWNER,{'academy.simulator','academy.formal_ai_assessment','academy.voice_simulator'})
