@@ -60,6 +60,8 @@ if st.query_params.get("briefing_health") == "1":
     st.code("HWARANG_LOGIN_RELEASE="+hashlib.sha256(Path(__file__).read_bytes()).hexdigest()[:16])
     from modules.shared.build_info import BUILD_ID
     st.code("HWARANG_UI_RELEASE=" + BUILD_ID)
+    from modules.shared.operations import release_id as operations_release_id
+    st.code("HWARANG_OPERATIONS_RELEASE=" + operations_release_id())
     st.stop()
 if not calendar_entry:
     from modules.shell.workspace_install import setup as setup_workspace_install
