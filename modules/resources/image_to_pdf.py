@@ -20,4 +20,20 @@ def run() -> None:
     # Recreate the isolated in-memory workspace on account/session changes.
     scope = repr((st.session_state.get("hw_platform_session_id"), st.session_state.get("login_profile")))
     key = "pdf_tools_" + hashlib.sha256(scope.encode()).hexdigest()[:20]
+    st.session_state["pdf_tools_component_key"] = key
     _component(key=key, default=None)
+    pending = st.session_state.get("pdf_tools_pending_navigation")
+    if pending:
+        @st.dialog("PDF 작업을 종료하고 이동할까요?", on_dismiss=lambda: st.session_state.pop("pdf_tools_pending_navigation", None))
+        def confirm_leave():
+            st.write("현재 파일과 편집 내용은 브라우저에서 사라집니다. 필요한 결과를 먼저 다운로드해 주세요.")
+            left, right = st.columns(2)
+            if left.button("계속 편집", use_container_width=True):
+                st.session_state.pop("pdf_tools_pending_navigation", None)
+                st.rerun()
+            if right.button("작업 종료 후 이동", use_container_width=True):
+                from modules.shell.navigation import navigate
+                target = st.session_state.pop("pdf_tools_pending_navigation")
+                st.session_state["pdf_tools_leave_confirmed"] = True
+                navigate(target["page"], target.get("mode"))
+        confirm_leave()
