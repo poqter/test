@@ -208,7 +208,13 @@ def run() -> None:
                     st.error(str(exc))
                     st.info('기존 컨설팅보장분석.xlsx 파일은 계속 사용할 수 있습니다.')
                 else:
-                    st.error(user_message(record_error(exc, "analyzer.parse")))
+                    profile = st.session_state.get("login_profile") or {}
+                    diagnostics = [] if is_pdf and profile.get("role") == "super_admin" else None
+                    reference = record_error(exc, "analyzer.parse", diagnostics=diagnostics)
+                    st.error(user_message(reference))
+                    if diagnostics:
+                        with st.expander("최고관리자용 오류 진단"):
+                            st.code(diagnostics[0], language="text")
 
         with mode_column:
             st.markdown("**분석 방식**")
