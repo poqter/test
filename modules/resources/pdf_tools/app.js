@@ -354,7 +354,7 @@ async function addFiles(files) {
 }
 async function chooseDuplicate(name, previous) {
   $("duplicateName").textContent=`${name} · 기존 파일: ${previous}`;
-  const dialog=$("duplicateDialog");dialog.showModal();
+  const dialog=$("duplicateDialog");dialog.showModal();dialog.scrollIntoView({block:"center"});
   return new Promise(resolve=>{
     const done=value=>{dialog.close();resolve(value);};
     $("duplicateSkip").onclick=()=>done(false);$("duplicateKeep").onclick=()=>done(true);
@@ -1143,7 +1143,7 @@ async function openPhoto(page){
   if(busy)return;
   const epoch=++photoEpoch;
   $("photoStatus").textContent="사진을 준비하고 있습니다…";
-  $("photoDialog").showModal();$("photoApply").disabled=true;
+  $("photoDialog").showModal();$("photoDialog").scrollIntoView({block:"center"});$("photoApply").disabled=true;
   try{
     const raw=await imageCanvas(sources.get(page.source),1800);
     if(epoch!==photoEpoch||!$("photoDialog").open){raw.width=raw.height=1;return;}
