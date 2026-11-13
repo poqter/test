@@ -35,7 +35,7 @@ def render_pdf_review(data, token, basic_only=True):
     if basic_only:
         from modules.consultation.analyzer_model import DEFAULT_COVERAGES
         data=copy.deepcopy(data)
-        data['coverages']=[r for r in data['coverages'] if r['label'] in DEFAULT_COVERAGES]
+        data['coverages']=[r for r in data['coverages'] if r['label'] in DEFAULT_COVERAGES or r['label'] == '일반사망']
     active={r['label'] for r in data['coverages']}
     relevant=[r for r in data['details'] if active.intersection(r['targets']) and r['reason']!='직접 분류']
     st.info(f"KB PDF 검토 · 조회일 {data['source_date']} · 납입 추정 기준월 {data['calculation_month']} · 계약 {len(data['contracts'])}건")
