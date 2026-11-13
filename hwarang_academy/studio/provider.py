@@ -111,8 +111,19 @@ class OpenAIProvider:
         if voice not in ('alloy','nova','onyx','coral','sage'):raise ValueError('지원하지 않는 목소리입니다.')
         if not text.strip() or len(text)>2000:raise ValueError('재생할 문장 길이를 확인해 주세요.')
         response=self._post('audio/speech',json={'model':self.config.speech_model,'input':text,'voice':voice,
-            'response_format':'wav','instructions':'자연스러운 한국어 고객 대화. 과장하지 마세요. '+{'calm':'차분하고 편안하게 말하세요.','cautious':'신중하게 잠깐씩 쉬어 말하세요.','terse':'짧고 담백하게 말하세요.','questioning':'질문하는 의도를 또렷하게 표현하세요.','senior':'여유 있는 속도로 또렷하게 말하세요.'}.get(style,'차분하게 말하세요.')})
-        data=response.content
-        try:seconds=wav_seconds(data)
-        except ValueError as exc:raise ProviderError('생성된 음성 길이를 확인하지 못했습니다.') from exc
+            'response_format':'pcm','instructions':'자연스러운 한국어 고객 대화. 과장하지 마세요. '+{'calm':'차분하고 편안하게 말하세요.','cautious':'신중하게 잠깐씩 쉬어 말하세요.','terse':'짧고 담백하게 말하세요.','questioning':'질문하는 의도를 또렷하게 표현하세요.','senior':'여유 있는 속도로 또렷하게 말하세요.'}.get(style,'차분하게 말하세요.')})
+        samples = response.content
+        # OpenAI PCM is signed 16-bit little-endian audio at 24 kHz.
+        sample_rate, sample_width = 24000, 2
+        content_type = response.headers.get('Content-Type', '').split(';', 1)[0].strip().lower()
+        if (content_type not in ('application/octet-stream', 'audio/pcm', 'audio/x-pcm')
+                or not 0 < len(samples) <= 180 * sample_rate * sample_width
+                or len(samples) % sample_width):
+            raise ProviderError('생성된 음성 길이를 확인하지 못했습니다.')
+        seconds = math.ceil(len(samples) / (sample_rate * sample_width))
+        output = io.BytesIO()
+        with wave.open(output, 'wb') as audio:
+            audio.setparams((1, sample_width, sample_rate, 0, 'NONE', 'not compressed'))
+            audio.writeframes(samples)
+        data = output.getvalue()
         return {'result':{'audio_generated':True},'audio':data,'seconds':seconds,'usage':{},'model':self.config.speech_model}
