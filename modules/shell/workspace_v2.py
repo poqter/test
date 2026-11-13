@@ -237,7 +237,7 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
 # Home tabs only change the visible tool set; registered destinations and permissions stay authoritative.
 _HOME_TOPICS = (
     ("고객 상담", "CUSTOMER CONSULTING", "고객 상담을 준비하세요", "보장을 살펴보고, 고객에게 맞는 제안을 정리합니다.",
-     ("analyzer", "remodeling", "consultation_helper", "coverage_proposal", "comparison_builder", "insurance_claim_guide", "surgery_search")),
+     ("analyzer", "remodeling", "consultation_helper", "coverage_proposal", "comparison_builder", "insurance_claim_guide", "surgery_search", "image_to_pdf")),
     ("보험 비교 · 계산", "COMPARE & CALCULATE", "선택지를 명확하게 비교하세요", "보장과 숫자를 나란히 놓고 판단할 수 있습니다.",
      ("silson_generation_comparison", "quick_calculators", "deposit_vs_shortpay", "renewal_vs_nonrenewal", "inheritance_tax")),
     ("실적 관리", "PERFORMANCE MANAGEMENT", "업무 결과를 한눈에 확인하세요", "실적과 수수료를 정리하고 흐름을 살펴봅니다.",
@@ -267,6 +267,7 @@ _HOME_ICON_STYLES = {
 
 
 _PREMIUM_EMOJI = {
+    "image_to_pdf": "📄",
     "analyzer": "🛡️", "remodeling": "🔄", "consultation_helper": "💬",
     "surgery_search": "🔎", "coverage_proposal": "📈", "comparison_builder": "📊", "insurance_claim_guide": "📋", "silson_generation_comparison": "🔍",
     "quick_calculators": "🧮", "deposit_vs_shortpay": "🌱", "renewal_vs_nonrenewal": "⚖️",
@@ -276,6 +277,7 @@ _PREMIUM_EMOJI = {
 
 
 _HOME_SHORT_COPY = {
+ 'image_to_pdf':'PDF·이미지 병합·압축·분할 저장',
  'analyzer':'보험사 자료를 고객용 보장분석으로 변환', 'remodeling':'변경안을 비교하고 고객용 엑셀 제작',
  'surgery_search':'수술명으로 1~3종·1~5종 참고 분류 검색','coverage_proposal':'현재 보험과 추천 제안 비교','consultation_helper':'고객에게 필요한 상담 질문 구성','comparison_builder':'가입안별 보험료·보장을 PDF로 비교',
  'insurance_claim_guide':'청구 서류와 관련 담보 확인','silson_generation_comparison':'세대별 보장 차이 확인',

@@ -50,6 +50,7 @@ PERMISSIONS: Final[tuple[PermissionSpec, ...]] = (
 PERMISSION_BY_CODE: Final = {item.code: item for item in PERMISSIONS}
 
 WORKSPACE_APP_PERMISSION: Final[dict[str, str]] = {
+    "image_to_pdf": "workspace.customer_materials",
     "sales_activity": "workspace.sales_activity",
     "briefing": "workspace.briefing",
     "consultation_helper": "workspace.consultation",
