@@ -86,3 +86,31 @@ class TestKBPDF(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+
+
+def test_kb_general_death_is_exported_above_illness_death():
+    raw = fixture()
+    raw['contracts'][0]['rows'].append(
+        dict(number=2, kind='정액', raw='일반사망', standard='일반사망', value=3000, page=7)
+    )
+    data = convert_kb(raw, '2026-01')
+    payload, _, _ = build_analysis_from_data(data)
+    workbook = load_workbook(BytesIO(payload))
+    sheet = workbook['보장 분석']
+    for row in range(1, sheet.max_row):
+        if sheet.cell(row, 3).value == '일반 사망':
+            assert sheet.cell(row, 4).value == 3000
+            assert sheet.cell(row + 1, 3).value == '질병 사망'
+            break
+    else:
+        raise AssertionError('일반 사망 행 누락')
+
+
+def test_bundled_workbook_has_automatic_selection():
+    from modules.consultation.analyzer_model import DEFAULT_COVERAGES, parse_source_file
+    from modules.consultation.analyzer_sample import sample_workbook
+
+    data = parse_source_file(sample_workbook())
+    assert {'일반암', '질병입원'} <= {
+        item['label'] for item in data['coverages'] if item['label'] in DEFAULT_COVERAGES
+    }
