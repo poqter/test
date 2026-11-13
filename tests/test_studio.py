@@ -164,3 +164,28 @@ def test_terminal_rejection_releases_credit_without_recording_turn(runtime):
  rt.provider.generate.side_effect=None
  out=rt.send(saved,'보험료가 얼마인가요?')
  assert len(out['turns'])==1 and rt.provider.generate.call_count==2
+
+
+def test_speech_wraps_pcm_in_wav_with_measured_duration():
+ samples = b'\x01\x00' * 24001
+ http = Mock()
+ http.post.return_value = Mock(status_code=200, headers={'Content-Type': 'application/octet-stream'}, content=samples)
+ result = OpenAIProvider(Config(api_key='test'), http).speak('가상 고객 응답', 'alloy')
+ assert http.post.call_args.kwargs['json']['response_format'] == 'pcm'
+ assert result['seconds'] == wav_seconds(result['audio']) == 2
+ with wave.open(io.BytesIO(result['audio']), 'rb') as audio:
+  assert audio.getframerate() == 24000
+  assert audio.readframes(audio.getnframes()) == samples
+
+
+@pytest.mark.parametrize('content_type,samples', [
+ ('application/json', b'{}'),
+ ('audio/pcm', b''),
+ ('audio/pcm', b'\x00'),
+ ('audio/pcm', b'\x00\x00' * (180 * 24000 + 1)),
+])
+def test_speech_rejects_invalid_pcm(content_type, samples):
+ http = Mock()
+ http.post.return_value = Mock(status_code=200, headers={'Content-Type': content_type}, content=samples)
+ with pytest.raises(ProviderError, match='음성 길이'):
+  OpenAIProvider(Config(api_key='test'), http).speak('가상 고객 응답', 'alloy')
