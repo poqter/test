@@ -491,7 +491,7 @@ def _source_type_from_insurer(insurer: str, insurer_code: str = "") -> str:
     return "손보"
 
 def _month_from_filename(filename: str) -> str:
-    patterns = [r"(20\d{2})[._년\-\s]*(0?[1-9]|1[0-2])\s*월", r"(20\d{2})[._\-](0?[1-9]|1[0-2])"]
+    patterns = [r"(20\d{2})[._년\-\s]*(0?[1-9]|1[0-2])\s*월", r"(20\d{2})[._\-](1[0-2]|0?[1-9])(?!\d)"]
     for pattern in patterns:
         match = re.search(pattern, filename)
         if match:
