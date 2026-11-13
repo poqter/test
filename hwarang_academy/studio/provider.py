@@ -5,6 +5,9 @@ import requests
 from jsonschema import validate
 from .contracts import CUSTOMER, COACH, EVALUATOR, INSTRUCTIONS
 
+SPEECH_BUILD = "pcm-wav-v2"
+
+
 class ProviderError(RuntimeError):
     def __init__(self,message,*,uncertain=True,response=None):
         super().__init__(message);self.uncertain=uncertain;self.response=response
@@ -116,10 +119,22 @@ class OpenAIProvider:
         # OpenAI PCM is signed 16-bit little-endian audio at 24 kHz.
         sample_rate, sample_width = 24000, 2
         content_type = response.headers.get('Content-Type', '').split(';', 1)[0].strip().lower()
-        if (content_type not in ('application/octet-stream', 'audio/pcm', 'audio/x-pcm')
-                or not 0 < len(samples) <= 180 * sample_rate * sample_width
-                or len(samples) % sample_width):
-            raise ProviderError('생성된 음성 길이를 확인하지 못했습니다.')
+        reason = None
+        if content_type not in ('application/octet-stream', 'audio/pcm', 'audio/x-pcm'):
+            reason = 'format'
+        elif not samples:
+            reason = 'empty'
+        elif len(samples) % sample_width:
+            reason = 'sample-alignment'
+        elif len(samples) > 180 * sample_rate * sample_width:
+            reason = 'duration-limit'
+        if reason:
+            raise ProviderError(
+                f'생성된 음성을 재생할 수 없습니다. 진단: {SPEECH_BUILD}/{reason}',
+                uncertain=False,
+                response={'result': {'_rejected': True, 'reason': reason},
+                          'usage': {}, 'model': self.config.speech_model},
+            )
         seconds = math.ceil(len(samples) / (sample_rate * sample_width))
         output = io.BytesIO()
         with wave.open(output, 'wb') as audio:

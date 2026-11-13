@@ -27,7 +27,9 @@ st.set_page_config(
 )
 
 if st.query_params.get("stability_health") == "1":
-    st.code("HWARANG_UI_RELEASE=" + PLATFORM_BUILD_ID)
+    from hwarang_academy.studio.provider import SPEECH_BUILD
+
+    st.code("HWARANG_UI_RELEASE=" + PLATFORM_BUILD_ID + "\nHWARANG_STUDIO_SPEECH=" + SPEECH_BUILD)
     st.stop()
 
 
