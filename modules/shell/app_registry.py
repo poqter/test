@@ -61,6 +61,7 @@ APPS: Final[tuple[AppSpec, ...]] = (
     AppSpec("comparison_builder", "고객용 비교표 제작기", "materials", "가입안별 보험료·보장을 비교하고 고객용 PDF로 전달합니다.", ("비교표", "가입안", "보험료", "PDF"), "modules.consultation.comparison_builder", icon_key="materials", order=90, source_status="stage5"),
     AppSpec("insurance_claim_guide", "보험금 청구 가이드", "materials", "청구 항목별 필요서류를 확인하고 관련 담보를 찾습니다.", ("청구서류", "진단서", "보험금", "안내문"), "modules.consultation.insurance_claim_guide", icon_key="claim", order=100),
     AppSpec("academy", "화랑 ACADEMY", "education", "교육·실습·평가·상담 시뮬레이션을 별도 아카데미에서 진행합니다.", ("교육", "아카데미", "실습", "상담 시뮬레이터", "신입", "평가", "인증", "성장"), "academy_app", icon_key="education", order=110, source_status="standalone", external_app_key="academy_url"),
+    AppSpec("image_to_pdf", "PDF·이미지 도구", "materials", "PDF와 이미지를 편집·압축하고 하나 또는 여러 파일로 저장합니다.", ("PDF", "이미지", "합치기", "분할", "압축", "ZIP", "유틸"), "modules.resources.image_to_pdf", icon_key="materials", order=106, source_status="v2"),
     AppSpec("surgery_search", "수술명·수술종별 검색", "materials", "수술명으로 1~3종·1~5종 참고 분류를 검색합니다.", ("수술", "종수술", "수술명", "수술비", "분류"), "modules.resources.surgery_search", icon_key="medical", order=105, source_status="v1"),
     AppSpec("insurer_portal", "원수사·공식자료 포털", "official", "보험사 전산·연락처·서식과 공식기관 자료를 찾습니다.", ("전산", "원수사", "보험사", "서식", "공공사이트", "콜센터", "포털"), "modules.resources.insurer_portal", icon_key="official", order=120, source_status="stage7"),
     AppSpec("convention", "컨벤션 계산기", "performance", "계약 실적을 환산하고 컨벤션 달성 여부를 확인합니다.", ("실적", "달성", "컨벤션", "환산"), "modules.performance.convention", icon_key="performance", order=130),
@@ -77,9 +78,9 @@ _ALL = frozenset(APP_IDS)
 ROLE_PERMISSIONS: Final[Mapping[str, frozenset[str]]] = MappingProxyType({
     "Admin": _ALL,
     "Manager1": _ALL,
-    "Basic": frozenset({"sales_activity", "briefing", "analyzer", "insurer_portal", "insurance_claim_guide", "surgery_search", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "coverage_proposal", "academy"}),
-    "Crew": frozenset({"sales_activity", "briefing", "analyzer", "deposit_vs_shortpay", "renewal_vs_nonrenewal", "insurer_portal", "insurance_claim_guide", "surgery_search", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "coverage_proposal", "academy"}),
-    "Dream": frozenset({"sales_activity", "briefing", "analyzer", "remodeling", "deposit_vs_shortpay", "renewal_vs_nonrenewal", "inheritance_tax", "insurer_portal", "insurance_claim_guide", "surgery_search", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "coverage_proposal", "academy"}),
+    "Basic": frozenset({"image_to_pdf", "sales_activity", "briefing", "analyzer", "insurer_portal", "insurance_claim_guide", "surgery_search", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "coverage_proposal", "academy"}),
+    "Crew": frozenset({"image_to_pdf", "sales_activity", "briefing", "analyzer", "deposit_vs_shortpay", "renewal_vs_nonrenewal", "insurer_portal", "insurance_claim_guide", "surgery_search", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "coverage_proposal", "academy"}),
+    "Dream": frozenset({"image_to_pdf", "sales_activity", "briefing", "analyzer", "remodeling", "deposit_vs_shortpay", "renewal_vs_nonrenewal", "inheritance_tax", "insurer_portal", "insurance_claim_guide", "surgery_search", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "coverage_proposal", "academy"}),
 })
 
 # Search aliases are static public labels only. Customer input never enters this index.
