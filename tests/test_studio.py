@@ -187,5 +187,7 @@ def test_speech_wraps_pcm_in_wav_with_measured_duration():
 def test_speech_rejects_invalid_pcm(content_type, samples):
  http = Mock()
  http.post.return_value = Mock(status_code=200, headers={'Content-Type': content_type}, content=samples)
- with pytest.raises(ProviderError, match='음성 길이'):
+ with pytest.raises(ProviderError, match='pcm-wav-v2/') as error:
   OpenAIProvider(Config(api_key='test'), http).speak('가상 고객 응답', 'alloy')
+ assert not error.value.uncertain
+ assert error.value.response['result']['_rejected'] is True
