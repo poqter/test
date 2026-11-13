@@ -39,19 +39,22 @@
             hidden
         /></label>
         <p class="subtle">
-          큰 이미지는 자동 압축합니다. 새로고침·메뉴 이동 시 현재 작업은
-          사라집니다.
+          큰 이미지는 자동 압축합니다. 파일은 서버에 보관하지 않습니다. 브라우저 종료 시 작업은 사라집니다.
         </p>
+        <label class="insertControl">추가 위치<select id="insertAt"><option value="end">맨 뒤</option><option value="before">선택한 페이지 앞</option><option value="after">선택한 페이지 뒤</option></select></label>
         <div id="sources" class="sources"></div>
         <div class="toolbar">
           <strong id="count">파일을 추가해 주세요</strong>
           <div>
             <button id="selectAll">전체 선택</button
-            ><button id="excludeAll">전체 제외</button
+            ><button id="excludeAll">선택 해제</button
             ><button id="undo" disabled>↶ 실행 취소</button
             ><button id="redo" disabled>↷ 다시 실행</button>
           </div>
         </div>
+        <div class="rangeSelect"><label>페이지 범위<input id="range" placeholder="예: 1–5, 8, 12" /></label><button id="selectRange">범위 선택</button></div>
+        <div id="batch" class="batch" hidden><strong id="batchCount"></strong><button id="batchFront">맨 앞으로</button><button id="batchBack">맨 뒤로</button><label>이 페이지 앞<input id="moveBefore" type="number" min="1" value="1" /></label><button id="batchMove">이동</button><button id="batchRotate">↻ 선택 회전</button><button id="batchExclude">저장에서 제외</button><button id="batchInclude">다시 포함</button><label>그룹 이름<input id="groupName" list="groupPresets" placeholder="직접 입력 또는 선택" maxlength="50" /></label><datalist id="groupPresets"><option value="청구서"><option value="진료비 영수증"><option value="세부내역서"><option value="진단·확인서"><option value="기타"></datalist><button id="batchGroup">그룹 만들기</button><button id="batchUngroup">그룹 해제</button></div>
+        <div id="groupSummary"></div>
         <div id="pages" class="grid"></div>
         <div id="empty" class="empty">
           제안서와 사진을 함께 올려보세요.<br /><small
@@ -65,12 +68,12 @@
           >저장 방식<select id="mode">
             <option value="merge">하나로 합치기</option>
             <option value="pages">페이지별 저장 · ZIP</option>
-            <option value="groups">그룹별 저장 · ZIP</option>
+            <option value="groups">그룹별 저장 · ZIP</option><option value="size">용량별 분할 · ZIP</option>
           </select></label
         ><label
           >파일명<input
             id="filename"
-            value="고객_상담자료"
+            value="청구서류"
             maxlength="80" /></label
         ><label
           >목표 용량 · PDF 한 개당<select id="target">
@@ -110,6 +113,7 @@
             사라질 수 있습니다. 생성 후 화질을 확인해 주세요.
           </p>
         </details>
+        <label class="check"><input id="useGroupNames" type="checkbox" checked />파일명에 그룹명 포함</label>
         <div id="dirty" class="subtle"></div>
         <button id="generate" class="primary" disabled>결과 만들기</button>
         <p class="subtle">생성 후 실제 용량과 최종 순서를 확인합니다.</p>
@@ -123,7 +127,7 @@
         </div>
         <button id="back">← 편집으로 돌아가기</button>
       </div>
-      <div id="results"></div>
+      <div id="sizeSummary" class="sizeSummary"></div><div id="results"></div><div id="downloadStatus" role="status"></div>
       <div class="toolbar">
         <strong id="zipSize"></strong
         ><button id="download" class="primary">다운로드</button>
@@ -135,6 +139,7 @@
         <strong id="viewTitle">페이지 확인</strong
         ><button id="closeView" aria-label="닫기">닫기 ✕</button>
       </div>
+      <div class="toolbar"><button id="viewPrev">← 이전 페이지</button><span id="viewPosition"></span><button id="viewNext">다음 페이지 →</button><button id="viewRotate">↻ 회전</button><button id="viewInclude">저장에서 제외</button><button id="viewPhoto">사진 보정</button></div>
       <div class="toolbar">
         <label
           >확대
@@ -161,6 +166,8 @@
         </section>
       </div>
     </dialog>
+    <dialog id="duplicateDialog"><h2>동일한 파일이 있습니다</h2><p id="duplicateName"></p><p>파일명이 달라도 내용이 같으면 중복으로 표시합니다.</p><div class="toolbar"><button id="duplicateSkip" class="primary">기존 파일 유지 · 새 파일 제외</button><button id="duplicateKeep">둘 다 유지</button></div></dialog>
+    <dialog id="photoDialog"><div class="toolbar"><h2>사진 문서 보정</h2><button id="photoClose">닫기 ✕</button></div><p>네 모서리를 문서에 맞추세요. 자동 제안은 적용 전에 반드시 확인해 주세요.</p><div class="toolbar"><button id="autoEdges">자동 테두리 찾기</button><button id="fullEdges">사진 전체 선택</button><button id="photoRestore">원본으로 되돌리기</button></div><div id="photoStatus" role="status"></div><div class="photoGrid"><section><h3>원본 · 모서리 조정</h3><canvas id="edgeCanvas" aria-label="문서 테두리 조정"></canvas><div id="cornerInputs"></div></section><section><h3>보정 미리보기</h3><canvas id="photoPreview"></canvas></section></div><div class="photoControls"><label>기울기 <input id="photoAngle" type="range" min="-15" max="15" step="0.5" value="0" /><output id="angleValue">0°</output></label><label>밝기<input id="photoBrightness" type="range" min="-60" max="60" value="0" /><output id="brightnessValue">0</output></label><label>대비<input id="photoContrast" type="range" min="-50" max="80" value="0" /><output id="contrastValue">0</output></label></div><div class="toolbar"><span>원본 파일은 변경하지 않습니다.</span><button id="photoApply" class="primary">보정 적용</button></div></dialog>
     <div id="busy" hidden role="status">
       <div>
         <span class="spinner"></span><strong id="progress">처리 중…</strong

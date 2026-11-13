@@ -42,7 +42,7 @@ def test_local_assets_and_route():
     for name in ['index.html','app.js','style.css','vendor/pdf-lib.min.js','vendor/pdf.min.mjs','vendor/pdf.worker.min.mjs','vendor/jszip.min.js','vendor/cmaps/UniKS-UCS2-H.bcmap','vendor/standard_fonts/LiberationSans-Regular.ttf']:
         assert (root/name).is_file(), name
     source = (root/'app.js').read_text()
-    assert 'streamlit:setComponentValue' not in source
+    assert 'value: {hasWork: dirty}' in source
     assert 'localStorage' not in source
     assert 'sessionStorage' not in source
 
@@ -63,3 +63,20 @@ render_home(['image_to_pdf'], navigate, {})
     assert len(buttons) == 2
     next(b for b in buttons if '열기' in b.label).click().run()
     assert app.session_state['active_app'] == 'image_to_pdf'
+
+
+def test_work_in_browser_requires_navigation_decision(monkeypatch):
+    monkeypatch.setattr(navigation, 'allowed_ids', lambda role: ['image_to_pdf'])
+    state = {'login_user': 'Admin', 'active_app': 'image_to_pdf', 'ws_allowed_ids': ['image_to_pdf'], 'pdf_tools_component_key': 'pdf_test', 'pdf_test': {'hasWork': True}}
+    assert navigation.navigate('home', state=state) == 'image_to_pdf'
+    assert state['active_app'] == 'image_to_pdf'
+    assert state['pdf_tools_pending_navigation']['page'] == 'home'
+    state['pdf_tools_leave_confirmed'] = True
+    assert navigation.navigate('home', state=state) == 'home'
+    assert 'pdf_tools_pending_navigation' not in state
+
+
+def test_revoked_pdf_access_does_not_block_navigation(monkeypatch):
+    monkeypatch.setattr(navigation, 'allowed_ids', lambda role: [])
+    state = {'active_app': 'image_to_pdf', 'ws_allowed_ids': [], 'pdf_tools_component_key': 'pdf_test', 'pdf_test': {'hasWork': True}}
+    assert navigation.navigate('home', state=state) == 'home'

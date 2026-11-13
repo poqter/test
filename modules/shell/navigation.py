@@ -76,6 +76,23 @@ def navigate(
     session = st.session_state if state is None else state
     role = session.get("login_user")
     target = normalize_route(page_id, role, allowed=session.get("ws_allowed_ids"))
+    # Only this browser-local editor needs a discard decision. Authorization
+    # remains authoritative: a revoked tool must never be kept open by this guard.
+    component_key = session.get("pdf_tools_component_key", "")
+    work = (session.get(component_key) or {}) if component_key else {}
+    leaving_pdf = session.get("active_app") == "image_to_pdf" and target != "image_to_pdf"
+    confirmed = session.pop("pdf_tools_leave_confirmed", False)
+    pdf_allowed = "image_to_pdf" in session.get("ws_allowed_ids", allowed_ids(role))
+    if leaving_pdf and isinstance(work, dict) and work.get("hasWork") and pdf_allowed and not confirmed:
+        session["pdf_tools_pending_navigation"] = {"page": target, "mode": mode}
+        if rerun is None and state is None:
+            st.rerun()
+        elif rerun is not None:
+            rerun()
+        return "image_to_pdf"
+    if leaving_pdf:
+        session.pop("pdf_tools_pending_navigation", None)
+        session.pop("pdf_tools_component_key", None)
     save_legacy_draft(str(session.get("active_app", "home")), state=session)
     from modules.shared.runtime_cache import clear_scope
     old_page = str(session.get("active_app", "home"))
