@@ -2,12 +2,15 @@
 from copy import deepcopy
 from hashlib import sha256
 import json
+import logging
 from time import perf_counter
 from . import domain as d
 from .conversation import explicit_close, closing_result, guard_response
 from .provider import ProviderError, wav_seconds
 from modules.shared.ai_guardrails import (reserve_ai_request, start_ai_request, finalize_ai_request,
     reserve_voice_request, finalize_voice_request, release_ai_session)
+
+logger = logging.getLogger(__name__)
 
 class PendingRequest(RuntimeError):pass
 
@@ -136,9 +139,14 @@ class Runtime:
         if role=='COACH':context['_practice_report']=True
         key,env=self.invoke(s,role,context)
         out=deepcopy(s)
-        try:out['report']=d.validate_report(out,env['result'])
-        except ValueError:
-            out['report']={'rows':[],'status':'評価 근거 확인 필요'.replace('評価','평가'),'total_score':None,
+        try:
+            out['report'] = d.validate_report(out, env['result'])
+        except d.ReportValidationError as exc:
+            logger.warning(
+                'Studio report validation failed: session_id=%s mode=%s reason=%s',
+                s['id'], s['mode'], exc.code,
+            )
+            out['report']={'rows':[],'status':'평가 근거 확인 필요','total_score':None,
                            'notice':'AI 피드백의 근거를 검증하지 못했습니다. 자동 재호출하지 않습니다.'}
         return self._save(out,key,env)
     def transcribe(self,s,audio):

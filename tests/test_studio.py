@@ -57,6 +57,15 @@ def test_evidence():
  assert d.validate_report(s,report())['total_score'] is None
  r=report();r['rows'][0]['evidence'][0]['quote']='없는 말'
  with pytest.raises(ValueError):d.validate_report(s,r)
+def test_duplicate_evaluation_criterion_is_rejected():
+ s=session(mode='ASSESSMENT')
+ d.apply_turn(s,'안녕하세요',response())
+ d.end_session(s,'user')
+ r=report()
+ r['rows'].append(deepcopy(r['rows'][0]))
+ with pytest.raises(ValueError,match='평가 항목이 일치하지 않습니다'):
+  d.validate_report(s,r)
+
 def test_share_projection():
  s=session();d.apply_turn(s,'안녕하세요',response());d.end_session(s,'user');s['report']=report()
  shared=d.share_payload(s,['summary']);assert '안녕하세요' not in json.dumps(shared,ensure_ascii=False) and 'transcript' not in shared
@@ -108,6 +117,40 @@ def runtime(monkeypatch):
  monkeypatch.setattr(m,'release_ai_session',lambda *a,**k:None)
  provider=Mock();provider.config=Config();provider.generate.return_value={'result':response(),'usage':{},'model':'test'}
  return Runtime(MemoryRepo(),provider),calls
+@pytest.mark.parametrize('reason', [
+ 'duplicate_criterion', 'criterion_set_mismatch', 'invalid_evidence_turn',
+ 'evidence_quote_mismatch', 'missing_evidence',
+])
+def test_evaluation_validation_logs_reason_and_does_not_retry(runtime, caplog, reason):
+ rt, calls = runtime
+ s = session(mode='ASSESSMENT')
+ d.apply_turn(s, '안녕하세요. 가상 발화 원문입니다.', response())
+ d.end_session(s, 'user')
+ result = report()
+ row = result['rows'][0]
+ if reason == 'duplicate_criterion':
+  result['rows'].append(deepcopy(row))
+ elif reason == 'criterion_set_mismatch':
+  result['rows'].pop()
+ elif reason == 'invalid_evidence_turn':
+  row['evidence'][0]['turn'] = 2
+ elif reason == 'evidence_quote_mismatch':
+  row['evidence'][0]['quote'] = '잘못된 근거 인용문'
+ else:
+  row['evidence'] = []
+ rt.provider.generate.return_value = {'result': result, 'usage': {}, 'model': 'test'}
+
+ saved = rt.evaluate(s)
+
+ assert saved['report']['status'] == '평가 근거 확인 필요'
+ assert rt.evaluate(saved) is saved
+ assert rt.provider.generate.call_count == 1
+ assert len(calls) == 1
+ assert f'session_id={s["id"]} mode=ASSESSMENT reason={reason}' in caplog.text
+ assert '가상 발화 원문' not in caplog.text
+ assert '잘못된 근거 인용문' not in caplog.text
+
+
 def test_duplicate(runtime):
  rt,calls=runtime;s=session();a=rt.send(s,'안녕하세요');b=rt.send(s,'안녕하세요')
  assert rt.provider.generate.call_count==1 and len(calls)==1 and a['turns']==b['turns']

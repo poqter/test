@@ -184,16 +184,30 @@ def report_context(s):
             'hint_count':len(s['hints']), 'retry_count':len(s['attempts'])}
 
 
+class ReportValidationError(ValueError):
+    def __init__(self, code, message):
+        super().__init__(message)
+        self.code = code
+
+
 def validate_report(s, report):
-    rows={r['criterion']:r for r in report['rows']}
-    if set(rows)!=set(CRITERIA):raise ValueError('평가 항목이 일치하지 않습니다.')
-    texts={t['number']:t['text'] for t in s['turns'] if t['number']>s.get('baseline_turns',0)}
-    for r in rows.values():
-        for e in r['evidence']:
-            if e['turn'] not in texts or not e['quote'].strip() or e['quote'] not in texts[e['turn']]:
-                raise ValueError('평가 근거가 실제 대화와 일치하지 않습니다.')
-        if r['level']!='not_observed' and not r['evidence']:
-            raise ValueError('평가 근거가 없는 항목은 점수를 부여할 수 없습니다.')
+    criteria = [row['criterion'] for row in report['rows']]
+    if len(criteria) != len(set(criteria)):
+        raise ReportValidationError('duplicate_criterion', '평가 항목이 일치하지 않습니다.')
+    if set(criteria) != set(CRITERIA):
+        raise ReportValidationError('criterion_set_mismatch', '평가 항목이 일치하지 않습니다.')
+
+    texts = {t['number']: t['text'] for t in s['turns'] if t['number'] > s.get('baseline_turns', 0)}
+    for row in report['rows']:
+        for evidence in row['evidence']:
+            turn = evidence['turn']
+            quote = evidence['quote']
+            if turn not in texts:
+                raise ReportValidationError('invalid_evidence_turn', '평가 근거가 실제 대화와 일치하지 않습니다.')
+            if not quote.strip() or quote not in texts[turn]:
+                raise ReportValidationError('evidence_quote_mismatch', '평가 근거가 실제 대화와 일치하지 않습니다.')
+        if row['level'] != 'not_observed' and not row['evidence']:
+            raise ReportValidationError('missing_evidence', '평가 근거가 없는 항목은 점수를 부여할 수 없습니다.')
     report['retrain_turns']=[n for n in report['retrain_turns'] if n in texts][:3]
     report['total_score']=None
     report['status']='평가 미완료·재응시 필요' if s['end_reason']=='offtrack' else ('평가 자료 부족' if len(texts)<3 else '피드백 완료')
