@@ -128,8 +128,9 @@ def test_ui_navigation_filters_and_batch_preserve_selected_evidence():
     assert app.session_state['ops_selected']=='github:8'
     text=next(x.value for x in app.text_area if x.label=='요청문 미리보기')
     assert 'Foundation checks' in text and '[문제 github:8]' in text
-    app.multiselect[0].set_value(['github:7','github:8']).run()
+    assert 'Foundation checks' not in app.multiselect[0].options
+    app.multiselect[0].set_value(['github:7']).run()
     assert not app.exception
-    assert any('[문제 github:7]' in c.value and '[문제 github:8]' in c.value for c in app.code)
+    assert any('[문제 github:7]' in c.value and '[문제 github:8]' not in c.value for c in app.code)
     next(b for b in app.button if b.label=='최신 상태 조회').click().run()
     assert not app.exception and app.session_state['ops_selected']=='github:8'
