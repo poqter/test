@@ -3,6 +3,14 @@ from pathlib import Path
 import socket,subprocess,sys,time
 from playwright.sync_api import sync_playwright,expect
 ROOT=Path(__file__).resolve().parents[2]
+def open_references(record):
+    summary = record.locator('summary').filter(has_text='일정·집계·참고 자료')
+    expect(summary).to_have_count(1)
+    if not summary.evaluate("(element) => element.parentElement.open"):
+        summary.click()
+    expect(summary.locator('..')).to_have_attribute('open', '')
+
+
 server=subprocess.Popen([sys.executable,'-m','streamlit','run',str(ROOT/'tests/activity_ui/harness.py'),'--server.headless=true','--server.port=8507','--server.address=127.0.0.1','--browser.gatherUsageStats=false'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 try:
     for _ in range(150):
@@ -32,16 +40,18 @@ try:
             record.get_by_label('지원받을 내용',exact=True).press('Tab')
             expect(record.get_by_label('지원받을 내용',exact=True)).to_be_visible()
             if mobile:
-                record.get_by_text('일정·집계·참고 자료',exact=True).click()
+                open_references(record)
                 expect(record.locator('.st-key-daily_inputs').get_by_role('spinbutton')).to_have_count(6)
-                record.get_by_role('button',name='상담 테스트',exact=True).click()
+                event = record.get_by_role('button', name='상담 테스트', exact=True)
+                expect(event).to_be_visible(timeout=10000)
+                event.click()
                 dlg=page.get_by_role('dialog')
                 expect(dlg).to_be_visible()
                 dlg.get_by_role('button',name='✕',exact=True).click()
                 expect(dlg).not_to_be_visible()
                 page.wait_for_timeout(700) # Native dialog close completes an app run.
                 full_runs=page.get_by_text('전체 실행 횟수',exact=False).inner_text()
-                record.get_by_text('일정·집계·참고 자료',exact=True).click()
+                open_references(record)
                 expect(field).to_have_value('7')
                 expect(note).to_have_value('일정 참고 후에도 유지할 내용')
                 inputs=record.locator('[data-testid="stNumberInput"]')
@@ -72,17 +82,17 @@ try:
             assert page.evaluate('!!window.__hwarangDailyLayout')
 
             if mobile:
-                record.get_by_text('일정·집계·참고 자료',exact=True).click()
+                open_references(record)
             record.get_by_role('button',name='✓ 완료',exact=True).click()
             expect(record.get_by_role('button',name='✓ 완료',exact=True)).to_have_count(0)
             expect(page.get_by_role('dialog')).to_have_count(0)
             if mobile:
-                record.get_by_text('일정·집계·참고 자료',exact=True).click()
+                open_references(record)
             expect(field).to_have_value('7')
             expect(note).to_have_value('일정 참고 후에도 유지할 내용')
-            if mobile:
-                record.get_by_text('일정·집계·참고 자료',exact=True).click()
-            record.get_by_role('button',name='상담 테스트',exact=True).click()
+            event = record.get_by_role('button', name='상담 테스트', exact=True)
+            expect(event).to_be_visible(timeout=10000)
+            event.click()
             page.get_by_role('button',name='완료 · 결과 처리',exact=True).click()
             page.get_by_role('radio',name='연기',exact=True).click()
             expect(page.get_by_label('새 일정 시작 시간',exact=True)).to_be_visible()
