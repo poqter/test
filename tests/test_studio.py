@@ -135,6 +135,8 @@ class MemoryRepo:
  def update(self,k,status,request=None,result=None):
   self.ops[k].update(status=status,request_id=request)
   if result is not None:self.ops[k]['result']=result
+ def load(self, sid):
+  return deepcopy(next(s for s in reversed(self.saved) if s["id"] == sid))
  def save(self,s,k=None):
   s=deepcopy(s);s['version']+=1;self.saved.append(s);return s
 @pytest.fixture
@@ -170,15 +172,47 @@ def test_evaluation_validation_logs_reason_and_does_not_retry(runtime, caplog, r
   row['evidence'] = []
  rt.provider.generate.return_value = {'result': result, 'usage': {}, 'model': 'test'}
 
+ rt.repo.settle_report = Mock(side_effect=lambda state, key, reason: rt.repo.save(state, key))
  saved = rt.evaluate(s)
 
+ assert rt.repo.settle_report.call_args.args[2] == reason
+ assert next(iter(rt.repo.ops.values()))['status'] == 'received'
  assert saved['report']['status'] == '평가 근거 확인 필요'
  assert rt.evaluate(saved) is saved
  assert rt.provider.generate.call_count == 1
- assert len(calls) == 1
+ assert calls == []
  assert f'session_id={s["id"]} mode=ASSESSMENT reason={reason}' in caplog.text
  assert '가상 발화 원문' not in caplog.text
  assert '잘못된 근거 인용문' not in caplog.text
+
+
+def test_official_evaluation_three_turns_recovers_saved_response(runtime):
+ rt, calls = runtime
+ s = session(mode='ASSESSMENT')
+ rt.provider.generate.side_effect = [
+  {'result': response(), 'usage': {}, 'model': 'test'} for _ in range(3)
+ ] + [{'result': report(), 'usage': {}, 'model': 'test'}]
+ for text in ('안녕하세요. 통화 가능하실까요?', '어떤 점이 가장 걱정되세요?', '목요일에 다시 통화할까요?'):
+  s = rt.send(s, text)
+ d.end_session(s, 'user')
+ s = rt.repo.save(s)
+ rt.repo.settle_report = Mock(side_effect=RuntimeError('DB unavailable'))
+ with pytest.raises(RuntimeError, match='DB unavailable'):
+  rt.evaluate(s)
+
+ def save_report(state, key, reason):
+  assert reason is None
+  assert rt.repo.ops[key]['status'] == 'received'
+  return rt.repo.save(state, key)
+
+ rt.repo.settle_report.side_effect = save_report
+ saved = rt.evaluate(s)
+ reloaded = rt.repo.load(saved['id'])
+ assert reloaded['report']['status'] == '피드백 완료'
+ assert len(reloaded['turns']) == 3
+ assert rt.evaluate(reloaded) is reloaded
+ assert rt.provider.generate.call_count == 4
+ assert len(calls) == 3
 
 
 def test_duplicate(runtime):

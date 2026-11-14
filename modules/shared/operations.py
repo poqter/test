@@ -148,6 +148,54 @@ def briefing_issues(data):
     return out
 
 
+def studio_report_overview(auth, actor):
+    require(auth, actor)
+    incidents = auth._request('POST', '/rest/v1/rpc/hwarang_studio_report_incidents',
+                              admin=True, json={'p_actor': actor})
+    return {'collected_at': now(), 'incidents': incidents or []}
+
+
+def studio_report_issues(data):
+    reasons = {
+        'duplicate_criterion': '평가 항목 중복',
+        'criterion_set_mismatch': '평가 항목 구성 불일치',
+        'invalid_evidence_turn': '근거 회차 불일치',
+        'evidence_quote_mismatch': '학습자 원문과 인용 불일치',
+        'missing_evidence': '평가 근거 누락',
+    }
+    issues = []
+    for row in data['incidents']:
+        session = str(row['session_id'])
+        reason = reasons.get(row['reason'], '미분류')
+        mode = '공식 평가' if row['purpose'] == 'EVALUATOR' else '연습 피드백'
+        credit = '정산 미확인'
+        charged = row.get('credits_charged')
+        if charged is not None:
+            if row['credit_status'] == 'failed' and charged == 0:
+                credit = '예약 해제 · 0 Credit'
+            elif row['credit_status'] == 'expired' and charged == 0:
+                credit = '예약 만료 · 0 Credit'
+            elif row['credit_status'] == 'completed':
+                credit = f'{charged} Credit 차감'
+        cost = '원장 기록 확인' if row.get('cost_status') == 'known' else '금액 미확인'
+        issues.append({
+            'id': 'studio-report:' + session, 'evidence': row['recorded_at'],
+            'title': mode + ' 근거 검증 실패 · ' + session[:8],
+            'area': 'ACADEMY / 상담 Studio / ' + mode,
+            'result': '실패', 'impact': '사용 가능한 피드백이 생성되지 않음',
+            'change': '운영 기록', 'classification': '평가 결과 검증 실패',
+            'fact': f'세션 {session[:8]} · {display_time(row["recorded_at"])} · {reason} · 학습자 정산 {credit} · 공급자 비용 {cost}',
+            'cause': reason, 'error': reason,
+            'source': '관리자센터 운영 점검의 ACADEMY 평가 진단',
+            'reproduction': '같은 실패 사유를 넣은 모의 평가 응답으로 검증한다.',
+            'expected': '실패를 기록하고 예약을 해제하며, 공급자 사용 기록을 보존한다.',
+            'minimum': '결과 구조와 근거 검증을 대조하여 원인을 확인한다.',
+            'next': '실패 사유와 Credit 원장 상태를 대조한다.',
+            'first': row['recorded_at'], 'last': row['recorded_at'],
+        })
+    return issues
+
+
 def review_history(auth, actor, issue_id=None):
     require(auth,actor)
     params={'select':'id,actor_user_id,details,created_at','action':'eq.'+AUDIT_ACTION,'order':'id.desc','limit':'100'}
@@ -184,7 +232,7 @@ def request_text(issues, scope=SCOPES[1], runtime='', generated=None):
             f"검사 대상 커밋: {item.get('sha') or '미확인'} / 해당 커밋의 운영 반영: 미확인",
             f"실패·미실행 단계: {'; '.join(failures) or '상세 미확인 또는 없음'}",
             f"오류: {item.get('error') or '오류 원문 미수집 — 실행 링크에서 확인 필요'}",
-            f"근거 링크: {item.get('url') or '관리자센터 브리핑 조회 기록'}",
+            f"근거 링크: {item.get('url') or item.get('source', '관리자센터 브리핑 조회 기록')}",
             f"해당 커밋 변경 파일(원인 파일 확정 아님): {', '.join(item.get('files',[])) or '미확인'}",
             f"최소 변경안: {item.get('minimum','원인 확인 후 결정')}", f"다음 확인: {item['next']}",
             '재검증 순서: 원인 구분 → 해당 실패 검사 → 관련 기능 회귀 → 운영 확인(승인 범위 내)']))
