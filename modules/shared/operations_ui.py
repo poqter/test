@@ -144,7 +144,9 @@ def render(auth,actor):
     text=op.request_text([item],scope,op.release_id())
     _copy(op.redact(f"{item['title']}\n위치: {item['area']}\n{item['fact']}\n사용자 영향: {item['impact']}"),'문제 요약 복사')
     _copy(text,'요청문 복사')
-    st.text_area('요청문 미리보기',text,height=300,key='ops_preview:'+item['evidence']+':'+scope,disabled=True)
+    preview_key='ops_preview:'+item['evidence']+':'+scope
+    st.session_state[preview_key]=text
+    st.text_area('요청문 미리보기',height=300,key=preview_key,disabled=True)
     selected_many=st.multiselect('한 번에 요청할 문제',list(byid),format_func=lambda key:byid[key]['title'],key='ops_many')
     if selected_many:
         batch=[]

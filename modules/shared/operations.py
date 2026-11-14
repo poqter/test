@@ -73,7 +73,9 @@ def state(status, conclusion):
 
 def area(name):
     name = name.lower()
-    for words, label in [ (('mobile','webkit','device'), '모바일'), (('install','pwa'), '홈 화면 설치'),
+    if any(w in name for w in ('pip install', 'npm ci', 'setup-python', 'setup-node', 'install from clean')):
+        return '검사 환경 준비'
+    for words, label in [ (('mobile','webkit','device'), '모바일'), (('check_install','home screen','홈 화면','pwa'), '홈 화면 설치'),
                          (('academy','cbt','learning'), 'ACADEMY'), (('briefing',), '브리핑'),
                          (('calendar','activity','daily','support'), '일정·영업활동'),
                          (('deploy','release'), '배포'), (('foundation','shell','login'), '공통 기반') ]:
@@ -103,7 +105,7 @@ def run_details(run_id, sha):
     steps = []
     for job in jobs.get('jobs',[]):
         for step in job.get('steps',[]):
-            steps.append({'영역':area(step['name']), '작업':redact(job['name']), '단계':redact(step['name']),
+            steps.append({'영역':area(step['name']+' '+job['name']), '작업':redact(job['name']), '단계':redact(step['name']),
                           '결과':state(step.get('status'),step.get('conclusion')), '원본 결과':step.get('conclusion'), '시작':display_time(step.get('started_at'))})
     commit = github_get(f'commits/{sha}') if re.fullmatch('[a-f0-9]{40}', str(sha)) else {}
     return {'steps':steps, 'files':[f['filename'] for f in commit.get('files',[])],

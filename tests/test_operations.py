@@ -97,3 +97,18 @@ def test_schedule_is_kst_and_future():
 def test_batch_request_not_silently_truncated():
     issues=[dict(sample(),fact='확인 내용'*1000) for _ in range(6)]
     assert o.request_text(issues).endswith('별도 승인을 받아줘.')
+
+
+def test_step_area_uses_context_without_install_false_positive():
+    assert o.area('Run python -m pip install requests briefing')=='검사 환경 준비'
+    assert o.area('Run daily operation briefing')=='브리핑'
+    assert o.area('check_install.py')=='홈 화면 설치'
+
+def test_detail_refresh_updates_request_preview():
+    from pathlib import Path
+    from streamlit.testing.v1 import AppTest
+    app=AppTest.from_file(str(Path(__file__).with_name('operations_harness.py'))).run()
+    next(b for b in app.button if b.label=='단계별 근거 불러오기').click().run()
+    assert not app.exception
+    text=next(x.value for x in app.text_area if x.label=='요청문 미리보기')
+    assert 'tests/example.py' in text and 'Mobile browser' in text
