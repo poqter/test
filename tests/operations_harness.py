@@ -18,8 +18,10 @@ class Auth:
   if request:return [r for r in rows if 'eq.'+r['details']['request_id']==request]
   return rows
 run=dict(id=123,workflow_id=7,run_attempt=1,name='Activity browser regression',status='completed',conclusion='failure',head_sha='a'*40,html_url='https://github.com/poqter/test/actions',created_at=op.now(),updated_at=op.now())
-ui._github=lambda:dict(runs=[run],history=[run],commits=[],collected_at=op.now())
+ui._github=lambda:dict(runs=[run,dict(run,id=124,workflow_id=8,name='Foundation checks',conclusion='success')],history=[run],commits=[],collected_at=op.now())
+ui._github.clear=lambda:None
 ui._details=lambda *_:dict(steps=[{'영역':'모바일','작업':'verify','단계':'Mobile browser','결과':'실패','원본 결과':'failure','시작':op.now()}],files=['tests/example.py'],truncated=False)
+ui._details.clear=lambda:None
 op.briefing_overview=lambda *_:dict(jobs=[],publications=[],runs=[],collected_at=op.now())
 st.title('운영 점검 · 합성 데이터 검수')
 ui.render(Auth(),'synthetic')
