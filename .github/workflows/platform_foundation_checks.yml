@@ -2,9 +2,9 @@ name: Platform foundation checks
 on:
   push:
     branches: [main]
-    paths: ['app.py', 'academy_app.py', 'calculator_app.py', 'modules/shared/**', 'hwarang_academy/education/**', 'hwarang_academy/shell.py', 'tests/test_foundation.py', 'tests/foundation_db.mjs', 'modules/activity/view_scope.py', 'supabase/migrations/**', 'tests/test_platform_foundation.py', 'tests/admin_assets_db.mjs', 'tests/activity_ui/check_shell.py', '.github/workflows/platform_foundation_checks.yml']
+    paths: ['app.py', 'academy_app.py', 'calculator_app.py', 'modules/shared/**', 'hwarang_academy/education/**', 'hwarang_academy/shell.py', 'tests/test_foundation.py', 'tests/foundation_db.mjs', 'tests/foundation_frontend.cjs', 'modules/activity/view_scope.py', 'supabase/migrations/**', 'tests/test_platform_foundation.py', 'tests/admin_assets_db.mjs', 'tests/activity_ui/check_shell.py', '.github/workflows/platform_foundation_checks.yml']
   pull_request:
-    paths: ['app.py', 'academy_app.py', 'calculator_app.py', 'modules/shared/**', 'hwarang_academy/education/**', 'hwarang_academy/shell.py', 'tests/test_foundation.py', 'tests/foundation_db.mjs', 'modules/activity/view_scope.py', 'supabase/migrations/**', 'tests/test_platform_foundation.py', 'tests/admin_assets_db.mjs', 'tests/activity_ui/check_shell.py', '.github/workflows/platform_foundation_checks.yml']
+    paths: ['app.py', 'academy_app.py', 'calculator_app.py', 'modules/shared/**', 'hwarang_academy/education/**', 'hwarang_academy/shell.py', 'tests/test_foundation.py', 'tests/foundation_db.mjs', 'tests/foundation_frontend.cjs', 'modules/activity/view_scope.py', 'supabase/migrations/**', 'tests/test_platform_foundation.py', 'tests/admin_assets_db.mjs', 'tests/activity_ui/check_shell.py', '.github/workflows/platform_foundation_checks.yml']
 permissions:
   contents: read
 jobs:
@@ -25,5 +25,6 @@ jobs:
       - run: npm ci --ignore-scripts --prefix tests/studio_db
       - run: node tests/admin_assets_db.mjs
       - run: node tests/foundation_db.mjs
+      - run: node tests/foundation_frontend.cjs
       - run: python -m playwright install --with-deps chromium
       - run: python tests/activity_ui/check_shell.py
