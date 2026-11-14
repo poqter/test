@@ -21,16 +21,17 @@ jobs:
           python-version: '3.12'
       - name: Install from clean environment
         run: python -m pip install -r requirements.txt pytest==8.4.2
+      - name: Prepare browser checks
+        id: browser_setup
+        run: python -m pip install playwright==1.55.0
       - name: Offline Python regression
         run: python -m pytest -q
       - name: Activity browser regression (synthetic data only)
-        run: |
-          python -m pip install playwright==1.55.0
-          python tests/activity_ui/run_checks.py
+        run: python tests/activity_ui/run_checks.py
       - name: PDF editor browser regression (synthetic files only)
         run: python tests/pdf_tools/check_browser.py
       - name: WebKit mobile navigation and device simulation
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.browser_setup.outcome == 'success' }}
         run: |
           HW_TEST_BROWSER=webkit python tests/activity_ui/run_checks.py check_mobile_menu.py check_mobile_back.py check_calendar_devices.py
       - name: Preserve synthetic browser failure diagnostics
@@ -62,17 +63,22 @@ jobs:
   deployed-release:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: verify
+    concurrency:
+      group: streamlit-deployment-verification
+      cancel-in-progress: true
     runs-on: ubuntu-24.04
     container:
       image: mcr.microsoft.com/playwright/python:v1.55.0@sha256:640d578aae63cfb632461d1b0aecb01414e4e020864ac3dd45a868dc0eff3078
       options: --init --ipc=host
-    timeout-minutes: 12
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - run: python -m pip install playwright==1.55.0
-      - name: Verify deployed release and workspace entry
-        run: python .github/scripts/verify_briefing_deployment.py
+      - name: Verify WORKSPACE version and login entry
+        run: python .github/scripts/verify_briefing_deployment.py workspace
+      - name: Verify CALCULATOR version
+        run: python .github/scripts/verify_briefing_deployment.py calculator
 
