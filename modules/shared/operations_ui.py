@@ -229,7 +229,9 @@ def render(auth,actor):
                         st.button(i['title']+'\n'+(i['fact'][:65]+'…' if len(i['fact'])>65 else i['fact'])+'\n'+label+' · '+op.display_time(i.get('last')),key='ops_pick:'+i['id'],type='primary' if st.session_state['ops_selected']==i['id'] else 'secondary',on_click=_select_issue,args=(i['id'],),use_container_width=True)
                     st.caption('검토 완료만으로 미해결 문제가 사라지지 않습니다.')
                     with st.expander('여러 문제 한 번에 요청'):
-                        selected_many=st.multiselect('한 번에 요청할 문제',list(byid),format_func=lambda key:byid[key]['title'],key='ops_many')
+                        actionable = [key for key, item in byid.items() if item['result'] == '실패' or item['result'] == '확인 필요']
+                        st.session_state['ops_many'] = [key for key in st.session_state.get('ops_many', []) if key in actionable]
+                        selected_many=st.multiselect('한 번에 요청할 문제',actionable,format_func=lambda key:byid[key]['title'],key='ops_many')
                         if selected_many:
                             batch=[op.enrich(dict(byid[key]),st.session_state.get('ops_detail:'+byid[key]['evidence'],{})) for key in dict.fromkeys(selected_many)]
                             batch_scope=st.selectbox('묶음 요청 범위',op.SCOPES,index=1,key='ops_batch_scope')

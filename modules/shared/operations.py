@@ -125,13 +125,17 @@ def briefing_overview(auth, actor):
         return value
     return {'jobs':rows('hwarang_briefing_jobs','profile_code,briefing_date,job_status,failure_code,started_at,finished_at','created_at.desc',60),
             'publications':rows('hwarang_briefings','profile_code,briefing_date,current_published_revision_id','briefing_date.desc,created_at.desc',90),
-            'runs':rows('hwarang_briefing_daily_runs','run_key,briefing_date,group_code,status,attempts,updated_at','updated_at.desc',40),
+            'runs':rows('hwarang_briefing_daily_runs','run_key,briefing_date,group_code,status,attempts,updated_at,publication:checkpoint->publication','updated_at.desc',40),
             'collected_at':now()}
 
 
 def briefing_issues(data):
     out=[]
     today=datetime.now(KST).date().isoformat()
+    final = next((row for row in data.get('runs', []) if row.get('briefing_date') == today
+                  and row.get('group_code') == 'ALERT_final_unpublished'), {})
+    held_profiles = {entry.get('profile') for entry in final.get('publication') or []
+                     if entry.get('status') == 'quality_hold'}
     for code,label in [('NEWS','종합'),('INSURANCE','보험'),('MARKET','경제')]:
         job=next((j for j in data['jobs'] if j['profile_code']==code),{})
         pub=next((p for p in data['publications'] if p['profile_code']==code and p.get('current_published_revision_id')), {})
@@ -139,12 +143,17 @@ def briefing_issues(data):
         failed=job.get('job_status')=='failed' and job.get('briefing_date','')>=str(published or '')
         result='실패' if failed else '통과' if published==today else '확인 필요'
         fact=f"최근 게시일: {published or '미확인'} / 최근 작업: {job.get('job_status','미확인')} / 작업일: {job.get('briefing_date','미확인')}"
-        out.append(dict(id='briefing:'+code,evidence=f"{job.get('started_at','unknown')}:{job.get('job_status')}:{published}",title=label+' 브리핑',area='브리핑',result=result,
-                        impact='영향 미확인' if result!='통과' else '게시 기록 확인',classification='원인 미확정',fact=fact,cause='미확인',
+        quality_hold = published != today and code in held_profiles
+        if quality_hold:
+            fact += ' / 오늘 판본 품질 검증 보류'
+        out.append(dict(id='briefing:'+code,evidence=f"{job.get('started_at','unknown')}:{job.get('job_status')}:{published}" + (':quality_hold:' + str(final.get('updated_at')) if quality_hold else ''),title=label+' 브리핑',area='브리핑',result=result,
+                        impact='오늘 판본 미게시' if quality_hold else '영향 미확인' if result!='통과' else '게시 기록 확인',
+                        classification='게시 품질 검증 보류' if quality_hold else '원인 미확정',fact=fact,
+                        cause='품질 기준을 충족하지 못해 자동 게시 보류' if quality_hold else '미확인',
                         next='예정일·운영 정책과 게시 결과를 대조합니다. 최근 게시일만으로 지연을 확정하지 않습니다.',
-                        first=job.get('started_at'),last=job.get('finished_at') or job.get('started_at'),sha='',url='',change='현재 기록',files=[],
+                        first=job.get('started_at'),last=final.get('updated_at') if quality_hold else job.get('finished_at') or job.get('started_at'),sha='',url='',change='현재 기록',files=[],
                         reproduction='해당 날짜의 브리핑 조회 및 게시 상태 확인',expected='운영 정책에 맞는 게시',minimum='원인 확인 후 결정',
-                        error=redact(job.get('failure_code')),checks=[]))
+                        error='quality_hold' if quality_hold else redact(job.get('failure_code')),checks=[]))
     return out
 
 
