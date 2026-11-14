@@ -65,6 +65,18 @@ class OpenAIProvider:
         schema_role='EVALUATOR' if role=='COACH' and context.get('_practice_report') else role
         schema={'CUSTOMER':CUSTOMER,'COACH':COACH,'EVALUATOR':EVALUATOR}[schema_role]
         provider_input=json.dumps(context,ensure_ascii=False)
+        if schema_role == 'EVALUATOR':
+            messages = context.get('messages', [])
+            evaluation_input = {key: value for key, value in context.items() if key != 'messages'}
+            evaluation_input['advisor_evidence'] = [
+                {'turn': message['turn'], 'stage': message['stage'], 'text': message['text']}
+                for message in messages if message['role'] == 'advisor'
+            ]
+            evaluation_input['customer_context'] = [
+                {'turn': message['turn'], 'stage': message['stage'], 'text': message['text']}
+                for message in messages if message['role'] == 'customer'
+            ]
+            provider_input = json.dumps(evaluation_input, ensure_ascii=False)
         if schema_role=='CUSTOMER':
             # Provider role separation makes the customer perspective explicit on every turn.
             metadata={k:v for k,v in context.items() if k!='conversation'}
