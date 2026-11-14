@@ -36,10 +36,15 @@ def run():
                 page.get_by_text('요청문 미리보기',exact=True).first.click()
                 expect(page.get_by_role('textbox',name='요청문 미리보기',exact=True)).to_have_value(__import__('re').compile('tests/example.py'))
                 copyframe=next(f for f in page.frames if f.get_by_role('button',name='요청문 복사',exact=True).count())
+                assert copyframe.get_by_role('button',name='요청문 복사',exact=True).evaluate('(e)=>getComputedStyle(e).backgroundColor')=='rgb(238, 133, 52)'
                 copyframe.get_by_role('button',name='요청문 복사',exact=True).click()
                 expect(copyframe.get_by_role('status')).to_have_text('복사 완료')
                 assert 'tests/example.py' in page.evaluate('navigator.clipboard.readText()')
                 page.get_by_text('요청문 미리보기',exact=True).first.click()
+                expect(page.get_by_role('textbox',name='요청문 미리보기',exact=True)).to_be_hidden()
+                page.get_by_text('상세 근거 · 검사 단계 및 변경 파일',exact=True).click()
+                expect(page.get_by_role('button',name='단계별 근거 불러오기',exact=True)).to_be_hidden()
+                page.get_by_role('heading',name='운영 점검 · 합성 데이터 검수',exact=True).scroll_into_view_if_needed()
                 if os.getenv('OPS_SCREENSHOTS'):
                     page.screenshot(path=os.environ['OPS_SCREENSHOTS']+'/operations-desktop.png',full_page=True)
                 page.set_viewport_size({'width':390,'height':844})
@@ -47,6 +52,7 @@ def run():
                 page.get_by_role('button',name=__import__('re').compile('Activity browser regression')).click()
                 expect(detail).to_be_visible();expect(listing).to_be_hidden()
                 assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
+                page.get_by_role('button',name='← 문제 목록',exact=True).scroll_into_view_if_needed()
                 if os.getenv('OPS_SCREENSHOTS'):
                     page.screenshot(path=os.environ['OPS_SCREENSHOTS']+'/operations-mobile.png',full_page=True)
                 page.get_by_role('button',name='← 문제 목록',exact=True).click()

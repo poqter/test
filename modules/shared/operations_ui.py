@@ -22,9 +22,10 @@ def _details(run_id,sha):
 def _copy(text, label, primary=False):
     # JSON-encode and escape script delimiters; never interpolate evidence into HTML.
     encoded=json.dumps(text,ensure_ascii=True).replace('<','\\u003c')
-    components.html('''<button id="copy" style="font:600 14px sans-serif;padding:11px 18px;border:1px solid #bbc9d8;border-radius:9px;background:COLOR;background-color:COLOR;color:INK;cursor:pointer;width:100%;min-height:44px"></button><span id="status" role="status" style="font:12px sans-serif;margin-left:10px"></span><script>
+    markup=('''<button id="copy" style="font:600 14px sans-serif;padding:11px 18px;border:1px solid #bbc9d8;border-radius:9px;background:COLOR;background-color:COLOR;color:INK;cursor:pointer;width:100%;min-height:44px"></button><span id="status" role="status" style="font:12px sans-serif;display:block;margin-top:5px;color:#536075"></span><script>
 const text='''+encoded+''';document.getElementById('copy').textContent='''+json.dumps(label)+''';
-document.getElementById('copy').onclick=async()=>{try{await navigator.clipboard.writeText(text);document.getElementById('status').textContent='복사 완료';}catch(e){const t=document.createElement('textarea');t.value=text;document.body.appendChild(t);t.select();const ok=document.execCommand('copy');t.remove();document.getElementById('status').textContent=ok?'복사 완료':'아래 요청문을 직접 선택해 복사해 주세요.';}};</script>'''.replace('COLOR','#ee8534' if primary else '#ffffff').replace('INK','#ffffff' if primary else '#14263d'),height=64)
+document.getElementById('copy').onclick=async()=>{try{await navigator.clipboard.writeText(text);document.getElementById('status').textContent='복사 완료';}catch(e){const t=document.createElement('textarea');t.value=text;document.body.appendChild(t);t.select();const ok=document.execCommand('copy');t.remove();document.getElementById('status').textContent=ok?'복사 완료':'아래 요청문을 직접 선택해 복사해 주세요.';}};</script>''')
+    components.html(markup.replace('COLOR','#ee8534' if primary else '#ffffff',2).replace('INK','#ffffff' if primary else '#14263d',1),height=80)
 
 
 def _session_load(key, loader, ttl=120):
@@ -91,10 +92,10 @@ def _styles():
     .ops-badge.ok {background:#eaf5ef;color:#22664f;}
     .ops-detail-title {font-size:25px;font-weight:750;margin:0 0 8px;overflow-wrap:anywhere;}
     .ops-meta {font-size:13px;color:#69778a;margin-bottom:20px;}
-    .ops-fact {display:grid;grid-template-columns:100px minmax(0,1fr);gap:14px;margin:16px 0;line-height:1.65;overflow-wrap:anywhere;}
+    .ops-fact {display:grid;grid-template-columns:100px minmax(0,1fr);gap:14px;margin:6px 0;line-height:1.65;overflow-wrap:anywhere;}
     .ops-fact b {font-size:14px;color:#536075;}
     .ops-fact span {font-size:15px;}
-    .st-key-ops_list, .st-key-ops_detail {border:1px solid #e0e6ee;border-radius:12px;padding:20px;}
+    .st-key-ops_list, .st-key-ops_detail {border:1px solid #e0e6ee;border-radius:12px;padding:20px;background:#fff;gap:0.65rem;}
     .st-key-ops_list button {text-align:left;justify-content:flex-start;min-height:70px;white-space:normal;}
     .st-key-ops_list button p {white-space:pre-line;line-height:1.65;font-size:14px;}
     .st-key-ops_list button[kind="primary"] {background:#fff6e9!important;color:#14263d!important;border:1px solid #ee8534!important;}
@@ -112,7 +113,7 @@ def _styles():
       .st-key-ops_shell_detail .st-key-ops_back {display:block;}
       .st-key-ops_shell_detail .ops-summary {display:none;}
       .st-key-ops_list, .st-key-ops_detail {padding:14px;}
-      .ops-fact {grid-template-columns:1fr;gap:3px;margin:16px 0;}
+      .ops-fact {grid-template-columns:1fr;gap:3px;margin:8px 0;}
       .ops-detail-title {font-size:22px;}
     }
     </style>""",unsafe_allow_html=True)
