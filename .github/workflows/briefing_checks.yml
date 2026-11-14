@@ -24,6 +24,18 @@ jobs:
       - name: Prepare browser checks
         id: browser_setup
         run: python -m pip install playwright==1.55.0
+      - name: Operations console desktop and mobile regression
+        run: |
+          mkdir -p test-results/operations
+          OPS_SCREENSHOTS=test-results/operations python tests/check_operations_browser.py
+      - name: Preserve synthetic operations screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: operations-ui-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/operations/
+          retention-days: 7
+          if-no-files-found: ignore
       - name: Offline Python regression
         run: python -m pytest -q
       - name: Activity browser regression (synthetic data only)

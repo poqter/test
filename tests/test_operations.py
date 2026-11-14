@@ -112,3 +112,24 @@ def test_detail_refresh_updates_request_preview():
     assert not app.exception
     text=next(x.value for x in app.text_area if x.label=='요청문 미리보기')
     assert 'tests/example.py' in text and 'Mobile browser' in text
+
+
+def test_ui_navigation_filters_and_batch_preserve_selected_evidence():
+    from pathlib import Path
+    from streamlit.testing.v1 import AppTest
+    app=AppTest.from_file(str(Path(__file__).with_name('operations_harness.py'))).run()
+    assert app.session_state['ops_selected']=='github:7'
+    next(b for b in app.button if b.key=='ops_pick:github:7').click().run()
+    assert app.session_state['ops_mobile_detail']
+    next(b for b in app.button if b.label=='← 문제 목록').click().run()
+    assert not app.session_state['ops_mobile_detail']
+    next(s for s in app.selectbox if s.label=='표시할 항목').set_value('전체').run()
+    next(b for b in app.button if b.key=='ops_pick:github:8').click().run()
+    assert app.session_state['ops_selected']=='github:8'
+    text=next(x.value for x in app.text_area if x.label=='요청문 미리보기')
+    assert 'Foundation checks' in text and '[문제 github:8]' in text
+    app.multiselect[0].set_value(['github:7','github:8']).run()
+    assert not app.exception
+    assert any('[문제 github:7]' in c.value and '[문제 github:8]' in c.value for c in app.code)
+    next(b for b in app.button if b.label=='최신 상태 조회').click().run()
+    assert not app.exception and app.session_state['ops_selected']=='github:8'
