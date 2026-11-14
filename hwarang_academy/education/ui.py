@@ -20,7 +20,7 @@ def render(auth, owner, permissions, profile, surface):
     try: items=rpc(auth,owner,'catalog') or []
     except Exception:
         st.error('교육 저장소를 연결하지 못했습니다. SQL 26 적용 및 아카데미 접근 권한을 확인해 주세요.');return
-    items.sort(key=lambda r: (0 if r.get('id')=='newhire-30-v1' else 1, r.get('title','')))
+    items.sort(key=lambda r: (0 if r.get('id')=='fp-foundation-v2' else 1, r.get('title','')))
     if surface=='library':
         st.caption('자료를 검색하고 기준일을 확인하세요. 법령·약관은 최신 원본을 별도로 확인합니다.')
         query=st.text_input('자료 검색',placeholder='제목, 설명, 분류 검색')
@@ -49,8 +49,9 @@ def render(auth, owner, permissions, profile, surface):
                 from .onboarding import completion
                 try:
                     works=rpc(auth,owner,'work_get',p_id=course['id']) or []
-                    done,approved,graduated=completion(course,works)
-                    st.subheader(course['title']);st.progress(done/len(course['lessons']),text=f'{done}/30 학습 · {approved}/4 주간 검토')
+                    required={**course,'lessons':[l for l in course['lessons'] if not l.get('optional')]}
+                    done,approved,graduated=completion(required,works)
+                    st.subheader(course['title']);st.progress(done/len(required['lessons']),text=f"{done}/{len(required['lessons'])} 학습 · {approved}/{sum(bool(l.get('mentor_required')) for l in required['lessons'])} 실습 검토")
                     st.success('수료') if graduated else st.caption('실습과 주간 검토를 완료하면 수료로 표시됩니다.')
                     if st.button('학습 이어하기',key='resume_'+course['id']):
                         from hwarang_academy.shell import course_open
@@ -63,6 +64,10 @@ def render(auth, owner, permissions, profile, surface):
         return
     if not courses:st.info('이용 가능한 교육 과정이 없습니다. 교육 메뉴 권한을 확인해 주세요.');return
     selected=st.selectbox('교육 과정',courses,index=next((i for i,c in enumerate(courses) if c['id']==st.session_state.get('_academy_course_id')),0),format_func=lambda c:('🔒 '+c['title']+' · 기능 정비 중') if blocked(c['id'],profile) else c['title'])
+    if selected.get('interactive'):
+        from .interactive import render as render_interactive
+        render_interactive(auth,owner,permissions,profile,selected,rpc)
+        return
     if selected.get('learning_mode')=='practice':
         from .onboarding import render as render_onboarding
         render_onboarding(auth,owner,permissions,profile,selected,rpc)

@@ -2,9 +2,9 @@ name: Platform foundation checks
 on:
   push:
     branches: [main]
-    paths: ['app.py', 'academy_app.py', 'calculator_app.py', 'modules/shared/**', 'modules/activity/view_scope.py', 'supabase/migrations/**', 'tests/test_platform_foundation.py', 'tests/admin_assets_db.mjs', 'tests/activity_ui/check_shell.py', '.github/workflows/platform_foundation_checks.yml']
+    paths: ['app.py', 'academy_app.py', 'calculator_app.py', 'modules/shared/**', 'hwarang_academy/education/**', 'hwarang_academy/shell.py', 'tests/test_foundation.py', 'tests/foundation_db.mjs', 'modules/activity/view_scope.py', 'supabase/migrations/**', 'tests/test_platform_foundation.py', 'tests/admin_assets_db.mjs', 'tests/activity_ui/check_shell.py', '.github/workflows/platform_foundation_checks.yml']
   pull_request:
-    paths: ['app.py', 'academy_app.py', 'calculator_app.py', 'modules/shared/**', 'modules/activity/view_scope.py', 'supabase/migrations/**', 'tests/test_platform_foundation.py', 'tests/admin_assets_db.mjs', 'tests/activity_ui/check_shell.py', '.github/workflows/platform_foundation_checks.yml']
+    paths: ['app.py', 'academy_app.py', 'calculator_app.py', 'modules/shared/**', 'hwarang_academy/education/**', 'hwarang_academy/shell.py', 'tests/test_foundation.py', 'tests/foundation_db.mjs', 'modules/activity/view_scope.py', 'supabase/migrations/**', 'tests/test_platform_foundation.py', 'tests/admin_assets_db.mjs', 'tests/activity_ui/check_shell.py', '.github/workflows/platform_foundation_checks.yml']
 permissions:
   contents: read
 jobs:
@@ -18,11 +18,12 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install -r requirements.txt pytest==8.4.2 playwright==1.55.0
       - run: python -m compileall -q app.py academy_app.py calculator_app.py modules/shared
-      - run: python -m pytest -q tests/test_platform_foundation.py tests/test_session_revalidation.py tests/test_security_reaudit.py tests/test_calendar_view_scope.py tests/test_calendar_scope_selector.py
+      - run: python -m pytest -q tests/test_platform_foundation.py tests/test_session_revalidation.py tests/test_security_reaudit.py tests/test_calendar_view_scope.py tests/test_calendar_scope_selector.py tests/test_foundation.py tests/test_onboarding.py tests/test_onboarding_ui.py
       - uses: actions/setup-node@v6
         with:
           node-version: 22
       - run: npm ci --ignore-scripts --prefix tests/studio_db
       - run: node tests/admin_assets_db.mjs
+      - run: node tests/foundation_db.mjs
       - run: python -m playwright install --with-deps chromium
       - run: python tests/activity_ui/check_shell.py

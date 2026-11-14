@@ -1,5 +1,6 @@
 """Release maintenance gates, independent of account permissions."""
 MAINTENANCE = {
+    "fp-foundation-v2": "새 FP 교육 과정과 고객 미션을 검수하고 있습니다.",
     "coverage_proposal": "보장비교 보고서의 합산과 고객용 출력을 점검하고 있습니다.",
     "newhire-30-v1": "수업 구성과 학습 화면을 보완하고 있습니다.",
 }

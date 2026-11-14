@@ -139,17 +139,18 @@ def _lesson(auth,owner,course,l,w,rpc):
         except Exception as exc:_notice_error(exc)
 
 def _team(auth,owner,course,rpc):
+    total=len(course['lessons']); reviews=sum(bool(l.get('mentor_required')) for l in course['lessons'])
     try: rows=rpc(auth,owner,'team',p_id=course['id']) or []
     except Exception:st.error('조직 학습 현황을 불러오지 못했습니다.');return
     st.caption('현재 조직 연결에 따라 조회 가능한 구성원만 표시합니다. AI 상담 자유연습 기록은 이 화면에 포함하지 않습니다.')
     if not rows:st.info('조회 가능한 구성원이 없습니다.');return
     org=st.selectbox('소속',['전체']+sorted({r['organization'] for r in rows}))
     state=st.selectbox('학습 상태',['전체','검토 대기','시작 전','학습 중','수료'])
-    def label(r):return '수료' if r['completed']==30 and r['approved']==4 else '학습 중' if r['last_activity'] else '시작 전'
+    def label(r):return '수료' if r['completed']==total and r['approved']==reviews else '학습 중' if r['last_activity'] else '시작 전'
     scope=[r for r in rows if org=='전체' or r['organization']==org]
     a,b,c=st.columns(3);a.metric('구성원',len(scope));b.metric('검토 대기',sum(r['waiting'] for r in scope));c.metric('수료',sum(label(r)=='수료' for r in scope))
     filtered=[r for r in scope if state=='전체' or (r['waiting']>0 if state=='검토 대기' else label(r)==state)]
-    st.dataframe([{'이름':r['display_name'],'소속':r['organization'],'학습 완료':f"{r['completed']}/30",'주간 검토':f"{r['approved']}/4",'검토 대기':r['waiting'],'상태':label(r)} for r in filtered],hide_index=True,use_container_width=True)
+    st.dataframe([{'이름':r['display_name'],'소속':r['organization'],'학습 완료':f"{r['completed']}/{total}",'주간 검토':f"{r['approved']}/{reviews}",'검토 대기':r['waiting'],'상태':label(r)} for r in filtered],hide_index=True,use_container_width=True)
     if not filtered:st.info('조건에 맞는 구성원이 없습니다.');return
     target=st.selectbox('상세 기록을 볼 구성원',filtered,format_func=lambda r:r['display_name']+' · '+r['organization'])
     try: works=rpc(auth,owner,'work_get',p_id=course['id'],p_target=target['user_id']) or []
@@ -158,7 +159,7 @@ def _team(auth,owner,course,rpc):
     for w in works:
         l=by_id.get(w['lesson_id'])
         if not l:continue
-        with st.expander(f"{l['day']}일 · {l['title']} · {STATUS[w['status']]}",expanded=w['status']=='submitted' and l.get('mentor_required',False)):
+        with st.expander(f"{l['title']} · {STATUS[w['status']]}",expanded=w['status']=='submitted' and l.get('mentor_required',False)):
             st.write(w['practice']);st.caption(f"확인 문제: {w.get('score') if w.get('score') is not None else '미제출'}")
             if w.get('feedback'):
                 for k,t in [('good','잘한 점'),('improve','보완할 점'),('next','다음 연습')]:st.write(t+' · '+str(w['feedback'].get(k,'')))
