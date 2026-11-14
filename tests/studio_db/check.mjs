@@ -169,5 +169,45 @@ await denied(()=>learning('work_get',{p_actor:owner,p_id:newCourse}),'browser ca
 await denied(()=>learning('work_save',work),'browser cannot spoof work writer');
 await denied(()=>db.query('select * from public.hwarang_learning_work'),'direct learner table access denied');
 await db.exec('reset role');
+const settlementMigration = fs.readFileSync(root+'/20261114123000_studio_report_settlement.sql','utf8');
+await db.exec(settlementMigration);
+await db.exec(settlementMigration);
+for (const [suffix, reason] of [['21',null],['22','evidence_quote_mismatch']]) {
+ const id = '00000000-0000-0000-0000-0000000000'+suffix;
+ const key = 'evaluation-'+suffix;
+ let model = await rpc('store',{p_actor:owner,p_data:{...state,id,mode:'ASSESSMENT'},p_version:0});
+ model = await rpc('store',{p_actor:owner,p_data:{...model,ended:true,end_reason:'goal',
+  turns:[1,2,3].map(number=>({number,text:'비밀 학습자 문장',stage:'TA'}))},p_version:model.version});
+ const before=(await db.query('select balance_credits from public.hwarang_ai_credit_accounts where user_id=$1',[owner])).rows[0];
+ await rpc('claim',{p_actor:owner,p_id:id,p_version:model.version,p_op:key,p_purpose:'EVALUATOR'});
+ const reservation=(await db.query("select * from public.reserve_hwarang_ai_request($1,$2,4,'EVALUATOR','TEXT',$3,5)",[owner,id,key])).rows[0];
+ ok(reservation.request_status==='reserved','evaluation reserves five credits');
+ const request=reservation.request_id;
+ await db.query('select public.start_hwarang_ai_request($1)',[request]);
+ await rpc('request_update',{p_actor:owner,p_op:key,p_status:'processing',p_request:request,p_result:null});
+ await rpc('request_update',{p_actor:owner,p_op:key,p_status:'received',p_request:request,
+  p_result:{result:{rows:[{evidence:[{quote:'비밀 고객 답변'}]}]},credits:5,model:'synthetic',usage:{input_tokens:40,output_tokens:12}}});
+ const args={p_actor:owner,p_op:key,p_failure_reason:reason,p_data:{...model,
+  report:{status:reason?'평가 근거 확인 필요':'피드백 완료',rows:[]}}};
+ await denied(()=>rpc('settle_report',{...args,p_data:{...args.p_data,case:{}}}),'invalid save rolls back settlement');
+ const held=(await db.query('select status from public.hwarang_ai_request_registry where request_id=$1',[request])).rows[0];
+ ok(held.status==='processing','reservation remains held after rollback');
+ const stored=await rpc('settle_report',args);
+ ok(stored.version === model.version+1 && stored.report.status===args.p_data.report.status,'feedback persists with settlement');
+ ok((await rpc('settle_report',args)).version===stored.version,'settlement retry is idempotent');
+ const usage=(await db.query('select credits_charged,cost_status,output_tokens from public.hwarang_ai_usage_log where request_id=$1',[request])).rows[0];
+ ok(Number(usage.credits_charged)===(reason?0:5) && usage.cost_status==='unknown' && Number(usage.output_tokens)===12,'supplier usage kept separately from learner credits');
+ const after=(await db.query('select balance_credits,reserved_credits from public.hwarang_ai_credit_accounts where user_id=$1',[owner])).rows[0];
+ ok(Number(after.balance_credits)===Number(before.balance_credits)-(reason?0:5) && Number(after.reserved_credits)===0,'balance settled and reservation released once');
+ await db.query('select public.release_hwarang_ai_session($1,$2)',[owner,id]);
+}
+const incidents=await rpc('report_incidents',{p_actor:manager});
+ok(incidents.length===1 && incidents[0].reason==='evidence_quote_mismatch' &&
+   Number(incidents[0].credits_charged)===0 && !JSON.stringify(incidents).includes('비밀'),'admin diagnostics excludes raw dialogue');
+await denied(()=>rpc('report_incidents',{p_actor:owner}),'nonadmin diagnostics denied');
+await db.exec('set role authenticated');
+await denied(()=>rpc('report_incidents',{p_actor:manager}),'browser cannot spoof administrator diagnostics');
+await denied(()=>rpc('settle_report',{p_actor:owner,p_data:{},p_op:'evaluation-21',p_failure_reason:null}),'browser cannot call settlement');
+await db.exec('reset role');
 console.log('DB CHECKS',checks);
 await db.close();

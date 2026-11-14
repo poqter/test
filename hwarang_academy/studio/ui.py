@@ -6,9 +6,9 @@ from html import escape
 import streamlit as st
 from .domain import (STAGES,GOALS,LIMITS,DIFFICULTIES,PERSONALITIES,CRITERIA,END_LABELS,
                      new_session,rewind,practice_from,next_stage,end_session,share_payload,disclosure_catalog)
-from .provider import Config,OpenAIProvider
+from .provider import Config, OpenAIProvider, ProviderError
 from .repository import Repository
-from .runtime import Runtime
+from .runtime import PendingRequest, Runtime
 from . import immersion
 from ..pre_api.constants import PORTFOLIO_ARCHETYPES
 
@@ -324,8 +324,22 @@ def render(auth,owner,permissions,credit_status=None):
             if not s.get('report'):
                 role='EVALUATOR' if s['mode']=='ASSESSMENT' else 'COACH'
                 if st.button(f'근거 기반 피드백 생성 · {config.credits(role)} Credit',type='primary'):
-                    with st.spinner('대화 근거를 확인하고 있습니다…'):st.session_state['_studio_state']=runtime.evaluate(s)
-                    st.rerun()
+                    try:
+                        with st.spinner('대화 근거를 확인하고 있습니다…'):
+                            st.session_state['_studio_state'] = runtime.evaluate(s)
+                    except (ProviderError, PendingRequest) as exc:
+                        st.warning(_safe_error(exc))
+                    except Exception:
+                        st.error('평가 저장 결과를 확인하지 못했습니다. 저장 상태를 확인한 뒤 다시 시도해 주세요.')
+                    else:
+                        st.rerun()
+                if st.button('저장된 평가 상태 확인', key='studio_reload_report'):
+                    try:
+                        st.session_state['_studio_state'] = repo.load(s['id'])
+                    except Exception:
+                        st.warning('저장 상태를 확인하지 못했습니다. 잠시 후 다시 확인해 주세요.')
+                    else:
+                        st.rerun()
             else:render_report(s['report'])
             _moments(repo,s)
             with st.expander('전체 대화 복기'):
@@ -506,8 +520,6 @@ def _conversation(repo,runtime,s,config,permissions):
             st.session_state['_studio_state']=runtime.send(s,text)
             st.session_state.pop('_studio_chat_error',None)
         except Exception as exc:
-            from .provider import ProviderError
-            from .runtime import PendingRequest
             blocked=isinstance(exc,PendingRequest) or isinstance(exc,ProviderError) and exc.uncertain or 'STUDIO_REQUEST_PENDING' in str(exc)
             st.session_state['_studio_chat_error']={'session_id':s['id'],'branch':s['branch'],'text':text,'message':_safe_error(exc),'blocked':blocked}
             try:st.session_state['_studio_state']=repo.load(s['id'])

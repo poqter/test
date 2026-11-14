@@ -6,6 +6,9 @@ class Repository:
         return self.auth._request('POST','/rest/v1/rpc/hwarang_studio_'+name,admin=True,
                                   json={'p_actor':self.owner,**kw})
     def save(self,s,op=None):return self.rpc('store',p_data=s,p_version=s['version'],p_op=op)
+    def settle_report(self, state, key, failure_reason):
+        return self.rpc('settle_report', p_data=state, p_op=key, p_failure_reason=failure_reason)
+
     def load(self,sid):return self.rpc('get',p_id=str(UUID(sid)))
     def rows(self):return self.rpc('list') or []
     def claim(self,s,key,role):return self.rpc('claim',p_id=s['id'],p_version=s['version'],p_op=key,p_purpose=role)

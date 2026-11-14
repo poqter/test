@@ -25,14 +25,14 @@ class Runtime:
                                           actual_seconds=0 if failed else envelope['seconds'])
         return finalize_ai_request(self.auth,request_id=request,result_status='failed' if failed else 'completed',
                                    actual_credits=0 if failed else envelope['credits'])
-    def invoke(self,s,role,payload):
+    def invoke(self,s,role,payload,*,defer_settlement=False):
         key=self.key(s,role,payload if not isinstance(payload,bytes) else sha256(payload).hexdigest())
         claim=self.repo.claim(s,key,role)
         request=claim.get('request_id')
         if not claim.get('fresh'):
             if claim['status'] in ('received','completed'):
                 envelope=claim['result']
-                if claim['status']=='received':
+                if claim['status']=='received' and (not defer_settlement or envelope.get('result',{}).get('_rejected')):
                     self._finalize(request,role,envelope,failed=bool(envelope.get('result',{}).get('_rejected')))
                     self.repo.update(key,'completed',request,envelope)
                 if envelope.get('result',{}).get('_rejected'):
@@ -96,8 +96,9 @@ class Runtime:
         # Audio bytes are transient: never copied into the durable request log or learning record.
         persistent={k:v for k,v in envelope.items() if k!='audio'}
         self.repo.update(key,'received',request,persistent)
-        self._finalize(request,role,envelope)
-        self.repo.update(key,'completed',request,persistent)
+        if not defer_settlement:
+            self._finalize(request,role,envelope)
+            self.repo.update(key,'completed',request,persistent)
         return key,envelope
     def _save(self,s,key,env):
         record={k:v for k,v in env.items() if k not in ('result','audio')}
@@ -137,18 +138,22 @@ class Runtime:
         # Practice feedback uses the evaluator schema/instructions but COACH permission and tariff.
         context=d.report_context(s)
         if role=='COACH':context['_practice_report']=True
-        key,env=self.invoke(s,role,context)
-        out=deepcopy(s)
+        key, env = self.invoke(s, role, context, defer_settlement=True)
+        out = deepcopy(s)
+        failure_reason = None
         try:
-            out['report'] = d.validate_report(out, env['result'])
+            out['report'] = d.validate_report(out, deepcopy(env['result']))
         except d.ReportValidationError as exc:
+            failure_reason = exc.code
             logger.warning(
                 'Studio report validation failed: session_id=%s mode=%s reason=%s',
                 s['id'], s['mode'], exc.code,
             )
             out['report']={'rows':[],'status':'평가 근거 확인 필요','total_score':None,
                            'notice':'AI 피드백의 근거를 검증하지 못했습니다. 자동 재호출하지 않습니다.'}
-        return self._save(out,key,env)
+        saved = self.repo.settle_report(out, key, failure_reason)
+        release_ai_session(self.auth, user_id=saved['owner'], academy_session_id=saved['id'])
+        return saved
     def transcribe(self,s,audio):
         if s['ended']:raise ValueError('종료한 상담에서는 음성을 입력할 수 없습니다.')
         wav_seconds(audio)  # Validate before taking a durable claim.
