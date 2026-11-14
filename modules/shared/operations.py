@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
 import requests
+from modules.briefing.publication_schedule import PUBLICATION_TIME, is_regular_day, previous_regular_day
 
 REPO = 'poqter/test'
 AUDIT_ACTION = 'operations_review_v1'
@@ -129,26 +130,53 @@ def briefing_overview(auth, actor):
             'collected_at':now()}
 
 
-def briefing_issues(data):
+def briefing_issues(data, instant=None):
     out=[]
-    today=datetime.now(KST).date().isoformat()
-    final = next((row for row in data.get('runs', []) if row.get('briefing_date') == today
+    local=(instant or datetime.now(KST)).astimezone(KST)
+    regular=is_regular_day(local.date())
+    today=local.date().isoformat()
+    assessment_day=today if regular else previous_regular_day(local.date()).isoformat()
+    scheduled=regular and local.time()<PUBLICATION_TIME
+    final = next((row for row in data.get('runs', []) if row.get('briefing_date') == assessment_day
                   and row.get('group_code') == 'ALERT_final_unpublished'), {})
     held_profiles = {entry.get('profile') for entry in final.get('publication') or []
                      if entry.get('status') == 'quality_hold'}
     for code,label in [('NEWS','종합'),('INSURANCE','보험'),('MARKET','경제')]:
-        job=next((j for j in data['jobs'] if j['profile_code']==code),{})
-        pub=next((p for p in data['publications'] if p['profile_code']==code and p.get('current_published_revision_id')), {})
+        job=next((j for j in data['jobs'] if j['profile_code']==code and j.get('briefing_date','')<=assessment_day),{})
+        pub=next((p for p in data['publications'] if p['profile_code']==code and p.get('current_published_revision_id') and p['briefing_date']<=assessment_day), {})
         published=pub.get('briefing_date')
-        failed=job.get('job_status')=='failed' and job.get('briefing_date','')>=str(published or '')
-        result='실패' if failed else '통과' if published==today else '확인 필요'
+        failed=job.get('job_status')=='failed' and job.get('briefing_date','')>str(published or '')
+        missed=published != assessment_day and any(
+            entry.get('profile') == code and entry.get('status') not in ('published', 'already_published', 'disabled')
+            for entry in final.get('publication') or [])
+        run = next((row for row in data.get('runs', []) if row.get('briefing_date') == assessment_day
+                    and row.get('group_code') == code), {})
+        exhausted = published != assessment_day and run.get('status') == 'failed' and int(run.get('attempts') or 0) >= 2
+        if not regular:
+            result='실패' if failed or exhausted else '확인 필요' if missed else '정규 게시 휴무'
+        elif published==today:
+            result='통과'
+        elif scheduled:
+            result='게시 예정'
+        elif failed or exhausted:
+            result='실패'
+        elif job.get('briefing_date')==today and job.get('job_status') in ('scheduled','collecting','normalizing','validating','running'):
+            result='진행 중'
+        else:
+            result='확인 필요'
         fact=f"최근 게시일: {published or '미확인'} / 최근 작업: {job.get('job_status','미확인')} / 작업일: {job.get('briefing_date','미확인')}"
-        quality_hold = published != today and code in held_profiles
+        if exhausted:
+            fact = '생성 지연 · 자동 재시도 소진 / ' + fact
+        if not regular:
+            fact = '정규 게시 휴무 · ' + fact
+        elif scheduled and published!=today:
+            fact = '오전 8시 게시 예정 · ' + fact
+        quality_hold = published != assessment_day and code in held_profiles
         if quality_hold:
-            fact += ' / 오늘 판본 품질 검증 보류'
+            fact += (' / 오늘 판본' if regular else ' / 직전 평일 판본') + ' 품질 검증 보류'
         out.append(dict(id='briefing:'+code,evidence=f"{job.get('started_at','unknown')}:{job.get('job_status')}:{published}" + (':quality_hold:' + str(final.get('updated_at')) if quality_hold else ''),title=label+' 브리핑',area='브리핑',result=result,
-                        impact='오늘 판본 미게시' if quality_hold else '영향 미확인' if result!='통과' else '게시 기록 확인',
-                        classification='게시 품질 검증 보류' if quality_hold else '원인 미확정',fact=fact,
+                        impact='예정 판본 미게시' if quality_hold else '게시 기록 확인' if result=='통과' else result if result in ('정규 게시 휴무','게시 예정') else '영향 미확인',
+                        classification='게시 품질 검증 보류' if quality_hold else '자동 생성 재시도 소진' if exhausted else '원인 미확정',fact=fact,
                         cause='품질 기준을 충족하지 못해 자동 게시 보류' if quality_hold else '미확인',
                         next='예정일·운영 정책과 게시 결과를 대조합니다. 최근 게시일만으로 지연을 확정하지 않습니다.',
                         first=job.get('started_at'),last=final.get('updated_at') if quality_hold else job.get('finished_at') or job.get('started_at'),sha='',url='',change='현재 기록',files=[],
@@ -257,16 +285,26 @@ def request_text(issues, scope=SCOPES[1], runtime='', generated=None):
 def schedules(at=None):
     """Show checked-out workflow schedules; unsupported expressions stay explicit."""
     from datetime import timedelta
-    at=at or datetime.now(timezone.utc)
+    at=(at or datetime.now(timezone.utc)).astimezone(timezone.utc)
     result=[]
     for path in sorted((ROOT/'.github/workflows').glob('*.yml')):
         source=path.read_text()
         for cron in re.findall(r"cron:\s*['\"]([^'\"]+)['\"]",source):
             fields=cron.split(); upcoming=None
-            if len(fields)==5 and fields[2:]==['*','*','*']:
+            if len(fields)==5 and fields[2:4]==['*','*']:
                 try:
                     minutes=[int(x) for x in fields[0].split(',')];hours=[int(x) for x in fields[1].split(',')]
-                    candidates=[(at+timedelta(days=d)).replace(hour=h,minute=m,second=0,microsecond=0) for d in (0,1) for h in hours for m in minutes]
+                    cron_days = set()
+                    for field in fields[4].split(','):
+                        if field == '*':
+                            cron_days.update(range(7))
+                        else:
+                            bounds = [int(n) for n in field.split('-')]
+                            cron_days.update(n % 7 for n in range(bounds[0], bounds[-1]+1))
+                    days = [at+timedelta(days=d) for d in range(8)]
+                    candidates = [day.replace(hour=h,minute=m,second=0,microsecond=0)
+                                  for day in days if (day.weekday()+1)%7 in cron_days
+                                  for h in hours for m in minutes]
                     upcoming=min(x for x in candidates if x>at)
                 except (ValueError,OverflowError):pass
             result.append({'자동 작업':path.stem,'예약식 (UTC)':cron,'다음 예정 (KST)':display_time(upcoming.isoformat()) if upcoming else '예약식 직접 확인 필요'})

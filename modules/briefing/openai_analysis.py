@@ -191,7 +191,15 @@ class OpenAIAnalysisClient:
         if not events:
             return [], AnalysisUsage()
         from .execution_policy import analysis_identity
-        input_identity = analysis_identity(profile_code, events, self.model, self._instructions(profile_code), _RESULT_SCHEMA)
+        instructions = self._instructions(profile_code)
+        if getattr(self, 'monday_edition', False):
+            instructions += (
+                " Monday edition: prioritize weekend developments with a concrete effect on customer guidance, "
+                "consultation, applications, claims, safety or Monday schedules. For previously covered topics, "
+                "retain only material changes to dates, scope, conditions or verified facts. Treat limited news "
+                "volume as normal. Include a Monday action only if supported by evidence."
+            )
+        input_identity = analysis_identity(profile_code, events, self.model, instructions, _RESULT_SCHEMA)
         if self.cached_response is not None:
             record = deepcopy(self.cached_response)
             expected = {e.event_key for e in events}
@@ -215,7 +223,7 @@ class OpenAIAnalysisClient:
         payload = {
             "model": self.model,
             "input": [
-                {"role": "system", "content": self._instructions(profile_code)},
+                {"role": "system", "content": instructions},
                 {
                     "role": "user",
                     "content": json.dumps({"profile_code": profile_code, "registered_tools": registered_briefing_tools(), "events": [self._event_payload(e) for e in events],

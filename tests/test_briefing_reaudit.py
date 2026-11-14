@@ -80,7 +80,9 @@ def test_old_one_article_healthy_snapshot_is_still_held():
     repo.publish_revision.assert_not_called()
     repo.history.assert_not_called()
 
-def test_old_one_article_manual_publish_button_is_disabled():
+def test_old_one_article_manual_publish_button_is_disabled(monkeypatch):
+    from modules.briefing import briefing_center
+    monkeypatch.setattr(briefing_center, "is_regular_day", lambda day: True)
     script='''
 import streamlit as st
 from modules.briefing.briefing_center import _render_profile_detail

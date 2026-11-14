@@ -10,6 +10,11 @@ OFFICIAL_DOMAINS = (
     "bok.or.kr", "kostat.go.kr",
 )
 INDUSTRY_DOMAINS = ("klia.or.kr", "knia.or.kr", "kidi.or.kr", "kiri.or.kr")
+INSURER_NOTICE_DOMAINS = (
+    "hanwhalife.com", "samsunglife.com", "kyobo.com", "shinhanlife.co.kr",
+    "kblife.co.kr", "lina.co.kr", "samsungfire.com", "hi.co.kr", "idbins.com",
+    "kbinsure.co.kr", "meritzfire.com", "hanwhasonhae.com",
+)
 INSURANCE_MEDIA = (
     "insjournal.co.kr", "insnews.co.kr", "insweek.co.kr", "fnnews.com", "mt.co.kr",
     "mk.co.kr", "hankyung.com", "edaily.co.kr", "sedaily.com", "asiae.co.kr",

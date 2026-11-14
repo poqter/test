@@ -1,7 +1,7 @@
 """A correction creates a new immutable edition, with the original evidence."""
 from copy import deepcopy
-from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
+from datetime import datetime, timezone, timedelta
+from .publication_schedule import KST, PUBLICATION_TIME, is_regular_day
 from hashlib import sha256
 import json
 from .public_body import customer_body
@@ -35,9 +35,15 @@ def apply_correction(repo, bundle, event_key, changes, reason, actor, *, importa
     latest=repo._first(repo._request('GET','/rest/v1/hwarang_briefings',params={'id':'eq.'+briefing['id'],'select':'current_published_revision_id'}))
     if not latest or latest.get('current_published_revision_id')!=old['id']:raise BriefingRepositoryError('현재 공개본을 다시 열어 주세요.')
     if important_update:
-        if str(briefing['briefing_date']) != datetime.now(ZoneInfo('Asia/Seoul')).date().isoformat():
-            raise ValueError('오늘 게시본에만 중요 발표를 추가할 수 있습니다. 과거 판본의 날짜와 섞지 않습니다.')
-        content=updated_content(snap['content_payload'], important_update, reason)
+        instant = datetime.now(KST)
+        weekend = not is_regular_day(instant.date())
+        if weekend:
+            latest_published = repo.latest_summaries((briefing['profile_code'],)).get(briefing['profile_code'])
+            if not latest_published or latest_published['revision']['id'] != old['id']:
+                raise ValueError('이 영역의 최근 공개본에서 주말 긴급 공지를 추가해 주세요.')
+        elif str(briefing['briefing_date']) != instant.date().isoformat():
+            raise ValueError('오늘 게시본에만 중요 발표를 추가할 수 있습니다.')
+        content=updated_content(snap['content_payload'], important_update, reason, now=instant, weekend=weekend)
     else:
         content=corrected_content(snap['content_payload'],event_key,changes,reason)
     external=customer_body(content)
@@ -85,8 +91,7 @@ def apply_correction(repo, bundle, event_key, changes, reason, actor, *, importa
     repo.insert_actions(actions)
     if important_update:
         source=content['important_updates'][-1]['sources'][0]
-        from .source_policy import source_identity
-        kind,tier=source_identity(source['url'])
+        kind,tier=_update_source_identity(source['url'], weekend=weekend)
         if any(r.get('url')==source['url'] or r.get('canonical_url')==source['url'] for r in new_sources):
             raise ValueError('이미 수집된 원문입니다. 기존 기사에서 정정해 주세요.')
         repo.insert_sources([{'snapshot_id':new_snap['id'], 'source_name':source['source_name'],
@@ -102,29 +107,61 @@ def apply_correction(repo, bundle, event_key, changes, reason, actor, *, importa
     return rev
 
 
-def updated_content(content, update, reason):
+def _update_source_identity(url, *, weekend):
+    from .source_policy import source_identity, domain_matches, INSURER_NOTICE_DOMAINS
+    from .normalize import publisher_domain
+
+    if weekend:
+        host = publisher_domain(url) or ''
+        if host.endswith('.go.kr') or domain_matches(host, INSURER_NOTICE_DOMAINS):
+            return 'official', 'A'
+    identity = source_identity(url)
+    allowed = {'official'} if weekend else {'official', 'industry_official'}
+    return identity if identity and identity[0] in allowed else None
+
+
+def updated_content(content, update, reason, *, now=None, weekend=False):
     """Manager-authored exceptional official announcement, separate from daily quotas."""
-    from .source_policy import source_identity
     from .normalize import is_safe_url
     from .profile_rules import PROFILE_RULES
     from uuid import uuid4
     result=deepcopy(content)
     url=str(update.get('url') or '').strip()
-    identity=source_identity(url)
-    if not is_safe_url(url) or not identity or identity[0] not in {'official','industry_official'}:
-        raise ValueError('확인 가능한 공공기관·보험협회 공식 원문 주소를 입력해 주세요.')
+    if not is_safe_url(url) or not _update_source_identity(url, weekend=weekend):
+        raise ValueError('확인 가능한 소관 기관·당사 보험사의 공식 원문 주소를 입력해 주세요.' if weekend
+                         else '확인 가능한 공공기관·보험협회 공식 원문 주소를 입력해 주세요.')
     if not str(reason).strip() or not all(str(update.get(k) or '').strip() for k in ('title','summary','source_name')):
         raise ValueError('제목·요약·출처명·추가 사유를 입력해 주세요.')
+    instant = (now or datetime.now(timezone.utc)).astimezone(KST)
     observed=datetime.fromisoformat(str(update.get('published_at') or '').replace('Z','+00:00'))
-    if observed.tzinfo is None or observed>datetime.now(timezone.utc):
+    if observed.tzinfo is None or observed>instant:
         raise ValueError('시간대가 있는 실제 발표 시각을 입력해 주세요. 미래 시각은 사용할 수 없습니다.')
-    edition_day=datetime.fromisoformat(str(content['as_of']).replace('Z','+00:00')).astimezone(ZoneInfo('Asia/Seoul')).date()
-    if observed.astimezone(ZoneInfo('Asia/Seoul')).date()!=edition_day:
-        raise ValueError('해당 브리핑 날짜에 발표된 공식 자료만 추가할 수 있습니다.')
+    local_day = instant.date()
+    if weekend:
+        if is_regular_day(local_day) or is_regular_day(observed.astimezone(KST).date()):
+            raise ValueError('토·일에 발표된 주말 긴급 공지만 추가할 수 있습니다.')
+        saturday = local_day - timedelta(days=local_day.weekday()-5)
+        monday = saturday + timedelta(days=2)
+        deadline = datetime.fromisoformat(str(update.get('action_by') or '').replace('Z','+00:00'))
+        effective = datetime.fromisoformat(str(update.get('effective_at') or '').replace('Z','+00:00'))
+        if (observed.astimezone(KST).date() < saturday or deadline.tzinfo is None
+                or effective.tzinfo is None or effective >= datetime.combine(monday, PUBLICATION_TIME, KST)
+                or not instant < deadline < datetime.combine(monday, PUBLICATION_TIME, KST)):
+            raise ValueError('이번 주말 발표와 월요일 오전 8시 전 적용 시각·대응 기한을 확인해 주세요.')
+        if not update.get('verified') or not all(str(update.get(key) or '').strip() for key in ('affected', 'action')):
+            raise ValueError('공식 원문, 대상, 필요한 조치 및 주말 대응 필요성을 확인해 주세요.')
+    else:
+        edition_day=datetime.fromisoformat(str(content['as_of']).replace('Z','+00:00')).astimezone(KST).date()
+        if observed.astimezone(KST).date()!=edition_day:
+            raise ValueError('해당 브리핑 날짜에 발표된 공식 자료만 추가할 수 있습니다.')
     code=content['profile_code']
     if update.get('category') not in PROFILE_RULES[code].categories:
         raise ValueError('해당 영역의 분류를 선택해 주세요.')
     row={k:str(update.get(k) or '').strip()[:4000] for k in ('title','summary','why_important','impact_summary','category')}
+    if weekend:
+        row['weekend_urgent'] = True
+        row['why_important'] = f"적용 {effective.astimezone(KST):%m/%d %H:%M} KST · 대상 {str(update['affected']).strip()[:500]}"
+        row['impact_summary'] = f"대응 기한 {deadline.astimezone(KST):%m/%d %H:%M} KST · {str(update['action']).strip()[:750]}"
     row.update({'event_key':'official-update-'+uuid4().hex,'communication_state':'customer_ready',
         'sources':[{'title':row['title'],'source_name':str(update['source_name']).strip()[:200],
             'url':url,'published_at':observed.isoformat()}], 'representative':False,

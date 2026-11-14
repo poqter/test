@@ -62,6 +62,7 @@ def test_generation_recovery_button_respects_daily_limits(monkeypatch,status,att
     from modules.briefing import briefing_center as center
     from modules.briefing import preflight, scheduler
     monkeypatch.setattr(center,'_can_manage',lambda:True)
+    monkeypatch.setattr(center,'is_regular_day',lambda day:True)
     monkeypatch.setattr(center,'_clear_read_caches',lambda:None)
     monkeypatch.setattr(preflight,'run_runtime_preflight',lambda **kwargs:[])
     monkeypatch.setattr(scheduler,'cutoff',lambda day,group:datetime(2000,1,1,tzinfo=timezone.utc))
