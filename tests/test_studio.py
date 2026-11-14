@@ -83,6 +83,36 @@ def test_practice_contract():
  http=Mock();http.post.return_value.status_code=200;http.post.return_value.json.return_value={'status':'completed','output':[{'content':[{'type':'output_text','text':json.dumps(report())}]}]}
  OpenAIProvider(Config(api_key='x'),http).generate('COACH',{'_practice_report':True})
  assert http.post.call_args.kwargs['json']['text']['format']['schema']==EVALUATOR
+@pytest.mark.parametrize('role', ['EVALUATOR', 'COACH'])
+def test_evaluation_separates_advisor_evidence_from_customer_context(role):
+ http = Mock()
+ http.post.return_value.status_code = 200
+ http.post.return_value.json.return_value = {'status':'completed','output':[{'content':[{'type':'output_text','text':json.dumps(report())}]}]}
+ s = session(mode='ASSESSMENT')
+ d.apply_turn(s, '화요일에 통화 가능하실까요?', response(reply='네, 화요일이 좋습니다.'))
+ context = d.report_context(s)
+ if role == 'COACH':
+  context['_practice_report'] = True
+ original = deepcopy(context)
+
+ OpenAIProvider(Config(api_key='test-placeholder'), http).generate(role, context)
+
+ body = http.post.call_args.kwargs['json']
+ payload = json.loads(body['input'])
+ assert context == original
+ assert 'messages' not in payload
+ assert payload['advisor_evidence'] == [{'turn': 1, 'stage': 'TA', 'text': '화요일에 통화 가능하실까요?'}]
+ assert payload['customer_context'] == [{'turn': 1, 'stage': 'TA', 'text': '네, 화요일이 좋습니다.'}]
+ result = report()
+ for row in result['rows']:
+  row['evidence'][0]['quote'] = '화요일에 통화 가능하실까요?'
+ d.validate_report(s, deepcopy(result))
+ result['rows'][0]['evidence'][0]['quote'] = '네, 화요일이 좋습니다.'
+ with pytest.raises(d.ReportValidationError) as error:
+  d.validate_report(s, result)
+ assert error.value.code == 'evidence_quote_mismatch'
+
+
 def test_timeout():
  import requests
  http=Mock();http.post.side_effect=requests.Timeout()
