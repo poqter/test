@@ -165,3 +165,26 @@ def test_insurance_section_keeps_articles_also_present_in_market():
     body = combine_bodies([market, insurance], ['MARKET', 'INSURANCE'])
     assert len([r for r in body['issues'] if r['section_code'] == 'INSURANCE']) == 3
     assert next(s for s in body['sections'] if s['profile_code'] == 'INSURANCE')['article_count'] == 3
+
+
+def test_weekend_urgent_notice_retains_friday_edition_and_rejects_nonurgent_or_unofficial():
+    from datetime import datetime
+    from modules.briefing.corrections import updated_content
+    from modules.briefing.public_body import customer_body
+    base = content('NEWS', 10)
+    instant = datetime.fromisoformat('2026-11-15T10:30:00+09:00')
+    update = {'title':'검수용 긴급 공지','summary':'가상 접수 제한','source_name':'당사 보험사',
+              'url':'https://www.hanwhalife.com/synthetic/notice','category':'사회·안전',
+              'published_at':'2026-11-15T10:00:00+09:00','effective_at':'2026-11-15T12:00:00+09:00',
+              'action_by':'2026-11-15T17:00:00+09:00','verified':True,
+              'affected':'신규 청약 고객','action':'오후 5시 전에 접수'}
+    revised = updated_content(base, update, '당일 접수 마감', now=instant, weekend=True)
+    assert revised['as_of'] == base['as_of']
+    assert revised['issues'] == base['issues']
+    row = customer_body(revised)['issues'][0]
+    assert row['weekend_urgent'] and '신규 청약 고객' in row['why_important']
+    assert '오후 5시 전에 접수' in row['impact_summary']
+    for change in ({'url':'https://www.yna.co.kr/article'}, {'verified':False},
+                   {'action_by':'2026-11-16T08:00:00+09:00'}, {'affected':''}):
+        with pytest.raises(ValueError):
+            updated_content(base, {**update, **change}, '당일 접수 마감', now=instant, weekend=True)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone, timedelta
-from zoneinfo import ZoneInfo
+from .publication_schedule import KST, monday_window_start
 import hashlib
 import ipaddress
 import re
@@ -104,6 +104,10 @@ def fingerprint(candidate: SourceCandidate) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
+def candidate_window_start(as_of: datetime) -> datetime:
+    return monday_window_start(as_of) or as_of - timedelta(hours=48)
+
+
 def classify_freshness(published_at: datetime | None, as_of: datetime) -> str:
     if published_at is None:
         return "undated"
@@ -111,11 +115,11 @@ def classify_freshness(published_at: datetime | None, as_of: datetime) -> str:
         published_at = published_at.replace(tzinfo=timezone.utc)
     if as_of.tzinfo is None:
         as_of = as_of.replace(tzinfo=timezone.utc)
-    local = as_of.astimezone(ZoneInfo("Asia/Seoul"))
-    start = local - timedelta(hours=24)
+    local = as_of.astimezone(KST)
+    start = monday_window_start(local) or local - timedelta(hours=24)
     if published_at > as_of:
         return "undated"
-    return "core_window" if published_at >= start else "fallback_window" if published_at >= local-timedelta(hours=48) else "stale"
+    return "core_window" if published_at >= start else "fallback_window" if published_at >= candidate_window_start(local) else "stale"
 
 
 def normalize_candidate(candidate: SourceCandidate, *, as_of: datetime) -> SourceCandidate:

@@ -67,7 +67,8 @@ def test_new_evidence_changes_review_identity():
 
 
 def test_old_briefing_is_not_automatically_called_failed():
-    result=o.briefing_issues({'jobs':[],'publications':[{'profile_code':'NEWS','briefing_date':'2020-01-01','current_published_revision_id':'x'}]})
+    result=o.briefing_issues({'jobs':[],'publications':[{'profile_code':'NEWS','briefing_date':'2020-01-01','current_published_revision_id':'x'}]},
+                             o.datetime.fromisoformat('2026-11-16T08:00:00+09:00'))
     assert result[0]['result']=='확인 필요'
 
 
@@ -134,3 +135,29 @@ def test_ui_navigation_filters_and_batch_preserve_selected_evidence():
     assert any('[문제 github:7]' in c.value and '[문제 github:8]' not in c.value for c in app.code)
     next(b for b in app.button if b.label=='최신 상태 조회').click().run()
     assert not app.exception and app.session_state['ops_selected']=='github:8'
+
+
+def test_briefing_weekend_keeps_friday_hold_and_monday_has_publication_boundary():
+    data = {
+        'jobs': [],
+        'publications': [{'profile_code':'NEWS','briefing_date':'2026-11-13','current_published_revision_id':'x'}],
+        'runs': [{'briefing_date':'2026-11-13','group_code':'ALERT_final_unpublished',
+                  'publication':[{'profile':'INSURANCE','status':'quality_hold'}]}],
+    }
+    def by_code(timestamp):
+        return {row['id']:row for row in o.briefing_issues(data, o.datetime.fromisoformat(timestamp))}
+    for day in (14, 15):
+        report = by_code(f'2026-11-{day}T09:00:00+09:00')
+        assert report['briefing:NEWS']['result'] == '정규 게시 휴무'
+        assert report['briefing:INSURANCE']['result'] == '확인 필요'
+        assert '직전 평일' in report['briefing:INSURANCE']['fact']
+    assert by_code('2026-11-16T07:59:59+09:00')['briefing:NEWS']['result'] == '게시 예정'
+    assert by_code('2026-11-16T08:00:00+09:00')['briefing:NEWS']['result'] == '확인 필요'
+
+
+def test_weekend_schedule_resumes_monday_in_kst():
+    saturday = o.datetime.fromisoformat('2026-11-14T06:00:00+09:00')
+    rows = [row for row in o.schedules(saturday) if row['자동 작업']=='hwarang_daily_briefing']
+    assert rows
+    assert min(row['다음 예정 (KST)'] for row in rows) == '2026-11-16 06:30 KST'
+    assert all(row['다음 예정 (KST)'].startswith('2026-11-16 ') for row in rows)

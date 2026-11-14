@@ -120,7 +120,7 @@ def _styles():
 
 
 def _badge(result):
-    tone={'실패':'fail','진행 중':'running','통과':'ok'}.get(result,'warn')
+    tone={'실패':'fail','진행 중':'running','통과':'ok','게시 예정':'running','정규 게시 휴무':'running'}.get(result,'warn')
     label={'실패':'검사 실패','진행 중':'검사 중','통과':'확인 범위 정상'}.get(result,result)
     return f'<span class="ops-badge {tone}">{escape(label)}</span>'
 
@@ -206,14 +206,14 @@ def render(auth,actor):
     issues+=op.studio_report_issues(studio) if studio else []
     if not issues:
         st.info('확인 가능한 결과가 없습니다. 수집 상태를 먼저 확인해 주세요.');return
-    issues.sort(key=lambda i:({'실패':0,'확인 필요':1,'진행 중':2,'통과':3}.get(i['result'],1),i['title']))
+    issues.sort(key=lambda i:({'실패':0,'확인 필요':1,'진행 중':2,'통과':3,'게시 예정':4,'정규 게시 휴무':4}.get(i['result'],1),i['title']))
     byid={i['id']:i for i in issues}
     if st.session_state.get('ops_selected') not in byid:
         st.session_state['ops_selected']=issues[0]['id']
         st.session_state['ops_mobile_detail']=False
     shell='ops_shell_detail' if st.session_state.get('ops_mobile_detail') else 'ops_shell_list'
     with st.container(key=shell):
-        counts=[sum(i['result'] not in ('통과','진행 중') for i in issues),sum(i['result']=='진행 중' for i in issues),sum(i['result']=='통과' for i in issues)]
+        counts=[sum(i['result'] not in ('통과','진행 중','정규 게시 휴무','게시 예정') for i in issues),sum(i['result']=='진행 중' for i in issues),sum(i['result']=='통과' for i in issues)]
         st.markdown('<div class="ops-summary">'+''.join(f'<div class="ops-stat {tone}"><span>{label}</span><strong>{count}</strong></div>' for tone,label,count in zip(['warn','running','ok'],['확인 필요','검사 중','확인 범위 정상'],counts))+'</div>',unsafe_allow_html=True)
         tabs=st.tabs(['문제 확인','기능별 현황','자동 작업·최근 변경'])
         with tabs[0]:
@@ -222,7 +222,7 @@ def render(auth,actor):
                 with listing,st.container(key='ops_list'):
                     st.markdown('### 확인할 문제')
                     chosen=st.selectbox('표시할 항목',['확인 필요·검사 중','전체','검사 실패','확인 범위 정상'],key='ops_filter',label_visibility='collapsed')
-                    visible=[i for i in issues if chosen=='전체' or (chosen=='확인 필요·검사 중' and i['result']!='통과') or (chosen=='검사 실패' and i['result']=='실패') or (chosen=='확인 범위 정상' and i['result']=='통과')]
+                    visible=[i for i in issues if chosen=='전체' or (chosen=='확인 필요·검사 중' and i['result'] in ('실패','확인 필요','진행 중','확인 불가')) or (chosen=='검사 실패' and i['result']=='실패') or (chosen=='확인 범위 정상' and i['result']=='통과')]
                     if not visible:st.info('이 조건에 해당하는 항목이 없습니다. 전체 목록에서 검사 결과를 확인할 수 있습니다.')
                     for i in visible:
                         label={'실패':'검사 실패','진행 중':'검사 중','통과':'확인 범위 정상'}.get(i['result'],i['result'])

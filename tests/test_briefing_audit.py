@@ -1,5 +1,5 @@
 """Policy and failure regression checks; no live paid requests."""
-from datetime import date
+from datetime import date, datetime
 from unittest.mock import Mock
 import pytest
 import requests
@@ -66,7 +66,7 @@ def test_recover_retains_each_group_failure_without_another_attempt(monkeypatch)
     from modules.briefing.runtime import BriefingRunError
     generate=Mock(side_effect=[BriefingRunError('OpenAI analysis HTTP 401',{'request_failure':{'http_status':401}}),BriefingRunError('OpenAI discovery HTTP 429',{'request_failure':{'http_status':429}})])
     monkeypatch.setattr(scheduler,'generate_group',generate);monkeypatch.setattr(scheduler,'publish_ready',lambda *a:[])
-    result=run_scheduled('recover',repo=Mock())
+    result=run_scheduled('recover',now=datetime.fromisoformat('2026-11-13T08:10:00+09:00'),repo=Mock())
     assert generate.call_count==3
     assert result['MARKET']['diagnostic']['diagnostics']['request_failure']['http_status']==401
     assert result['NEWS']['diagnostic']['diagnostics']['request_failure']['http_status']==429

@@ -28,7 +28,8 @@ def _project(content,external):
     for row in content.get('important_updates',[])+content.get('issues',[]):
         sources=[{k:r.get(k) for k in ('title','source_name','url','published_at')} for r in row.get('sources',[]) if is_safe_url(str(r.get('url') or '')) and r.get('published_at')][:4]
         if sources:issues.append({k:row.get(k) for k in ('event_key','title','summary','category','why_important','impact_summary','representative','headline_sufficient','event_date')}|{'sources':sources, 'reading_group':'more' if content.get('editorial_version',0) >= 2 and row.get('selection_tier') == 'light_digest' else 'main', 'important_update':row.get('event_key') in update_keys,
-            'added_at':row.get('added_at') if row.get('event_key') in update_keys else None})
+            'added_at':row.get('added_at') if row.get('event_key') in update_keys else None,
+            'weekend_urgent':row.get('event_key') in update_keys and bool(row.get('weekend_urgent'))})
     raw_metrics=content.get('market_metrics') or {}
     raw_metrics=raw_metrics.get('items',[]) if isinstance(raw_metrics,dict) else raw_metrics
     metrics=[{k:r.get(k) for k in METRIC_FIELDS} for r in raw_metrics
@@ -226,9 +227,14 @@ def _cached_pdf(serialized):
             section_day = next((s.get('briefing_date') for s in body.get('sections', []) if s.get('profile_label') == last_section), None)
             story.append(Paragraph(e(last_section)+((' · '+e(section_day)) if section_day else ''), heading))
         article=[Paragraph('오늘의 소식',heading)] if i==1 else []
-        if row.get('important_update'):article.append(Paragraph('중요 발표 추가 · '+e(display_date(row.get('added_at'))),meta))
+        if row.get('important_update'):
+            label = '주말 긴급 공지' if row.get('weekend_urgent') else '중요 발표 추가'
+            article.append(Paragraph(label+' · '+e(display_date(row.get('added_at'))),meta))
         if row.get('representative'):article.append(Paragraph('핵심 이슈 · '+e(row.get('category')),meta))
         article.append(Paragraph(f'{i:02d} · '+e(row['title']),heading));article.append(Paragraph(e(row.get('summary')),base))
+        if row.get('weekend_urgent'):
+            for field in ('why_important', 'impact_summary'):
+                if row.get(field): article.append(Paragraph(e(row[field]),base))
         for src in row.get('sources') or []:article.append(Paragraph(f'<a href="{e(src["url"])}" color="#155e8b">{e(src["source_name"])} · 원문 읽기</a> · {e(display_date(src["published_at"]))}',meta))
         article.append(Spacer(1,5))
         card=Table([[article]],colWidths=[507],hAlign='LEFT')

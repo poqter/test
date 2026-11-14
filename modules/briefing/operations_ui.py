@@ -5,6 +5,7 @@ import json
 import streamlit as st
 from .repository import BriefingRepositoryError
 from .runtime import PROFILE_LABELS
+from .publication_schedule import KST, is_regular_day
 
 
 def render_operations(repo):
@@ -128,21 +129,34 @@ def render_correction(repo,bundle):
 def render_important_update(repo, bundle):
     if bundle['revision'].get('publication_status') != 'published':
         return
-    if str(bundle['briefing']['briefing_date']) != datetime.now(ZoneInfo('Asia/Seoul')).date().isoformat():
+    day = datetime.now(KST).date()
+    weekend = not is_regular_day(day)
+    if not weekend and str(bundle['briefing']['briefing_date']) != day.isoformat():
         return
-    with st.expander('중요 공식 발표 추가 · 필요할 때만'):
+    with st.expander('주말 긴급 공지 추가' if weekend else '중요 공식 발표 추가 · 필요할 때만'):
+        if weekend:
+            st.caption('월요일 오전 8시 전에 조치가 필요한 소관 기관·보험사의 공식 공지만 추가합니다. 정규판 게시일은 유지합니다.')
         st.caption('새 공식 발표를 확인한 관리자가 추가합니다. 정규 기사와 별도로 표시하며, 공유 링크와 최신 PDF에 반영합니다. AI 호출은 없습니다.')
         code=bundle['briefing']['profile_code']
         from .profile_rules import PROFILE_RULES
         with st.form('important_update_'+bundle['revision']['id']):
             title=st.text_input('발표 제목')
             summary=st.text_area('확인한 사실 요약')
-            source_name=st.text_input('공식 기관·협회 이름')
+            source_name=st.text_input('공식 기관·보험사 이름' if weekend else '공식 기관·협회 이름')
             url=st.text_input('공식 원문 주소')
             published_at=st.text_input('실제 발표 시각',placeholder='2026-10-13T10:00:00+09:00')
             category=st.selectbox('발표 분야',PROFILE_RULES[code].categories)
             reason=st.text_input('추가 사유')
-            checked=st.checkbox('원문의 사실·시행일과 고객에게 제공할 표현을 확인했습니다.')
+            weekend_fields = {}
+            if weekend:
+                weekend_fields = {
+                    'effective_at': st.text_input('적용 시각 (ISO 8601)', placeholder='2026-11-15T15:00:00+09:00'),
+                    'action_by': st.text_input('대응 기한 (ISO 8601)', placeholder='2026-11-15T17:00:00+09:00'),
+                    'affected': st.text_input('적용 대상'),
+                    'action': st.text_area('필요한 조치'),
+                }
+            checked=st.checkbox('공식 원문과 월요일 오전 8시 전 조치 필요성을 확인했습니다.' if weekend
+                                else '원문의 사실·시행일과 고객에게 제공할 표현을 확인했습니다.')
             if st.form_submit_button('중요 발표를 새 판으로 게시',disabled=not checked):
                 from .corrections import apply_correction
                 try:
@@ -150,7 +164,7 @@ def render_important_update(repo, bundle):
                     apply_correction(repo,bundle,issue['event_key'],{},reason,
                         str((st.session_state.get('login_profile') or {}).get('id') or ''),
                         important_update={'title':title,'summary':summary,'source_name':source_name,
-                            'url':url,'published_at':published_at,'category':category})
+                            'url':url,'published_at':published_at,'category':category,'verified':checked,**weekend_fields})
                     from .briefing_center import _clear_read_caches
                     _clear_read_caches();st.success('중요 발표를 추가했습니다. 기존 공유 링크에서 최신 판을 읽을 수 있습니다.');st.rerun()
                 except (BriefingRepositoryError,ValueError) as exc:

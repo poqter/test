@@ -192,7 +192,8 @@ def run_phase_b(
     # Route and balance before spending bounded HTTP requests. A finance feed
     # must not exhaust NEWS/INSURANCE's evidence allowance.
     from collections import defaultdict
-    from datetime import timedelta
+    from .normalize import candidate_window_start
+    oldest = candidate_window_start(as_of)
     pools = defaultdict(list)
     seen_urls = set()
     for candidate in [*ordered_web, *direct_candidates]:
@@ -205,7 +206,7 @@ def run_phase_b(
         if candidate.published_at and candidate.published_at > as_of:
             excluded['after_cutoff']=excluded.get('after_cutoff',0)+1
             continue
-        if candidate.published_at and candidate.published_at < as_of-timedelta(hours=48):
+        if candidate.published_at and candidate.published_at < oldest:
             excluded['stale']=excluded.get('stale',0)+1
             continue
         url=candidate.canonical_url or candidate.url
@@ -220,6 +221,9 @@ def run_phase_b(
             enricher.enrich(candidate)
         if candidate.published_at and candidate.published_at > as_of:
             excluded['after_cutoff'] = excluded.get('after_cutoff', 0) + 1
+            continue
+        if candidate.published_at and candidate.published_at < oldest:
+            excluded['stale'] = excluded.get('stale', 0) + 1
             continue
         normalize_candidate(candidate, as_of=as_of)
         ok, reason = passes_common_gate(candidate)

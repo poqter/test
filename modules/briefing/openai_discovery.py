@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
+from .publication_schedule import KST, monday_window_start
 import os
 from typing import Any
 
@@ -43,13 +43,14 @@ class OpenAIWebDiscoveryClient:
             raise BriefingDiscoveryError("BRIEFING_DISCOVERY_MODEL is not configured")
 
     def _request(self, lane: DiscoveryLaneSpec) -> dict[str, Any]:
-        local_now = self.as_of.astimezone(ZoneInfo("Asia/Seoul"))
-        oldest = (local_now - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-        query_dates = f"after:{oldest.date().isoformat()} before:{(local_now+timedelta(days=1)).date().isoformat()}"
+        local_now = self.as_of.astimezone(KST)
+        oldest = monday_window_start(local_now) or (local_now - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        search_start = oldest.date() - timedelta(days=1) if local_now.weekday() == 0 else oldest.date()
+        query_dates = f"after:{search_start.isoformat()} before:{(local_now+timedelta(days=1)).date().isoformat()}"
         payload = {
             "model": self.model,
             "input": (
-                f"기준시각={self.as_of.isoformat()}. 전날 00:00 KST부터 기준시각까지 게시된 새 자료만 탐색한다. "
+                f"기준시각={self.as_of.isoformat()}. {oldest.isoformat()}부터 기준시각까지 게시된 새 자료만 탐색한다. "
                 f"한국 기준 날짜={local_now.isoformat()}. 검색어에 {query_dates}를 포함한다. "
                 "web_search 도구를 정확히 한 번 사용하고 검색 쿼리도 하나만 작성한다. "
                 "여러 하위 주제별 검색이나 추가 탐색 없이 첫 검색 결과의 새 기사/발표 원문 링크만 반환한다. "

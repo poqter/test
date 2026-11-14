@@ -11,6 +11,7 @@ from .public_body import customer_body, staff_body, public_html, public_pdf
 from .display import render_body, stamp
 from .diagnostics import build_info, failure_diagnostic
 from .scheduler import generate_group
+from .publication_schedule import is_regular_day
 from .experience import publication_blockers, sharing_blockers, selection_summary
 
 PROFILE_ORDER = ('MARKET', 'NEWS', 'INSURANCE')
@@ -286,6 +287,9 @@ def _publish_actions(repo, bundle):
     if not _can_manage():
         return
     revision = bundle['revision']
+    if revision.get('publication_status') != 'published' and not is_regular_day(datetime.now(KST).date()):
+        st.caption('정규 게시 휴무 · 중요 공식 발표는 기존 공개본에서 추가할 수 있습니다.')
+        return
     reasons = publication_blockers(bundle)
     if revision.get('publication_status') != 'published':
         if st.button('이 브리핑 게시하기', key='publish_'+revision['id'], type='primary', disabled=bool(reasons), use_container_width=True):
@@ -350,6 +354,10 @@ def _render_generate_panel(repo):
     if not _can_manage():
         return
     st.subheader('브리핑 생성')
+    day = datetime.now(KST).date()
+    if not is_regular_day(day):
+        st.info('정규 게시 휴무 · 토·일에는 정규판을 생성하거나 복구하지 않습니다.')
+        return
     st.caption('이미 완료한 작업은 재사용합니다. 새 수집·분석에는 기존 API 요금이 발생할 수 있습니다.')
     group = st.selectbox('생성할 영역', ['NEWS','INSURANCE','MARKET'], format_func=lambda x:PROFILE_LABELS[x])
     from .preflight import run_runtime_preflight, preflight_ready
@@ -357,7 +365,6 @@ def _render_generate_panel(repo):
     for check in checks:
         if check.required and not check.ok:
             st.error(check.message)
-    day = datetime.now(KST).date()
     from .scheduler import cutoff
     from .execution_policy import request_plan
     plan = request_plan(group)
@@ -409,6 +416,8 @@ def _render_generate_panel(repo):
 
 def _render_today(repo, can_manage):
     summaries = _latest_summaries(False)
+    if not is_regular_day(datetime.now(KST).date()):
+        st.caption('정규 게시 휴무 · 최근 공개본을 표시합니다.')
     tabs = st.tabs([PROFILE_LABELS[c] for c in PROFILE_ORDER],key='briefing_reading_tabs')
     from .reading_state import install_reading_state
     install_reading_state()
@@ -439,7 +448,7 @@ def _render_history(repo, can_manage):
 def _render_manager_editions(repo):
     st.subheader('생성·게시 관리')
     code = st.selectbox('관리할 영역', PROFILE_ORDER, format_func=lambda x:PROFILE_LABELS[x], key='manager_edition_profile')
-    summaries = _latest_summaries(True)
+    summaries = _latest_summaries(is_regular_day(datetime.now(KST).date()))
     item = summaries.get(code)
     if not item:
         st.info('이 영역에 저장된 자료가 없습니다.')

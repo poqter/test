@@ -175,3 +175,41 @@ def test_cron_events_use_catch_up_instead_of_original_stage():
     assert 'BRIEFING_ACTION=catch_up' in workflow
     assert 'BRIEFING_ACTION=prepare' not in workflow
     assert 'cancel-in-progress: false' in workflow
+
+
+def test_friday_retry_weekend_pause_and_monday_restart(generate, monkeypatch):
+    monkeypatch.setattr(__import__(__name__), 'DAY', '2026-11-13')
+    friday = Repo()
+    friday.runs['NEWS'] = {'status':'failed','attempts':1}
+    friday.saved = {code: edition(code) for code in ('MARKET', 'INSURANCE')}
+    assert s.catch_up(friday, at('08:09:00'))['generation']['NEWS']['status'] == 'retry_wait'
+    assert s.catch_up(friday, at('08:10:00'))['status'] == 'published'
+    assert s.catch_up(friday, at('08:29:00'))['status'] == 'published'
+    assert friday.runs['NEWS']['attempts'] == 2
+    assert friday.paid == ['analysis']
+
+    for timestamp in ('2026-11-13T23:10:00+00:00', '2026-11-15T00:07:00+00:00'):
+        instant = datetime.fromisoformat(timestamp)
+        for action in ('catch_up', 'market', 'daily', 'publish', 'recover'):
+            result = s.run_scheduled(action, now=instant, repo=object())
+            assert result['status'] == 'regular_day_off'
+            assert not result['notification_required']
+        assert s.catch_up(object(), instant)['status'] == 'regular_day_off'
+
+    monkeypatch.setattr(__import__(__name__), 'DAY', '2026-11-16')
+    monday = Repo()
+    assert s.catch_up(monday, at('07:59:00'))['status'] == 'before_publication_time'
+    assert not monday.publications
+    assert s.catch_up(monday, at('08:00:00'))['status'] == 'published'
+    assert set(monday.publications) == {'NEWS','MARKET','INSURANCE'}
+    assert all(monday.runs[code]['attempts'] == 1 for code in monday.publications)
+
+
+def test_monday_news_includes_friday_after_publication():
+    from modules.briefing.normalize import candidate_window_start, classify_freshness
+    instant = datetime.fromisoformat('2026-11-16T07:30:00+09:00')
+    friday_publication = datetime.fromisoformat('2026-11-13T08:00:00+09:00')
+    assert candidate_window_start(instant) == friday_publication
+    assert classify_freshness(friday_publication, instant) == 'core_window'
+    assert classify_freshness(datetime.fromisoformat('2026-11-13T07:59:59+09:00'), instant) == 'stale'
+    assert classify_freshness(datetime.fromisoformat('2026-11-15T15:00:00+09:00'), instant) == 'core_window'

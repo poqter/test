@@ -46,9 +46,11 @@ def article_html(row, *, lead=False, large=False, heading='h3'):
     title=e(row.get('title') or '오늘의 소식')
     if first:title=f'<a href="{e(first["url"])}" target="_blank" rel="noopener noreferrer">{title}</a>'
     cls='hw-news'+(' lead' if lead else '')+(' big' if large else '')
-    tag=('중요 발표 · ' if row.get('important_update') else '')+str(row.get('category') or '뉴스')
+    tag=('주말 긴급 공지 · ' if row.get('weekend_urgent') else '중요 발표 · ' if row.get('important_update') else '')+str(row.get('category') or '뉴스')
     parts=[f'<article class="{cls}"><span class="tag">{e(tag)}</span><{heading}>{title}</{heading}>']
     if not row.get('headline_sufficient'):parts.append('<p>'+e(row.get('summary'))+'</p>')
+    if row.get('weekend_urgent'):
+        parts.extend('<p>'+e(row[field])+'</p>' for field in ('why_important', 'impact_summary') if row.get(field))
     if row.get('event_date'):parts.append('<div class="event-date">사건·발표일 '+e(row['event_date'])+'</div>')
     if row.get('important_update'):parts.append('<div class="event-date">추가 '+e(stamp(row.get('added_at')))+'</div>')
     if first:

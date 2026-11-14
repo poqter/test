@@ -1,11 +1,10 @@
 """Server-only daily orchestration; viewing and sharing never enter this module."""
-from datetime import datetime, time, timezone, timedelta
+from datetime import datetime, time, timezone
 import uuid
-from zoneinfo import ZoneInfo
+from .publication_schedule import KST, PUBLICATION_TIME, is_regular_day
 from .repository import BriefingRepository
 from .runtime import generate_and_store_briefings, body_quality_ready
 
-KST=ZoneInfo('Asia/Seoul')
 GROUPS={'MARKET':('MARKET',),'NEWS':('NEWS',),'INSURANCE':('INSURANCE',)}
 
 
@@ -15,6 +14,8 @@ def cutoff(day, group):
 
 def collect_early(repo, day, slot):
     """Two free, durable candidate collections; never a final editorial selection."""
+    if not is_regular_day(day):
+        return {'status':'regular_day_off'}
     if not repo.operating_policy().get('scheduled_generation_enabled'):
         return {'status':'skipped','reason':'scheduled_generation_paused'}
     key=f'{day}:COLLECT_{slot}'; owner=str(uuid.uuid4())
@@ -37,6 +38,8 @@ def collect_early(repo, day, slot):
 
 
 def generate_group(repo, day, group, retry=False, actor=None, allow_partial_market=False, now=None):
+    if not is_regular_day(day):
+        return {'status':'regular_day_off'}
     if group not in GROUPS and group != 'DAILY':raise ValueError('Unknown briefing group')
     if actor is None and not repo.operating_policy().get('scheduled_generation_enabled'):
         return {'status':'skipped','reason':'scheduled_generation_paused'}
@@ -98,6 +101,8 @@ def generate_group(repo, day, group, retry=False, actor=None, allow_partial_mark
 
 
 def publish_ready(repo, day, codes, *, now=None):
+    if not is_regular_day(day):
+        return []
     results=[]
     profiles={r['profile_code']:r for r in repo.profiles()}
     policy=repo.operating_policy()
@@ -107,7 +112,7 @@ def publish_ready(repo, day, codes, *, now=None):
         bundle=repo.bundle_for_date(code,day,include_draft=True)
         if not bundle:results.append({'profile':code,'status':'no_snapshot'});continue
         revision=bundle['revision']; qa=bundle['snapshot'].get('qa_payload') or {}
-        publish_at=datetime.combine(day,time(8),KST)
+        publish_at=datetime.combine(day,PUBLICATION_TIME,KST)
         if (now or datetime.now(timezone.utc))<publish_at:results.append({'profile':code,'status':'before_publication_time'});continue
         if revision.get('publication_status')=='published':
             results.append({'profile':code,'status':'already_published'});continue
@@ -145,6 +150,8 @@ def catch_up(repo, now=None):
     if instant.tzinfo is None:
         raise ValueError('Scheduler time must include a timezone')
     day = instant.astimezone(KST).date()
+    if not is_regular_day(day):
+        return {'status':'regular_day_off','briefing_date':str(day),'notification_required':False}
     profiles = {p['profile_code']: p for p in repo.profiles()}
     def clock():
         return now or datetime.now(timezone.utc)
@@ -152,7 +159,7 @@ def catch_up(repo, now=None):
     def due_profiles():
         return [code for code in ('MARKET', 'NEWS', 'INSURANCE')
                 if profiles.get(code, {}).get('is_enabled') is not False
-                and clock() >= datetime.combine(day, time(8), KST)]
+                and clock() >= datetime.combine(day, PUBLICATION_TIME, KST)]
     from .diagnostics import failure_diagnostic
 
     def publish_independently():
@@ -238,9 +245,14 @@ def catch_up(repo, now=None):
 
 
 def run_scheduled(action, now=None, repo=None):
+    if action not in {'catch_up', 'prepare', 'market', 'daily', 'publish', 'recover'}:
+        raise ValueError('Unknown scheduled action')
+    instant=now or datetime.now(timezone.utc)
+    day=instant.astimezone(KST).date()
+    if not is_regular_day(day):
+        return {'status':'regular_day_off','briefing_date':str(day),'notification_required':False}
     repo=repo or BriefingRepository()
     if action=='catch_up':return catch_up(repo, now)
-    now=now or datetime.now(timezone.utc); local=now.astimezone(KST); day=local.date()
     if action=='prepare':
         repo.sync_business_calendar(day)
         policy = repo.operating_policy()
@@ -248,10 +260,10 @@ def run_scheduled(action, now=None, repo=None):
                 'policy':{k:policy.get(k) for k in ('scheduled_generation_enabled','automatic_publication_enabled','external_sharing_approved')},
                 'enabled':[r['profile_code'] for r in repo.profiles() if r.get('is_enabled')]}
     if action=='market':
-        if now<cutoff(day,'MARKET'):raise ValueError('MARKET cutoff not reached')
+        if instant<cutoff(day,'MARKET'):raise ValueError('MARKET cutoff not reached')
         return generate_group(repo,day,'MARKET',allow_partial_market=True)
     if action=='daily':
-        if now<cutoff(day,'DAILY'):raise ValueError('DAILY cutoff not reached')
+        if instant<cutoff(day,'DAILY'):raise ValueError('DAILY cutoff not reached')
         published=publish_ready(repo,day,('MARKET',))
         return {'market':published,'daily':generate_group(repo,day,'DAILY')}
     if action=='publish':return publish_ready(repo,day,('MARKET','NEWS','INSURANCE'))

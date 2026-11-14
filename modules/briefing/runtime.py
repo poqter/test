@@ -13,6 +13,7 @@ from .direct_sources import load_direct_source_specs_from_env
 from .diagnostics import ENGINE_VERSION, DIAGNOSTIC_SCHEMA, build_info
 from .models import PhaseBResult, PhaseCResult, ProfileEventAnalysis, SharedEventCandidate, SourceCandidate
 from .phase_b import run_phase_b
+from .publication_schedule import monday_window_start, previous_regular_day
 from .phase_c import run_phase_c
 from .repository import BriefingRepository, BriefingRepositoryError
 from .public_body import customer_body
@@ -275,8 +276,7 @@ def _persist_profile(
     kst_date = phase_b.as_of.astimezone(KST).date()
     rows = phase_c.profile_rows(profile_code)
     from .editorial import remove_unchanged_repeats
-    from datetime import timedelta
-    previous = repo.bundle_for_date(profile_code, kst_date-timedelta(days=1))
+    previous = repo.bundle_for_date(profile_code, previous_regular_day(kst_date))
     if isinstance(previous,dict):
         remove_unchanged_repeats(rows, (previous['snapshot'].get('content_payload') or {}).get('issues', []))
         from .phase_c import _apply_caps
@@ -664,9 +664,9 @@ def generate_and_store_briefings(
             if code not in completed_c:
                 client = OpenAIAnalysisClient(on_response=lambda record: record_usage(record, discovery=False))
                 client.before_request = before_request
-                from datetime import timedelta
+                client.monday_edition = monday_window_start(as_of) is not None
                 if code not in saved.setdefault('previous_news',{}):
-                    previous=repo.bundle_for_date(code,as_of.astimezone(KST).date()-timedelta(days=1))
+                    previous=repo.bundle_for_date(code,previous_regular_day(as_of.astimezone(KST).date()))
                     saved['previous_news'][code]=[{k:r.get(k) for k in ('title','summary','event_key')}
                         for r in (previous['snapshot'].get('content_payload') or {}).get('issues',[])] if isinstance(previous,dict) else []
                     save()
