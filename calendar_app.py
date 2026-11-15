@@ -13,4 +13,5 @@ st.session_state['_calendar_deployment'] = True
 # sys.modules entries, which is unsafe across concurrent Streamlit sessions.
 entry = Path(__file__).with_name('app.py')
 namespace = {"__name__": "__main__", "__file__": str(entry), "__package__": None}
-exec(compile(entry.read_bytes(), str(entry), "exec"), namespace)
+from modules.activity.entry_runtime import entry_code
+exec(entry_code(entry), namespace)

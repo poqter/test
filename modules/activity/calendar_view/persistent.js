@@ -1,3 +1,9 @@
+const calendarMetrics=[];
+const calendarClock=()=>typeof performance!=='undefined'?performance.now():Date.now();
+function calendarMeasure(stage,started,ok=true,count=0){
+ calendarMetrics.push({stage,ms:Math.round((calendarClock()-started)*100)/100,ok,count});
+ if(calendarMetrics.length>100)calendarMetrics.shift();
+}
 // Explicit entrance: run after the synchronous form build, without delaying focus.
 function showCalendarDialog(panel){
  panel.showModal();
@@ -86,14 +92,15 @@ async function reloadCalendar(force=false){
  }catch(e){if(seq===calendarSeq&&epoch===calendarEpoch){calendarLoading=false;calendarLoadError=true;calendarStatus(e.message);render(latest)}}
 }
 async function loadPayload(first,last,team,member,cached=null){
+ const started=calendarClock();let succeeded=false;
  const requestEpoch=calendarEpoch,session=latest.mobileSession,controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
  try{
-  const response=await fetch(session.url+'/rest/v1/rpc/sales_calendar_changes',{method:'POST',headers:{apikey:session.key,Authorization:'Bearer '+session.token,'Content-Type':'application/json','X-Hwarang-View-Scope':session.viewScope||'daily'},body:JSON.stringify({first_day:first,last_day:last,p_member:member||null,p_team:!!team,p_known:cached?.versions||null}),signal:controller.signal});
+  const response=await fetch(session.url+'/rest/v1/rpc/sales_calendar_compact',{method:'POST',headers:{apikey:session.key,Authorization:'Bearer '+session.token,'Content-Type':'application/json','X-Hwarang-View-Scope':session.viewScope||'daily'},body:JSON.stringify({first_day:first,last_day:last,p_member:member||null,p_team:!!team,p_known:cached?.versions||null}),signal:controller.signal});
   if(!response.ok){if(requestEpoch===calendarEpoch){if(response.status===401)calendarAction('reauth');if(response.status===401||response.status===403){calendarCache.clear();if(calendarMemory)calendarMemory.cache=new Map();latest={...latest,events:[],roster:{}};}}throw Error('일정을 불러오지 못했습니다. 다시 확인해 주세요.');}
-  const data=await response.json();
+  const data=await response.json();succeeded=true;calendarMeasure("payload_rows",calendarClock(),true,(data.rows||[]).length);
   if(data.unchanged&&cached)return {...cached,versions:data.versions,syncStamp:data.stamp};
   const details=new Map(data.rows.map(r=>[r.id,r])),branch=Object.fromEntries(data.branch.map(r=>[r.member,r.label]));
-  const rows=member?data.rows:data.summary.map(r=>details.get(r.id)||r);
+  const rows=data.compact||member?data.rows:data.summary.map(r=>details.get(r.id)||r);
   const now=new Date(),kst=new Date(now.getTime()+9*3600000).toISOString(),today=kst.slice(0,10),clock=kst.slice(11,19);
   let events=rows.sort((a,b)=>(a.day+(a.start_time||'')+a.id).localeCompare(b.day+(b.start_time||'')+b.id)).map(r=>{
    const owner=branch[r.owner]||calendarBoot.members[r.owner]||'지점 공통',stamp=(r.start_time||(r.time_pending?'시간 미정':'종일')).slice(0,5);
@@ -101,11 +108,11 @@ async function loadPayload(first,last,team,member,cached=null){
    let label=r.kind==='휴무'?owner+' · 휴무':stamp+' · '+r.kind+' · '+owner+' · '+(overdue?'결과 미입력':r.status);
    if(r.companion)label+=' · 동행 '+(branch[r.companion]||'');if(r.help)label+=' · 지원 요청';
    const seconds=r.start_time?(new Date(r.day+'T'+r.start_time+'+09:00')-now)/1000:-1;
-   return {start:r.start_time,timePending:!!r.time_pending,place:r.place||'',status:r.status,revision:r.revision,id:r.id,day:r.day,kind:r.kind,member:r.owner,allDay:!r.start_time,short:r.kind==='휴무'?(team?owner+' · 휴무':'휴무'):(r.title||r.kind)+(team?' · '+owner:''),label,done:r.kind!=='휴무'&&r.status==='완료',soon:r.day===today&&r.status==='예정'&&seconds>=0&&seconds<=1800,readable:details.has(r.id)};
+   return {start:r.start_time,timePending:!!r.time_pending,place:r.place||'',status:r.status,revision:r.revision,id:r.id,day:r.day,kind:r.kind,member:r.owner,allDay:!r.start_time,short:r.kind==='휴무'?(team?owner+' · 휴무':'휴무'):(r.title||r.kind)+(team?' · '+owner:''),label,done:r.kind!=='휴무'&&r.status==='완료',soon:r.day===today&&r.status==='예정'&&seconds>=0&&seconds<=1800,readable:data.compact?!!r.readable:details.has(r.id)};
   });
   if(cached&&data.replaceFirst)events=[...cached.events.filter(e=>e.day<data.replaceFirst||e.day>data.replaceLast),...events];
   return {versions:data.versions,events,rangeStart:first,rangeEnd:last,syncUnit:data.unit,syncStamp:data.stamp,scopeLabel:member?calendarBoot.members[member]:team?(calendarBoot.viewLabel||'지점 일정'):'내 일정',roster:team||member?Object.fromEntries(Object.entries(branch).filter(([u])=>!member||u===member)):{}};
- }finally{clearTimeout(timeout)}
+ }finally{clearTimeout(timeout);calendarMeasure(cached?"range_revalidate":"range_initial",started,succeeded)}
 }
 function calendarAction(action,value){
  if(!calendarBoot){

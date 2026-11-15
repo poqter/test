@@ -51,6 +51,10 @@ class Records:
             seed('GET','sales_empty_days',{'day':'eq.'+day,'select':'owner'},entry['empty_days'])
             seed('GET','sales_notices',{'seen':'eq.false','order':'created_at.desc','limit':'20','select':'id,message,sales_events(day,kind)'},entry['notices'][:20])
             seed('GET','sales_notices',{'seen':'eq.false','select':'id','limit':'50'},[{'id':n['id']} for n in entry['notices']])
+        # The context RPC already authorizes and returns these collections.
+        # Reuse only inside this Records instance; writes clear _reads as before.
+        for table, value in (("sales_members", context["members"]), ("sales_branch_members", context["branch"])):
+            self._reads[json.dumps(["POST", "rpc/"+table, None, {}, None], sort_keys=True)] = deepcopy(value)
         rows=context["members"]
         self.branch={r["member"]:r for r in context["branch"]}
         self.fast_calendar=True
@@ -71,7 +75,9 @@ class Records:
         def fetch(query):
             key=json.dumps([method,table,query,body,prefer],sort_keys=True)
             if readonly and key in self._reads:return deepcopy(self._reads[key])
-            value=self.auth._request(method,"/rest/v1/"+table,access_token=self.token,params=query,json=body,prefer=prefer)
+            from modules.activity.runtime_metrics import measure
+            with measure("context" if table == "rpc/sales_calendar_context" else "record_read" if readonly else "record_write"):
+                value=self.auth._request(method,"/rest/v1/"+table,access_token=self.token,params=query,json=body,prefer=prefer)
             if readonly:self._reads[key]=deepcopy(value)
             return value
         if readonly:

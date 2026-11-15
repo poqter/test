@@ -22,9 +22,9 @@ with sync_playwright() as p:
  }''')
  expect(page.get_by_role('button',name='＋ 일정 등록',exact=True)).to_be_visible()
  assert page.evaluate('testRequests.length')==1
- request=page.evaluate('testRequests[0]');assert request['url'].endswith('/rpc/sales_calendar_changes');assert request['options']['headers']['Authorization']=='Bearer user-token'
- row=dict(id='event',owner='owner',day='2026-11-06',start_time=None,kind='AP',status='예정',companion=None,common=False,time_pending=True,title='처음 일정',help=False)
- bundle=dict(rows=[row],summary=[row],branch=[dict(member='owner',label='작성자')],unit='unit',stamp='v1')
+ request=page.evaluate('testRequests[0]');assert request['url'].endswith('/rpc/sales_calendar_compact');assert request['options']['headers']['Authorization']=='Bearer user-token'
+ row=dict(id='event',owner='owner',day='2026-11-06',start_time=None,kind='AP',status='예정',companion=None,common=False,time_pending=True,title='처음 일정',help=False,readable=True)
+ bundle=dict(compact=True,rows=[row],branch=[dict(member='owner',label='작성자')],unit='unit',stamp='v1')
  def resolve(data):page.evaluate('(data)=>testPending.shift()({ok:true,json:async()=>data})',data)
  resolve(bundle);expect(page.locator('.chip')).to_have_text('처음 일정 · 작성자')
  page.get_by_role('button',name='＋ 일정 등록',exact=True).click()

@@ -13,9 +13,20 @@ function calendarSyncUnits(a){
  const members=JSON.parse(calendarBoot.access);
  return [...new Set([a.syncUnit,...Object.values(members).map(r=>r.unit)].filter(Boolean))].sort();
 }
+let realtimeLibraryFlight=null;
+function loadRealtimeLibrary(){
+ if(realtimeLibraryFlight)return;
+ const script=document.createElement('script');script.src='realtime.js';script.async=true;
+ realtimeLibraryFlight=script;
+ script.onload=()=>{if(typeof HwarangRealtime!=='undefined')configureRealtime(syncConfig)};
+ script.onerror=()=>{script.remove();realtimeLibraryFlight=null;};
+ document.head.append(script);
+}
 function configureRealtime(a){
  const session=a?.mobileSession;
- if(document.hidden||!parentVisible||!a?.fast||!session?.token||!a.syncUnit){stopRealtime();return}
+ if(document.hidden||!parentVisible||(typeof navigator!=='undefined'&&navigator.onLine===false)||!a?.fast||!session?.token||!a.syncUnit){stopRealtime();return}
+ if(!a.syncStamp)return;
+ if(typeof HwarangRealtime==='undefined'){loadRealtimeLibrary();return}
  const units=calendarSyncUnits(a),key=[session.url,session.uid,...units].join('|');
  if(realtimeClient&&realtimeKey===key){if(realtimeToken!==session.token){realtimeToken=session.token;realtimeClient.setAuth(session.token).catch(()=>{realtimeReady=false})}return}
  stopRealtime();realtimeKey=key;realtimeToken=session.token;
