@@ -13,6 +13,7 @@ class FakeRecords:
         self.members={UID:{"member":UID,"label":"테스트 작성자","unit":"unit","managed":True},OTHER:{"member":OTHER,"label":"테스트 구성원","unit":"unit","managed":True}}
         self.me=self.members[UID]
         self.auth=SimpleNamespace(config=SimpleNamespace(url="https://example.invalid",publishable_key="fake"),_request=lambda *a,**k:[])
+        st.session_state.setdefault("fixture_contracts",[])
         st.session_state.setdefault("fixture_events",[dict(id=EVENT,owner=UID,unit="unit",day="2026-11-06",start_time="14:00:00",end_time="15:00:00",time_pending=False,title="상담 테스트",kind="AP",status="예정",place="상담실",note="기존 메모",help="",result="",common=False,companion=None,revision=1,previous_event=None,case_id=None)])
         st.session_state.setdefault("fixture_reports",[])
         st.session_state.setdefault("fixture_reviews",[])
@@ -30,6 +31,11 @@ class FakeRecords:
                 row=rows[-1];self.request('POST','sales_reviews',body={'id':body['p_request'],'report':row['id'],'revision':row['revision'],'message':body['p_message']})
             return True
         if table=='rpc/sales_support_recipients':return st.session_state.get('fixture_support_candidates',[])
+        if table=='rpc/sales_companion_busy_times':
+            return deepcopy([r for r in st.session_state['fixture_events'] if not r.get('deleted_at') and r['status']=='예정' and body['p_member'] in (r['owner'],r.get('companion')) and body['first_day']<=r['day']<=body['last_day']])
+        if method=='POST' and table=='sales_contracts':
+            if not any(r['id']==body['id'] for r in st.session_state['fixture_contracts']):
+                st.session_state['fixture_contracts'].append({**deepcopy(body),'owner':self.uid,'revision':1})
         if table=="rpc/sales_calendar_stamp":return "fixture-stamp"
         if method=="POST" and table in ("rpc/sales_members","rpc/sales_branch_members"):return list(self.members.values())
         if method=="POST" and table in ("rpc/sales_calendar_days","rpc/sales_calendar_days_v2"):return deepcopy([r for r in st.session_state["fixture_events"] if not r.get("deleted_at")])
@@ -63,7 +69,7 @@ class FakeRecords:
             st.session_state['fixture_checks']=[c for c in st.session_state['fixture_checks'] if c['report']!=row['id']]+[dict(report=row['id'],reviewer=self.uid,report_revision=row['revision'])]
             st.session_state['fixture_writes'].append(deepcopy(body));return True
         if method=="GET":
-            rows=st.session_state["fixture_events"] if table=="sales_events" else st.session_state["fixture_reports"] if table=="sales_reports" else st.session_state["fixture_reviews"] if table=="sales_reviews" else st.session_state["fixture_drafts"] if table=="sales_report_drafts" else st.session_state["fixture_checks"] if table=="sales_report_checks" else []
+            rows=st.session_state["fixture_events"] if table=="sales_events" else st.session_state["fixture_contracts"] if table=="sales_contracts" else st.session_state["fixture_reports"] if table=="sales_reports" else st.session_state["fixture_reviews"] if table=="sales_reviews" else st.session_state["fixture_drafts"] if table=="sales_report_drafts" else st.session_state["fixture_checks"] if table=="sales_report_checks" else []
             for k,v in (params or {}).items():
                 if str(v).startswith("eq."):rows=[r for r in rows if str(r.get(k)).lower()==str(v)[3:].lower()]
             if table=="sales_reviews":rows=[r for r in rows if not r.get("deleted_at")]

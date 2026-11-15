@@ -64,6 +64,15 @@ def parse_clock(value):
     try:return time.fromisoformat(value).isoformat()
     except ValueError:raise ValueError('시간은 0~23시, 분은 0~59분으로 입력해 주세요.')
 
+def times_overlap(start, end, other_start, other_end):
+    if not other_start:
+        return False
+    start, other_start = parse_clock(start), parse_clock(other_start)
+    end = parse_clock(end) if end else start
+    other_end = parse_clock(other_end) if other_end else other_start
+    return start == other_start or start < other_end and other_start < end
+
+
 def save_event(db,a):
     old=event(db,a['id'],own=True) if a.get('id') else None
     parent=event(db,a['parent'],own=True) if a.get('parent') else None
@@ -111,13 +120,13 @@ def save_event(db,a):
     if start and status=='예정':
         stop=day+7*(repeat-1)*DAY; days={str(day+7*i*DAY) for i in range(repeat)}
         candidates=db.period('sales_events',day,stop,owner='eq.'+db.uid,status='eq.예정')
-        overlap=[r['id'] for r in candidates if r['id']!=(old or {}).get('id') and r['day'] in days and r.get('start_time') and (r['start_time']==start or r['start_time']<(end or start) and (r.get('end_time') or r['start_time'])>start)]
+        overlap=[r['id'] for r in candidates if r['id']!=(old or {}).get('id') and r['day'] in days and times_overlap(start,end,r.get('start_time'),r.get('end_time'))]
         if companion:
             cursor=day
             while cursor<=stop:
                 edge=min(stop,cursor+62*DAY)
-                candidates=db.request('POST','rpc/sales_calendar_days_v2',body={'first_day':str(cursor),'last_day':str(edge)})
-                overlap.extend(r['id'] for r in candidates if r['id']!=(old or {}).get('id') and r['day'] in days and r['status']=='예정' and companion in (r['owner'],r.get('companion')) and r.get('start_time')==start)
+                candidates=db.request('POST','rpc/sales_companion_busy_times',body={'first_day':str(cursor),'last_day':str(edge),'p_member':companion})
+                overlap.extend(r['id'] for r in candidates if r['id']!=(old or {}).get('id') and r['day'] in days and times_overlap(start,end,r.get('start_time'),r.get('end_time')))
                 cursor=edge+DAY
         signature=str(uuid5(NAMESPACE_URL,json.dumps([body,repeat,sorted(set(overlap))],sort_keys=True)))
         if overlap and a.get('overlap')!=signature:return {'overlap':signature,'message':'본인 또는 동행자의 기존 일정과 시간이 겹칩니다. 그대로 저장하려면 저장 버튼을 한 번 더 눌러 주세요.'}
@@ -211,7 +220,8 @@ def command(db,op,a):
         body.update(day=str(day),effective=str(effective) if effective else None,amount=amount,event=row['id'])
         if old:db.save('sales_contracts',body,old)
         else:
-            body['id']=identity(a['seed']);db.request('POST','sales_contracts',body=body,prefer='resolution=ignore-duplicates')
+            from modules.activity.contracts import create_contract
+            body['id']=identity(a['seed']);create_contract(db,body)
         return {'ok':True}
     raise ValueError('지원하지 않는 요청입니다.')
 

@@ -6,16 +6,25 @@ function stopRealtime(){
  clearTimeout(syncTimer);syncTimer=null;
  if(old)old.removeAllChannels().then(()=>old.disconnect()).catch(()=>old.disconnect());
 }
+function calendarSyncUnits(a){
+ const scope=a?.mobileSession?.viewScope||'daily';
+ if(!scope.startsWith('{'))return [a.syncUnit];
+ // Use the authenticated bootstrap scope, never user-entered organization IDs.
+ const members=JSON.parse(calendarBoot.access);
+ return [...new Set([a.syncUnit,...Object.values(members).map(r=>r.unit)].filter(Boolean))].sort();
+}
 function configureRealtime(a){
  const session=a?.mobileSession;
  if(document.hidden||!parentVisible||!a?.fast||!session?.token||!a.syncUnit){stopRealtime();return}
- const key=[session.url,session.uid,a.syncUnit].join('|');
+ const units=calendarSyncUnits(a),key=[session.url,session.uid,...units].join('|');
  if(realtimeClient&&realtimeKey===key){if(realtimeToken!==session.token){realtimeToken=session.token;realtimeClient.setAuth(session.token).catch(()=>{realtimeReady=false})}return}
  stopRealtime();realtimeKey=key;realtimeToken=session.token;
  const client=realtimeClient=new HwarangRealtime.RealtimeClient(session.url+'/realtime/v1',{params:{apikey:session.key},accessToken:async()=>syncConfig?.mobileSession?.token||null});
- client.channel('calendar:'+a.syncUnit).on('postgres_changes',{event:'*',schema:'public',table:'sales_calendar_signals',filter:'unit=eq.'+a.syncUnit},()=>{
+ const channel=client.channel('calendar:'+a.syncUnit);
+ for(const unit of units)channel.on('postgres_changes',{event:'*',schema:'public',table:'sales_calendar_signals',filter:'unit=eq.'+unit},()=>{
   signalPending=true;if(signalTimer)return;signalTimer=setTimeout(()=>{signalTimer=null;if(client===realtimeClient)checkSync()},500);
- }).on('postgres_changes',{event:'*',schema:'public',table:'sales_activity_signals',filter:'owner=eq.'+session.uid},payload=>{
+ });
+ channel.on('postgres_changes',{event:'*',schema:'public',table:'sales_activity_signals',filter:'owner=eq.'+session.uid},payload=>{
   if(payload.new?.topic==='scope'){calendarCache.clear();calendarBoot.supportRecipients=null;calendarAction('reauth')}
  }).subscribe(status=>{
   if(client!==realtimeClient)return;

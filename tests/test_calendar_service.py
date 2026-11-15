@@ -190,3 +190,61 @@ def test_leave_range_is_daily_all_day_and_retry_safe(db):
 def test_leave_range_rejects_reversed_dates(db):
  with pytest.raises(ValueError):command(db,'save',payload(kind='휴무',leave_end='2026-11-08'))
  assert len(st.session_state['fixture_events'])==1
+
+@pytest.mark.parametrize('start,end,other_start,other_end,expected',[
+ ('14:30','15:30','14:00','15:00',True),
+ ('13:30','14:30','14:00','15:00',True),
+ ('13:00','16:00','14:00','15:00',True),
+ ('15:00','16:00','14:00','15:00',False),
+ ('14:30',None,'14:00','15:00',True),
+ ('14:00',None,'14:00',None,True),
+ ('14:00','15:00','14:30',None,True),
+ ('14:00','15:00',None,None,False),
+])
+def test_overlap_intervals_and_unknown_end(start,end,other_start,other_end,expected):
+ from modules.activity.calendar_service import times_overlap
+ assert times_overlap(start,end,other_start,other_end)==expected
+
+
+def test_companion_partial_overlap_requires_confirmation(db):
+ st.session_state['fixture_events'][0]['owner']=OTHER
+ a=payload(day='2026-11-06',mode='시간 지정',start='14:30',end='15:30',companion=OTHER)
+ warning=command(db,'save',a)
+ assert warning['overlap'] and len(st.session_state['fixture_events'])==1
+ a['overlap']=warning['overlap']
+ assert command(db,'save',a)['id']
+ assert len(st.session_state['fixture_events'])==2
+
+
+def test_contract_retry_verifies_actual_saved_content(db):
+ from modules.activity.contracts import create_contract
+ body={'id':'44444444-4444-4444-8444-444444444444','amount':100000,'event':EVENT}
+ create_contract(db,body)
+ assert create_contract(db,body)['amount']==100000
+ with pytest.raises(HwarangAuthError,match='입력 내용이 다릅니다'):
+  create_contract(db,{**body,'amount':200000})
+ assert len(st.session_state['fixture_contracts'])==1
+ assert st.session_state['fixture_contracts'][0]['amount']==100000
+
+
+def test_contract_committed_lost_response_is_reconciled(db,monkeypatch):
+ from modules.activity.contracts import create_contract
+ original=db.request
+ def lost(method,table,*args,**kwargs):
+  result=original(method,table,*args,**kwargs)
+  if method=='POST' and table=='sales_contracts':raise HwarangAuthError('lost',code='transport_error')
+  return result
+ monkeypatch.setattr(db,'request',lost)
+ body={'id':'44444444-4444-4444-8444-444444444444','amount':100000}
+ assert create_contract(db,body)['amount']==100000
+ with pytest.raises(HwarangAuthError):create_contract(db,{**body,'amount':200000})
+
+
+def test_contract_unconfirmed_or_forbidden_never_reports_saved(db,monkeypatch):
+ from modules.activity.contracts import create_contract
+ monkeypatch.setattr(db,'request',lambda *a,**k:[])
+ with pytest.raises(HwarangAuthError,match='확인하지 못했습니다'):
+  create_contract(db,{'id':'missing'})
+ def denied(*a,**k):raise HwarangAuthError('denied',status=403)
+ monkeypatch.setattr(db,'request',denied)
+ with pytest.raises(HwarangAuthError,match='denied'):create_contract(db,{'id':'denied'})

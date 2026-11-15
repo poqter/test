@@ -62,7 +62,7 @@ class Records:
     def request(self,method,table,params=None,body=None,prefer=None):
         if method == "GET" and table == "sales_events":
             params={"deleted_at":"is.null",**(params or {})}
-        readonly = method == "GET" or (method == "POST" and table in {"rpc/sales_support_recipients", "rpc/sales_members", "rpc/sales_branch_members", "rpc/sales_calendar_days", "rpc/sales_calendar_days_v2", "rpc/sales_calendar_stamp", "rpc/sales_calendar_context", "rpc/sales_calendar_payload", "rpc/sales_activity_stamp", "rpc/sales_activity_bundle"})
+        readonly = method == "GET" or (method == "POST" and table in {"rpc/sales_support_recipients", "rpc/sales_companion_busy_times", "rpc/sales_members", "rpc/sales_branch_members", "rpc/sales_calendar_days", "rpc/sales_calendar_days_v2", "rpc/sales_calendar_stamp", "rpc/sales_calendar_context", "rpc/sales_calendar_payload", "rpc/sales_activity_stamp", "rpc/sales_activity_bundle"})
         if not readonly:
             self._activity_bundle=None
             st.session_state.pop('sales_period_cache',None)
