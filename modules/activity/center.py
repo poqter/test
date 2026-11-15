@@ -24,7 +24,7 @@ DAY=timedelta(days=1)
 mobile_calendar = components.declare_component("mobile_calendar", path=str(Path(__file__).parent / "calendar_view/pwa/calendar"))
 
 class Records:
-    def __init__(self):
+    def __init__(self, *, calendar_entry=None):
         resumed=read_state.consume()
         self._reads=resumed if resumed is not None else {}
         self._resumed=resumed is not None
@@ -33,7 +33,7 @@ class Records:
         from modules.activity.view_scope import current
         self.view_scope=current()
         self.auth.http.headers["X-Hwarang-View-Scope"]=self.view_scope
-        calendar_entry = (st.session_state.get('mobile_page', '캘린더') == '캘린더'
+        calendar_entry = calendar_entry if calendar_entry is not None else (st.session_state.get('mobile_page', '캘린더') == '캘린더'
             if st.query_params.get('view') == 'mobile-calendar'
             else st.session_state.get('sales_menu', '캘린더') == '캘린더')
         if calendar_entry:
@@ -62,7 +62,7 @@ class Records:
     def request(self,method,table,params=None,body=None,prefer=None):
         if method == "GET" and table == "sales_events":
             params={"deleted_at":"is.null",**(params or {})}
-        readonly = method == "GET" or (method == "POST" and table in {"rpc/sales_support_recipients", "rpc/sales_companion_busy_times", "rpc/sales_members", "rpc/sales_branch_members", "rpc/sales_calendar_days", "rpc/sales_calendar_days_v2", "rpc/sales_calendar_stamp", "rpc/sales_calendar_context", "rpc/sales_calendar_payload", "rpc/sales_activity_stamp", "rpc/sales_activity_bundle"})
+        readonly = method == "GET" or (method == "POST" and table in {"rpc/sales_support_recipients", "rpc/sales_companion_busy_times", "rpc/sales_members", "rpc/sales_branch_members", "rpc/sales_calendar_days", "rpc/sales_calendar_days_v2", "rpc/sales_calendar_stamp", "rpc/sales_calendar_context", "rpc/sales_calendar_detail", "rpc/sales_calendar_payload", "rpc/sales_activity_stamp", "rpc/sales_activity_bundle"})
         if not readonly:
             self._activity_bundle=None
             st.session_state.pop('sales_period_cache',None)
@@ -77,7 +77,7 @@ class Records:
         if readonly:
             cached_key=json.dumps([method,table,params,body,prefer],sort_keys=True)
             if cached_key in self._reads:return deepcopy(self._reads[cached_key])
-        if table in {"rpc/sales_support_recipients","rpc/sales_calendar_stamp","rpc/sales_calendar_context","rpc/sales_calendar_payload", "rpc/sales_activity_stamp", "rpc/sales_activity_bundle"} or not readonly or "limit" in (params or {}):
+        if table in {"rpc/sales_support_recipients","rpc/sales_calendar_stamp","rpc/sales_calendar_context","rpc/sales_calendar_detail","rpc/sales_calendar_payload", "rpc/sales_activity_stamp", "rpc/sales_activity_bundle"} or not readonly or "limit" in (params or {}):
             return fetch(params)
         from modules.shared.collection_pages import collect_pages
         keys={"sales_empty_days":("owner","day"), "sales_report_history":("report","revision"), "sales_team_assignments":("member",), "sales_deputy_assignments":("member",), "sales_report_checks":("report","reviewer"), "rpc/sales_members":("member",), "rpc/sales_branch_members":("member",)}.get(table,("id",))

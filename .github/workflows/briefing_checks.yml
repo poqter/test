@@ -71,6 +71,8 @@ jobs:
           node tests/activity_db.mjs
           node tests/calendar_scope_sync.mjs
           node tests/calendar_scope_realtime.mjs
+          node tests/calendar_incremental.mjs
+          node tests/calendar_loading.mjs
       - name: Customer reader HTTP regression
         if: ${{ !cancelled() }}
         run: node --test tests/test_briefing_public.mjs

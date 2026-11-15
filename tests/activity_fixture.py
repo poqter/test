@@ -8,7 +8,7 @@ UID="11111111-1111-4111-8111-111111111111"
 OTHER="22222222-2222-4222-8222-222222222222"
 EVENT="33333333-3333-4333-8333-333333333333"
 class FakeRecords:
-    def __init__(self):
+    def __init__(self, *, calendar_entry=None):
         self.uid=UID;self._reads={};self.token="fake"
         self.members={UID:{"member":UID,"label":"테스트 작성자","unit":"unit","managed":True},OTHER:{"member":OTHER,"label":"테스트 구성원","unit":"unit","managed":True}}
         self.me=self.members[UID]
