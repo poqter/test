@@ -17,7 +17,7 @@ function harness(source){
   if(deny)return {ok:false,status:403};
   const data={rows:[entry(sentRevision)],summary:[entry(sentRevision)],branch:[{member:'me',label:'Me'}],unit:'unit',stamp:'v'+sentRevision};
   if(url.endsWith('sales_calendar_stamp'))return {ok:true,json:async()=>data.stamp};
-  if(url.endsWith('sales_calendar_changes')){
+  if((url.endsWith('sales_calendar_changes')||url.endsWith('sales_calendar_compact'))){
    const known=JSON.parse(options.body).p_known;
    Object.assign(data,{versions:{'2026-11-15':'v'+sentRevision},replaceFirst:known?'2026-11-15':'2026-10-26',replaceLast:known?'2026-11-15':'2026-12-06'});
    if(known?.['2026-11-15']==='v'+sentRevision)return {ok:true,json:async()=>({unchanged:true,versions:data.versions,stamp:data.stamp})};

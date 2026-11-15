@@ -12,7 +12,7 @@ const context={console,JSON,Set,Object,document:{hidden:false},parentVisible:tru
  setAuth(){return Promise.resolve()}removeAllChannels(){return Promise.resolve()}disconnect(){}
  }}};
 vm.createContext(context);vm.runInContext(source,context);
-const config={fast:true,syncUnit:'a',mobileSession:{url:'https://example.invalid',uid:'me',token:'fake',viewScope:'{"position":"division_head"}'}};
+const config={fast:true,syncStamp:'v1',syncUnit:'a',mobileSession:{url:'https://example.invalid',uid:'me',token:'fake',viewScope:'{"position":"division_head"}'}};
 context.syncConfig=config;context.configureRealtime(config);
 assert.deepEqual(listeners.filter(x=>x.filter.table==='sales_calendar_signals').map(x=>x.filter.filter),['unit=eq.a','unit=eq.b']);
 assert.equal(channels,1,'multiple units share one websocket channel');

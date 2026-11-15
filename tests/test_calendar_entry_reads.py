@@ -24,6 +24,9 @@ def request(method,path,**kw):
 with patch.object(center.SupabaseConfig,'from_mapping',return_value=None), patch.object(center,'HwarangAuthService',return_value=SimpleNamespace(http=SimpleNamespace(headers={}),_request=request)):
     db=Records()
     assert len(calls)==1
+    db.request('POST','rpc/sales_members',body={})
+    db.request('POST','rpc/sales_branch_members',body={})
+    assert len(calls)==1
     db.request('POST','rpc/sales_calendar_days',body={'first_day':'2026-11-10','last_day':'2026-11-10'})
     db.request('GET','sales_empty_days',{'day':'eq.2026-11-10','select':'owner'})
     db.request('GET','sales_notices',{'seen':'eq.false','order':'created_at.desc','limit':'20','select':'id,message,sales_events(day,kind)'})

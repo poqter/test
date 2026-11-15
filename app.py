@@ -340,6 +340,7 @@ def render_task_content(active, permission_role, permitted):
 
 def main() -> None:
     initialize_state()
+    from modules.activity.runtime_metrics import measure
     entry_shell = None
     if st.session_state.get('_calendar_deployment'):
         from modules.activity.loading import calendar_shell
@@ -376,7 +377,8 @@ def main() -> None:
             st.session_state["calendar_launch_error"] = str(exc)
     from modules.activity import device
     try:
-        device.synchronize(auth, _set_authenticated)
+        with measure("device_restore"):
+            device.synchronize(auth, _set_authenticated)
         if st.query_params.get("view") == "mobile-calendar" and st.session_state.get("device_check_pending"):
             if entry_shell is None: st.caption("캘린더를 불러오는 중…")
             st.stop()
@@ -390,7 +392,8 @@ def main() -> None:
     state = st.session_state.get("hwarang_auth")
     if state:
         try:
-            identity_changed = refresh_authenticated(auth)
+            with measure("identity_refresh"):
+                identity_changed = refresh_authenticated(auth)
             if identity_changed:
                 st.session_state["password_correct"] = True
                 st.rerun()

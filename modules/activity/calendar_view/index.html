@@ -162,7 +162,17 @@ function openMobile(session){
  child.postMessage({type:'hwarang.calendar.session',session},location.origin);removeEventListener('message',ready)}};
  addEventListener('message',ready);setTimeout(()=>removeEventListener('message',ready),30000);
 }
+function calendarEventIndex(events){
+ const byDay=new Map(),byMemberDay=new Map();
+ for(const e of events){
+  if(!byDay.has(e.day))byDay.set(e.day,[]);byDay.get(e.day).push(e);
+  const key=e.member+'|'+e.day;if(!byMemberDay.has(key))byMemberDay.set(key,[]);byMemberDay.get(key).push(e);
+ }
+ for(const rows of byDay.values())rows.sort((a,b)=>(b.kind==='휴무')-(a.kind==='휴무'));
+ return {byDay,byMemberDay};
+}
 function render(a){
+ const renderStarted=calendarClock();
  latest=a;loadPrefs(a);configureSync(a);
  prefsHydrated=true;
  document.body.classList.toggle("mobile-shell",!!a.hideMobileApp);
@@ -178,6 +188,7 @@ function render(a){
  // Status is owned by the request queue, not cleared by selection changes.
  if(signature===lastRender)return;
  lastRender=signature;
+ const {byDay,byMemberDay}=calendarEventIndex(events);
  const nav=el('div'),tools=el('div'),grid=el('div'),agenda=el('section');
  // Keep open forms and dialogs mounted during calendar data updates.
  const weekStart=add(anchor,-((anchor.getUTCDay()+6)%7)),weekEnd=add(weekStart,hide?4:6);
@@ -214,7 +225,7 @@ function render(a){
  for(let w of (hide?'월화수목금':'월화수목금토일'))grid.append(el('div',w,'weekday'));
  const first=month?date(day.slice(0,7)+'-01'):anchor, monday=add(first,-((first.getUTCDay()+6)%7)),last=new Date(Date.UTC(anchor.getUTCFullYear(),anchor.getUTCMonth()+1,0,12));
  let cells=month?42:7;
- for(let i=0;i<cells;i++){let d=add(monday,i),s=iso(d);if(hide&&isWeekend(s))continue;let items=events.filter(e=>e.day===s).sort((a,b)=>(b.kind==='휴무')-(a.kind==='휴무')),box=el('div','','cell'+(s===selected?' selected':'')+(month&&s.slice(0,7)!==day.slice(0,7)?' outside':''));
+ for(let i=0;i<cells;i++){let d=add(monday,i),s=iso(d);if(hide&&isWeekend(s))continue;let items=(byDay.get(s)||[]),box=el('div','','cell'+(s===selected?' selected':'')+(month&&s.slice(0,7)!==day.slice(0,7)?' outside':''));
  box.dataset.key=s;wireCalendarDrop(box,s);
  const openDay=()=>{
    const now=Date.now();if(now<suppressClickUntil||now-lastTap<400)return;lastTap=now;
@@ -233,10 +244,10 @@ function render(a){
  const group=el('details');group.dataset.key='weekly-roster';group.append(el('summary','구성원별 주간 일정'));
  const wrap=el('div','','team-table'),table=el('table'),head=el('tr');head.append(el('th','구성원'));
  for(let i=0;i<(hide?5:7);i++)head.append(el('th',fmt(iso(add(weekStart,i)))));table.append(head);
- for(const [uid,name] of Object.entries(a.roster)){const row=el('tr');row.append(el('th',name));for(let i=0;i<(hide?5:7);i++)row.append(el('td',events.filter(e=>e.member===uid&&e.day===iso(add(weekStart,i))).map(e=>e.label.split(' · ').slice(0,2).join(' ')).join(' / ')));table.append(row)}wrap.append(table);group.append(wrap);agenda.append(group);
+ for(const [uid,name] of Object.entries(a.roster)){const row=el('tr');row.append(el('th',name));for(let i=0;i<(hide?5:7);i++)row.append(el('td',(byMemberDay.get(uid+'|'+iso(add(weekStart,i)))||[]).map(e=>e.label.split(' · ').slice(0,2).join(' ')).join(' / ')));table.append(row)}wrap.append(table);group.append(wrap);agenda.append(group);
  }
- const soon=events.filter(e=>e.day===today&&e.soon);if(soon.length)agenda.append(el('p','30분 이내 시작 · '+soon.map(e=>e.short).join(' / '),'hint'));
- const list=events.filter(e=>e.day===selected).sort((a,b)=>(b.kind==='휴무')-(a.kind==='휴무'));if(mode==='날짜별'&&Object.keys(a.roster||{}).length){
+ const soon=(byDay.get(today)||[]).filter(e=>e.soon);if(soon.length)agenda.append(el('p','30분 이내 시작 · '+soon.map(e=>e.short).join(' / '),'hint'));
+ const list=(byDay.get(selected)||[]);if(mode==='날짜별'&&Object.keys(a.roster||{}).length){
  const group=el('details');group.open=!matchMedia('(max-width:650px)').matches;group.append(el('summary','구성원별 일정 · '+Object.keys(a.roster).length+'명'));
  for(const [uid,name] of Object.entries(a.roster)){const own=list.filter(e=>e.member===uid);group.append(el('div',name+' · '+(own.map(e=>e.short.split(' · ')[0]).join(' / ')||'일정 없음'),'memberline'))}
  agenda.append(group)
@@ -254,27 +265,29 @@ function render(a){
  }
  document.body.classList.toggle('month-view',month);document.body.classList.toggle('calendar-load-error',calendarLoadError);
  if(typeof paintDayList==='function')paintDayList();
+ calendarMeasure('render',renderStarted,true,events.length);
 }
 
 // Small version probe: no schedule payload, no Streamlit rerun without a change.
 let lastSyncStarted=0;
 let syncConfig=null,syncKey='',syncStamp=null,syncTimer=null,syncBusy=false,syncFailed=false,parentVisible=true,pendingRefresh=false,refreshAt=0,failures=0;
 function configureSync(a){
- const key=JSON.stringify([a.mobileSession?.uid,a.syncUnit,a.rangeStart,a.rangeEnd]);
+ const key=JSON.stringify([a.mobileSession?.uid,a.syncUnit,a.rangeStart,a.rangeEnd,a.mobileSession?.viewScope,calendarBoot?.team,calendarBoot?.member]);
  syncConfig=a;
  if(key!==syncKey||a.syncStamp!==syncStamp){syncKey=key;syncStamp=a.syncStamp;}
  pendingRefresh=false;
  configureRealtime(a);
  if(!syncTimer)scheduleSync();
 }
-function scheduleSync(){clearTimeout(syncTimer);syncTimer=null;if(document.hidden||!parentVisible)return;syncTimer=setTimeout(checkSync,(realtimeReady?300000:Math.min(60000,15000*Math.pow(2,Math.min(failures,2))))+Math.random()*3000)}
+function scheduleSync(){clearTimeout(syncTimer);syncTimer=null;if(document.hidden||!parentVisible||navigator.onLine===false)return;syncTimer=setTimeout(checkSync,(realtimeReady?300000:Math.min(60000,15000*Math.pow(2,Math.min(failures,2))))+Math.random()*3000)}
 function requestRefresh(action='refresh'){if(pendingRefresh&&Date.now()-refreshAt<20000)return;pendingRefresh=true;refreshAt=Date.now();emit(action,null);}
 async function checkSync(){
  clearTimeout(syncTimer);syncTimer=null;
  if(syncBusy){signalPending=true;return;}
+ if(typeof calendarLoads!=='undefined'&&calendarLoads.size){signalPending=true;scheduleSync();return;}
  const delay=2000-(Date.now()-lastSyncStarted);if(delay>0){syncTimer=setTimeout(checkSync,delay);return;}
  const a=syncConfig,session=a?.mobileSession;
- if(document.hidden||!parentVisible||calendarLoading||!session?.token||!a?.syncUnit){scheduleSync();return}
+ if(document.hidden||!parentVisible||navigator.onLine===false||calendarLoading||!session?.token||!a?.syncUnit||!a.syncStamp){scheduleSync();return}
  lastSyncStarted=Date.now();syncBusy=true;signalPending=false;const key=syncKey;const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),10000);
  try{
  const response=await fetch(session.url+'/rest/v1/rpc/sales_calendar_stamp',{method:'POST',headers:{apikey:session.key,Authorization:'Bearer '+session.token,'Content-Type':'application/json','X-Hwarang-View-Scope':session.viewScope||'daily'},body:JSON.stringify({first_day:a.rangeStart,last_day:a.rangeEnd,p_unit:a.syncUnit}),signal:controller.signal});
@@ -284,10 +297,11 @@ async function checkSync(){
  if(typeof stamp!=='string'){requestRefresh();throw Error('permission')}
  failures=0;syncFailed=false;if(!calendarFlight)document.querySelector('#refreshing').textContent='';
  if(stamp!==syncStamp)requestRefresh();
- }catch{failures++;syncFailed=true;document.querySelector('#refreshing').textContent='연결 확인 중 · 현재 표시된 일정은 유지됩니다';}
+ }catch{if(key!==syncKey)return;failures++;syncFailed=true;document.querySelector('#refreshing').textContent='연결 확인 중 · 현재 표시된 일정은 유지됩니다';}
  finally{clearTimeout(timeout);syncBusy=false;scheduleSync();if(signalPending&&!calendarLoading){clearTimeout(signalTimer);signalTimer=setTimeout(()=>{signalTimer=null;checkSync()},500)}}
 }
-addEventListener('online',()=>checkSync());
+addEventListener('offline',()=>{clearTimeout(syncTimer);syncTimer=null;stopRealtime()});
+addEventListener('online',()=>{configureRealtime(syncConfig);checkSync()});
 addEventListener('visibilitychange',()=>{configureRealtime(syncConfig);if(!document.hidden)checkSync()});
 let lastFrameHeight=0,frameViewport='',reportedHeight=0;
 function fitCalendar(){
@@ -309,4 +323,4 @@ addEventListener('message',e=>{
    refreshNonce=e.data.nonce;requestRefresh();
  }
 });
-</script><script src="realtime.js"></script><script src="sync.js"></script><script src="persistent.js"></script><script src="host.js"></script><script>post('streamlit:componentReady',{apiVersion:1});</script></html>
+</script><script src="sync.js"></script><script src="persistent.js"></script><script src="host.js"></script><script>post('streamlit:componentReady',{apiVersion:1});</script></html>
