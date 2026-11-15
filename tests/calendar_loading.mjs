@@ -38,6 +38,9 @@ async function bench(source){
 const old=before?await bench(before):null,now=await bench(current);
 if(old)assert(old.requests.every(n=>n===2));assert(now.requests.every(n=>n===1));
 const racing=harness(current);const pending=racing.run('reloadCalendar()');racing.bump();const saved=racing.run('mutate()');await Promise.all([pending,saved]);assert.equal(racing.requests.length,2,'write must bypass an in-flight pre-write read');assert.match(racing.run("latest.events[0].short"),/Version 2/);
+const staleDenied=harness(current);const normalFetch=staleDenied.ctx.fetch;let calls=0;
+staleDenied.ctx.fetch=async(...args)=>{if(++calls===1){await new Promise(r=>setTimeout(r,50));return {ok:false,status:403};}return normalFetch(...args);};
+const deniedOld=staleDenied.run('reloadCalendar()');staleDenied.run('calendarEpoch++');await staleDenied.run('reloadCalendar()');await deniedOld;assert.equal(staleDenied.run('latest.events.length'),1,'obsolete denial must not erase a newer authorized view');
 const h=harness(current);
 await h.run('Promise.all([reloadCalendar(),reloadCalendar(),reloadCalendar()])');assert.equal(h.requests.length,1,'same concurrent request shared');
 h.run("latest.events.push({id:'keep',day:'2026-11-16',short:'Unchanged'})");

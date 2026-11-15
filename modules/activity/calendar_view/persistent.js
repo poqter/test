@@ -86,10 +86,10 @@ async function reloadCalendar(force=false){
  }catch(e){if(seq===calendarSeq&&epoch===calendarEpoch){calendarLoading=false;calendarLoadError=true;calendarStatus(e.message);render(latest)}}
 }
 async function loadPayload(first,last,team,member,cached=null){
- const session=latest.mobileSession,controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
+ const requestEpoch=calendarEpoch,session=latest.mobileSession,controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
  try{
   const response=await fetch(session.url+'/rest/v1/rpc/sales_calendar_changes',{method:'POST',headers:{apikey:session.key,Authorization:'Bearer '+session.token,'Content-Type':'application/json','X-Hwarang-View-Scope':session.viewScope||'daily'},body:JSON.stringify({first_day:first,last_day:last,p_member:member||null,p_team:!!team,p_known:cached?.versions||null}),signal:controller.signal});
-  if(!response.ok){if(response.status===401)calendarAction('reauth');if(response.status===401||response.status===403){calendarCache.clear();if(calendarMemory)calendarMemory.cache=new Map();latest={...latest,events:[],roster:{}};}throw Error('일정을 불러오지 못했습니다. 다시 확인해 주세요.');}
+  if(!response.ok){if(requestEpoch===calendarEpoch){if(response.status===401)calendarAction('reauth');if(response.status===401||response.status===403){calendarCache.clear();if(calendarMemory)calendarMemory.cache=new Map();latest={...latest,events:[],roster:{}};}}throw Error('일정을 불러오지 못했습니다. 다시 확인해 주세요.');}
   const data=await response.json();
   if(data.unchanged&&cached)return {...cached,versions:data.versions,syncStamp:data.stamp};
   const details=new Map(data.rows.map(r=>[r.id,r])),branch=Object.fromEntries(data.branch.map(r=>[r.member,r.label]));
