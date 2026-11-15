@@ -8,6 +8,17 @@
  const scroller=()=>root()?.closest('.st-key-sales_dialog_body')||doc.querySelector('[data-testid="stMain"]');
  const counters=()=>Array.from(root()?.querySelectorAll('[class*="st-key-daily_inputs"] [data-testid="stNumberInput"] input')||[]);
  let focusPoint=null,selectOnRelease=null;
+ const rememberCaret=()=>{
+   if(focusPoint?.node===doc.activeElement){
+     focusPoint.start=doc.activeElement.selectionStart;
+     focusPoint.end=doc.activeElement.selectionEnd;
+     focusPoint.top=scroller()?.scrollTop||0;
+   }
+ };
+ doc.addEventListener('input',rememberCaret,true);
+ doc.addEventListener('keyup',rememberCaret,true);
+ doc.addEventListener('selectionchange',rememberCaret);
+ doc.addEventListener('scroll',rememberCaret,true);
  const reveal=(input)=>{
    if(!input?.isConnected||doc.activeElement!==input)return;
    const box=input.getBoundingClientRect(),view=w.visualViewport;
@@ -47,7 +58,11 @@
    // Only recover a removed input; never steal focus from another control or date.
    if(focusPoint&&focusPoint.context===current()&&!focusPoint.node.isConnected&&doc.activeElement===doc.body){
      const input=doc.getElementById(focusPoint.id),point=focusPoint;
-     if(input&&root().contains(input)){input.focus({preventScroll:true});restore(point);}
+     if(input&&root().contains(input)){
+       input.focus({preventScroll:true});
+       if(point.start!=null&&point.end!=null)input.setSelectionRange(point.start,point.end);
+       restore(point);
+     }
    }
    const nextContext=current(),nextTab=selected(),dialog=!!doc.querySelector('[role="dialog"]');
    if(context!==nextContext){context=nextContext;tab=nextTab;returnPoint=null;}
