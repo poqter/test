@@ -28,7 +28,7 @@ let sql=fs.readFileSync('supabase/migrations/20261109173417_calendar_role_organi
 await db.exec(sql.slice(sql.indexOf('create or replace function public.sales_calendar_payload')));
 const file=fs.readdirSync('supabase/migrations').find(n=>n.endsWith('_calendar_incremental_payload.sql'));
 await db.exec(fs.readFileSync('supabase/migrations/'+file,'utf8'));
-await db.exec(fs.readFileSync('supabase/migrations/20261115104812_calendar_compact_transport.sql','utf8'));
+await db.exec(fs.readFileSync('supabase/migrations/20261115105225_calendar_compact_transport.sql','utf8'));
 await db.exec('set role authenticated');
 const compact=async(known=null,member=null)=>(await db.query("select public.sales_calendar_compact('2026-11-01','2026-11-30',$1,true,$2) data",[member,known])).rows[0].data;
 const read=async(known=null,member=null)=>(await db.query("select public.sales_calendar_changes('2026-11-01','2026-11-30',$1,true,$2) data",[member,known])).rows[0].data;
