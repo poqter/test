@@ -20,7 +20,9 @@ alter table public.sales_events enable row level security;alter table public.sal
 create policy own_event on public.sales_events to authenticated using(owner=auth.uid());
 create policy own_review on public.sales_reviews to authenticated using(reviewer=auth.uid());
 grant usage on schema auth,private to authenticated;grant select on public.sales_events,public.sales_reviews to authenticated;
-create function private.sales_calendar_days_v2(date,date) returns setof public.sales_events language sql stable as $$select * from public.sales_events where day between $1 and $2 and deleted_at is null$$;
+create function private.sales_calendar_days_v2(date,date)
+returns table(id uuid,owner uuid,day date,start_time time,kind text,status text,companion uuid,common boolean,time_pending boolean,title text)
+language sql stable security definer as $$select id,owner,day,start_time,kind,status,companion,common,time_pending,title from public.sales_events where day between $1 and $2 and deleted_at is null and owner in(select member from private.sales_scope())$$;
 insert into public.sales_events(id,owner,unit,day,title,status,common,time_pending,revision) select md5(g::text)::uuid,'${me}','${unit}','2026-11-01'::date+g%30,'Synthetic '||g,'예정',false,true,1 from generate_series(1,420) g;
 insert into private.sales_calendar_versions select '${unit}',d,1 from generate_series('2026-11-01'::date,'2026-11-30'::date,interval '1 day') d;
 set request.jwt.claim.sub='${me}';`);
@@ -52,6 +54,9 @@ const event=(await db.query('select id from public.sales_events limit 1')).rows[
 assert.equal((await db.query('select public.sales_calendar_detail($1) data',[event])).rows[0].data.row.id,event);
 await db.exec('reset role');await db.query("update public.sales_events set owner=$1 where id=$2",[peer,event]);await db.exec('set role authenticated');
 await assert.rejects(()=>db.query('select public.sales_calendar_detail($1)',[event]),/denied/);
+const restricted=(await compact()).rows.find(r=>r.id===event);
+assert.equal(restricted.readable,false,'shared calendar summary does not grant detail access');
+assert.equal(restricted.place,undefined);assert.equal(restricted.revision,undefined);assert.equal(restricted.help,undefined);
 await db.exec('reset role;set role anon');await assert.rejects(()=>read());await assert.rejects(()=>compact());
 console.log(JSON.stringify({pass:true,initialRows:420,unchangedRows:0,oneDayChangedRows:14,fullBytes:JSON.stringify(initial).length,compactBytes:JSON.stringify(packed).length,unchangedBytes:JSON.stringify(unchanged).length,deltaBytes:JSON.stringify(delta).length,checks:'unchanged / day update / deletion / scope rename / member denial / range cap / detail RLS / anon'}));
 await db.close();
