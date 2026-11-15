@@ -248,3 +248,33 @@ def test_contract_unconfirmed_or_forbidden_never_reports_saved(db,monkeypatch):
  def denied(*a,**k):raise HwarangAuthError('denied',status=403)
  monkeypatch.setattr(db,'request',denied)
  with pytest.raises(HwarangAuthError,match='denied'):create_contract(db,{'id':'denied'})
+
+
+def test_detail_defers_closed_contracts(db):
+    calls=[]
+    request=db.request
+    def traced(method,table,*args,**kwargs):
+        calls.append(table)
+        return request(method,table,*args,**kwargs)
+    db.request=traced
+    result=command(db,'detail',{'id':EVENT,'lazy_contracts':True})
+    assert result['row']['id']==EVENT and result['contracts'] is None
+    assert 'sales_contracts' not in calls
+    command(db,'detail_contracts',{'id':EVENT})
+    assert calls.count('sales_contracts')==1
+    st.session_state['fixture_events'][0]['owner']=OTHER
+    with pytest.raises(HwarangAuthError):command(db,'detail_contracts',{'id':EVENT})
+
+
+def test_fast_detail_batches_reads_and_reuses_authorized_branch(db):
+    db.fast_calendar=True
+    db.branch=db.members.copy()
+    row=deepcopy(st.session_state['fixture_events'][0]);calls=[]
+    def request(method,table,params=None,body=None,**kwargs):
+        calls.append((method,table,body))
+        assert table=='rpc/sales_calendar_detail'
+        return {'row':row,'reviews':[]}
+    db.request=request
+    result=command(db,'detail',{'id':EVENT,'lazy_contracts':True})
+    assert result['row']==row and result['contracts'] is None
+    assert len(calls)==1

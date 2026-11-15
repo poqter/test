@@ -48,12 +48,22 @@ def snapshot(db, args):
     stamp=db.request('POST','rpc/sales_calendar_stamp',body={'first_day':str(first),'last_day':str(last),'p_unit':unit})
     return dict(events=cards,rangeStart=str(first),rangeEnd=str(last),syncUnit=unit,syncStamp=stamp,scopeLabel=db.members[member]['label'] if member else '지점 일정' if team else '내 일정',roster={u:r['label'] for u,r in branch.items() if not member or u==member} if team or member else {})
 
-def detail(db,key):
-    row=event(db,key)
-    authors={r['member']:r['label'] for r in db.request('POST','rpc/sales_branch_members',body={})}
+def detail(db,key,lazy_contracts=False):
+    if lazy_contracts and getattr(db,'fast_calendar',False):
+        data=db.request('POST','rpc/sales_calendar_detail',body={'p_id':identity(key)})
+        row,reviews=data['row'],data['reviews']
+    else:
+        row=event(db,key)
+        reviews=db.request('GET','sales_reviews',{'event':'eq.'+row['id'],'deleted_at':'is.null','order':'created_at.desc'})
+    branch=getattr(db,'branch',None)
+    if branch is None:branch={r['member']:r for r in db.request('POST','rpc/sales_branch_members',body={})}
     return dict(row=row,canReview=bool(db.me['managed'] and db.members.get(row['owner'],{}).get('managed')),
-        reviews=[{**r,'author':db.members.get(r['reviewer'],{}).get('label') or authors.get(r['reviewer']) or ('나' if r['reviewer']==db.uid else '관리자')} for r in db.request('GET','sales_reviews',{'event':'eq.'+row['id'],'deleted_at':'is.null','order':'created_at.desc'}) if r['message']!='일정 확인'],
-        contracts=db.request('GET','sales_contracts',{'owner':'eq.'+db.uid,'event':'eq.'+row['id'],'order':'day.desc'}) if row['owner']==db.uid else [])
+        reviews=[{**r,'author':db.members.get(r['reviewer'],{}).get('label') or branch.get(r['reviewer'],{}).get('label') or ('나' if r['reviewer']==db.uid else '관리자')} for r in reviews if r['message']!='일정 확인'],
+        contracts=None if lazy_contracts else contract_rows(db,row))
+
+
+def contract_rows(db,row):
+    return db.request('GET','sales_contracts',{'owner':'eq.'+db.uid,'event':'eq.'+row['id'],'order':'day.desc'}) if row['owner']==db.uid else []
 
 def parse_clock(value):
     value=str(value).strip()
@@ -151,7 +161,8 @@ def command(db,op,a):
         return recipients(db)
     db._reads.clear()
     if op=='load':return snapshot(db,a)
-    if op=='detail':return detail(db,a['id'])
+    if op=='detail':return detail(db,a['id'],bool(a.get('lazy_contracts')))
+    if op=='detail_contracts':return contract_rows(db,event(db,a['id'],own=True))
     if op=='save':return save_event(db,a)
     if op=='move':
         row=event(db,a['id'],own=True)

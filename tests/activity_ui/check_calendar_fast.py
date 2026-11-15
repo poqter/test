@@ -22,14 +22,13 @@ with sync_playwright() as p:
  }''')
  expect(page.get_by_role('button',name='＋ 일정 등록',exact=True)).to_be_visible()
  assert page.evaluate('testRequests.length')==1
- request=page.evaluate('testRequests[0]');assert request['url'].endswith('/rpc/sales_calendar_payload');assert request['options']['headers']['Authorization']=='Bearer user-token'
+ request=page.evaluate('testRequests[0]');assert request['url'].endswith('/rpc/sales_calendar_changes');assert request['options']['headers']['Authorization']=='Bearer user-token'
  row=dict(id='event',owner='owner',day='2026-11-06',start_time=None,kind='AP',status='예정',companion=None,common=False,time_pending=True,title='처음 일정',help=False)
  bundle=dict(rows=[row],summary=[row],branch=[dict(member='owner',label='작성자')],unit='unit',stamp='v1')
  def resolve(data):page.evaluate('(data)=>testPending.shift()({ok:true,json:async()=>data})',data)
  resolve(bundle);expect(page.locator('.chip')).to_have_text('처음 일정 · 작성자')
  page.get_by_role('button',name='＋ 일정 등록',exact=True).click()
- page.wait_for_function("calendarFlight?.op==='support_recipients'")
- page.evaluate("receiveCalendar({boot:calendarBoot,mobileSession:latest.mobileSession,reply:{nonce:calendarFlight.nonce,ok:true,result:{}}})")
+ assert page.evaluate('calendarFlight===null'), 'closed support options must not delay editor'
  expect(page.get_by_label('일정명',exact=True)).to_be_focused();page.get_by_label('일정명',exact=True).fill('작성 중 보존')
  # Subscription acknowledgment validates the visible range; same stamp does not reload.
  page.evaluate("testSubscribe('SUBSCRIBED')");page.wait_for_function('testPending.length===1');resolve('v1')

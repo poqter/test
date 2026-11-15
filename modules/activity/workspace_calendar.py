@@ -26,7 +26,7 @@ def render(active, args=None):
             st.rerun()
         if pending.get('action') == 'rpc':
             try:
-                db = center.Records()  # Revalidate access for every command.
+                db = center.Records(calendar_entry=False)  # Revalidate access for every command.
                 request = pending['value']
                 result = calendar_service.command(db, request['op'], request.get('args', {}))
                 reply = dict(nonce=pending['nonce'], ok=True, result=result)
