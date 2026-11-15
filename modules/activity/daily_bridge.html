@@ -4,8 +4,43 @@
  const w=window.parent,doc=w.document;
  if(w.__hwarangDailyLayout)return;
  const positions=new Map();let context='',tab='',hadDialog=false,returnPoint=null,queued=false;
- const root=()=>doc.querySelector('.st-key-daily_record');
- const scroller=()=>doc.querySelector('[data-testid="stMain"]');
+ const root=()=>doc.querySelector('.st-key-daily_record_dialog')||doc.querySelector('.st-key-daily_record');
+ const scroller=()=>root()?.closest('.st-key-sales_dialog_body')||doc.querySelector('[data-testid="stMain"]');
+ const counters=()=>Array.from(root()?.querySelectorAll('[class*="st-key-daily_inputs"] [data-testid="stNumberInput"] input')||[]);
+ let focusPoint=null,selectOnRelease=null;
+ const rememberCaret=()=>{
+   if(focusPoint?.node===doc.activeElement){
+     focusPoint.start=doc.activeElement.selectionStart;
+     focusPoint.end=doc.activeElement.selectionEnd;
+     focusPoint.top=scroller()?.scrollTop||0;
+   }
+ };
+ doc.addEventListener('input',rememberCaret,true);
+ doc.addEventListener('keyup',rememberCaret,true);
+ doc.addEventListener('selectionchange',rememberCaret);
+ doc.addEventListener('scroll',rememberCaret,true);
+ const reveal=(input)=>{
+   if(!input?.isConnected||doc.activeElement!==input)return;
+   const box=input.getBoundingClientRect(),view=w.visualViewport;
+   const top=(view?.offsetTop||0)+12;
+   const bottom=Math.min((view?.height||w.innerHeight)+(view?.offsetTop||0),root()?.querySelector('[class*="st-key-daily_footer"]')?.getBoundingClientRect().top||w.innerHeight)-16;
+   if(box.bottom>bottom||box.top<top)input.scrollIntoView({block:'center',behavior:'instant'});
+ };
+ doc.addEventListener('focusin',event=>{
+   const input=event.target;
+   if(!root()?.contains(input)||!input.matches('input,textarea')){focusPoint=null;return;}
+   focusPoint={context:current(),id:input.id,node:input,top:scroller()?.scrollTop||0};
+   if(counters().includes(input))input.select();
+   w.requestAnimationFrame(()=>reveal(input));
+ },true);
+ doc.addEventListener('keydown',event=>{
+   const inputs=counters(),index=inputs.indexOf(event.target);
+   if(index<0||event.altKey||event.ctrlKey||event.metaKey)return;
+   if(event.key==='Tab'||event.key==='Enter'){
+     const next=inputs[index+(event.shiftKey?-1:1)]||(!event.shiftKey?root()?.querySelector('[data-testid="stTextArea"] textarea'):null);
+     if(next){event.preventDefault();next.focus({preventScroll:true});reveal(next);}
+   }
+ },true);
  const current=()=>root()?.querySelector('.daily-context')?.dataset.context||'';
  const selected=()=>root()?.querySelector('[role="radiogroup"] [aria-checked="true"]')?.textContent.trim()||'기록 작성';
  const restore=(point)=>w.requestAnimationFrame(()=>w.requestAnimationFrame(()=>{
@@ -14,10 +49,21 @@
  const viewport=()=>{
    const gap=Math.max(0,w.innerHeight-(w.visualViewport?.height||w.innerHeight)-(w.visualViewport?.offsetTop||0));
    doc.documentElement.style.setProperty('--daily-keyboard-inset',gap>100?gap+'px':'0px');
+   if(gap>100)w.requestAnimationFrame(()=>reveal(doc.activeElement));
  };
  const sync=()=>{
    queued=false;viewport();
-   if(!root())return;
+   if(!root()){focusPoint=null;return;}
+   counters().forEach(input=>{input.setAttribute('inputmode','numeric');input.setAttribute('enterkeyhint','next');});
+   // Only recover a removed input; never steal focus from another control or date.
+   if(focusPoint&&focusPoint.context===current()&&!focusPoint.node.isConnected&&doc.activeElement===doc.body){
+     const input=doc.getElementById(focusPoint.id),point=focusPoint;
+     if(input&&root().contains(input)){
+       input.focus({preventScroll:true});
+       if(point.start!=null&&point.end!=null)input.setSelectionRange(point.start,point.end);
+       restore(point);
+     }
+   }
    const nextContext=current(),nextTab=selected(),dialog=!!doc.querySelector('[role="dialog"]');
    if(context!==nextContext){context=nextContext;tab=nextTab;returnPoint=null;}
    else if(tab!==nextTab){
@@ -29,10 +75,15 @@
    hadDialog=dialog;
  };
  doc.addEventListener('pointerdown',event=>{
+   selectOnRelease=counters().includes(event.target)&&doc.activeElement!==event.target?event.target:null;
    const button=event.target.closest('button');if(!button||!root()?.contains(button))return;
    const point={context:current(),top:scroller()?.scrollTop||0};
    if(button.getAttribute('role')==='radio')positions.set(point.context+'|'+selected(),point);
    if(button.closest('[class*="st-key-daily_reference_"]'))returnPoint=point;
+ },true);
+ doc.addEventListener('pointerup',()=>{
+   if(selectOnRelease&&doc.activeElement===selectOnRelease)selectOnRelease.select();
+   selectOnRelease=null;
  },true);
  const observer=new w.MutationObserver(()=>{if(!queued){queued=true;w.requestAnimationFrame(sync);}});
  observer.observe(doc.body,{childList:true,subtree:true,attributes:true,attributeFilter:['aria-checked']});

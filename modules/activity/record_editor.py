@@ -160,7 +160,7 @@ def render(db,today,period,fixed_day=None):
             with st.container(key='daily_navigation',horizontal=True,vertical_alignment='center'):
                 st.button('‹',key='record_prev_'+period,on_click=move,args=(-7 if period=='주간' else -1,),help='이전 주' if period=='주간' else '이전 날')
                 selected=st.date_input('조회 주간' if period=='주간' else '기록 날짜',max_value=today,key=nav,label_visibility='collapsed')
-                st.button('›',key='record_next_'+period,on_click=move,args=(7 if period=='주간' else 1,),disabled=selected>=today)
+                st.button('›',key='record_next_'+period,on_click=move,args=(7 if period=='주간' else 1,),disabled=selected>=today,help='다음 날')
                 st.button('이번 주' if period=='주간' else '오늘',key='record_today_'+period,on_click=current)
             day=selected-selected.weekday()*DAY if period=='주간' else selected
             previous=st.session_state.get(active)
@@ -194,6 +194,7 @@ def render(db,today,period,fixed_day=None):
         changed=not ux.same_draft_values(v,values_from(old.get('data',{})))
         state='제출 완료 · 수정 초안' if old.get('submitted') and (changed or d.get('server_draft')) else '제출 완료' if old.get('submitted') else '임시 저장' if old else '작성 전'
         date_label=f'{day:%Y.%m.%d}'+(f' – {day+6*DAY:%m.%d}' if period=='주간' else ' '+ '월화수목금토일'[day.weekday()]+'요일')
+        date_label+=(' · 어제 기록 작성 중' if day==today-DAY else ' · 지난 날짜 기록 작성 중') if day<today else ''
         st.html('<div class="record-meta"><span>'+date_label+'</span><span class="record-state'+(' is-submitted' if old.get('submitted') else '')+'">'+escape(state)+'</span></div>')
         status_slot=st.empty()
         if d.get('save_error'):
@@ -207,8 +208,8 @@ def render(db,today,period,fixed_day=None):
                 st.write(rows[0].get('data',{}) if rows else {})
                 if st.button('현재 입력을 버리고 서버 저장본 불러오기',key=key+'reload'):
                     ux.clear_draft(key);ux.refresh()
-        else:status_slot.caption('임시 저장됨 · '+d['saved_at'] if d.get('saved_at') else '입력 항목을 벗어나면 자동 임시 저장됩니다.')
-        if notice:=d.pop('notice',None):st.success(notice)
+        else:status_slot.caption(('제출 완료 · ' if old.get('submitted') and not changed and not d.get('server_draft') else '임시 저장됨 · ')+d['saved_at'] if d.get('saved_at') else '입력 항목을 벗어나면 자동 임시 저장됩니다.')
+        d.pop('notice',None) # The status slot and state badge report success without moving the form.
         def edit(name):
             def changed_field():
                 v['manual_fields']=list(set(v['manual_fields'])|{name})
@@ -328,6 +329,8 @@ def styles():
 [class*="st-key-daily_navigation"] button{min-height:42px!important;border-radius:10px!important}
 [class*="st-key-daily_reference_card"]{padding:18px!important;border:1px solid #e0e7ef!important;border-radius:16px!important;gap:12px!important;background:#fff}
 [class*="st-key-daily_reference_card"] [data-testid="stCaptionContainer"]{font-size:12px!important;color:#718096!important}
+[data-testid="stLayoutWrapper"]:has(>[class*="st-key-daily_footer"]){position:sticky!important;bottom:var(--daily-keyboard-inset,0px);z-index:5}
+[class*="st-key-daily_inputs"] :is(input,textarea){scroll-margin-block:100px}
 [class*="st-key-daily_footer"]{justify-content:flex-end!important;align-items:center!important;flex-wrap:wrap!important;padding:12px 14px!important;border:1px solid #dce5ef!important;border-radius:12px!important;background:#fff!important;box-shadow:none!important;gap:8px!important;margin-top:4px!important}
 [class*="st-key-daily_footer"]>[data-testid="stElementContainer"]{flex:0 0 auto!important;width:auto!important}
 [class*="st-key-daily_footer"] [data-testid="stCaptionContainer"]{font-size:12px!important;color:#718096!important}
@@ -338,7 +341,7 @@ def styles():
  [class*="st-key-daily_inputs"]{padding:14px!important;gap:12px!important}
  [class*="st-key-daily_navigation"] [data-testid="stDateInput"]{width:150px!important}
  [class*="st-key-daily_inputs"] [data-testid="stNumberInput"]{padding:8px!important}
- [class*="st-key-daily_footer"]{position:static!important}
+ [class*="st-key-daily_footer"]{margin-bottom:0!important}
  [class*="st-key-daily_footer"] button{min-width:104px!important}
  [class*="st-key-daily_inputs"] .record-section-heading{font-size:18px;min-height:40px}
 }
