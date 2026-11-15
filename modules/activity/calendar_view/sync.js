@@ -36,7 +36,7 @@ function configureRealtime(a){
   signalPending=true;if(signalTimer)return;signalTimer=setTimeout(()=>{signalTimer=null;if(client===realtimeClient)checkSync()},500);
  });
  channel.on('postgres_changes',{event:'*',schema:'public',table:'sales_activity_signals',filter:'owner=eq.'+session.uid},payload=>{
-  if(payload.new?.topic==='scope'){calendarCache.clear();calendarBoot.supportRecipients=null;calendarAction('reauth')}
+  if(payload.new?.topic==='scope'){if(typeof resetCalendarSearch==='function')resetCalendarSearch();calendarCache.clear();calendarBoot.supportRecipients=null;calendarAction('reauth')}
  }).subscribe(status=>{
   if(client!==realtimeClient)return;
   realtimeReady=status==='SUBSCRIBED';scheduleSync();
