@@ -101,6 +101,7 @@ body[data-shell-first="true"] .calendar-spacious>.panel-content{flex:1;min-heigh
 @media(min-width:701px){header>.tools{margin-left:auto;justify-content:flex-end}}
 .chip[data-kind="휴무"],.row[data-kind="휴무"]{background:#eef0f3;color:#4b5563;border-color:#a3aab4}
 .chip[data-kind="휴무"]:before{content:none}.leave-switch{margin-bottom:14px}.leave-switch button{flex:1}
+.calendar-search-results{display:grid;gap:8px}.calendar-search-result{display:grid;text-align:left;gap:4px;width:100%;max-width:none}.calendar-search-result span,.calendar-search-result small{font-size:13px}.calendar-search-dates{display:grid;grid-template-columns:1fr 1fr;gap:10px}.calendar-search-form>button{margin-top:12px}.calendar-search-highlight{outline:2px solid #ed8a24;background:#fff4e5!important;border-radius:8px}
 </style><header><div class="nav" id="nav"></div><div class="tools" id="tools"></div></header><div class="legend" aria-label="활동 종류별 색상"><span data-kind="TA">TA 고객 연락</span><span data-kind="AP">AP 초회 상담</span><span data-kind="PC">PC 프레젠테이션 / 클로징</span><span data-kind="CS">CS 고객 관리</span></div><div id="refreshing" class="refreshing" role="status" aria-live="polite"></div><div id="move-notice" role="status" hidden></div><div id="grid" class="grid"></div><section class="agenda" id="agenda"></section><script>
 const post=(type,data)=>parent.postMessage({isStreamlitMessage:true,type,...data},location.origin);
 const emit=(action,value)=>calendarAction(action,value);
@@ -176,7 +177,7 @@ function render(a){
  latest=a;loadPrefs(a);configureSync(a);
  prefsHydrated=true;
  document.body.classList.toggle("mobile-shell",!!a.hideMobileApp);
- const {mode,day,today}=a,events=a.events.filter(e=>prefs.showCompleted||!e.done),hide=!prefs.showWeekends,anchor=date(day),month=mode==='월간',key=mode+day;
+ const {mode,day,today}=a,events=a.events.filter(e=>prefs.showCompleted||!e.done||e.id===calendarSearchFocus?.id),hide=!prefs.showWeekends&&!(calendarSearchFocus&&isWeekend(calendarSearchFocus.day)),anchor=date(day),month=mode==='월간',key=mode+day;
  if(context!==key){
    selected=day;
    if(!context){try{const saved=JSON.parse(sessionStorage.getItem('hwarang.calendar.selection.'+a.mobileSession?.uid)||'null');if(saved?.context===key&&/^\d{4}-\d{2}-\d{2}$/.test(saved.selected))selected=saved.selected}catch{}}
@@ -184,7 +185,7 @@ function render(a){
  }
  if(hide&&isWeekend(selected)){const candidate=weekday(selected,-1);selected=month&&candidate.slice(0,7)!==day.slice(0,7)?weekday(selected):candidate}
  if(calendarMemory)calendarMemory.view={day,mode,selected,team:calendarBoot.team,member:calendarBoot.member};
- const signature=JSON.stringify([mode,day,today,events,a.roster,a.scopeLabel,hide,prefs.showCompleted,selected,selectedByUser,calendarLoading,calendarLoadError,calendarBoot?.member,calendarBoot?.team,!!calendarBoot,typeof calendarAccessPending!=='undefined'&&calendarAccessPending]);
+ const signature=JSON.stringify([mode,day,today,events,a.roster,a.scopeLabel,hide,prefs.showCompleted,selected,selectedByUser,calendarLoading,calendarLoadError,calendarBoot?.member,calendarBoot?.team,calendarSearchFocus?.id,!!calendarBoot,typeof calendarAccessPending!=='undefined'&&calendarAccessPending]);
  // Status is owned by the request queue, not cleared by selection changes.
  if(signature===lastRender)return;
  lastRender=signature;
@@ -217,6 +218,7 @@ function render(a){
  }tools.append(scopes);
  if(!a.hideMobileApp)tools.append(button('모바일 앱 열기',()=>openMobile(latest.mobileSession)));
  tools.append(sw,settings);
+ tools.append(button('일정 검색',openCalendarSearch));
  tools.append(button('＋ 일정 등록',()=>emit('new',selected),'primary'));
  if(!calendarBoot||(typeof calendarAccessPending!=='undefined'&&calendarAccessPending)){for(const b of tools.querySelectorAll('button'))b.disabled=true;}
  grid.hidden=mode==='날짜별';
@@ -323,4 +325,4 @@ addEventListener('message',e=>{
    refreshNonce=e.data.nonce;requestRefresh();
  }
 });
-</script><script src="sync.js"></script><script src="persistent.js"></script><script src="host.js"></script><script>post('streamlit:componentReady',{apiVersion:1});</script></html>
+</script><script src="sync.js"></script><script src="persistent.js"></script><script src="search.js"></script><script src="host.js"></script><script>post('streamlit:componentReady',{apiVersion:1});</script></html>
