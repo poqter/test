@@ -32,8 +32,22 @@ try:
             expect(record.locator('.st-key-daily_inputs').get_by_role('spinbutton')).to_have_count(6)
             assert record.get_by_label('전화',exact=True).count()==0
             field=record.get_by_label('AP',exact=True)
-            field.fill('7');field.press('Tab')
+            expect(field).to_have_attribute('inputmode','numeric')
+            expect(field).to_have_attribute('enterkeyhint','next')
+            field.click();field.press('7');field.press('Tab')
+            expect(field).to_have_value('7') # The default zero is replaced, not prefixed.
+            pc=record.get_by_label('PC',exact=True)
+            expect(pc).to_be_focused()
+            expect(page.get_by_test_id('stStatusWidget')).not_to_be_visible()
+            expect(pc).to_be_focused() # The autosave rerun must not steal the next input.
+            pc.press('Enter')
+            expect(record.get_by_label('CS',exact=True)).to_be_focused()
+            record.get_by_label('CS',exact=True).press('Shift+Tab')
+            expect(pc).to_be_focused()
+            record.get_by_label('청약',exact=True).click()
+            record.get_by_label('청약',exact=True).press('Enter')
             note=record.get_by_label('주요 성과 · 진행사항',exact=True)
+            expect(note).to_be_focused()
             note.fill('일정 참고 후에도 유지할 내용');note.press('Tab')
             record.get_by_text('지원 요청 · 선택',exact=True).click()
             record.get_by_label('지원받을 내용',exact=True).fill('동행 요청')
@@ -80,6 +94,7 @@ try:
             expect(footer.get_by_role('button',name='임시 저장',exact=True)).to_be_visible()
             assert abs(footer.get_by_role('button',name='임시 저장',exact=True).bounding_box()['y']-footer.get_by_role('button',name='수정 내용 제출',exact=True).bounding_box()['y'])<2
             assert page.evaluate('!!window.__hwarangDailyLayout')
+            assert footer.evaluate("e=>getComputedStyle(e.parentElement).position")=='sticky'
 
             if mobile:
                 open_references(record)

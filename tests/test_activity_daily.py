@@ -137,3 +137,18 @@ def test_lost_save_response_is_reconciled_and_submit_retry_stays_submit():
     assert not at.error and not at.exception
     row=at.session_state['fixture_reports'][0]
     assert row['revision']==revision+1 and row['data']['counts']['AP']==9 and row['submitted']
+
+
+def test_previous_day_label_and_inline_submission_feedback():
+    at=app(TAIL)
+    number(at,'AP').set_value(2).run()
+    button(at,'제출하기').click().run()
+    assert not at.exception
+    assert not at.success # Submission must not insert a banner that moves the inputs.
+    assert any('제출 완료 · ' in item.value for item in at.caption)
+    at.date_input[0].set_value(date(2026,11,5)).run()
+    assert any('어제 기록 작성 중' in item.value for item in at.get('html'))
+    at.date_input[0].set_value(date(2026,11,4)).run()
+    assert any('지난 날짜 기록 작성 중' in item.value for item in at.get('html'))
+    at.date_input[0].set_value(date(2026,11,6)).run()
+    assert number(at,'AP').value==2
