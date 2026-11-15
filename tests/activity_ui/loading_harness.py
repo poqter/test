@@ -16,12 +16,12 @@ with st.sidebar:
  st.button('홈',on_click=go,args=('home',))
  st.button('영업활동 관리',on_click=go,args=('sales_activity',))
 class SlowRecords(FakeRecords):
- def __init__(self):
+ def __init__(self, **kwargs):
   time.sleep(4)
   if st.query_params.get('fail') and not st.session_state.get('attempted'):
    st.session_state['attempted']=True
    raise HwarangAuthError('연결 확인 실패')
-  super().__init__()
+  super().__init__(**kwargs)
 center.Records=SlowRecords
 with page_slot(st.session_state.get('active_app','home')):
  if st.session_state.get('active_app','home')=='home':
