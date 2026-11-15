@@ -20,7 +20,7 @@ insert into private.fixture_scope values('${me}','A','${a}',true),('${peer}','B'
 insert into private.sales_calendar_versions values('${a}','2026-11-15',1),('${b}','2026-11-15',1),('${c}','2026-11-15',1);
 insert into public.sales_events values('${peer}','${peer}','${b}','2026-11-15','14:00','15:00',null,'예정',null);
 grant usage on schema auth,private to authenticated;`);
-const migration=fs.readFileSync('supabase/migrations/20261115084043_calendar_scope_sync_and_companion_intervals.sql','utf8');
+const migration=fs.readFileSync('supabase/migrations/20261115093107_calendar_scope_sync_and_companion_intervals.sql','utf8');
 await db.exec(migration);await db.exec(migration);
 const stamp=async(unit=a)=>(await db.query("select private.sales_calendar_stamp('2026-11-01','2026-11-30',$1) v",[unit])).rows[0].v;
 const bump=async unit=>db.query('update private.sales_calendar_versions set version=version+1 where unit=$1',[unit]);
