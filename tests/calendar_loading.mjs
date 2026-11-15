@@ -6,20 +6,21 @@ const current=fs.readFileSync('modules/activity/calendar_view/persistent.js','ut
 const before=process.env.CALENDAR_BASE_REF?execFileSync('git',['show',process.env.CALENDAR_BASE_REF+':modules/activity/calendar_view/persistent.js'],{encoding:'utf8'}):null;
 function harness(source){
  let revision=1,requests=[],deny=false;
- const entry=()=>({id:'event',owner:'me',day:'2026-11-15',kind:'AP',title:'Version '+revision,status:'예정',common:false,time_pending:true});
+ const entry=(revision)=>({id:'event',owner:'me',day:'2026-11-15',kind:'AP',title:'Version '+revision,status:'예정',common:false,time_pending:true});
  const ctx={console,Map,Set,Date,JSON,Object,Array,Promise,Error,AbortController,setTimeout,clearTimeout,addEventListener:()=>{},
  document:{getElementById:()=>({textContent:''})},parent:{},configureSync:()=>{},checkSync:()=>{},signalPending:false,context:null,selected:null,
  date:s=>new Date(s+'T00:00:00Z'),add:(d,n)=>new Date(+d+n*86400000),iso:d=>d.toISOString().slice(0,10),
  render:a=>{ctx.latest=a},fetch:async(url,options)=>{
+  const sentRevision=revision;
   requests.push({url,body:JSON.parse(options.body)});
   await new Promise(r=>setTimeout(r,20));
   if(deny)return {ok:false,status:403};
-  const data={rows:[entry()],summary:[entry()],branch:[{member:'me',label:'Me'}],unit:'unit',stamp:'v'+revision};
+  const data={rows:[entry(sentRevision)],summary:[entry(sentRevision)],branch:[{member:'me',label:'Me'}],unit:'unit',stamp:'v'+sentRevision};
   if(url.endsWith('sales_calendar_stamp'))return {ok:true,json:async()=>data.stamp};
   if(url.endsWith('sales_calendar_changes')){
    const known=JSON.parse(options.body).p_known;
-   Object.assign(data,{versions:{'2026-11-15':'v'+revision},replaceFirst:known?'2026-11-15':'2026-10-26',replaceLast:known?'2026-11-15':'2026-12-06'});
-   if(known?.['2026-11-15']==='v'+revision)return {ok:true,json:async()=>({unchanged:true,versions:data.versions,stamp:data.stamp})};
+   Object.assign(data,{versions:{'2026-11-15':'v'+sentRevision},replaceFirst:known?'2026-11-15':'2026-10-26',replaceLast:known?'2026-11-15':'2026-12-06'});
+   if(known?.['2026-11-15']==='v'+sentRevision)return {ok:true,json:async()=>({unchanged:true,versions:data.versions,stamp:data.stamp})};
   }
   return {ok:true,json:async()=>data};
  }};
@@ -36,6 +37,7 @@ async function bench(source){
 }
 const old=before?await bench(before):null,now=await bench(current);
 if(old)assert(old.requests.every(n=>n===2));assert(now.requests.every(n=>n===1));
+const racing=harness(current);const pending=racing.run('reloadCalendar()');racing.bump();const saved=racing.run('mutate()');await Promise.all([pending,saved]);assert.equal(racing.requests.length,2,'write must bypass an in-flight pre-write read');assert.match(racing.run("latest.events[0].short"),/Version 2/);
 const h=harness(current);
 await h.run('Promise.all([reloadCalendar(),reloadCalendar(),reloadCalendar()])');assert.equal(h.requests.length,1,'same concurrent request shared');
 h.run("latest.events.push({id:'keep',day:'2026-11-16',short:'Unchanged'})");

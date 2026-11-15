@@ -63,9 +63,11 @@ function desiredRange(){const d=date(latest.day);let first;
  first=add(d,-((d.getUTCDay()+6)%7));return [iso(add(first,-7)),iso(add(first,13))];}
 const calendarLoads=new Map();
 async function reloadCalendar(force=false){
+ // A confirmed write or external change must not join a pre-change request.
+ if(force)calendarEpoch++;
  const seq=++calendarSeq,[first,last]=desiredRange(),key=rangeKey(first,last),epoch=calendarEpoch;
  const cached=calendarCache.get(key),team=calendarBoot.team,member=calendarBoot.member;
- if(cached){calendarLoading=false;render({...latest,...cached,day:latest.day,mode:latest.mode});calendarStatus('최신 일정 확인 중…');}
+ if(cached&&!force){calendarLoading=false;render({...latest,...cached,day:latest.day,mode:latest.mode});calendarStatus('최신 일정 확인 중…');}
  calendarLoading=!cached;calendarLoadError=false;if(!cached)calendarStatus('일정을 불러오는 중…');render(latest);
  try{
   const flightKey=[epoch,calendarBoot.uid,calendarBoot.access,key].join('|');
@@ -186,7 +188,7 @@ function values(form){const out=Object.fromEntries(new FormData(form));for(const
 function section(form,title){const d=el('details');d.append(el('summary',title));form.append(d);return d}
 function feedback(form){const e=el('div','','panel-error');e.setAttribute('role','status');form.append(e);return e}
 async function runButton(btn,error,fn){if(btn.disabled)return;btn.disabled=true;error.textContent='저장 중…';const form=btn.closest('form'),panel=btn.closest('dialog');if(panel)panel.dataset.busy='true';if(form)form.inert=true;try{await fn()}catch(e){error.textContent=e.message}finally{if(panel)delete panel.dataset.busy;if(form)form.inert=false;btn.disabled=false}}
-function mutate(){calendarEpoch++;return reloadCalendar(true)}
+function mutate(){return reloadCalendar(true)}
 function selectScope(value){
  if(!calendarBoot)return;
  const member=!['my','team'].includes(value)?value:null;
