@@ -4,6 +4,22 @@ from pathlib import Path
 from uuid import uuid4
 
 import streamlit as st
+from modules.shared.hwarang_auth import HwarangAuthError
+
+
+def create_contract(db, body):
+    """Reuse the request ID, but never accept different content as a saved retry."""
+    try:
+        db.request('POST', 'sales_contracts', body=body, prefer='resolution=ignore-duplicates')
+    except HwarangAuthError as exc:
+        if exc.code != 'transport_error' and (exc.status or 0) < 500:
+            raise
+    rows = db.request('GET', 'sales_contracts', {'id':'eq.'+body['id'], 'owner':'eq.'+db.uid, 'limit':'1'})
+    if not rows:
+        raise HwarangAuthError('청약 저장 결과를 확인하지 못했습니다. 입력을 유지한 채 다시 확인해 주세요.')
+    if any(rows[0].get(k) != v for k,v in body.items()):
+        raise HwarangAuthError('이 요청으로 이미 저장된 청약과 입력 내용이 다릅니다. 저장된 청약을 선택해 수정해 주세요.')
+    return rows[0]
 
 
 def contract_editor(db, day, event=None, expanded=False):
@@ -62,7 +78,11 @@ def contract_editor(db, day, event=None, expanded=False):
                     db.save("sales_contracts",body,old)
                 else:
                     body["id"]=st.session_state.setdefault(key+"seed",str(uuid4()))
-                    db.request("POST","sales_contracts",body=body,prefer="resolution=ignore-duplicates")
+                    try:
+                        create_contract(db, body)
+                    except HwarangAuthError as exc:
+                        st.error(str(exc))
+                        return
                     del st.session_state[key+"seed"]
                 from modules.activity import ux
                 st.session_state["sales_dialog_notice"]="청약을 저장했습니다."

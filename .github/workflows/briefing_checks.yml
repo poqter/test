@@ -69,6 +69,8 @@ jobs:
           npm ci --ignore-scripts --prefix tests/studio_db
           node tests/studio_db/check.mjs
           node tests/activity_db.mjs
+          node tests/calendar_scope_sync.mjs
+          node tests/calendar_scope_realtime.mjs
       - name: Customer reader HTTP regression
         if: ${{ !cancelled() }}
         run: node --test tests/test_briefing_public.mjs
