@@ -83,6 +83,52 @@ def times_overlap(start, end, other_start, other_end):
     return start == other_start or start < other_end and other_start < end
 
 
+def recurring_changes(db, old, body):
+    if not old.get('series_id') or old['kind']=='휴무' or body['kind']=='휴무':
+        raise ValueError('매주 반복 일정만 이후 회차까지 수정할 수 있습니다.')
+    rows=db.request('GET','sales_events',{
+        'owner':'eq.'+db.uid,'series_id':'eq.'+old['series_id'],'day':'gte.'+old['day'],
+        'id':'neq.'+old['id'],'status':'eq.예정','deleted_at':'is.null',
+    })
+    offset=date.fromisoformat(body['day'])-date.fromisoformat(old['day'])
+    fields=('title','kind','start_time','end_time','time_pending','place','note','companion','common')
+    edits={key:body[key] for key in fields if old.get(key)!=body[key]}
+    time_fields=('start_time','end_time','time_pending')
+    if any(key in edits for key in time_fields):
+        edits.update({key:body[key] for key in time_fields})
+    updates={}
+    for row in rows:
+        patch=dict(edits)
+        if offset:
+            patch['day']=str(date.fromisoformat(row['day'])+offset)
+        updates[row['id']]={'revision':row['revision'],'data':patch}
+    return rows,updates
+
+
+def recurring_overlap(db, old, body, rows, updates):
+    affected=[{**row,**updates[row['id']]['data']} for row in rows]
+    affected.append({**old,**body})
+    planned=[row for row in affected if row['start_time'] and row['status']=='예정']
+    if not planned:
+        return []
+    ignored={row['id'] for row in affected}
+    first,last=(date.fromisoformat(f(row['day'] for row in planned)) for f in (min,max))
+    own=db.period('sales_events',first,last,owner='eq.'+db.uid,status='eq.예정')
+    occupied={}
+    for row in planned:
+        peer=row.get('companion')
+        key=(row['day'],peer)
+        if peer and key not in occupied:
+            occupied[key]=db.request('POST','rpc/sales_companion_busy_times',body={
+                'first_day':row['day'],'last_day':row['day'],'p_member':peer,
+            })
+    return sorted({other['id'] for row in planned
+        for other in ([event for event in [*own,*occupied.get((row['day'],row.get('companion')),[])]
+                       if event['id'] not in ignored]+planned)
+        if other['id']!=row['id'] and other['day']==row['day']
+        and times_overlap(row['start_time'],row.get('end_time'),other.get('start_time'),other.get('end_time'))})
+
+
 def save_event(db,a):
     old=event(db,a['id'],own=True) if a.get('id') else None
     parent=event(db,a['parent'],own=True) if a.get('parent') else None
@@ -127,6 +173,18 @@ def save_event(db,a):
         last=date.fromisoformat(v['leave_end'])
         repeat=(last-day).days+1;interval=1
         if not 1<=repeat<=366:raise ValueError('휴무 기간은 1~366일로 선택해 주세요.')
+    if old and a.get('scope')=='future':
+        rows,updates=recurring_changes(db,old,body)
+        overlap=recurring_overlap(db,old,body,rows,updates)
+        signature=str(uuid5(NAMESPACE_URL,json.dumps([body,updates,overlap],sort_keys=True)))
+        if overlap and a.get('overlap')!=signature:
+            return {'overlap':signature,'message':'반복 일정 중 기존 일정과 시간이 겹칩니다. 계속하려면 저장 버튼을 다시 눌러 주세요.'}
+        count=db.request('POST','rpc/sales_edit_recurring_event',body={
+            'p_id':old['id'],'p_revision':int(a['revision']),'p_data':body,
+            'p_follow':str(follow) if follow else None,
+            'p_follow_id':str(uuid5(NAMESPACE_URL,old['id']+str(follow))) if follow else None,'p_future':updates,
+        })
+        return {'id':old['id'],'day':str(day),'updated_count':count}
     if start and status=='예정':
         stop=day+7*(repeat-1)*DAY; days={str(day+7*i*DAY) for i in range(repeat)}
         candidates=db.period('sales_events',day,stop,owner='eq.'+db.uid,status='eq.예정')

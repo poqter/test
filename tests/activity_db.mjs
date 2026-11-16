@@ -165,4 +165,31 @@ assert.equal(await archive(repeatIds[0],1),1,'old clients also delete immediatel
 await db.exec('reset role;set role anon');
 await assert.rejects(()=>erase(follow,1),'anonymous caller denied');
 console.log('PASS: current permanent deletion, revision/owner/anonymous guards, single/future repeat, retired restore, contract/task/case preservation, calendar payload/stamp/realtime invalidation');
+
+
+// Updating a weekly series uses the same row policies and rolls back on stale membership.
+await db.exec('reset role');
+await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261116023000_calendar_edit_recurring.sql',import.meta.url),'utf8'));
+const seriesRows=['91111111-1111-4111-8111-111111111111','92222222-2222-4222-8222-222222222222','93333333-3333-4333-8333-333333333333','94444444-4444-4444-8444-444444444444'];
+for(const [index,id] of seriesRows.entries()){
+ await db.query("insert into public.sales_events(id,owner,unit,day,kind,title,series_id,status) values($1,$2,$2,date '2026-12-01'+$3::int,'AP','기존',$4,$5)",
+   [id,owner,index*7,series,index===3?'완료':'예정']);
+}
+await db.exec(`set role authenticated;set request.jwt.claim.sub='${other}'`);
+const changes={...data,day:'2026-12-09',status:'예정',result:'',title:'변경'};
+const future={[seriesRows[2]]:{revision:1,data:{title:'변경',day:'2026-12-16',status:'완료',result:'유지 대상'}}};
+const recurring=async(patch)=> (await db.query('select public.sales_edit_recurring_event($1,1,$2::jsonb,null,null,$3::jsonb) as n',
+ [seriesRows[1],JSON.stringify(changes),JSON.stringify(patch)])).rows[0].n;
+await assert.rejects(()=>recurring(future));
+await db.exec(`set request.jwt.claim.sub='${owner}'`);
+await assert.rejects(()=>recurring({}),'stale planned scope is rejected');
+await assert.rejects(()=>recurring({...future,[seriesRows[3]]:{revision:1,data:{title:'불허'}}}),'extra ID rolls back edits');
+assert.equal(await recurring(future),2);
+const updated=(await db.query("select day::text,title,status,result from public.sales_events where id=any($1::uuid[]) order by day",[seriesRows])).rows;
+assert.deepEqual(updated.map(row=>[row.day,row.title,row.status,row.result]),[
+ ['2026-12-01','기존','예정',''],['2026-12-09','변경','예정',''],
+ ['2026-12-16','변경','예정',''],['2026-12-22','기존','완료',''],
+]);
+console.log('PASS recurring edit ownership, selected cutoff, date shift, stale rollback, preserved result');
+
 await db.close();

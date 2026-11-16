@@ -272,7 +272,7 @@ function openResult(row){
  const error=feedback(form),save=button('결과 저장',()=>{if(!form.reportValidity())return;runButton(save,error,async()=>{
   const v=values(form),data={day:row.day,title:row.title,kind:row.kind,mode:row.start_time?'시간 지정':row.time_pending?'시간 미정':'종일',start:row.start_time||'',end:row.end_time||'',place:row.place||'',note:row.note||'',support:!!row.help,help:row.help||'',help_recipient:row.help_recipient||'',companion:row.companion,common:row.common,status:v.status,result:v.result,follow:v.status==='연기'?v.follow:''};
   if(v.status==='연기')Object.assign(data,{follow_start:v.follow_start,follow_end:v.follow_end});
-  await rpc('save',{id:row.id,revision:row.revision,data});box.close();openDetail(row.id);mutate();calendarStatus('저장했습니다.');
+  await rpc('save',{id:row.id,revision:row.revision,data});box.close();openDetail(row.id);mutate();calendarStatus(result.updated_count>1?'반복 일정 '+result.updated_count+'건을 저장했습니다.':'저장했습니다.');
  })},'primary');form.append(save,button('닫기',close));form.onsubmit=e=>{e.preventDefault();save.click()};
  box.addEventListener('cancel',e=>{e.preventDefault();e.stopPropagation();close()});box.addEventListener('close',()=>{box.remove();parentPanel?.querySelector('.result-trigger')?.focus({preventScroll:true})});
  parentPanel.addEventListener('close',()=>box.close(),{once:true});document.body.append(box);showCalendarDialog(box);
@@ -401,11 +401,17 @@ async function openEditor(row,kind,day){
 
  }
  if(editing){const state=kind==='result'?form:section(form,'처리 상태 · 활동 결과');state.classList.add('status-section');if(state.tagName==='DETAILS')state.open=v.status!=='예정';status=field(state,kind==='result'?'처리 결과':'처리 상태','status',v.status,'text',kind==='result'?['완료','연기','취소']:['예정','완료','연기','취소']);status.dataset.status=status.value;status.addEventListener('change',()=>status.dataset.status=status.value);field(state,'활동 결과 · 선택','result',v.result,'textarea');const follow=field(state,kind==='result'?'새 일정 날짜':'후속 일정 날짜 · 선택','follow',v.follow,'date');follow.min=v.day;field(state,'새 일정 시작 시간','follow_start',v.follow_start??row.start_time?.slice(0,5)??'','time');field(state,'새 일정 종료 시간 · 선택','follow_end',v.follow_end??row.end_time?.slice(0,5)??'','time');if(kind==='result'){follow.parentElement.hidden=status.value!=='연기';status.onchange=()=>{follow.parentElement.hidden=status.value!=='연기';if(status.value==='연기'&&!follow.value)follow.value=iso(add(date(row.day>latest.today?row.day:latest.today),1))}}}
+ if(kind==='edit'&&row.series_id&&row.kind!=='휴무'){
+  const scope=field(form,'수정 범위','edit_scope',v.edit_scope||'one','text',[['one','이번 일정만'],['future','이번 일정 및 이후 반복 일정']]);
+  const explanation=el('p','이후 회차에는 바꾼 일정 정보만 반영합니다. 이번 회차의 결과와 지원 요청은 따로 저장됩니다.','hint');
+  explanation.hidden=scope.value!=='future';form.append(explanation);
+  scope.addEventListener('change',()=>{explanation.hidden=scope.value!=='future'});
+ }
  const error=feedback(form);
  const save=button(editing?'변경 저장':'일정 등록',()=>{for(const input of form.querySelectorAll('input[name=start],input[name=end]'))input.dispatchEvent(new Event('blur'));if(!form.reportValidity())return;runButton(save,error,async()=>{
   if(form.elements.support?.checked&&!calendarBoot.supportRecipients){error.textContent='지원 요청 대상 조회를 완료한 뒤 저장해 주세요.';return}
   draft.values={...v,...values(form)};if(draft.values.kind==='휴무'&&!draft.values.leave_multiple)draft.values.leave_end='';if(kind==='result'&&draft.values.status!=='연기')draft.values.follow='';
-  const result=await rpc('save',{id:editing?row.id:null,revision:editing?row.revision:null,parent:kind==='follow'?row.id:null,seed:draft.seed,data:draft.values,overlap:draft.overlap});
+  const result=await rpc('save',{id:editing?row.id:null,revision:editing?row.revision:null,parent:kind==='follow'?row.id:null,seed:draft.seed,data:draft.values,scope:draft.values.edit_scope,overlap:draft.overlap});
   if(result.overlap){draft.overlap=result.overlap;error.textContent=result.message;return}
   draft.dirty=false;calendarDrafts.delete(key);if(calendarDraft===draft){calendarDraft=null;latest={...latest,day:result.day};selected=result.day;context=null;openDetail(result.id)}mutate();calendarStatus('저장했습니다.');
  })},'primary');const actions=el('div','','editor-actions');actions.append(button('닫기',()=>closePanel()),save);form.append(actions);
