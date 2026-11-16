@@ -64,11 +64,32 @@ export function makeWorker(env,fetcher=fetch) {
     if(reserved?.batch_id)progress=true;
    }
    const pending=await rpc('kakao_service_pending',{p_limit:25});
-   for(const pendingJob of pending.slice(0,25)) {
-    if(Date.now()-tickStarted>40000)break;
-    const run=crypto.randomUUID();if(!(await rpc('kakao_service_tick_enter',{p_run_id:run})))break;
-    const job=await rpc('kakao_service_claim',{p_job_id:pendingJob.id,p_run_id:run});
-    if(!job?.claim_token)continue;
+   // The new pending contract adds owner/part. Old DB deployments fall back to serial.
+   const items=pending.slice(0,25);
+   const grouped=items.every(j=>typeof j.owner_id==='string'&&j.owner_id&&Number.isInteger(j.part)&&j.part>0);
+   const groups=[];
+   if(grouped){
+    const byOwner=new Map();
+    for(const item of items){if(!byOwner.has(item.owner_id)){const group={owner:item.owner_id,jobs:[]};byOwner.set(item.owner_id,group);groups.push(group);}byOwner.get(item.owner_id).jobs.push(item);}
+    // Keep DB chronology inside each owner: midnight can expose two different batches.
+   }else if(items.length)groups.push({owner:null,jobs:items});
+   let stopped=false,storageFailed=false,nextGroup=0;
+   async function deliver(pendingJob,expectedOwner){
+    if(stopped||Date.now()-tickStarted>40000)return false;
+    let job;
+    if(pendingJob.atomic_claim===true){
+     job=await rpc('kakao_service_begin_job',{p_job_id:pendingJob.id});
+     if(job?.reason==='quota_held')stopped=true;
+    }else{
+     const run=crypto.randomUUID();
+     if(!(await rpc('kakao_service_tick_enter',{p_run_id:run}))){stopped=true;return false;}
+     job=await rpc('kakao_service_claim',{p_job_id:pendingJob.id,p_run_id:run});
+    }
+    if(!job?.claim_token)return false;
+    if(expectedOwner!==null&&job.owner_id!==expectedOwner){
+     await rpc('kakao_service_complete',{p_job_id:job.job_id,p_claim_token:job.claim_token,p_status:'failed'}).catch(()=>{});
+     return false;
+    }
     progress=true;
     let attempted=false;
     try {
@@ -86,14 +107,32 @@ export function makeWorker(env,fetcher=fetch) {
      await sendMemo(fetcher,token.access_token,template(job.body,'https://hwarang-calendar.streamlit.app/calendar?view=mobile-calendar'));
      const recorded=await rpc('kakao_service_complete',{p_job_id:job.job_id,p_claim_token:job.claim_token,p_status:'accepted'});
      if(recorded!==true)throw Error('Acceptance not persisted');
-     processed++;
+     processed++;return true;
     } catch (error) {
      const reauth=error instanceof ReauthenticationRequired;
      // Definite provider rejection is not an ambiguous accepted request.
      if(reauth)await rpc('kakao_service_require_reauth',{p_owner:job.owner_id,p_generation:job.generation}).catch(()=>{});
      await rpc('kakao_service_complete',{p_job_id:job.job_id,p_claim_token:job.claim_token,p_status:attempted&&!reauth?'uncertain':'failed'}).catch(()=>{});
+     return false;
     }
    }
+   async function lane(){
+    while(!stopped&&Date.now()-tickStarted<=40000){
+     const group=groups[nextGroup++];if(!group)return;
+     for(const item of group.jobs){
+      if(stopped||Date.now()-tickStarted>40000)break;
+      try{
+       const accepted=await deliver(item,group.owner);
+       // A refused/failed/uncertain part closes this owner's local stale queue.
+       // SQL remains authoritative across concurrent Edge invocations.
+       if(!accepted&&group.owner!==null)break;
+      }catch{storageFailed=true;stopped=true;break;}
+     }
+    }
+   }
+   // Await every lane, including in-flight sends on another owner's failure.
+   await Promise.all(Array.from({length:Math.min(grouped?3:1,groups.length)},()=>lane()));
+   if(storageFailed)return response({error:'Worker unavailable',processed},503);
    await rpc('kakao_service_continue',{p_tick_hash:tickHash,p_progress:progress});
    return response({processed});
   }catch{return response({error:'Worker unavailable',processed},503);}
