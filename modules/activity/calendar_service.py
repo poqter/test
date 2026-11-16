@@ -36,14 +36,14 @@ def snapshot(db, args):
     now = datetime.now(KST)
     cards=[]
     for row in sorted(visible,key=lambda r:(r['day'],r.get('start_time') or '',r['id'])):
-        owner=branch.get(row['owner'],db.members.get(row['owner'],{})).get('label','지점 공통')
+        owner='지점 공통' if row.get('common') else branch.get(row['owner'],db.members.get(row['owner'],{})).get('label','구성원')
         stamp=(row.get('start_time') or ('시간 미정' if row.get('time_pending') else '종일'))[:5]
         status=row['status']
         if status=='예정' and (row['day']<str(now.date()) or row['day']==str(now.date()) and row.get('start_time') and row['start_time']<now.strftime('%H:%M:%S')): status='결과 미입력'
         label=f"{owner} · 휴무" if row['kind']=='휴무' else f"{stamp} · {row['kind']} · {owner} · {status}"
         if row.get('companion'):label+=' · 동행 '+branch.get(row['companion'],{}).get('label','')
         if row.get('help'):label+=' · 지원 요청'
-        cards.append(dict(start=row.get('start_time'),timePending=bool(row.get('time_pending')),place=row.get('place',''),status=row['status'],revision=row.get('revision'),id=row['id'],day=row['day'],kind=row['kind'],member=row['owner'],allDay=not row.get('start_time'),short=(owner+' · 휴무' if team else '휴무') if row['kind']=='휴무' else (row.get('title') or row['kind'])+(' · '+owner if team else ''),label=label,done=row['kind']!='휴무' and row['status']=='완료',soon=bool(row['day']==str(now.date()) and row['status']=='예정' and row.get('start_time') and 0<=(datetime.combine(now.date(),time.fromisoformat(row['start_time']),KST)-now).total_seconds()<=1800),readable=row['id'] in details))
+        cards.append(dict(start=row.get('start_time'),timePending=bool(row.get('time_pending')),place=row.get('place',''),status=row['status'],revision=row.get('revision'),id=row['id'],day=row['day'],kind=row['kind'],member=row['owner'],common=bool(row.get('common')),ownerName=owner,title='휴무' if row['kind']=='휴무' else row.get('title') or row['kind'],allDay=not row.get('start_time'),short=(owner+' · 휴무' if team else '휴무') if row['kind']=='휴무' else (row.get('title') or row['kind'])+(' · '+owner if team else ''),label=label,done=row['kind']!='휴무' and row['status']=='완료',soon=bool(row['day']==str(now.date()) and row['status']=='예정' and row.get('start_time') and 0<=(datetime.combine(now.date(),time.fromisoformat(row['start_time']),KST)-now).total_seconds()<=1800),readable=row['id'] in details))
     unit=db.members[member]['unit'] if member else db.me['unit']
     stamp=db.request('POST','rpc/sales_calendar_stamp',body={'first_day':str(first),'last_day':str(last),'p_unit':unit})
     return dict(events=cards,rangeStart=str(first),rangeEnd=str(last),syncUnit=unit,syncStamp=stamp,scopeLabel=db.members[member]['label'] if member else '지점 일정' if team else '내 일정',roster={u:r['label'] for u,r in branch.items() if not member or u==member} if team or member else {})
