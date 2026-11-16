@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 11066)
-Total output lines: 962
-
 """Shared Supabase authentication for the HWARANG platform.
 
 WORKSPACE is the primary sign-in surface. Other HWARANG apps receive a short-
@@ -411,7 +408,107 @@ class HwarangAuthService:
                 "p_permissions": permissions,
             },
         )
-        return self.admin_user_snapshot(actor_user_id, target_u…1066 tokens truncated…s, dict) else {}
+        return self.admin_user_snapshot(actor_user_id, target_user_id)
+
+    def admin_audit_log(self, actor_user_id: str, *, limit: int = 50) -> list[dict[str, Any]]:
+        self._require_super_admin(actor_user_id)
+        rows = self._request(
+            "GET", "/rest/v1/hwarang_admin_audit_log", admin=True,
+            params={
+                "select": "id,actor_user_id,target_user_id,action,details,created_at",
+                "order": "created_at.desc",
+                "limit": str(max(1, min(int(limit), 200))),
+            },
+        )
+        return rows if isinstance(rows, list) else []
+
+    def login_id_available(self, login_id: str) -> bool:
+        login_id = login_id.strip()
+        if not _ID_RE.fullmatch(login_id):
+            return False
+        return self._profile_by_login_id(login_id) is None
+
+    def joinable_branches(self, join_code: str) -> list[dict[str, str]]:
+        code = join_code.strip()
+        if not code:
+            return []
+        rows = self._request(
+            "POST",
+            "/rest/v1/rpc/get_joinable_branches",
+            admin=False,
+            json={"p_code": code},
+        )
+        if not isinstance(rows, list):
+            return []
+        return [
+            {
+                "code": str(row.get("organization_code", "")),
+                "name": str(row.get("organization_name", "")),
+                "parent": str(row.get("parent_name", "")),
+            }
+            for row in rows
+            if row.get("organization_code") and row.get("organization_name")
+        ]
+
+    def signup_affiliations(self, join_code):
+        rows = self._request("POST", "/rest/v1/rpc/signup_affiliation_options", admin=True,
+                             json={"p_code": join_code.strip()})
+        return rows if isinstance(rows, list) else []
+
+    def signup_managers(self, join_code, organization_code, position_code):
+        rows = self._request("POST", "/rest/v1/rpc/signup_manager_candidates", admin=True,
+            json={"p_code": join_code.strip(), "p_organization_code": organization_code,
+                  "p_position_code": position_code})
+        return rows if isinstance(rows, list) else []
+
+    def my_reporting_managers(self, state):
+        return self._request("POST", "/rest/v1/rpc/get_reporting_managers",
+                             access_token=state["access_token"], json={}) or {}
+
+    def save_my_reporting_managers(self, state, *, team_leader=None, deputy_manager=None):
+        return self._request("POST", "/rest/v1/rpc/set_reporting_managers",
+            access_token=state["access_token"],
+            json={"p_team_leader": team_leader, "p_deputy_manager": deputy_manager})
+
+    # ---------- authentication ----------
+    def _auth_user_by_id(self, uid: str) -> dict[str, Any]:
+        data = self._request("GET", f"/auth/v1/admin/users/{uid}", admin=True)
+        if isinstance(data, dict) and isinstance(data.get("user"), dict):
+            return data["user"]
+        return data if isinstance(data, dict) else {}
+
+    def _login_bootstrap(self, login_id: str) -> dict[str, Any] | None:
+        """Fetch only what is needed before Supabase password verification."""
+        data = self._request(
+            "POST",
+            "/rest/v1/rpc/get_hwarang_login_bootstrap",
+            admin=True,
+            json={"p_login_id": login_id.strip()},
+        )
+        if isinstance(data, list) and data and isinstance(data[0], dict):
+            return dict(data[0])
+        if isinstance(data, dict):
+            return dict(data)
+        return None
+
+    def _complete_workspace_login(self, user_id: str) -> dict[str, Any]:
+        """Create LOGIN_SUCCESS telemetry and return all login context in one RPC."""
+        data = self._request(
+            "POST",
+            "/rest/v1/rpc/complete_hwarang_workspace_login",
+            admin=True,
+            json={"p_user_id": user_id},
+        )
+        row: dict[str, Any] | None = None
+        if isinstance(data, list) and data and isinstance(data[0], dict):
+            row = dict(data[0])
+        elif isinstance(data, dict):
+            row = dict(data)
+        if not row:
+            raise HwarangAuthError("로그인 정보를 확인하지 못했습니다.")
+
+        raw_access = row.get("app_access")
+        app_access = dict(raw_access) if isinstance(raw_access, dict) else {}
         normalized_access = {
             "workspace": bool(app_access.get("workspace")),
             "calculator": bool(app_access.get("calculator")),
