@@ -138,7 +138,7 @@ def render_signup_dialog(auth: HwarangAuthService) -> None:
 
     if verify:
         try:
-            branches = auth.joinable_branches(join_code)
+            branches = auth.signup_affiliations(join_code)
             if not branches:
                 raise HwarangAuthError("가입코드를 확인해 주세요.")
             st.session_state["hw_signup_branches"] = branches
@@ -154,21 +154,26 @@ def render_signup_dialog(auth: HwarangAuthService) -> None:
     if not branches:
         return
 
-    labels = {
-        branch["code"]: f"{branch.get('parent') or '화랑'} · {branch['name']}"
-        for branch in branches
-    }
+    from modules.shared.self_affiliation import SIGNUP_POSITIONS, eligible_units, manager_fields
+    position_code = st.selectbox("직책", list(SIGNUP_POSITIONS),
+        format_func=SIGNUP_POSITIONS.get, key="hw_signup_position")
+    choices = eligible_units(branches, position_code)
+    if not choices:
+        st.info("이 가입코드로 선택할 수 있는 소속이 없습니다. 다른 직책 또는 가입코드를 확인해 주세요.")
+        return
+    labels = {b["organization_code"]: f"{b.get('parent_name') or '화랑'} · {b['organization_name']}" for b in choices}
+    org_code = st.selectbox("소속", list(labels), format_func=labels.get, key="hw_signup_org_"+position_code)
+    try:
+        people = auth.signup_managers(verified_code, org_code, position_code)
+    except HwarangAuthError as exc:
+        st.error(str(exc)); return
+    managers = manager_fields(people, key="hw_signup_manager_"+org_code+"_"+position_code)
     with st.form("hw_signup_form", clear_on_submit=False):
         login_id = st.text_input("아이디", placeholder="")
         password = st.text_input("비밀번호", type="password", placeholder="")
         password_confirm = st.text_input("비밀번호 확인", type="password", placeholder="비밀번호 확인")
         display_name = st.text_input("이름", placeholder="이름")
         email = st.text_input("이메일", placeholder="이메일")
-        org_code = st.selectbox(
-            "소속",
-            options=[branch["code"] for branch in branches],
-            format_func=lambda code: labels.get(code, code),
-        )
         submitted = st.form_submit_button("회원가입", type="primary", use_container_width=True)
 
     if submitted:
@@ -183,6 +188,8 @@ def render_signup_dialog(auth: HwarangAuthService) -> None:
                 email=email,
                 join_code=verified_code,
                 organization_code=org_code,
+                position_code=position_code,
+                **managers,
             )
             _set_authenticated(auth, state)
             st.success("가입이 완료되었습니다.")

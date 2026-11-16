@@ -154,6 +154,8 @@ def account_dialog(auth: HwarangAuthService) -> None:
             st.rerun()
         except HwarangAuthError as exc:
             st.error(str(exc))
+    from .self_affiliation import account_managers
+    account_managers(auth, state)
     tabs = st.tabs(["비밀번호 변경", "이메일 변경"])
     with tabs[0], st.form("hw_account_password"):
         st.caption("새 비밀번호: 8~128자, 영문과 숫자를 각각 하나 이상 포함하고 현재 비밀번호와 달라야 합니다.")

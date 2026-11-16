@@ -17,6 +17,7 @@ import streamlit as st
 from modules.shared.account_security import account_dialog
 from modules.shared.hwarang_auth import HwarangAuthError
 class FakeAuth:
+    def my_reporting_managers(self, state): return {"candidates": []}
     def _request(self, method, path, **kwargs):
         st.session_state.setdefault('fake_calls', []).append((method,path))
         if method == 'GET': return {'id':'synthetic-user','email':'test@example.org'}
