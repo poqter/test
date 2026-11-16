@@ -116,7 +116,10 @@ def render_panel():
             st.success('연결 신청을 취소했습니다. 필요할 때 다시 연결해 주세요.')
         elif cancel_feedback == 'failed':
             st.error('연결 취소를 처리하지 못했습니다. 다시 시도해 주세요.')
-        st.write('카카오 연결: ' + STATUSES.get(status.get('connection_status'), '확인 필요'))
+        if status.get('legacy_personal'):
+            st.write('연결 방식: 기존 개인용 · 별도 관리')
+        else:
+            st.write('카카오 연결: ' + STATUSES.get(status.get('connection_status'), '확인 필요'))
         if status.get('admin_paused'):
             st.info('관리자가 발송을 중지한 상태입니다.')
         if status.get('last_outcome'):

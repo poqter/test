@@ -232,3 +232,10 @@ def test_new_dispatch_off_does_not_mislabel_preserved_personal_briefing():
     assert not at.exception
     assert any('기존 개인용' in i.value for i in at.info)
     assert not any('자동 발송이 꺼져' in i.value for i in at.info)
+
+
+def test_personal_owner_is_not_mislabeled_disconnected():
+    at=app({'connection_status':'disconnected','legacy_personal':True,'dispatch_ready':False})
+    assert not at.exception
+    assert any('연결 방식: 기존 개인용' in m.value for m in at.markdown)
+    assert not any('카카오 연결: 미연결' in m.value for m in at.markdown)
