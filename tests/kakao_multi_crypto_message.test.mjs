@@ -1,0 +1,10 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {seal,unseal} from '../supabase/functions/hwarang-kakao/crypto.mjs';
+import {splitLines,briefing} from '../supabase/functions/hwarang-kakao/message.mjs';
+test('encrypted tokens bind owner and generation',async()=>{const secret='x'.repeat(32);const blob=await seal({access_token:'private'},secret,'a',1);assert.equal(blob.includes('private'),false);assert.deepEqual(await unseal(blob,secret,'a',1),{access_token:'private'});await assert.rejects(unseal(blob,secret,'b',1));await assert.rejects(unseal(blob,secret,'a',2));});
+test('short message remains single and multiline',()=>assert.deepEqual(splitLines(['오늘 일정','18:00 동호회 · 용산']),['오늘 일정\n18:00 동호회 · 용산']));
+test('more than three parts retained losslessly',()=>{const lines=Array.from({length:12},(_,i)=>`${i}:`+'일정'.repeat(70));const parts=splitLines(lines);assert.ok(parts.length>3);assert.ok(parts.every(p=>p.length<=200));assert.equal(parts.join('\n'),lines.join('\n'));});
+test('overlong line preserves Unicode without splitting surrogate pairs',()=>{const input='😀'.repeat(300);const parts=splitLines([input]);assert.equal(parts.join(''),input);assert.ok(parts.every(p=>p.length<=200 && !/[\uD800-\uDBFF]$/.test(p)));});
+test('events chronological without mutating source',()=>{const rows=[{id:'b',start_time:'19:00',title:'저녁'},{id:'a',start_time:'08:00',title:'아침'}];const text=briefing('2026-11-16',rows)[0];assert.ok(text.indexOf('아침')<text.indexOf('저녁'));assert.equal(rows[0].id,'b');});
+test('pending time does not disclose stale start time',()=>{const text=briefing('2026-11-16',[{id:'a',start_time:'08:00',time_pending:true,title:'미정'}])[0];assert.ok(text.includes('시간 미정'));assert.equal(text.includes('08:00'),false)});
+test('cancelled status remains visible rather than sounding upcoming',()=>assert.ok(briefing('2026-11-16',[{id:'a',title:'상담',status:'취소'}])[0].includes('[취소]')));
