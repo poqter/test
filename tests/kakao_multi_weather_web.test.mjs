@@ -6,7 +6,7 @@ const doc='<div class="dfs-daily-slide" data-date="2026-10-26"><span title="오�
 test('existing Workspace parser fixture ports identically and omits HTML/third-party air data',()=>{
  const result=parseWebWeather(doc+'<p>한국환경공단 미세먼지999</p>',{day,now});
  assert.deepEqual(result,{status:'ok',day,low:11,high:19,morning:'구름많음',afternoon:'비',issued_day:day,issued_time:'05:00'});
- const message=briefing(day,[{id:'a',title:'상담'}],false,{...result,region_name:'서울특별시'}).join('\n');assert.ok(message.includes('오전 구름많음 · 오후 비'));assert.ok(message.includes('시도 대표'));assert.ok(message.includes('관측 포함 가능'));assert.ok(!message.includes('강수 0%'));assert.ok(!message.includes('미세먼지'));
+ const message=briefing(day,[{id:'a',title:'상담'}],false,{...result,region_name:'서울특별시'}).join('\n');assert.ok(message.includes('오전 구름많음 · 오후 비'));assert.ok(!message.includes('시도 대표'));assert.ok(!message.includes('관측 포함 가능'));assert.ok(!message.includes('기상청'));assert.ok(!message.includes('05:00'));assert.ok(!message.includes('강수 0%'));assert.ok(!message.includes('미세먼지'));
 });
 test('changed structure, wrong day, stale issue and invalid date fail closed',()=>{
  for(const value of [doc.replaceAll('dfs-daily-slide','changed'),doc.replace('10.26.(월) 05:00','10.24.(토) 05:00'),doc.replace('10.26.(월) 05:00','02.30.(월) 05:00'),doc.replaceAll('title="','unknown="')])assert.throws(()=>parseWebWeather(value,{day,now}));

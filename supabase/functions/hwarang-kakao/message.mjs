@@ -40,12 +40,11 @@ export function weatherLines(day, weather) {
     if(!validCondition(weather.morning)||!validCondition(weather.afternoon)||(!weather.morning&&!weather.afternoon))return unavailable();
     const temperatures=weather.low!==null&&weather.high!==null?`최저 ${weather.low}℃ · 최고 ${weather.high}℃`:weather.high!==null?`최고 ${weather.high}℃`:weather.low!==null?`최저 ${weather.low}℃`:'기온 미확인';
     const periods=[weather.morning?'오전 '+weather.morning:'',weather.afternoon?'오후 '+weather.afternoon:''].filter(Boolean).join(' · ');
-    return [heading+' · 시도 대표','',periods,temperatures,'',`기상청 ${weather.issued_day.slice(5).replace('-','/')} ${weather.issued_time} · 기온은 관측 포함 가능`];
+    return [heading,'',periods,temperatures];
   }
   if(!numeric(weather.rain_probability,0,100))return unavailable();
   const conditions=new Set(['맑음','구름 많음','흐림','비','비 또는 눈','눈','소나기']);
   if(!conditions.has(weather.condition))return unavailable();
   const temperature=weather.low!==null&&weather.high!==null?`${weather.low}~${weather.high}℃`:weather.high!==null?`최고 ${weather.high}℃`:weather.low!==null?`최저 ${weather.low}℃`:'기온 미확인';
-  return [heading+' · 발표 이후 예보','',`${weather.condition} · ${temperature} · 강수 ${weather.rain_probability}%`,'',
-    `출처: 기상청 · ${weather.issued_day.slice(5).replace('-','/')} ${weather.issued_time} 발표`];
+  return [heading,'',`${weather.condition} · ${temperature} · 강수 ${weather.rain_probability}%`];
 }

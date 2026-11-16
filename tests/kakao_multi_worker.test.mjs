@@ -61,5 +61,5 @@ for(const mode of ['missing_region','cache','cache_error'])test('weather integra
  });
  assert.equal((await h(request())).status,200);assert.equal(manifests.length,2);assert.ok(manifests[0].includes('각자상담1'));assert.ok(manifests[1].includes('각자상담2'));
  assert.equal(weatherCalls,mode==='missing_region'?0:1);assert.ok(calls.every(u=>u.startsWith(values.SUPABASE_URL)));
- if(mode==='cache')assert.ok(manifests[0].includes('출처: 기상청'));else assert.ok(manifests[0].includes('확인하지 못했습니다'));
+ if(mode==='cache'){assert.ok(manifests[0].includes('서울 송파구 날씨'));assert.ok(manifests[0].includes('강수 20%'));assert.ok(!manifests[0].includes('기상청'));}else assert.ok(manifests[0].includes('확인하지 못했습니다'));
 });
