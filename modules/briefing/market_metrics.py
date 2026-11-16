@@ -51,8 +51,7 @@ def market_observations_configured():
         "BRIEFING_MARKET_OBSERVATIONS_JSON", "BRIEFING_MARKET_OBSERVATIONS_FILE",
         "BRIEFING_MARKET_OBSERVATIONS_URL"))
     mode=os.getenv('BRIEFING_MARKET_PROVIDER','').strip().lower()
-    return configured or bool(mode in {'fmp_treasury','fmp_ecos_treasury'} and os.getenv('FMP_API_KEY','').strip()
-                              and (mode!='fmp_ecos_treasury' or os.getenv('ECOS_API_KEY','').strip()))
+    return configured or mode == 'treasury'
 
 
 def collect_metrics(as_of):

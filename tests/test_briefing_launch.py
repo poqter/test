@@ -9,7 +9,7 @@ import pytest
 from launch_fixtures import AS_OF,observations,content,packet
 from modules.briefing.business_calendar import calendar_rows,is_business_day
 from modules.briefing.market_metrics import validated_metrics
-from modules.briefing.market_providers import eod_observation,treasury_observation,ecos_observation,collect_provider_observations
+from modules.briefing.market_providers import treasury_observation,collect_provider_observations
 from modules.briefing.public_body import customer_body,staff_body,public_html,metric_change,metric_date
 from modules.briefing.costs import estimate_cost,usage_summary
 from modules.briefing.repository import BriefingRepository,BriefingRepositoryError
@@ -46,15 +46,6 @@ def test_change_units_and_daily_date_precision():
     assert metric_change(rows[0]).endswith('%')
     assert metric_date({**rows[-1],'as_of_precision':'date'})=='2026-10-08 관측일'
 
-@pytest.mark.parametrize('code,zone', [('KOSPI','+09:00'),('SP500','-04:00'),('NASDAQ_COMPOSITE','-04:00')])
-def test_provider_closes_use_the_actual_market_zone(code,zone):
-    row=eod_observation(code,[{'date':'2026-10-08','close':120},{'date':'2026-10-07','close':100}],AS_OF,source_url='https://example.org')
-    assert row['observed_at'].endswith(zone) and row['previous_value']==100
-
-def test_future_close_not_taken_and_us_dst_winter():
-    row=eod_observation('SP500',[{'date':'2026-11-03','close':300},{'date':'2026-11-02','close':120},{'date':'2026-10-30','close':100}],datetime(2026,11,3,12,tzinfo=timezone.utc))
-    assert row['observed_at'].startswith('2026-11-02') and row['observed_at'].endswith('-05:00')
-
 def treasury_xml(points):
     return ('<feed xmlns="http://www.w3.org/2005/Atom" xmlns:d="urn:d">'+''.join(f'<entry><d:NEW_DATE>{day}T00:00:00</d:NEW_DATE><d:BC_10YEAR>{value}</d:BC_10YEAR></entry>' for day,value in points)+'</feed>').encode()
 
@@ -63,29 +54,26 @@ def test_treasury_handles_zero_and_daily_precision():
     assert row['previous_value']==0 and row['as_of_precision']=='date' and not row['external_allowed']
 
 def test_treasury_year_boundary_merges_observations(monkeypatch):
-    monkeypatch.setenv('BRIEFING_MARKET_PROVIDER','fmp_treasury');monkeypatch.setenv('FMP_API_KEY','synthetic-only')
+    monkeypatch.setenv('BRIEFING_MARKET_PROVIDER','treasury')
     from modules.briefing import market_providers as p
     def download(url,params=None,http=None):
-        if 'index-list' in url:return json.dumps([{'symbol':s,'name':n} for s,n in [('^KS11','KOSPI'),('^KQ11','KOSDAQ'),('^GSPC','S&P 500'),('^IXIC','NASDAQ Composite')]]).encode()
         if 'treasury.gov' in url:return treasury_xml([('2026-12-31',4.1)] if params['field_tdr_date_value']=='2026' else [('2027-01-04',4.2)])
-        return json.dumps([{'symbol':params['symbol'],'date':'2027-01-04','close':110},{'symbol':params['symbol'],'date':'2026-12-31','close':100}]).encode()
+        raise AssertionError('Unexpected provider')
     monkeypatch.setattr(p,'_download',download)
     rows,details=p.collect_provider_observations(datetime(2027,1,4,23,tzinfo=timezone.utc))
     rate=next(r for r in rows if r['code']=='US10Y');assert rate['value']==4.2 and rate['previous_value']==4.1
 
-def test_catalog_rejects_nasdaq100_substitution(monkeypatch):
-    monkeypatch.setenv('BRIEFING_MARKET_PROVIDER','fmp_treasury');monkeypatch.setenv('FMP_API_KEY','synthetic-only')
-    from modules.briefing import market_providers as p
-    def download(url,params=None,http=None):
-        if 'index-list' in url:return b'[{"symbol":"^NDX","name":"NASDAQ 100"}]'
-        if 'treasury.gov' in url:return treasury_xml([('2026-10-07',4.1),('2026-10-08',4.2)])
-        return b'[]'
-    monkeypatch.setattr(p,'_download',download);rows,details=p.collect_provider_observations(AS_OF)
-    assert details['metrics']['NASDAQ_COMPOSITE']=='instrument_not_verified' and not any(r['code']=='NASDAQ_COMPOSITE' for r in rows)
-
-def test_ecos_ignores_today_and_wrong_instrument():
-    row=ecos_observation({'StatisticSearch':{'row':[{'ITEM_CODE1':'0000001','TIME':d,'DATA_VALUE':v} for d,v in [('20261009','1400'),('20261008','1300'),('20261007','1290')]]}},AS_OF)
-    assert row['value']==1300 and row['as_of_precision']=='date'
+@pytest.mark.parametrize('mode', ['fmp_treasury', 'fmp_ecos_treasury'])
+def test_removed_provider_configuration_cannot_make_requests(monkeypatch, mode):
+    monkeypatch.setenv('BRIEFING_MARKET_PROVIDER', mode)
+    monkeypatch.setenv('FMP_API_KEY', 'synthetic-only')
+    monkeypatch.setenv('ECOS_API_KEY', 'synthetic-only')
+    from modules.briefing.market_metrics import market_observations_configured
+    for key in ('JSON', 'FILE', 'URL'):
+        monkeypatch.delenv('BRIEFING_MARKET_OBSERVATIONS_' + key, raising=False)
+    rows, details = collect_provider_observations(AS_OF)
+    assert rows == [] and details['status'] == 'not_configured'
+    assert not market_observations_configured()
 
 def test_customer_insurance_keeps_news_but_excludes_internal_counsel():
     source=content('INSURANCE',4);source['issues'][0]['category']='영업·채널';source['issues'][1]['communication_state']='internal_check'
@@ -351,3 +339,13 @@ def test_one_paid_validation_does_not_enable_scheduled_generation():
 def test_incomplete_external_metric_contract_keeps_customer_closed(field):
     rows=observations();rows[0].pop(field);result=validated_metrics(rows,AS_OF)
     assert result['complete'] and not result['external_complete']
+
+
+def test_approved_json_feed_is_preserved_after_provider_removal(monkeypatch):
+    from modules.briefing.market_metrics import collect_metrics, market_observations_configured
+    monkeypatch.delenv('BRIEFING_MARKET_OBSERVATIONS_URL', raising=False)
+    monkeypatch.setenv('BRIEFING_MARKET_OBSERVATIONS_JSON', json.dumps(observations()))
+    assert market_observations_configured()
+    result = collect_metrics(AS_OF)
+    assert result['complete'] and result['external_complete']
+    assert len(result['items']) == 6
