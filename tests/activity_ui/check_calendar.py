@@ -1,6 +1,6 @@
 """Browser regression for the shipped calendar component (no backend access)."""
 from pathlib import Path
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import expect, sync_playwright
 
 ROOT=Path(__file__).resolve().parents[2]
 HTML=(ROOT/'modules/activity/calendar_view/index.html').read_text()
@@ -77,6 +77,42 @@ with sync_playwright() as p:
     page.evaluate("parentVisible=true;window.fetch=async()=>{throw Error('offline')};checkSync()")
     assert '연결 확인 중' in page.locator('#refreshing').inner_text()
     assert page.evaluate('keptCell===document.querySelector(\'[data-key="2026-11-06"]\')')
+    # Exercise the real account preference UI with two independent browser contexts.
+    stored={}
+    requests=[]
+    def auth_user(route):
+        request=route.request
+        uid=request.headers['authorization'].removeprefix('Bearer ')
+        if request.method=='PUT':
+            stored[uid]=request.post_data_json['data']['hwarang_calendar_month_week_start']
+            requests.append((uid,stored[uid]))
+        metadata={'hwarang_calendar_month_week_start':stored[uid]} if uid in stored else {}
+        route.fulfill(json={'id':uid,'user_metadata':metadata})
+    for uid, first in [('one','2026-10-26'),('two','2026-10-26'),('one','2026-11-01')]:
+        other=browser.new_page(viewport={'width':390,'height':700})
+        other.route('https://activity.test/*.js',lambda route:route.fulfill(path=str(ROOT/'modules/activity/calendar_view'/route.request.url.rsplit('/',1)[-1]),content_type='application/javascript'))
+        other.route('https://activity.test/',lambda route:route.fulfill(body=HTML,content_type='text/html'))
+        other.route('https://activity.test/auth/v1/user',auth_user)
+        other.goto('https://activity.test/')
+        settings=dict(ARGS,mode='월간',day='2026-11-01',mobileSession=dict(uid=uid,url='https://activity.test',key='public',token=uid))
+        other.evaluate('a=>{loadPrefs(a);prefs.showWeekends=true;render(a);loadMonthWeekStart(a.mobileSession)}',settings)
+        other.locator('.view-settings > summary').click()
+        selector=other.get_by_label('월간 주 시작 요일')
+        expect(selector).to_be_enabled()
+        expect(other.locator('.cell').first).to_have_attribute('data-key',first)
+        if uid=='one' and not requests:
+            selector.select_option('0')
+            expect(other.locator('.weekday').first).to_have_text('일')
+            expect(other.locator('.cell').first).to_have_attribute('data-key','2026-11-01')
+            expect(other.get_by_text('계정에 저장했습니다.')).to_be_visible()
+            other.get_by_label('주말 표시',exact=True).uncheck()
+            expect(other.locator('.weekday')).to_have_text(['월','화','수','목','금'])
+            other.get_by_label('주말 표시',exact=True).check()
+            expect(other.locator('.weekday').first).to_have_text('일')
+            other.evaluate('a=>render({...a,mode:"주간"})',settings)
+            expect(other.locator('.weekday').first).to_have_text('월')
+        other.close()
+    assert requests==[('one',0)]
     assert not errors,errors
     browser.close()
 print('PASS calendar weekdays, toggle, weekend data retention, keyed updates, navigation and mobile layout')

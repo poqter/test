@@ -3,6 +3,8 @@ import vm from 'node:vm';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 const current=fs.readFileSync('modules/activity/calendar_view/persistent.js','utf8');
+const calendar=fs.readFileSync('modules/activity/calendar_view/index.html','utf8');
+const rangeHelpers=calendar.slice(calendar.indexOf('function monthGridStart('),calendar.indexOf('async function weekStartRequest('));
 const before=process.env.CALENDAR_BASE_REF?execFileSync('git',['show',process.env.CALENDAR_BASE_REF+':modules/activity/calendar_view/persistent.js'],{encoding:'utf8'}):null;
 function harness(source){
  let revision=1,requests=[],deny=false;
@@ -24,7 +26,9 @@ function harness(source){
   }
   return {ok:true,json:async()=>data};
  }};
- vm.createContext(ctx);vm.runInContext(source,ctx);
+ vm.createContext(ctx);
+ vm.runInContext("let prefs={showWeekends:true},monthWeekStart=1,calendarSearchFocus=null;"+rangeHelpers,ctx);
+ vm.runInContext(source,ctx);
  vm.runInContext("calendarBoot={uid:'me',access:'scope',fast:true,team:true,member:null,members:{me:'Me'}};latest={day:'2026-11-15',mode:'월간',events:[],mobileSession:{url:'https://synthetic.invalid',key:'fake',token:'fake'}}",ctx);
  return {ctx,run:code=>vm.runInContext(code,ctx),requests,bump:()=>revision++,deny:()=>deny=true};
 }

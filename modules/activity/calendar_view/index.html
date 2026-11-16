@@ -109,11 +109,64 @@ function el(tag,text,cls){let x=document.createElement(tag);x.textContent=text||
 function button(label,fn,cls,aria){let b=el('button',label,cls);b.type='button';b.onclick=fn;if(aria)b.setAttribute('aria-label',aria);return b}
 const date=s=>new Date(s+'T12:00:00Z'), iso=d=>d.toISOString().slice(0,10), add=(d,n)=>new Date(+d+n*86400000);
 let selected,context,latest,lastRender,refreshNonce,selectedByUser=null,lastTap=0,pointerStart=null,suppressClickUntil=0;
-let prefsHydrated=false,prefsUser=null,prefs={showCompleted:true,showWeekends:false};
+const monthWeekStartKey='hwarang_calendar_month_week_start';
+let prefsUser=null,prefs={showCompleted:true,showWeekends:false};
+let monthWeekStart=1, weekStartLoad='idle', weekStartSaving=false, weekStartMessage='';
 function loadPrefs(a){
  const uid=a.mobileSession?.uid||'local';if(prefsUser===uid)return;
- prefsHydrated=false;prefsUser=uid;prefs={showCompleted:true,showWeekends:false};
+ prefsUser=uid;prefs={showCompleted:true,showWeekends:false};
+ monthWeekStart=1;weekStartLoad='idle';weekStartSaving=false;weekStartMessage='';
  try{const stored=JSON.parse(localStorage.getItem('hwarang.calendar.preferences.'+uid)||'null');if(stored)for(const k of Object.keys(prefs))if(typeof stored[k]==='boolean')prefs[k]=stored[k]}catch{}
+}
+function monthGridStart(day,showWeekends){
+ const first=date(day.slice(0,7)+'-01'),start=showWeekends?monthWeekStart:1;
+ return add(first,-((first.getUTCDay()-start+7)%7));
+}
+async function weekStartRequest(session,method,value){
+ const response=await fetch(session.url+'/auth/v1/user',{
+  method,headers:{apikey:session.key,Authorization:'Bearer '+session.token,'Content-Type':'application/json'},
+  body:method==='PUT'?JSON.stringify({data:{[monthWeekStartKey]:value}}):undefined,
+  signal:AbortSignal.timeout(10000)
+ });
+ if(!response.ok)throw Error('Calendar preference request failed');
+ const user=await response.json();
+ if(user.id!==session.uid)throw Error('Calendar preference account changed');
+ return user.user_metadata?.[monthWeekStartKey]===0?0:1;
+}
+function applyMonthWeekStart(value){
+ if(monthWeekStart===value){render(latest);return}
+ const before=latest.mode==='월간'?iso(monthGridStart(latest.day,prefs.showWeekends)):null;
+ monthWeekStart=value;
+ render(latest);
+ if(calendarBoot&&before&&before!==iso(monthGridStart(latest.day,prefs.showWeekends)))reloadCalendar();
+}
+async function loadMonthWeekStart(session){
+ if(!session?.url||!session.token||weekStartLoad==='loading'||weekStartLoad==='ready')return;
+ const owner=prefs;
+ weekStartLoad='loading';weekStartMessage='계정 설정을 불러오는 중…';render(latest);
+ try{
+  const value=await weekStartRequest(session,'GET');
+  if(owner!==prefs)return;
+  weekStartLoad='ready';weekStartMessage='';applyMonthWeekStart(value);
+ }catch{
+  if(owner!==prefs)return;
+  weekStartLoad='failed';weekStartMessage='계정 설정을 불러오지 못했습니다.';render(latest);
+ }
+}
+async function saveMonthWeekStart(value){
+ const session=latest?.mobileSession;
+ if(!session?.token||weekStartLoad!=='ready'||weekStartSaving||monthWeekStart===value)return;
+ const owner=prefs;
+ weekStartSaving=true;weekStartMessage='계정에 저장 중…';render(latest);
+ try{
+  const saved=await weekStartRequest(session,'PUT',value);
+  if(owner!==prefs)return;
+  if(saved!==value)throw Error('Calendar preference was not saved');
+  weekStartSaving=false;weekStartMessage='계정에 저장했습니다.';applyMonthWeekStart(saved);
+ }catch{
+  if(owner!==prefs)return;
+  weekStartSaving=false;weekStartMessage='계정에 저장하지 못했습니다. 다시 선택해 주세요.';render(latest);
+ }
 }
 function savePrefs(){try{localStorage.setItem('hwarang.calendar.preferences.'+prefsUser,JSON.stringify(prefs));return true}catch{return false}}
 function changePrefs(patch){const weekendsBefore=prefs.showWeekends;Object.assign(prefs,patch);const saved=savePrefs();render(latest);const note=document.querySelector('.settings-save');if(note&&!saved)note.textContent='현재 화면에 반영했습니다. 이 브라우저에서는 설정 저장이 제한됩니다.';if(weekendsBefore!==prefs.showWeekends)emit('weekends',!prefs.showWeekends)}
@@ -175,7 +228,7 @@ function calendarEventIndex(events){
 function render(a){
  const renderStarted=calendarClock();
  latest=a;loadPrefs(a);configureSync(a);
- prefsHydrated=true;
+
  document.body.classList.toggle("mobile-shell",!!a.hideMobileApp);
  const {mode,day,today}=a,events=a.events.filter(e=>prefs.showCompleted||!e.done||e.id===calendarSearchFocus?.id),hide=!prefs.showWeekends&&!(calendarSearchFocus&&isWeekend(calendarSearchFocus.day)),anchor=date(day),month=mode==='월간',key=mode+day;
  if(context!==key){
@@ -185,7 +238,7 @@ function render(a){
  }
  if(hide&&isWeekend(selected)){const candidate=weekday(selected,-1);selected=month&&candidate.slice(0,7)!==day.slice(0,7)?weekday(selected):candidate}
  if(calendarMemory)calendarMemory.view={day,mode,selected,team:calendarBoot.team,member:calendarBoot.member};
- const signature=JSON.stringify([mode,day,today,events,a.roster,a.scopeLabel,hide,prefs.showCompleted,selected,selectedByUser,calendarLoading,calendarLoadError,calendarBoot?.member,calendarBoot?.team,calendarSearchFocus?.id,!!calendarBoot,typeof calendarAccessPending!=='undefined'&&calendarAccessPending]);
+ const signature=JSON.stringify([mode,day,today,events,a.roster,a.scopeLabel,hide,prefs.showCompleted,monthWeekStart,weekStartLoad,weekStartSaving,weekStartMessage,selected,selectedByUser,calendarLoading,calendarLoadError,calendarBoot?.member,calendarBoot?.team,calendarSearchFocus?.id,!!calendarBoot,typeof calendarAccessPending!=='undefined'&&calendarAccessPending]);
  // Status is owned by the request queue, not cleared by selection changes.
  if(signature===lastRender)return;
  lastRender=signature;
@@ -208,8 +261,19 @@ function render(a){
  heading.append(el('strong','보기 설정'),button('×',ev=>{ev.currentTarget.closest('.view-settings').open=false},'','보기 설정 닫기'));panel.append(heading);
  function option(label,key){const line=el('label','','setting-option'),input=el('input');input.type='checkbox';input.checked=prefs[key];input.onchange=ev=>changePrefs({[key]:ev.currentTarget.checked});line.append(input,document.createTextNode(label));panel.append(line)}
  option('완료 일정 표시','showCompleted');option('주말 표시','showWeekends');
+ const weekStartLine=el('label','','setting-option');
+ const weekStartSelect=el('select');weekStartSelect.setAttribute('aria-label','월간 주 시작 요일');
+ for(const [value,label] of [[1,'월요일'],[0,'일요일']]){
+  const choice=el('option',label);choice.value=value;weekStartSelect.append(choice);
+ }
+ weekStartSelect.value=monthWeekStart;
+ weekStartSelect.disabled=weekStartLoad!=='ready'||weekStartSaving;
+ weekStartSelect.onchange=ev=>saveMonthWeekStart(Number(ev.currentTarget.value));
+ weekStartLine.append(document.createTextNode('월간 주 시작 요일'),weekStartSelect);panel.append(weekStartLine);
+ if(weekStartMessage){const status=el('p',weekStartMessage,'settings-save');status.setAttribute('role','status');panel.append(status);}
+ if(weekStartLoad==='failed')panel.append(button('계정 설정 다시 불러오기',()=>loadMonthWeekStart(latest.mobileSession)));
  const guide=el('details');guide.dataset.key='color-guide';guide.append(el('summary','활동 색상 안내'),document.querySelector('.legend').cloneNode(true));panel.append(guide);
- panel.append(button('기본값으로 되돌리기',()=>changePrefs({showCompleted:true,showWeekends:false})),el('p','변경한 설정은 자동으로 저장됩니다.','settings-save'));settings.append(panel);
+ panel.append(button('기본값으로 되돌리기',()=>{changePrefs({showCompleted:true,showWeekends:false});saveMonthWeekStart(1)}),el('p','변경한 설정은 자동으로 저장됩니다.','settings-save'));settings.append(panel);
  const scopes=el('div','','scope-switch');scopes.setAttribute('role','group');scopes.setAttribute('aria-label','조회 대상');
  if(calendarBoot?.managed)scopes.append(memberSearchControl());
  for(const [key,label] of [['my','내 일정'],['team','지점 일정']]){
@@ -224,10 +288,10 @@ function render(a){
  grid.hidden=mode==='날짜별';
  grid.className='grid'+(hide?' weekends-off':'')+(mode==='주간'?' week':'')+(mode==='날짜별'?' strip':'');
  if(!grid.hidden){
- for(let w of (hide?'월화수목금':'월화수목금토일'))grid.append(el('div',w,'weekday'));
- const first=month?date(day.slice(0,7)+'-01'):anchor, monday=add(first,-((first.getUTCDay()+6)%7)),last=new Date(Date.UTC(anchor.getUTCFullYear(),anchor.getUTCMonth()+1,0,12));
+ for(let w of (hide?'월화수목금':month&&monthWeekStart===0?'일월화수목금토':'월화수목금토일'))grid.append(el('div',w,'weekday'));
+ const first=month?monthGridStart(day,!hide):weekStart;
  let cells=month?42:7;
- for(let i=0;i<cells;i++){let d=add(monday,i),s=iso(d);if(hide&&isWeekend(s))continue;let items=(byDay.get(s)||[]),box=el('div','','cell'+(s===selected?' selected':'')+(month&&s.slice(0,7)!==day.slice(0,7)?' outside':''));
+ for(let i=0;i<cells;i++){let d=add(first,i),s=iso(d);if(hide&&isWeekend(s))continue;let items=(byDay.get(s)||[]),box=el('div','','cell'+(s===selected?' selected':'')+(month&&s.slice(0,7)!==day.slice(0,7)?' outside':''));
  box.dataset.key=s;wireCalendarDrop(box,s);
  const openDay=()=>{
    const now=Date.now();if(now<suppressClickUntil||now-lastTap<400)return;lastTap=now;

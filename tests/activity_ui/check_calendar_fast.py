@@ -13,7 +13,10 @@ with sync_playwright() as p:
  page.goto('https://calendar.test/index.html')
  page.evaluate('''() => {
  window.testRequests=[];window.testPending=[];window.testSignals=[];window.testDisconnects=0;
- window.fetch=(url,options)=>{testRequests.push({url,options});return new Promise(resolve=>testPending.push(resolve))};
+ window.fetch=(url,options)=>{
+  if(url.endsWith('/auth/v1/user'))return Promise.resolve({ok:true,json:async()=>({id:'owner',user_metadata:{}})});
+  testRequests.push({url,options});return new Promise(resolve=>testPending.push(resolve));
+ };
  HwarangRealtime={RealtimeClient:class {
   channel(){return {on(type,filter,callback){testSignals.push({filter,callback});return this},subscribe(callback){window.testSubscribe=callback;return this}}}
   async removeAllChannels(){} async disconnect(){testDisconnects++} async setAuth(){}
