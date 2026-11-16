@@ -6,8 +6,9 @@ from modules.activity.kakao_settings import connection_url
 from modules.shared.hwarang_auth import HwarangAuthError
 
 
-def app(status=None, flag=True, admin_rows=None, history=None):
-    status = status or {'connection_status':'connected','enabled':False,'time':'08:00','days':[1,2,3,4,5],'send_empty':True}
+def app(status=None, flag=True, admin_rows=None, history=None, regions=None, catalog_error=False):
+    if regions is None: regions=[{'region_key':'seoul-songpa','display_name':'서울특별시 송파구'}]
+    status = status or {'connection_status':'connected','enabled':False,'time':'08:00','days':[1,2,3,4,5],'send_empty':True,'weather_region_key':'seoul-songpa'}
     return AppTest.from_string(f'''
 import streamlit as st
 from unittest.mock import patch
@@ -15,7 +16,15 @@ from modules.activity.kakao_settings import render_panel
 st.session_state.setdefault('hwarang_auth',{{'access_token':'test'}})
 def call(method,path,**kwargs):
     st.session_state.setdefault('calls',[]).append((path,kwargs))
-    if path.endswith('kakao_my_status'): return {status!r}
+    if path.endswith('kakao_my_status'): return {{**{status!r}, **st.session_state.get('weather_saved', {{}})}}
+    if path.endswith('kakao_weather_regions'):
+        if {catalog_error}:
+            from modules.shared.hwarang_auth import HwarangAuthError
+            raise HwarangAuthError('private backend detail')
+        return {regions!r}
+    if path.endswith('kakao_save_weather_region'):
+        st.session_state['weather_saved']={{'weather_region_key':kwargs['json']['p_region_key']}}
+        return {{}}
     if path.endswith('kakao_admin_status'): return {admin_rows!r}
     if path.endswith('kakao_admin_history'): return {history!r}
     return {{}}
@@ -47,6 +56,7 @@ def test_preferences_uses_self_authenticated_rpc_without_owner():
 
 def test_no_days_cannot_save():
     at=app()
+    at.toggle[0].set_value(True)
     at.multiselect[0].set_value([])
     at.button(key='FormSubmitter:kakao_preferences-저장').click().run()
     assert not at.exception
@@ -224,7 +234,7 @@ def test_dispatch_off_is_explicit_without_changing_subscription():
     at=app({'connection_status':'connected','dispatch_ready':False,'enabled':True,'time':'08:00','days':[1],'send_empty':True})
     assert not at.exception
     assert any('자동 발송이 꺼져' in i.value for i in at.info)
-    assert all(c[0].endswith('kakao_my_status') for c in at.session_state['calls'])
+    assert all(c[0].endswith(('kakao_my_status', 'kakao_weather_regions')) for c in at.session_state['calls'])
 
 
 def test_new_dispatch_off_does_not_mislabel_preserved_personal_briefing():
@@ -239,3 +249,55 @@ def test_personal_owner_is_not_mislabeled_disconnected():
     assert not at.exception
     assert any('연결 방식: 기존 개인용' in m.value for m in at.markdown)
     assert not any('카카오 연결: 미연결' in m.value for m in at.markdown)
+
+
+def test_weather_requires_explicit_blank_selection_and_no_inference():
+    at=app({'connection_status':'connected','enabled':False})
+    assert at.selectbox(key='kakao_weather_region').value==''
+    at.toggle[0].set_value(True)
+    at.button(key='FormSubmitter:kakao_preferences-저장').click().run()
+    assert not any(c[0].endswith('kakao_save_preferences') for c in at.session_state['calls'])
+    assert any('날씨 지역을 먼저' in e.value for e in at.error)
+
+
+def test_weather_valid_selection_persists_only_key_to_self_rpc():
+    at=app({'connection_status':'connected','enabled':False})
+    at.selectbox(key='kakao_weather_region').select('seoul-songpa')
+    at.button(key='FormSubmitter:kakao_weather-날씨 지역 저장').click().run()
+    assert not at.exception
+    calls=[c for c in at.session_state['calls'] if c[0].endswith('kakao_save_weather_region')]
+    assert len(calls)==1
+    assert calls[0][1]=={'access_token':'test','json':{'p_region_key':'seoul-songpa'}}
+    assert at.session_state['weather_saved']=={'weather_region_key':'seoul-songpa'}
+    at.toggle[0].set_value(True)
+    at.button(key='FormSubmitter:kakao_preferences-저장').click().run()
+    assert any(c[0].endswith('kakao_save_preferences') for c in at.session_state['calls'])
+
+
+def test_weather_empty_and_unknown_region_not_saved_or_inferred():
+    at=app({'connection_status':'connected','weather_region_key':'not-in-catalog'})
+    assert at.selectbox(key='kakao_weather_region').value==''
+    at.button(key='FormSubmitter:kakao_weather-날씨 지역 저장').click().run()
+    assert not at.exception
+    assert not any(c[0].endswith('kakao_save_weather_region') for c in at.session_state['calls'])
+
+
+@pytest.mark.parametrize('catalog_error',[False,True])
+def test_unavailable_weather_catalog_still_allows_pause(catalog_error):
+    at=app({'connection_status':'connected','enabled':True,'days':[]},regions=[],catalog_error=catalog_error)
+    assert not at.exception
+    assert any('날씨 지역 목록' in i.value for i in at.info)
+    assert not any('private backend' in e.value for e in at.error)
+    at.toggle[0].set_value(False)
+    at.button(key='FormSubmitter:kakao_preferences-저장').click().run()
+    assert not at.exception
+    assert any(c[0].endswith('kakao_save_preferences') and c[1]['json']['p_enabled'] is False for c in at.session_state['calls'])
+
+
+def test_weather_not_added_to_admin_personal_data_display():
+    at=app({'connection_status':'connected','can_manage':True},admin_rows=[{'owner_id':'other','label':'동료','connection_status':'connected','weather_region_key':'private-region','display_name':'private-location'}])
+    at.checkbox(key='kakao_admin_load').check().run()
+    assert not at.exception
+    text=' '.join(x.value for x in list(at.caption)+list(at.markdown)+list(at.info))
+    assert 'private-region' not in text and 'private-location' not in text
+    assert not any(c[0].endswith('kakao_save_weather_region') for c in at.session_state['calls'])

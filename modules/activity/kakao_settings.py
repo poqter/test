@@ -92,6 +92,31 @@ def _cancel_pending():
         st.session_state['kakao_cancel_feedback'] = 'failed'
 
 
+def render_weather_region(service, token, status):
+    try:
+        rows = rpc(service, token, 'kakao_weather_regions')
+    except HwarangAuthError:
+        rows = []
+    regions = {row['region_key']: row['display_name'] for row in rows if isinstance(row, dict) and isinstance(row.get('region_key'), str) and row['region_key'] and isinstance(row.get('display_name'), str)} if isinstance(rows, list) else {}
+    saved = status.get('weather_region_key')
+    if not regions:
+        st.info('날씨 지역 목록을 준비 중이거나 불러오지 못했습니다. 잠시 후 다시 확인해 주세요. 발송 일시중지는 가능합니다.')
+        return False
+    labels = {'': '지역을 선택해 주세요', **regions}
+    if st.session_state.get('kakao_weather_region', '') not in labels:
+        st.session_state.pop('kakao_weather_region', None)
+    with st.form('kakao_weather'):
+        selected = st.selectbox('브리핑 날씨 지역', list(labels), index=list(labels).index(saved) if saved in labels else 0, format_func=labels.get, key='kakao_weather_region')
+        st.caption('시·도 대표 지점 기준입니다. 시·군·구 또는 현재 위치의 정확한 날씨가 아니며, 지역 내 차이가 있을 수 있습니다.')
+        if st.form_submit_button('날씨 지역 저장'):
+            if selected not in regions:
+                st.error('날씨 지역을 직접 선택해 주세요.')
+            else:
+                rpc(service, token, 'kakao_save_weather_region', {'p_region_key': selected})
+                st.rerun()
+    return saved in regions
+
+
 def render_panel():
     if not enabled():
         return
@@ -152,16 +177,19 @@ def render_panel():
                 st.rerun()
         else:
             st.session_state.pop('kakao_connect_url', None)
+            weather_ready = render_weather_region(service, token, status)
             with st.form('kakao_preferences'):
                 active = st.toggle('정기 브리핑 받기', value=bool(status.get('enabled')), key='kakao_enabled')
                 send_time = st.time_input('받을 시간 · 한국 시간', value=_local_time(status.get('time')), step=60, key='kakao_time')
                 days = st.multiselect('받을 요일', list(DAYS), default=[d for d in status.get('days', [1,2,3,4,5]) if d in DAYS], format_func=DAYS.get, key='kakao_days')
                 empty = st.checkbox('일정이 없는 날에도 받기', value=bool(status.get('send_empty')), key='kakao_empty')
                 if st.form_submit_button('저장', type='primary'):
-                    if not days:
+                    if active and not weather_ready:
+                        st.error('정기 브리핑을 받으려면 날씨 지역을 먼저 선택하고 저장해 주세요.')
+                    elif active and not days:
                         st.error('받을 요일을 한 개 이상 선택해 주세요.')
                     else:
-                        rpc(service, token, 'kakao_save_preferences', {'p_enabled': active, 'p_time': send_time.strftime('%H:%M'), 'p_days': days, 'p_send_empty': empty})
+                        rpc(service, token, 'kakao_save_preferences', {'p_enabled': active, 'p_time': send_time.strftime('%H:%M'), 'p_days': days or status.get('days') or [1,2,3,4,5], 'p_send_empty': empty})
                         st.success('받을 시간과 신청 설정을 저장했습니다. 실제 발송은 서비스 운영 상태와 무료 한도에 따라 처리됩니다.')
             if st.checkbox('연결을 해제하고 앞으로의 발송을 중지합니다.', key='kakao_disconnect_confirm'):
                 if st.button('카카오 연결 해제', key='kakao_disconnect'):

@@ -30,7 +30,18 @@ create table public.kakao_multi_connections (
  updated_at timestamptz not null default now(),
  check(status <> 'connected' or (account_id is not null and encrypted_tokens is not null and talk_message_granted))
 );
+create table public.kakao_weather_regions (
+ forecast_code text check(forecast_code ~ '^[0-9]{10}$'),
+ region_key text primary key check(length(region_key) between 1 and 80), label text not null check(length(label) between 1 and 100),
+ nx integer not null check(nx between 1 and 149),ny integer not null check(ny between 1 and 253),
+ enabled boolean not null default false,verified_at timestamptz
+);
+alter table public.kakao_weather_regions enable row level security;
+revoke all on public.kakao_weather_regions from public,anon,authenticated;
+grant select,insert,update,delete on public.kakao_weather_regions to service_role;
+
 create table public.kakao_multi_preferences (
+ weather_region_key text references public.kakao_weather_regions(region_key),
  owner_id uuid primary key references public.kakao_multi_connections(owner_id),
  delivery_time time not null default '08:00',
  days integer[] not null default array[0,1,2,3,4,5,6],
@@ -109,7 +120,7 @@ begin
  where owner_id=u and expires_at<=clock_timestamp() and (ticket_hash is not null or state_hash is not null or browser_hash is not null);
  select jsonb_build_object('dispatch_ready',coalesce((private.kakao_service_gate()->>'enabled')::boolean,false),'connection_status',coalesce(c.status,'disconnected'),
  'enabled',coalesce(p.enabled,false),'time',coalesce(left(p.delivery_time::text,5),'08:00'),
- 'days',coalesce(to_jsonb(p.days),'[0,1,2,3,4,5,6]'::jsonb),'send_empty',coalesce(p.send_empty,true),
+ 'weather_region_key',p.weather_region_key,'days',coalesce(to_jsonb(p.days),'[0,1,2,3,4,5,6]'::jsonb),'send_empty',coalesce(p.send_empty,true),
  'admin_paused',coalesce(p.admin_paused,false),'last_outcome',j.outcome,'last_attempt_at',j.claimed_at,'last_day',j.day,'today_outcome',case when j.day=(clock_timestamp() at time zone 'Asia/Seoul')::date then j.outcome end,'accepted_parts',coalesce(j.accepted_parts,0),'total_parts',coalesce(j.total_parts,0),
  'can_manage',exists(select 1 from private.sales_scope_for(u,false) s where s.managed and s.member<>u),
  'legacy_personal',private.kakao_service_excluded_owner(u))
@@ -131,6 +142,7 @@ begin
  select * into c from public.kakao_multi_connections where owner_id=u for update;
  if not found then raise exception 'Connect first'; end if;
  if p_enabled and (private.kakao_service_excluded_owner(u) or c.status<>'connected' or not c.talk_message_granted) then raise exception 'Reconnect required'; end if;
+ if p_enabled and not exists(select 1 from public.kakao_multi_preferences p where p.owner_id=u and private.kakao_weather_region_valid(p.weather_region_key)) then raise exception 'Select weather region first'; end if;
  insert into public.kakao_multi_preferences(owner_id,enabled,delivery_time,days,send_empty)
  values(u,p_enabled,p_time::time,array(select distinct d from unnest(p_days) d order by d),p_send_empty)
  on conflict(owner_id) do update set enabled=excluded.enabled,delivery_time=excluded.delivery_time,days=excluded.days,send_empty=excluded.send_empty,updated_at=now();
@@ -269,4 +281,35 @@ do $$ declare f record; target text; begin
 end $$;
 grant usage on schema private to authenticated,service_role;
 -- Tables remain service only. These RPCs expose only deliberate projections and mutations.
+create or replace function private.kakao_weather_region_valid(p_key text) returns boolean language sql stable security definer set search_path='' as $$
+ select exists(select 1 from public.kakao_weather_regions where region_key=p_key and enabled and verified_at is not null)
+$$;
+create or replace function private.kakao_weather_regions() returns jsonb language plpgsql stable security definer set search_path='' as $$
+begin
+ perform private.kakao_require_user();
+ return (select coalesce(jsonb_agg(jsonb_build_object('region_key',region_key,'display_name',label) order by label,region_key),'[]'::jsonb) from public.kakao_weather_regions where enabled and verified_at is not null);
+end $$;
+create or replace function private.kakao_save_weather_region(p_region_key text) returns jsonb language plpgsql security definer set search_path='' as $$
+declare u uuid:=private.kakao_require_user(); previous text;
+begin
+ if p_region_key is not null and not private.kakao_weather_region_valid(p_region_key) then raise exception 'Invalid weather region'; end if;
+ perform 1 from public.kakao_multi_connections where owner_id=u for update;
+ if not found then raise exception 'Connect first'; end if;
+ select weather_region_key into previous from public.kakao_multi_preferences where owner_id=u;
+ insert into public.kakao_multi_preferences(owner_id,weather_region_key) values(u,p_region_key)
+ on conflict(owner_id) do update set weather_region_key=excluded.weather_region_key,
+ enabled=case when p_region_key is null then false else kakao_multi_preferences.enabled end,updated_at=clock_timestamp();
+ if previous is distinct from p_region_key then
+  update public.kakao_multi_jobs set status='cancelled',outcome='scope_changed',completed_at=clock_timestamp() where owner_id=u and status='reserved';
+  update public.kakao_multi_batches set status='cancelled',outcome='scope_changed',completed_at=clock_timestamp() where owner_id=u and status in ('reserved','held');
+ end if;
+ return private.kakao_my_status();
+end $$;
+create or replace function public.kakao_weather_regions() returns jsonb language sql security invoker set search_path='' as $$select private.kakao_weather_regions()$$;
+create or replace function public.kakao_save_weather_region(p_region_key text) returns jsonb language sql security invoker set search_path='' as $$select private.kakao_save_weather_region(p_region_key)$$;
+revoke all on function private.kakao_weather_region_valid(text) from public,anon,authenticated;
+grant execute on function private.kakao_weather_region_valid(text) to service_role;
+revoke all on function private.kakao_weather_regions(),public.kakao_weather_regions(),private.kakao_save_weather_region(text),public.kakao_save_weather_region(text) from public,anon;
+grant execute on function private.kakao_weather_regions(),public.kakao_weather_regions(),private.kakao_save_weather_region(text),public.kakao_save_weather_region(text) to authenticated;
+
 commit;

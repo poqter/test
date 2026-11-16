@@ -38,7 +38,7 @@ begin
  where owner_id=u and expires_at<=clock_timestamp() and (ticket_hash is not null or state_hash is not null or browser_hash is not null);
  select jsonb_build_object('dispatch_ready',coalesce((private.kakao_service_gate()->>'enabled')::boolean,false),'connection_status',coalesce(c.status,'disconnected'),
  'enabled',coalesce(p.enabled,false),'time',coalesce(left(p.delivery_time::text,5),'08:00'),
- 'days',coalesce(to_jsonb(p.days),'[0,1,2,3,4,5,6]'::jsonb),'send_empty',coalesce(p.send_empty,true),
+ 'weather_region_key',p.weather_region_key,'days',coalesce(to_jsonb(p.days),'[0,1,2,3,4,5,6]'::jsonb),'send_empty',coalesce(p.send_empty,true),
  'admin_paused',coalesce(p.admin_paused,false),'last_outcome',j.outcome,'last_attempt_at',j.claimed_at,
  'can_manage',exists(select 1 from private.sales_scope_for(u,false) s where s.managed and s.member<>u),
  'legacy_personal',private.kakao_service_excluded_owner(u))
@@ -64,6 +64,7 @@ begin
  select * into c from public.kakao_multi_connections where owner_id=u for update;
  if not found then raise exception 'Connect first'; end if;
  if p_enabled and (private.kakao_service_excluded_owner(u) or c.status<>'connected' or not c.talk_message_granted) then raise exception 'Reconnect required'; end if;
+ if p_enabled and not exists(select 1 from public.kakao_multi_preferences p where p.owner_id=u and private.kakao_weather_region_valid(p.weather_region_key)) then raise exception 'Select weather region first'; end if;
  insert into public.kakao_multi_preferences(owner_id,enabled,delivery_time,days,send_empty)
  values(u,p_enabled,p_time::time,array(select distinct d from unnest(p_days) d order by d),p_send_empty)
  on conflict(owner_id) do update set enabled=excluded.enabled,delivery_time=excluded.delivery_time,days=excluded.days,send_empty=excluded.send_empty,updated_at=now();

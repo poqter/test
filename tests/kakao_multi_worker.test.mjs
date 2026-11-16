@@ -47,3 +47,19 @@ test('definite consent withdrawal pauses connection; timeout does not',async()=>
  assert.equal(JSON.parse(calls.find(([u])=>u.endsWith('/kakao_service_complete'))[1]).p_status,'failed');
  const ambiguous=await run({apiFails:true});assert.equal(ambiguous.filter(([u])=>u.endsWith('/kakao_service_require_reauth')).length,0);
 });
+for(const mode of ['missing_region','cache','cache_error'])test('weather integration preserves schedules: '+mode,async()=>{
+ const calls=[],manifests=[];let weatherCalls=0;
+ const h=makeWorker(n=>n==='KMA_SERVICE_KEY'?(mode==='missing_region'?'':'synthetic-key'):env(n),async(u,i)=>{
+  calls.push(String(u));
+  if(u.endsWith('/kakao_service_consume_tick')||u.endsWith('/kakao_service_tick_enter')||u.endsWith('/kakao_service_expire')||u.endsWith('/kakao_service_continue'))return Response.json(true);
+  if(u.endsWith('/kakao_service_gate'))return Response.json({enabled:true});
+  if(u.endsWith('/kakao_service_due'))return Response.json([1,2].map(n=>({owner_id:String(n),day:'2026-11-16',generation:1,scope_hash:'hash',summary:{events:[{id:String(n),title:'각자상담'+n}],preferences:{weather_region_key:mode==='missing_region'?null:'web:1100000000'}}})));
+  if(u.endsWith('/kakao_service_weather_claim')){weatherCalls++;if(mode==='cache_error')throw Error('unavailable');return Response.json({status:'cached',region_name:'서울 송파구',forecast:{status:'ok',day:'2026-11-16',low:2,high:10,rain_probability:20,condition:'맑음',issued_day:'2026-11-16',issued_time:'05:00'}});}
+  if(u.endsWith('/kakao_service_reserve')){manifests.push(JSON.parse(i.body).p_parts.join('\n'));return Response.json({batch_id:String(manifests.length)});}
+  if(u.endsWith('/kakao_service_pending'))return Response.json([]);
+  throw Error('unexpected request');
+ });
+ assert.equal((await h(request())).status,200);assert.equal(manifests.length,2);assert.ok(manifests[0].includes('각자상담1'));assert.ok(manifests[1].includes('각자상담2'));
+ assert.equal(weatherCalls,mode==='missing_region'?0:1);assert.ok(calls.every(u=>u.startsWith(values.SUPABASE_URL)));
+ if(mode==='cache')assert.ok(manifests[0].includes('출처: 기상청'));else assert.ok(manifests[0].includes('확인하지 못했습니다'));
+});

@@ -1,4 +1,6 @@
 import {briefing} from './message.mjs';
+import {forecastBase} from './weather.mjs';
+import {fetchWebWeather} from './weather-web.mjs';
 import {unseal,seal,digest} from './crypto.mjs';
 import {refreshToken,sendMemo,template,ReauthenticationRequired} from './kakao-api.mjs';
 /** Server-only bounded worker. Remains OFF until transactional RPCs pass integration review. */
@@ -28,9 +30,35 @@ export function makeWorker(env,fetcher=fetch) {
    if(!(await rpc('kakao_service_tick_enter',{p_run_id:tick})))return response({held:true});
    await rpc('kakao_service_expire');
    const due=await rpc('kakao_service_due',{p_run_id:tick,p_limit:25});
+   const weatherMemo=new Map();
+   async function weatherFor(item){
+    const region=item.summary?.preferences?.weather_region_key;
+    if(!region)return {status:'unavailable'};
+    const key=region+':'+item.day;
+    if(!weatherMemo.has(key))weatherMemo.set(key,(async()=>{
+     let claim,args;
+     try{
+      const baseIssue=forecastBase();
+      args={p_region_key:region,p_forecast_day:item.day,p_base_date:baseIssue.base_date,p_base_time:baseIssue.base_time};
+      claim=await rpc('kakao_service_weather_claim',args);
+      if(claim?.status==='cached')return {...claim.forecast,region_name:claim.region_name};
+      if(claim?.status!=='fetch'||!claim.lease_token)return {status:'unavailable',region_name:claim?.region_name};
+      const forecast=await fetchWebWeather(fetcher,{day:item.day,forecast_code:claim.forecast_code});
+      const stored=await rpc('kakao_service_weather_complete',{...args,p_lease_token:claim.lease_token,p_forecast:forecast});
+      if(stored!==true)throw Error('Weather changed');
+      return {...forecast,region_name:claim.region_name};
+     }catch{
+      if(claim?.lease_token&&args)await rpc('kakao_service_weather_complete',{...args,p_lease_token:claim.lease_token,p_forecast:null}).catch(()=>{});
+      return {status:'unavailable',region_name:claim?.region_name};
+     }
+    })());
+    return weatherMemo.get(key);
+   }
    for(const item of due.slice(0,25)) {
     if(Date.now()-tickStarted>20000)break;
-    const parts=briefing(item.day,item.summary.events,item.summary.empty_explicit);
+    const skipEmpty=Array.isArray(item.summary.events)&&item.summary.events.length===0&&item.summary.preferences?.send_empty===false;
+    const weather=skipEmpty?{status:'unavailable'}:await weatherFor(item);
+    const parts=briefing(item.day,item.summary.events,item.summary.empty_explicit,weather);
     if(!parts.length||parts.some(p=>typeof p!=='string'||!p.trim()||p.length>200))throw Error('Invalid manifest');
     const reserved=await rpc('kakao_service_reserve',{p_owner:item.owner_id,p_day:item.day,p_generation:item.generation,p_parts:parts,p_scope_hash:item.scope_hash});
     if(reserved?.batch_id)progress=true;

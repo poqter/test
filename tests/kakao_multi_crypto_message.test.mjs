@@ -8,3 +8,19 @@ test('overlong line preserves Unicode without splitting surrogate pairs',()=>{co
 test('events chronological without mutating source',()=>{const rows=[{id:'b',start_time:'19:00',title:'저녁'},{id:'a',start_time:'08:00',title:'아침'}];const text=briefing('2026-11-16',rows)[0];assert.ok(text.indexOf('아침')<text.indexOf('저녁'));assert.equal(rows[0].id,'b');});
 test('pending time does not disclose stale start time',()=>{const text=briefing('2026-11-16',[{id:'a',start_time:'08:00',time_pending:true,title:'미정'}])[0];assert.ok(text.includes('시간 미정'));assert.equal(text.includes('08:00'),false)});
 test('cancelled status remains visible rather than sounding upcoming',()=>assert.ok(briefing('2026-11-16',[{id:'a',title:'상담',status:'취소'}])[0].includes('[취소]')));
+
+test('weather is appended once without losing long schedules',()=>{
+ const rows=Array.from({length:20},(_,i)=>({id:String(i),title:'상담'+i+'가'.repeat(70)}));
+ const weather={status:'ok',day:'2026-11-16',region_name:'서울 송파구',low:2,high:10,rain_probability:20,condition:'맑음',issued_day:'2026-11-16',issued_time:'05:00'};
+ const parts=briefing('2026-11-16',rows,true,weather),text=parts.join('\n');
+ assert.ok(parts.every(p=>p.length<=200));for(const row of rows)assert.ok(text.includes(row.title));
+ assert.equal(text.match(/출처: 기상청/g).length,1);assert.ok(text.includes('강수 20%'));
+});
+test('weather failure does not drop schedule or pretend clear weather',()=>{
+ const text=briefing('2026-11-16',[{id:'a',title:'고객 상담'}],false,{status:'unavailable',region_name:'서울 송파구'}).join('\n');
+ assert.ok(text.includes('고객 상담'));assert.ok(text.includes('날씨 · 확인하지 못했습니다.'));assert.ok(!text.includes('맑음'));
+});
+test('wrong-day and invalid weather fail closed',()=>{
+ for(const weather of [{status:'ok',day:'2026-11-15'},{status:'ok',day:'2026-11-16',low:100,high:200}])
+ assert.ok(briefing('2026-11-16',[],true,weather).join('').includes('확인하지 못했습니다'));
+});
