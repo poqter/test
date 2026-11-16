@@ -336,3 +336,34 @@ def test_repeat_test_disabled_until_region_and_dispatch_ready():
         at=app(status)
         assert not at.exception
         assert at.button(key='kakao_test_send').disabled
+
+
+def test_welcome_setup_guidance_does_not_send_when_off():
+    at=app({'connection_status':'connected','enabled':False,'welcome':{'status':'waiting_setup'},'weather_region_key':'seoul-songpa'})
+    assert not at.exception
+    assert any('날씨 지역을 저장' in x.value for x in at.info)
+    assert any('켜기 전에는 발송하지 않습니다' in x.value for x in at.caption)
+    assert not any('welcome' in path or 'request_test' in path for path,_ in at.session_state['calls'])
+
+
+def test_existing_user_has_no_welcome_prompt():
+    at=app({'connection_status':'connected','enabled':True,'welcome':{'status':'legacy_excluded'},'weather_region_key':'seoul-songpa'})
+    assert not at.exception
+    assert not any('첫 브리핑' in x.value for x in list(at.info)+list(at.success)+list(at.warning))
+
+
+@pytest.mark.parametrize('state',['queued','processing','accepted','uncertain','failed','expired'])
+def test_welcome_progress_is_sanitized_and_never_resends(state):
+    at=app({'connection_status':'connected','enabled':True,'welcome':{'status':state,'secret':'private-detail'},'weather_region_key':'seoul-songpa'})
+    assert not at.exception
+    text=' '.join(x.value for x in list(at.info)+list(at.success)+list(at.warning)+list(at.caption))
+    assert '첫 브리핑' in text
+    assert 'private-detail' not in text
+    assert not any('welcome' in path or 'request_test' in path for path,_ in at.session_state['calls'])
+
+
+def test_welcome_operational_hold_is_explicit_not_claimed_sending():
+    at=app({'connection_status':'connected','enabled':True,'welcome':{'status':'waiting_setup','reason':'service_unavailable_resave'},'weather_region_key':'seoul-songpa'})
+    assert not at.exception
+    assert any('아직 대기 중' in x.value and '다시 저장' in x.value for x in at.info)
+    assert not any('처리하고 있습니다' in x.value for x in at.info)

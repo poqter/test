@@ -9,7 +9,7 @@ from modules.shared.hwarang_auth import HwarangAuthError, HwarangAuthService, Su
 
 DAYS = {1: '월', 2: '화', 3: '수', 4: '목', 5: '금', 6: '토', 0: '일'}
 STATUSES = {'connected': '연결됨', 'disconnected': '미연결', 'revoked': '연결 해제됨', 'reauth_required': '재연결 필요', 'connecting': '연결 확인 중', 'pending_confirmation': '본인 연결 확인 필요'}
-OUTCOMES = {'schedule_missed': '예정 시간 경과 · 미발송', 'api_accepted': '카카오 접수 완료', 'setup_failed': '발송 준비 실패', 'outcome_uncertain': '결과 확인 필요', 'reauth_required': '재연결 필요', 'revoked': '연결 해제로 중단', 'paused': '발송 중지', 'quota_held': '무료 한도 확인 대기', 'empty_day_skipped': '일정 없어 생략', 'scope_changed': '권한 변경으로 중단', 'accepted': '카카오 접수 완료', 'failed': '발송 실패', 'uncertain': '결과 확인 필요', 'queued': '대기', 'sending': '발송 중', 'skipped': '발송 생략', 'cancelled': '취소'}
+OUTCOMES = {'welcome_day_reserved': '첫 브리핑 처리일 · 정기 중복 생략', 'schedule_missed': '예정 시간 경과 · 미발송', 'api_accepted': '카카오 접수 완료', 'setup_failed': '발송 준비 실패', 'outcome_uncertain': '결과 확인 필요', 'reauth_required': '재연결 필요', 'revoked': '연결 해제로 중단', 'paused': '발송 중지', 'quota_held': '무료 한도 확인 대기', 'empty_day_skipped': '일정 없어 생략', 'scope_changed': '권한 변경으로 중단', 'accepted': '카카오 접수 완료', 'failed': '발송 실패', 'uncertain': '결과 확인 필요', 'queued': '대기', 'sending': '발송 중', 'skipped': '발송 생략', 'cancelled': '취소'}
 
 
 def outcome_label(row, fallback='확인 필요'):
@@ -118,6 +118,35 @@ def render_weather_region(service, token, status):
     return saved in regions
 
 
+
+def render_welcome_status(status):
+    """Owner-only onboarding progress; never expose backend errors or ticket details."""
+    welcome = status.get('welcome')
+    if not isinstance(welcome, dict):
+        return
+    state = welcome.get('status')
+    if not state or state == 'legacy_excluded':
+        return
+    if state == 'waiting_setup' and welcome.get('reason') in ('service_unavailable_resave', 'budget_unavailable_resave'):
+        st.info('첫 브리핑은 운영 상태 또는 무료 사용량 확인 때문에 아직 대기 중입니다. 운영이 재개되면 아래 신청 설정을 다시 저장해 주세요.')
+    elif state == 'waiting_setup':
+        st.info('첫 브리핑 준비: 아래에서 날씨 지역을 저장하고 정기 브리핑 받기를 켜 주세요. 설정이 완료되면 오늘의 일정·날씨를 한 번 보냅니다.')
+        st.caption('정기 브리핑을 켜기 전에는 발송하지 않습니다. 이후에는 다음날부터 선택한 요일과 한국 시간에 받습니다.')
+    elif state in ('queued', 'processing', 'reserved', 'sending'):
+        st.info('첫 브리핑을 처리하고 있습니다. 다시 연결하거나 시험 발송을 누를 필요가 없습니다.')
+        st.caption('오늘 정기 브리핑과 중복 발송하지 않으며, 이후에는 다음날부터 선택한 요일과 시간에 받습니다.')
+    elif state == 'accepted':
+        st.success('첫 브리핑을 카카오에서 접수했습니다. 실제 수신은 나와의 채팅에서 확인해 주세요.')
+        st.caption('정기 브리핑은 다음날부터 선택한 요일과 한국 시간에 받습니다.')
+    elif state in ('uncertain', 'failed', 'expired', 'cancelled'):
+        st.warning('첫 브리핑이 완료되지 않았거나 결과 확인이 필요합니다. 일부 메시지가 도착했을 수 있어 자동으로 다시 보내지 않습니다.')
+        st.caption('정기 브리핑은 다음날부터 저장된 요일과 시간에 따릅니다. 연결이나 권한 문제가 있다면 먼저 해결해 주세요.')
+    elif state == 'suppressed_existing_delivery':
+        st.caption('오늘의 브리핑 기록이 있어 첫 브리핑을 추가 발송하지 않았습니다.')
+    if st.button('첫 브리핑 상태 새로고침', key='kakao_welcome_refresh'):
+        st.rerun()
+
+
 def _request_test():
     # Keep the same id across uncertain HTTP responses; a retry must not create another send.
     request_id = st.session_state.setdefault('kakao_test_request_id', str(uuid.uuid4()))
@@ -218,6 +247,7 @@ def render_panel():
                 st.rerun()
         else:
             st.session_state.pop('kakao_connect_url', None)
+            render_welcome_status(status)
             weather_ready = render_weather_region(service, token, status)
             with st.form('kakao_preferences'):
                 active = st.toggle('정기 브리핑 받기', value=bool(status.get('enabled')), key='kakao_enabled')
@@ -232,6 +262,8 @@ def render_panel():
                     else:
                         rpc(service, token, 'kakao_save_preferences', {'p_enabled': active, 'p_time': send_time.strftime('%H:%M'), 'p_days': days or status.get('days') or [1,2,3,4,5], 'p_send_empty': empty})
                         st.success('받을 시간과 신청 설정을 저장했습니다. 실제 발송은 서비스 운영 상태와 무료 한도에 따라 처리됩니다.')
+                        if active and isinstance(status.get('welcome'), dict) and status['welcome'].get('status') == 'waiting_setup':
+                            st.info('첫 브리핑 준비가 완료되면 오늘 내용을 한 번 보냅니다. 상태를 새로고침해 확인해 주세요.')
             render_test_panel(service, token, status, weather_ready)
             if st.checkbox('연결을 해제하고 앞으로의 발송을 중지합니다.', key='kakao_disconnect_confirm'):
                 if st.button('카카오 연결 해제', key='kakao_disconnect'):
