@@ -73,6 +73,8 @@ jobs:
           node tests/calendar_scope_realtime.mjs
           node tests/calendar_incremental.mjs
           node tests/calendar_loading.mjs
+          node tests/calendar_navigation.mjs
+          node tests/calendar_result_save.mjs
           node tests/calendar_runtime.mjs
           node tests/calendar_search.mjs
       - name: Customer reader HTTP regression

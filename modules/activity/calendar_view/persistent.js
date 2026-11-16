@@ -28,7 +28,25 @@ function retireDialog(node){
  */
 let calendarLayoutReady=false,calendarBoot=null,calendarLoading=false,calendarLoadError=false,calendarQueue=[],calendarFlight=null,calendarSeq=0,calendarVisible=true,calendarPanel=null,calendarDraft=null,calendarDrafts=new Map(),calendarChange=null,calendarEpoch=0,calendarMemory=null;
 const calendarCache=new Map();
-function rpc(op,args={}){return new Promise((resolve,reject)=>{if(op==='load'){const obsolete=calendarQueue.filter(q=>q.op==='load');calendarQueue=calendarQueue.filter(q=>q.op!=='load');obsolete.forEach(q=>q.reject(Error('조회 기간이 변경됐습니다.')))}calendarQueue.push({nonce:crypto.randomUUID(),op,args,resolve,reject});sendNext()})}
+function discardQueuedCalendarReads(predicate){
+ const obsolete=calendarQueue.filter(predicate);calendarQueue=calendarQueue.filter(q=>!predicate(q));
+ obsolete.forEach(q=>q.reject(Error('조회 화면이 변경됐습니다.')));
+}
+function rpc(op,args={},options={}){
+ if(op==='load')discardQueuedCalendarReads(q=>q.op==='load');
+ if(options.detailNavigation){
+  const key=JSON.stringify([calendarEpoch,calendarBoot.uid,calendarBoot.access,args]);
+  const reads=new Set(['load','detail','detail_contracts']);
+  const pending=[calendarFlight,...calendarQueue].filter(Boolean);
+  const same=!pending.some(q=>!reads.has(q.op))&&pending.find(q=>q.detailNavigation&&q.detailKey===key);
+  discardQueuedCalendarReads(q=>q.detailNavigation&&q!==same);
+  if(same)return same.promise;
+  options={...options,detailKey:key};
+ }
+ const q={nonce:crypto.randomUUID(),op,args,...options};
+ q.promise=new Promise((resolve,reject)=>Object.assign(q,{resolve,reject}));
+ calendarQueue.push(q);sendNext();return q.promise;
+}
 function sendNext(){
  if(calendarFlight||!calendarQueue.length)return;
  const q=calendarFlight=calendarQueue.shift();
@@ -68,33 +86,37 @@ function rangeKey(first,last){return [first,last,calendarBoot.team,calendarBoot.
 function desiredRange(){const d=date(latest.day);let first;
  if(latest.mode==='월간'){first=monthGridStart(latest.day,prefs.showWeekends||Boolean(calendarSearchFocus&&isWeekend(calendarSearchFocus.day)));return [iso(first),iso(add(first,41))]}
  first=add(d,-((d.getUTCDay()+6)%7));return [iso(add(first,-7)),iso(add(first,13))];}
-const calendarLoads=new Map();
+const calendarLoads=new Map(),calendarLoadControllers=new Map();
 async function reloadCalendar(force=false){
  // A confirmed write or external change must not join a pre-change request.
  if(force)calendarEpoch++;
  const seq=++calendarSeq,[first,last]=desiredRange(),key=rangeKey(first,last),epoch=calendarEpoch;
  const cached=calendarCache.get(key),team=calendarBoot.team,member=calendarBoot.member;
- if(cached&&!force){calendarLoading=false;render({...latest,...cached,day:latest.day,mode:latest.mode});calendarStatus('최신 일정 확인 중…');}
- calendarLoading=!cached;calendarLoadError=false;if(!cached)calendarStatus('일정을 불러오는 중…');render(latest);
+ if(cached&&!cached.movePending&&!force){calendarLoading=false;render({...latest,...cached,day:latest.day,mode:latest.mode});calendarStatus('최신 일정 확인 중…');}
+ calendarLoading=!cached||!!cached.movePending;calendarLoadError=false;if(calendarLoading)calendarStatus('일정을 불러오는 중…');render(latest);
  try{
   const flightKey=[epoch,calendarBoot.uid,calendarBoot.access,key].join('|');
+  // Superseded reads may be aborted; writes stay on the serialized RPC queue.
+  for(const [oldKey,controller] of calendarLoadControllers){if(oldKey!==flightKey){controller.abort();calendarLoadControllers.delete(oldKey);calendarLoads.delete(oldKey)}}
   let flight=calendarLoads.get(flightKey);
   if(!flight){
-   flight=calendarBoot.fast?loadPayload(first,last,team,member,cached):rpc('load',{first,last,team,member});
+   const controller=calendarBoot.fast?new AbortController():null;
+   if(controller)calendarLoadControllers.set(flightKey,controller);
+   flight=calendarBoot.fast?loadPayload(first,last,team,member,cached,controller):rpc('load',{first,last,team,member});
    calendarLoads.set(flightKey,flight);
-   flight.finally(()=>{if(calendarLoads.get(flightKey)===flight)calendarLoads.delete(flightKey)}).catch(()=>{});
+   flight.finally(()=>{if(calendarLoads.get(flightKey)===flight)calendarLoads.delete(flightKey);if(calendarLoadControllers.get(flightKey)===controller)calendarLoadControllers.delete(flightKey)}).catch(()=>{});
   }
   const data=await flight;
   if(epoch!==calendarEpoch)return;
-  calendarCache.set(key,data);while(calendarCache.size>8)calendarCache.delete(calendarCache.keys().next().value);
+  delete data.movePending;calendarCache.set(key,data);while(calendarCache.size>8)calendarCache.delete(calendarCache.keys().next().value);
   if(calendarMemory)calendarMemory.cache=new Map(calendarCache);
   if(seq!==calendarSeq)return;
   calendarLoading=false;calendarLoadError=false;render({...latest,...data});calendarStatus('');if(signalPending)checkSync();
  }catch(e){if(seq===calendarSeq&&epoch===calendarEpoch){calendarLoading=false;calendarLoadError=true;calendarStatus(e.message);render(latest)}}
 }
-async function loadPayload(first,last,team,member,cached=null){
+async function loadPayload(first,last,team,member,cached=null,requestController=null){
  const started=calendarClock();let succeeded=false;
- const requestEpoch=calendarEpoch,session=latest.mobileSession,controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
+ const requestEpoch=calendarEpoch,session=latest.mobileSession,controller=requestController||new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
  try{
   const response=await fetch(session.url+'/rest/v1/rpc/sales_calendar_compact',{method:'POST',headers:{apikey:session.key,Authorization:'Bearer '+session.token,'Content-Type':'application/json','X-Hwarang-View-Scope':session.viewScope||'daily'},body:JSON.stringify({first_day:first,last_day:last,p_member:member||null,p_team:!!team,p_known:cached?.versions||null}),signal:controller.signal});
   if(!response.ok){if(requestEpoch===calendarEpoch){if(response.status===401)calendarAction('reauth');if(response.status===401||response.status===403){calendarCache.clear();if(typeof resetCalendarSearch==='function')resetCalendarSearch();if(calendarMemory)calendarMemory.cache=new Map();latest={...latest,events:[],roster:{}};}}throw Error('일정을 불러오지 못했습니다. 다시 확인해 주세요.');}
@@ -183,7 +205,7 @@ function closePanel(){
   panel.addEventListener('close',dismissCloseConfirm,{once:true});
   showCalendarDialog(box);keepWriting.focus({preventScroll:true});return;
  }
- calendarDraft=null;calendarPanel?.close();
+ calendarDraft=null;discardQueuedCalendarReads(q=>q.detailNavigation);calendarPanel?.close();
 }
 function field(form,label,name,value='',type='text',options=null){
  const line=el('label',label),input=el(options?'select':type==='textarea'?'textarea':'input');
@@ -230,8 +252,8 @@ async function openDetail(id){
  const card=latest.events.find(e=>e.id===id),body=createPanel('일정 상세',card?.readable!==false);const panel=calendarPanel;
  if(document.body.dataset.shellFirst==='true'&&card?.readable!==false)detailPlaceholder(body,card);
  else body.append(el('p',card?.label||'일정을 불러오는 중…'));
- if(card&&card.readable===false){body.prepend(el('h2',card.short));body.append(el('p','이 일정은 공개된 요약 정보만 조회할 수 있습니다.'));return}
- try{panel.setAttribute('aria-busy','true');const data=await rpc('detail',{id,lazy_contracts:true});if(calendarPanel!==panel)return;showDetail(data,body)}catch(e){if(calendarPanel===panel){body.querySelector('[role=status]')?.remove();body.append(el('p',e.message,'panel-error'),button('다시 불러오기',()=>openDetail(id)))}}finally{panel.removeAttribute('aria-busy')}
+ if(card&&card.readable===false){discardQueuedCalendarReads(q=>q.detailNavigation);body.prepend(el('h2',card.short));body.append(el('p','이 일정은 공개된 요약 정보만 조회할 수 있습니다.'));return}
+ try{panel.setAttribute('aria-busy','true');const data=await rpc('detail',{id,lazy_contracts:true},{detailNavigation:true});if(calendarPanel!==panel)return;showDetail(data,body)}catch(e){if(calendarPanel===panel){body.querySelector('[role=status]')?.remove();body.append(el('p',e.message,'panel-error'),button('다시 불러오기',()=>openDetail(id)))}}finally{panel.removeAttribute('aria-busy')}
 }
 function detailPlaceholder(body,card){
  body.append(el('h2',card?.short||'일정 상세'));
@@ -272,7 +294,7 @@ function openResult(row){
  const error=feedback(form),save=button('결과 저장',()=>{if(!form.reportValidity())return;runButton(save,error,async()=>{
   const v=values(form),data={day:row.day,title:row.title,kind:row.kind,mode:row.start_time?'시간 지정':row.time_pending?'시간 미정':'종일',start:row.start_time||'',end:row.end_time||'',place:row.place||'',note:row.note||'',support:!!row.help,help:row.help||'',help_recipient:row.help_recipient||'',companion:row.companion,common:row.common,status:v.status,result:v.result,follow:v.status==='연기'?v.follow:''};
   if(v.status==='연기')Object.assign(data,{follow_start:v.follow_start,follow_end:v.follow_end});
-  await rpc('save',{id:row.id,revision:row.revision,data});box.close();openDetail(row.id);mutate();calendarStatus(result.updated_count>1?'반복 일정 '+result.updated_count+'건을 저장했습니다.':'저장했습니다.');
+  const result=await rpc('save',{id:row.id,revision:row.revision,data});box.close();openDetail(row.id);mutate();calendarStatus(result.updated_count>1?'반복 일정 '+result.updated_count+'건을 저장했습니다.':'저장했습니다.');
  })},'primary');form.append(save,button('닫기',close));form.onsubmit=e=>{e.preventDefault();save.click()};
  box.addEventListener('cancel',e=>{e.preventDefault();e.stopPropagation();close()});box.addEventListener('close',()=>{box.remove();parentPanel?.querySelector('.result-trigger')?.focus({preventScroll:true})});
  parentPanel.addEventListener('close',()=>box.close(),{once:true});document.body.append(box);showCalendarDialog(box);
@@ -307,14 +329,21 @@ function normalizeClock(value){
  const [h,m]=s.split(':').map(Number);return h<24&&m<60?String(h).padStart(2,'0')+':'+String(m).padStart(2,'0'):null;
 }
 let calendarDrag=null,calendarMoving=false;
+function markMovedCalendarRanges(original,day){
+ // Keep versioned data for incremental revalidation, but never paint an old move.
+ for(const [key,cached] of calendarCache){
+  if([original,day].some(d=>d>=cached.rangeStart&&d<=cached.rangeEnd))calendarCache.set(key,{...cached,movePending:true});
+ }
+ if(calendarMemory)calendarMemory.cache=new Map(calendarCache);
+}
 async function moveCalendarEvent(item,day){
  if(calendarMoving||item.member!==calendarBoot.uid||item.day===day)return;
- calendarMoving=true;calendarEpoch++;calendarCache.clear();const original=item.day;
+ calendarMoving=true;calendarEpoch++;const original=item.day;markMovedCalendarRanges(original,day);
  latest={...latest,events:latest.events.map(e=>e.id===item.id?{...e,day}:e)};render(latest);
  try{
   const result=await rpc('move',{id:item.id,revision:item.revision,day});
   await reloadCalendar(true);const notice=document.getElementById('move-notice');notice.replaceChildren(document.createTextNode(day+'로 이동했습니다. '));notice.hidden=false;
-  const undo=button('되돌리기',async()=>{if(calendarMoving)return;calendarMoving=true;undo.disabled=true;try{await rpc('move',{id:item.id,revision:result.revision,day:original});notice.hidden=true;await reloadCalendar(true)}catch(e){notice.replaceChildren(document.createTextNode(e.message));await reloadCalendar(true)}finally{calendarMoving=false}});notice.append(undo);
+  const undo=button('되돌리기',async()=>{if(calendarMoving)return;calendarMoving=true;calendarEpoch++;markMovedCalendarRanges(original,day);undo.disabled=true;try{await rpc('move',{id:item.id,revision:result.revision,day:original});notice.hidden=true;await reloadCalendar(true)}catch(e){notice.replaceChildren(document.createTextNode(e.message));await reloadCalendar(true)}finally{calendarMoving=false}});notice.append(undo);
  }catch(e){latest={...latest,events:latest.events.map(e=>e.id===item.id?item:e)};render(latest);await reloadCalendar(true);const notice=document.getElementById('move-notice');notice.textContent=e.message;notice.hidden=false;}
  finally{calendarMoving=false}
 }
