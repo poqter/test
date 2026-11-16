@@ -53,11 +53,12 @@ function receiveCalendar(a){
   const shellView=a.hosted&&latest?{day:latest.day,mode:latest.mode}:{};
   latest={...a.boot,...shellView,hideMobileApp:a.hideMobileApp,mobileSession:a.mobileSession};
   const remembered=calendarMemory?.view;if(remembered){calendarBoot.team=remembered.team;calendarBoot.member=calendarBoot.members[remembered.member]?remembered.member:null;latest={...latest,day:remembered.day,mode:remembered.mode};selected=remembered.selected;context=latest.mode+latest.day}
+  loadPrefs(latest);
   const [first,last]=desiredRange();
   const fresh=a.boot.ready!==false&&a.bootFresh&&!remembered&&first===a.boot.rangeStart&&last===a.boot.rangeEnd;
   calendarLoading=!fresh;
   if(fresh)calendarCache.set(rangeKey(first,last),a.boot);
-  render(latest);if(!fresh)reloadCalendar();setTimeout(()=>{frameViewport='';fitCalendar();calendarLayoutReady=true},150);
+  render(latest);loadMonthWeekStart(latest.mobileSession);if(!fresh)reloadCalendar();setTimeout(()=>{frameViewport='';fitCalendar();calendarLayoutReady=true},150);
  }else{latest.mobileSession=a.mobileSession;latest.hideMobileApp=a.hideMobileApp;syncConfig=latest;configureRealtime(latest);if(hostEntering){calendarLoading=true;reloadCalendar();}}
  const r=a.reply,q=calendarFlight;
  if(r&&q&&r.nonce===q.nonce){clearTimeout(q.timer);document.querySelectorAll('[data-request]').forEach(n=>{if(n.dataset.request===q.nonce)n.remove()});calendarFlight=null;r.ok?q.resolve(r.result):q.reject(Error(r.error||'요청을 완료하지 못했습니다.'));sendNext()}
@@ -65,7 +66,7 @@ function receiveCalendar(a){
 }
 function rangeKey(first,last){return [first,last,calendarBoot.team,calendarBoot.member||'',latest.mobileSession?.viewScope||'daily'].join('|')}
 function desiredRange(){const d=date(latest.day);let first;
- if(latest.mode==='월간'){first=date(latest.day.slice(0,7)+'-01');first=add(first,-((first.getUTCDay()+6)%7));return [iso(first),iso(add(first,41))]}
+ if(latest.mode==='월간'){first=monthGridStart(latest.day,prefs.showWeekends||Boolean(calendarSearchFocus&&isWeekend(calendarSearchFocus.day)));return [iso(first),iso(add(first,41))]}
  first=add(d,-((d.getUTCDay()+6)%7));return [iso(add(first,-7)),iso(add(first,13))];}
 const calendarLoads=new Map();
 async function reloadCalendar(force=false){
@@ -127,7 +128,7 @@ function calendarAction(action,value){
   else latest={...latest,day:value};
   selected=latest.day;context=null;calendarLoading=true;render(latest);reloadCalendar();return;
  }
- if(action==='weekends'){render(latest);return}
+ if(action==='weekends'){render(latest);if(latest.mode==='월간'&&monthWeekStart===0)reloadCalendar();return}
  if(action==='new'){openEditor(null,'new',value||selected);return}
  if(action==='event'){dayListReturn=null;openDetail(value);return}
  if(action==='scope'){document.querySelector('.member-search input')?.focus();return}
