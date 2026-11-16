@@ -7,8 +7,8 @@ Test requests do not alter the daily subscription, its jobs/batches, or cron. Ex
 - A request UUID is idempotent. Reusing it returns its prior state without another network request. The UI retains it when an HTTP response is uncertain.
 - No fixed daily test-count limit or mandatory delay after a completed request. A pending or uncertain send blocks new requests; no automatic resend.
 - Each request can send at most one 200 UTF-16 message. Content and button are identical to the regular briefing, with no test header. Longer content fails before sending, rather than truncating.
-- Function work is counted in the existing bounded budget. Tests leave two function units for the normal tick/send path and never consume normal daily batches. The function allocation is a shared free-capacity safeguard, not a Kakao per-user limit.
-- Weather uses the normal validated cache. A test may fetch only when at least one source attempt remains reserved afterward for normal delivery. No paid/provider fallback.
+- Function work is counted in the existing bounded budget. Normal and test work have separate allocations within a shared ceiling. Tests cannot spend normal work allocation and never consume normal daily batches. These allocations are free-capacity safeguards, not Kakao per-user limits.
+- Weather uses the normal validated cache. Normal and test source fetches have separate daily allocations under a shared ceiling; valid cache hits do not consume either. No paid/provider fallback.
 
 ## Delivery safety
 - Requests are inserted and queued atomically. A random 256-bit ticket is stored only as a hash and expires within three minutes. The HTTP queue contains the temporary ticket, never a persistent account credential.
