@@ -435,11 +435,18 @@ addEventListener('beforeunload',e=>{if(calendarDraft?.dirty){e.preventDefault();
 
 // Date lists share the existing dialog; editor state is never rebuilt by updates.
 let dayListReturn=null,dayListUndo=null,dayListMode='time';
+function dayListOwner(item){
+ return item.common?'지점 공통':item.ownerName||latest.roster?.[item.member]||calendarBoot.members?.[item.member]||'구성원';
+}
+function dayListTitle(item,grouped){
+ if(grouped)return item.title||item.short;
+ return calendarBoot.team&&!calendarBoot.member&&item.title?dayListOwner(item)+' · '+item.title:item.short;
+}
 function dayListGroups(items){
  const groups=new Map();
  for(const item of items){
   const key=item.common?'common':item.member;
-  if(!groups.has(key))groups.set(key,{name:item.common?'지점 공통':item.ownerName||latest.roster?.[item.member]||calendarBoot.members[item.member]||'구성원',items:[]});
+  if(!groups.has(key))groups.set(key,{name:dayListOwner(item),items:[]});
   groups.get(key).items.push(item);
  }
  return [...groups.entries()].sort(([a,left],[b,right])=>Number(b==='common')-Number(a==='common')||left.name.localeCompare(right.name,'ko')||String(a).localeCompare(String(b)))
@@ -479,7 +486,7 @@ function paintDayList(){
   for(const item of group.items){
   if(item.timePending&&!pending&&!grouped){list.append(el('h4','시간 미정','day-list-group'));pending=true}
   const line=el('div','','day-list-row');line.dataset.key=item.id;if(item.id===calendarSearchFocus?.id)line.classList.add('calendar-search-highlight');
-  const info=button('',()=>openDetail(item.id),'day-list-info');info.append(el('strong',item.start?item.start.slice(0,5):item.timePending?(grouped?'시간 미정':''): '종일','day-list-time'),el('span',grouped?(item.title||item.short):item.short,'day-list-title'),el('small',item.kind+(item.place?' · '+item.place:''),'day-list-meta'));line.append(info);
+  const info=button('',()=>openDetail(item.id),'day-list-info');info.append(el('strong',item.start?item.start.slice(0,5):item.timePending?(grouped?'시간 미정':''): '종일','day-list-time'),el('span',dayListTitle(item,grouped),'day-list-title'),el('small',item.kind+(item.place?' · '+item.place:''),'day-list-meta'));line.append(info);
   if(item.done)line.append(el('span','✓ 완료','day-list-done'));
   else if(item.member===calendarBoot.uid&&item.kind!=='휴무'&&item.status==='예정'&&item.revision!=null){
    const error=el('div','','panel-error');
