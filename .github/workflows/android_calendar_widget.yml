@@ -18,9 +18,19 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Install Android SDK
+        env:
+          ANDROID_SDK_ROOT: ${{ runner.temp }}/widget-sdk
+        run: |
+          mkdir -p "$ANDROID_SDK_ROOT"
+          curl --fail --silent --show-error --location --retry 2 https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o "$RUNNER_TEMP/android-tools.zip"
+          unzip -q "$RUNNER_TEMP/android-tools.zip" -d "$ANDROID_SDK_ROOT"
+          sdkmanager="$ANDROID_SDK_ROOT/cmdline-tools/bin/sdkmanager"
+          (set +o pipefail; yes | "$sdkmanager" --sdk_root="$ANDROID_SDK_ROOT" --licenses)
+          "$sdkmanager" --sdk_root="$ANDROID_SDK_ROOT" 'platforms;android-35' 'build-tools;35.0.0'
       - name: Build and verify a signed internal test APK
         env:
+          ANDROID_SDK_ROOT: ${{ runner.temp }}/widget-sdk
           WIDGET_KEY_ALIAS: widget-internal
         run: |
           export WIDGET_KEYSTORE="$RUNNER_TEMP/widget-internal.p12"
