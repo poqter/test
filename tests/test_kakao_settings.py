@@ -6,7 +6,7 @@ from modules.activity.kakao_settings import connection_url
 from modules.shared.hwarang_auth import HwarangAuthError
 
 
-def app(status=None, flag=True, admin_rows=None, history=None, regions=None, catalog_error=False):
+def app(status=None, flag=True, admin_rows=None, history=None, regions=None, catalog_error=False, test_status=None):
     if regions is None: regions=[{'region_key':'seoul-songpa','display_name':'서울특별시 송파구'}]
     status = status or {'connection_status':'connected','enabled':False,'time':'08:00','days':[1,2,3,4,5],'send_empty':True,'weather_region_key':'seoul-songpa'}
     return AppTest.from_string(f'''
@@ -25,6 +25,8 @@ def call(method,path,**kwargs):
     if path.endswith('kakao_save_weather_region'):
         st.session_state['weather_saved']={{'weather_region_key':kwargs['json']['p_region_key']}}
         return {{}}
+    if path.endswith('kakao_my_test_status'): return {test_status!r}
+    if path.endswith('kakao_request_test'): return {{'id':kwargs['json']['p_request_id'],'status':'queued'}}
     if path.endswith('kakao_admin_status'): return {admin_rows!r}
     if path.endswith('kakao_admin_history'): return {history!r}
     return {{}}
@@ -234,7 +236,7 @@ def test_dispatch_off_is_explicit_without_changing_subscription():
     at=app({'connection_status':'connected','dispatch_ready':False,'enabled':True,'time':'08:00','days':[1],'send_empty':True})
     assert not at.exception
     assert any('자동 발송이 꺼져' in i.value for i in at.info)
-    assert all(c[0].endswith(('kakao_my_status', 'kakao_weather_regions')) for c in at.session_state['calls'])
+    assert all(c[0].endswith(('kakao_my_status', 'kakao_weather_regions', 'kakao_my_test_status')) for c in at.session_state['calls'])
 
 
 def test_new_dispatch_off_does_not_mislabel_preserved_personal_briefing():
@@ -301,3 +303,36 @@ def test_weather_not_added_to_admin_personal_data_display():
     text=' '.join(x.value for x in list(at.caption)+list(at.markdown)+list(at.info))
     assert 'private-region' not in text and 'private-location' not in text
     assert not any(c[0].endswith('kakao_save_weather_region') for c in at.session_state['calls'])
+
+
+def test_repeat_test_uses_authenticated_id_only_and_keeps_id_after_unknown_response():
+    at=app()
+    service=Mock()
+    service._request.side_effect=HwarangAuthError('unknown response with private detail')
+    with patch('modules.activity.kakao_settings.client',return_value=(service,'test')):
+        at.button(key='kakao_test_send').click().run()
+    assert not at.exception
+    request_id=at.session_state['kakao_test_request_id']
+    with patch('modules.activity.kakao_settings.client',return_value=(service,'test')):
+        at.button(key='kakao_test_send').click().run()
+    assert service._request.call_count==2
+    for call in service._request.call_args_list:
+        assert call.args==('POST','/rest/v1/rpc/kakao_request_test')
+        assert call.kwargs=={'access_token':'test','json':{'p_request_id':request_id}}
+    assert not any('private detail' in w.value for w in at.warning)
+    assert not any(c[0].endswith('kakao_save_preferences') for c in at.session_state['calls'])
+
+
+@pytest.mark.parametrize('state',['queued','processing','uncertain'])
+def test_repeat_test_pending_or_uncertain_disables_new_send(state):
+    at=app(test_status={'id':'request','status':state})
+    assert not at.exception
+    assert at.button(key='kakao_test_send').disabled
+    assert not any(c[0].endswith('kakao_request_test') for c in at.session_state['calls'])
+
+
+def test_repeat_test_disabled_until_region_and_dispatch_ready():
+    for status in [{'connection_status':'connected','dispatch_ready':False,'weather_region_key':'seoul-songpa'}, {'connection_status':'connected','dispatch_ready':True}]:
+        at=app(status)
+        assert not at.exception
+        assert at.button(key='kakao_test_send').disabled

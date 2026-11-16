@@ -32,7 +32,7 @@ export function makeTestWorker(env,fetcher=fetch) {
     weather=job.cached_weather;
    }else try {
     const issue=forecastBase();args={p_region_key:region,p_forecast_day:job.day,p_base_date:issue.base_date,p_base_time:issue.base_time};
-    claim=await rpc('kakao_service_weather_claim',args);
+    claim=await rpc('kakao_test_weather_claim',{p_id:job.id,p_claim_token:job.claim_token,p_base_date:issue.base_date,p_base_time:issue.base_time});
     if(claim?.status==='cached')weather={...claim.forecast,region_name:claim.region_name};
     else if(claim?.status==='fetch'&&claim.lease_token){
      const result=await fetchWebWeather(fetcher,{day:job.day,forecast_code:claim.forecast_code});
@@ -44,7 +44,7 @@ export function makeTestWorker(env,fetcher=fetch) {
     weather={status:'unavailable',region_name:claim?.region_name};
    }
    const parts=briefing(job.day,job.summary.events,job.summary.empty_explicit,weather);
-   const text='🧪 테스트 · 정기 발송과 별개\n\n'+parts.join('\n');
+   const text=parts.join('\n');
    if(text.length>200)throw Error('Test exceeds single message cap');
    if(await rpc('kakao_test_validate',{p_id:job.id,p_claim_token:job.claim_token})!==true)throw Error('Authorization changed');
    attempted=true;

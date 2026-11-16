@@ -1,15 +1,24 @@
-# Independent owner-requested self-test
+# Explicit self-tests, independent of regular delivery
 
-This operator-only path is separate from the daily subscription worker. It does not insert daily batches/jobs, alter preferences, change cron, or refresh shared credentials.
+Test requests do not alter the daily subscription, its jobs/batches, or cron. Existing test history is retained. There is no lifetime two-test limit.
 
-- Two individually approved request slots per owner, database uniqueness enforced; no reset or retry on uncertainty. Slot 2 requires fresh cached weather and never consumes another weather request.
-- One 200 UTF-16 message maximum, clearly labelled as a test. Longer manifests fail before sending.
-- A random 256-bit ticket, stored only as its hash, expires within five minutes. Claim changes queued to processing atomically; concurrent callers cannot reuse it.
-- Live active-owner, consent, generation, current region/schedule snapshot and free-cost gate are checked before claim and immediately before send.
-- Only service_role can access the test ledger and RPCs. The Edge function authenticates the single-use ticket, not platform JWT. No credential is returned to callers or logged.
-- Test invocation consumes one existing internal function-budget unit. Weather uses the existing bounded shared cache. Preserve at least one source attempt and adequate function budget for the scheduled morning delivery.
-- Test message cap is independently one per request (two individually approved slots per owner); it is not counted in the normal monthly_message_budget. With a normal cap of 10 and one authorized owner, total potential messages are at most 12.
-- No automatic trigger, scheduler or request is installed by the migration. An explicitly authorized operator enqueues one ticket to hwarang-kakao-test using pg_net; only request ID/status should be returned, never the ticket.
-- accepted means Kakao API accepted, not device delivery/read. A lost response or recording error is uncertain and must not be resent.
+## Authorization and bounds
+- The signed-in owner requests a test with `kakao_request_test(request_id)`; current auth session, active workspace permission, connection, consent, selected weather region and cost gate are checked server-side. Arbitrary-owner request is service-only.
+- A request UUID is idempotent. Reusing it returns its prior state without another network request. The UI retains it when an HTTP response is uncertain.
+- Owner limit: 5 requests per Korean calendar day. Global limit: 10/day. Minimum 60 seconds between requests. A pending or uncertain send blocks new requests; no automatic resend.
+- Each request can send at most one 200 UTF-16 message. Content and button are identical to the regular briefing, with no test header. Longer content fails before sending, rather than truncating.
+- Function work is counted in the existing bounded budget. Test messages have their own daily cap, separate from the regular-message budget.
+- Weather uses the normal validated cache. A test may fetch only when at least one source attempt remains reserved afterward for normal delivery. No paid/provider fallback.
 
-Validation: Node mocked-worker suite, PostgreSQL17 live synthetic checks for tickets/claims/terminal state/ACL and normal state invariance, plus parallel claim race (exactly one winner). All production users and credentials are excluded from fixtures.
+## Delivery safety
+- Requests are inserted and queued atomically. A random 256-bit ticket is stored only as a hash and expires within three minutes. The HTTP queue contains the temporary ticket, never a persistent account credential.
+- Service-only claim changes queued to processing once. Concurrent callers cannot reuse it.
+- Live ownership, consent, generation and schedule snapshot are rechecked immediately before sending. Tests never rotate shared credentials; an expiring token fails before transmission.
+- Original fixed-slot records are retained as history, not reset or retried. Expired processing is shown as uncertain and remains blocked pending investigation.
+- accepted means Kakao API acceptance, not device delivery or read. Lost responses and recording failures are uncertain and are never retried automatically.
+
+## UI
+In Kakao briefing settings, expand `시험 발송`. `시험 메시지 보내기` requests delivery, and `시험 상태 새로고침` refreshes the private result. This does not change the normal delivery time.
+
+## Verification
+Node mock-worker tests check identical regular content, cap, authorization, timeout/no-retry and cache behavior. Python Streamlit tests cover authenticated request IDs, pending/uncertain disablement and settings isolation. Local PostgreSQL integration verifies authenticated ownership, idempotency/caps/cooldown, ACL, independent history, weather reservation and normal state invariance.

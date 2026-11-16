@@ -1,5 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {makeTestWorker} from '../supabase/functions/hwarang-kakao-test/worker.mjs';
+import {briefing} from '../supabase/functions/hwarang-kakao/message.mjs';
 import {seal} from '../supabase/functions/hwarang-kakao/crypto.mjs';
 const values={SUPABASE_URL:'https://test.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'service',KAKAO_MULTI_TOKEN_KEY:'x'.repeat(32),KAKAO_MULTI_ENABLED:'true'};
 const req=()=>new Request(values.SUPABASE_URL+'/test',{method:'POST',body:JSON.stringify({ticket:'a'.repeat(64)})});
@@ -9,11 +10,11 @@ async function run({duplicate=false,valid=true,timeout=false,persist=true,expire
  const handler=makeTestWorker(n=>values[n],async(u,i)=>{
   const body=i.body instanceof URLSearchParams?null:JSON.parse(i.body||'{}');calls.push([u,body]);
   if(u.endsWith('/kakao_test_claim'))return Response.json(duplicate?null:{id:'request',claim_token:'claim',owner_id:'owner',generation:1,day,encrypted_tokens:cipher,summary:{events:long?[{id:'e',title:'가'.repeat(300)}]:[],preferences:{weather_region_key:'seoul'}}});
-  if(u.endsWith('/kakao_service_weather_claim'))return Response.json(weather?{status:'cached',region_name:'서울특별시',forecast:{status:'ok',day,low:null,high:15,morning:'맑음',afternoon:'흐림',issued_day:day,issued_time:'05:00'}}:{status:'unavailable',region_name:'서울특별시'});
+  if(u.endsWith('/kakao_test_weather_claim'))return Response.json(weather?{status:'cached',region_name:'서울특별시',forecast:{status:'ok',day,low:null,high:15,morning:'맑음',afternoon:'흐림',issued_day:day,issued_time:'05:00'}}:{status:'unavailable',region_name:'서울특별시'});
   if(u.endsWith('/kakao_test_validate'))return Response.json(valid);
   if(u.endsWith('/kakao_test_complete'))return Response.json(body.p_status==='accepted'?persist:true);
   if(u==='https://kapi.kakao.com/v2/api/talk/memo/default/send'){
-   sends++;const t=JSON.parse(i.body.get('template_object'));assert.ok(t.text.startsWith('🧪 테스트'));assert.ok(t.text.length<=200);
+   sends++;const t=JSON.parse(i.body.get('template_object'));assert.ok(!t.text.includes('테스트'));assert.ok(t.text.startsWith('🗓'));assert.equal(t.text,briefing(day,[],false,weather?{status:'ok',day,region_name:'서울특별시',low:null,high:15,morning:'맑음',afternoon:'흐림',issued_day:day,issued_time:'05:00'}:{status:'unavailable',region_name:'서울특별시'}).join('\n'));assert.ok(t.text.length<=200);
    if(timeout)throw Error('Ambiguous response');return Response.json({result_code:0});
   }
   throw Error('Unexpected endpoint '+u);

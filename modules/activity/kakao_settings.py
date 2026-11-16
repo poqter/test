@@ -2,6 +2,7 @@
 from datetime import time
 import hashlib
 import re
+import uuid
 from urllib.parse import urlsplit
 import streamlit as st
 from modules.shared.hwarang_auth import HwarangAuthError, HwarangAuthService, SupabaseConfig
@@ -117,6 +118,46 @@ def render_weather_region(service, token, status):
     return saved in regions
 
 
+def _request_test():
+    # Keep the same id across uncertain HTTP responses; a retry must not create another send.
+    request_id = st.session_state.setdefault('kakao_test_request_id', str(uuid.uuid4()))
+    try:
+        service, token = client()
+        result = rpc(service, token, 'kakao_request_test', {'p_request_id': request_id})
+        st.session_state['kakao_test_feedback'] = 'requested' if isinstance(result, dict) and result.get('id') else 'failed'
+    except HwarangAuthError:
+        st.session_state['kakao_test_feedback'] = 'failed'
+
+
+def render_test_panel(service, token, status, weather_ready):
+    with st.expander('시험 발송'):
+        st.caption('지금 정기 브리핑과 같은 모양으로 나에게 보냅니다. 정기 발송 시간은 바뀌지 않습니다.')
+        st.caption('한 번에 1개 메시지 · 최소 1분 간격 · 본인 하루 5회 · 전체 하루 10회. 긴 내용은 시험 발송하지 않습니다.')
+        try:
+            last = rpc(service, token, 'kakao_my_test_status')
+        except HwarangAuthError:
+            st.info('시험 발송 상태를 확인하지 못했습니다. 잠시 후 다시 열어 주세요.')
+            return
+        last = last if isinstance(last, dict) else {}
+        state = last.get('status')
+        if state == 'none':
+            state = None
+        labels = {'queued': '대기 중', 'processing': '발송 중', 'accepted': '카카오 접수 완료', 'failed': '미발송', 'expired': '요청 만료', 'uncertain': '결과 확인 필요 · 재발송하지 않음'}
+        if state:
+            st.caption('최근 시험: ' + labels.get(state, '확인 필요'))
+        if state in ('accepted', 'failed', 'expired') and last.get('id') == st.session_state.get('kakao_test_request_id'):
+            st.session_state.pop('kakao_test_request_id', None)
+        feedback = st.session_state.pop('kakao_test_feedback', None)
+        if feedback == 'requested':
+            st.success('시험 발송을 요청했습니다. 카카오 접수 상태와 실제 수신을 확인해 주세요.')
+        elif feedback == 'failed':
+            st.warning('시험 요청을 완료하지 못했습니다. 최근 상태, 연결, 요청 간격과 무료 한도를 확인해 주세요.')
+        st.button('시험 메시지 보내기', key='kakao_test_send', on_click=_request_test,
+                  disabled=not weather_ready or status.get('dispatch_ready') is False or state in ('queued', 'processing', 'uncertain'))
+        if st.button('시험 상태 새로고침', key='kakao_test_refresh'):
+            st.rerun()
+
+
 def render_panel():
     if not enabled():
         return
@@ -191,6 +232,7 @@ def render_panel():
                     else:
                         rpc(service, token, 'kakao_save_preferences', {'p_enabled': active, 'p_time': send_time.strftime('%H:%M'), 'p_days': days or status.get('days') or [1,2,3,4,5], 'p_send_empty': empty})
                         st.success('받을 시간과 신청 설정을 저장했습니다. 실제 발송은 서비스 운영 상태와 무료 한도에 따라 처리됩니다.')
+            render_test_panel(service, token, status, weather_ready)
             if st.checkbox('연결을 해제하고 앞으로의 발송을 중지합니다.', key='kakao_disconnect_confirm'):
                 if st.button('카카오 연결 해제', key='kakao_disconnect'):
                     rpc(service, token, 'kakao_disconnect')
