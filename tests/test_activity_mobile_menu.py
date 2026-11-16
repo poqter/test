@@ -95,3 +95,18 @@ def test_unsaved_edit_opens_small_dialog_and_continue_preserves_text():
     assert not at.exception and at.session_state['mobile_page']=='활동 기록'
     assert text(at,'주요 성과 · 진행사항').value=='저장 실패한 작성 내용'
     assert not at.session_state.get('mobile_pending')
+
+
+def test_widget_date_preserves_scope_and_reopens_weekend():
+    state = {'sales_persistent_boot': {}, 'sales_calendar_member': 'old-selection'}
+    params = {'view': 'mobile-calendar', 'widget_day': '2026-11-15', 'widget_scope': 'branch'}
+    from modules.activity.mobile import accept_widget_date
+    accept_widget_date(params, state)
+    assert params == {'view': 'mobile-calendar'}
+    assert str(state['sales_anchor']) == state['sales_widget_day'] == '2026-11-15'
+    assert state['sales_view'] == '날짜별' and state['sales_calendar_team']
+    assert 'sales_calendar_member' not in state and 'sales_persistent_boot' not in state
+    accept_widget_date({'widget_day': '2026-11-16', 'widget_scope': 'mine'}, state)
+    assert state['sales_calendar_team'] is False
+    accept_widget_date({'widget_day': '2026-11-31', 'widget_scope': 'branch'}, state)
+    assert str(state['sales_anchor']) == '2026-11-16'

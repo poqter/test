@@ -52,7 +52,7 @@ function receiveCalendar(a){
   try{parent.__hwarangCalendarMemory??={};calendarMemory=parent.__hwarangCalendarMemory[calendarBoot.uid]??={drafts:new Map()};calendarDrafts=calendarMemory.drafts; const accessKey=JSON.stringify([a.boot.access,a.mobileSession?.viewScope||'daily']);if(calendarMemory.access!==accessKey){calendarMemory.cache=new Map();calendarMemory.view=null;calendarMemory.access=accessKey;}for(const [k,v] of calendarMemory.cache||[])calendarCache.set(k,v);}catch{}
   const shellView=a.hosted&&latest?{day:latest.day,mode:latest.mode}:{};
   latest={...a.boot,...shellView,hideMobileApp:a.hideMobileApp,mobileSession:a.mobileSession};
-  const remembered=calendarMemory?.view;if(remembered){calendarBoot.team=remembered.team;calendarBoot.member=calendarBoot.members[remembered.member]?remembered.member:null;latest={...latest,day:remembered.day,mode:remembered.mode};selected=remembered.selected;context=latest.mode+latest.day}
+  const remembered=a.boot.widgetDay?null:calendarMemory?.view;if(remembered){calendarBoot.team=remembered.team;calendarBoot.member=calendarBoot.members[remembered.member]?remembered.member:null;latest={...latest,day:remembered.day,mode:remembered.mode};selected=remembered.selected;context=latest.mode+latest.day}
   loadPrefs(latest);
   const [first,last]=desiredRange();
   const fresh=a.boot.ready!==false&&a.bootFresh&&!remembered&&first===a.boot.rangeStart&&last===a.boot.rangeEnd;
