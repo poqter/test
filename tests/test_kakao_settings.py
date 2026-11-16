@@ -218,3 +218,17 @@ def test_admin_history_uses_days_rpc_contract():
     at.button(key='kakao_admin_history').click().run()
     calls=[c for c in at.session_state['calls'] if c[0].endswith('kakao_admin_history')]
     assert calls[-1][1]['json']=={'p_owner_id':'other','p_days':7}
+
+
+def test_dispatch_off_is_explicit_without_changing_subscription():
+    at=app({'connection_status':'connected','dispatch_ready':False,'enabled':True,'time':'08:00','days':[1],'send_empty':True})
+    assert not at.exception
+    assert any('자동 발송이 꺼져' in i.value for i in at.info)
+    assert all(c[0].endswith('kakao_my_status') for c in at.session_state['calls'])
+
+
+def test_new_dispatch_off_does_not_mislabel_preserved_personal_briefing():
+    at=app({'connection_status':'disconnected','dispatch_ready':False,'legacy_personal':True})
+    assert not at.exception
+    assert any('기존 개인용' in i.value for i in at.info)
+    assert not any('자동 발송이 꺼져' in i.value for i in at.info)

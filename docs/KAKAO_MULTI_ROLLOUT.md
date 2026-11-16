@@ -1,7 +1,7 @@
 # 카카오 나와의 채팅 브리핑 확장: 검수 및 배포
 
 ## 현재 상태
-운영 additive DB 5개 migration 및 hwarang-kakao Edge v1을 OFF 상태로 배포했다. 운영 실조회: enabled=false, 예산0, 새 연결/발송/슬롯0, 기존 cron1개와 개인 승인 연결1개 보존. 실제 이용자 OAuth/카카오 실발송은 아직 검증하지 않았다. 새 UI도 flag OFF이며 callback·비밀값·파일럿 검증 전 발송 활성화하지 않는다.
+운영 additive DB 6개 migration 및 hwarang-kakao Edge v1을 OFF 상태로 배포했다. 운영 실조회: enabled=false, 예산0, 새 연결/발송/슬롯0, 기존 cron1개와 개인 승인 연결1개 보존. 실제 이용자 OAuth/카카오 실발송은 아직 검증하지 않았다. 새 UI도 flag OFF이며, 신규 이용자 설정에는 DB 발송 OFF 안내를 표시한다. 기존 개인용 안내는 그대로 유지한다. callback·비밀값·파일럿 검증 전 발송 활성화하지 않는다.
 기존 dot_kakao_* 개인 자동화와 연결은 변경하지 않는다. 기존 소유자는 새 시스템에서 제외하고 기존 카카오 account_id의 중복 연결도 차단한다.
 
 ## 기능

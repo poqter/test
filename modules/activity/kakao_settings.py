@@ -107,6 +107,8 @@ def render_panel():
         status = rpc(service, token, 'kakao_my_status')
         if not isinstance(status, dict):
             raise HwarangAuthError('설정을 확인하지 못했습니다.')
+        if status.get('dispatch_ready') is False and not status.get('legacy_personal'):
+            st.info('현재 자동 발송이 꺼져 있습니다. 연결·시간 설정만 저장되며, 카카오톡은 발송되지 않습니다.')
         if status.get('connection_status') == 'connected' and st.session_state.pop('kakao_confirmation_feedback', None) == 'confirmed':
             st.success('본인 연결을 확인했습니다. 아래에서 정기 브리핑을 신청할 수 있습니다.')
         cancel_feedback = st.session_state.pop('kakao_cancel_feedback', None)
