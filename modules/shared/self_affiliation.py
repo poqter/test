@@ -1,5 +1,9 @@
 """Self-service choices. System permissions are deliberately not editable here."""
 from __future__ import annotations
+import hashlib
+import time
+from copy import deepcopy
+
 import streamlit as st
 
 SIGNUP_POSITIONS = {
@@ -7,6 +11,30 @@ SIGNUP_POSITIONS = {
     'deputy_branch_manager': '부지점장', 'branch_manager': '지점장',
     'division_head': '본부장',
 }
+
+
+# One entry per browser session, never a process-wide/person-shared cache.
+SIGNUP_MANAGER_CACHE_KEY = "hw_signup_manager_candidates"
+SIGNUP_MANAGER_CACHE_TTL = 30.0
+
+
+def clear_signup_manager_cache(session):
+    session.pop(SIGNUP_MANAGER_CACHE_KEY, None)
+
+
+def signup_manager_candidates(auth, session, join_code, organization_code, position_code):
+    """UI-only hint cache; auth.sign_up and the DB still validate every signup."""
+    key = (hashlib.sha256(join_code.strip().encode()).hexdigest(),
+           organization_code, position_code)
+    now = time.monotonic()
+    cached = session.get(SIGNUP_MANAGER_CACHE_KEY)
+    if cached and cached['key'] == key and 0 <= now - cached['at'] < SIGNUP_MANAGER_CACHE_TTL:
+        return deepcopy(cached['rows'])
+    # Discard old scope before querying, including when the request fails.
+    clear_signup_manager_cache(session)
+    rows = auth.signup_managers(join_code, organization_code, position_code)
+    session[SIGNUP_MANAGER_CACHE_KEY] = {'key': key, 'at': now, 'rows': deepcopy(rows)}
+    return rows
 
 
 def eligible_units(rows, position):

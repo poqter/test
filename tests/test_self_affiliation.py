@@ -67,3 +67,56 @@ def test_forbidden_signup_position_never_creates_user():
     for position in ('chief_representative','platform_administrator','super_admin','invalid'):
         with pytest.raises(HwarangAuthError):
             HwarangAuthService.sign_up(Auth(),login_id='newuser',password='Abc12345',display_name='신규',email='new@example.test',join_code='code',organization_code='branch',position_code=position)
+
+
+def test_signup_candidate_cache_scope_expiry_and_isolation(monkeypatch):
+    from modules.shared import self_affiliation as module
+    now = [100.0]
+    monkeypatch.setattr(module.time, 'monotonic', lambda: now[0])
+    class Auth:
+        calls = 0
+        def signup_managers(self, *args):
+            self.calls += 1
+            return [{'id': str(self.calls)}]
+    auth, session = Auth(), {}
+    get = lambda code='code', org='branch', position='fp': module.signup_manager_candidates(auth, session, code, org, position)
+    first = get()
+    first[0]['id'] = 'mutated'
+    assert get() == [{'id':'1'}]
+    assert auth.calls == 1
+    now[0] += 30
+    assert get() == [{'id':'2'}]
+    get(org='other'); get(position='partner'); get(code='changed')
+    assert auth.calls == 5
+    module.signup_manager_candidates(auth, {}, 'changed', 'branch', 'fp')
+    assert auth.calls == 6  # Separate session never reuses another session's result.
+    assert 'changed' not in repr(session)
+    module.clear_signup_manager_cache(session)
+    assert not session
+
+
+def test_signup_candidate_failure_does_not_cache_or_restore_old_scope():
+    import pytest
+    from modules.shared import self_affiliation as module
+    class Auth:
+        def signup_managers(self, code, org, position):
+            if org == 'bad': raise RuntimeError('unavailable')
+            return []
+    session = {}
+    module.signup_manager_candidates(Auth(), session, 'code', 'ok', 'fp')
+    with pytest.raises(RuntimeError):
+        module.signup_manager_candidates(Auth(), session, 'code', 'bad', 'fp')
+    assert not session
+
+
+def test_signup_revalidates_affiliation_even_after_candidate_cache():
+    import pytest
+    from modules.shared.hwarang_auth import HwarangAuthService, HwarangAuthError
+    class Auth:
+        def login_id_available(self, value): return True
+        def signup_affiliations(self, code): return []  # Revoked since UI lookup.
+        def _request(self, *args, **kwargs): raise AssertionError('Must not create user')
+    with pytest.raises(HwarangAuthError):
+        HwarangAuthService.sign_up(Auth(), login_id='newuser', password='Abc12345',
+            display_name='신규', email='new@example.test', join_code='revoked',
+            organization_code='branch', position_code='fp')

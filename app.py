@@ -123,7 +123,7 @@ def _set_authenticated(auth: HwarangAuthService, state: dict) -> None:
         str(state.get("platform_session_id") or "").strip() or None
     )
 
-    for key in ("hw_signup_branches", "hw_signup_verified_code"):
+    for key in ("hw_signup_branches", "hw_signup_verified_code", "hw_signup_manager_candidates"):
         st.session_state.pop(key, None)
 
 
@@ -136,7 +136,13 @@ def render_signup_dialog(auth: HwarangAuthService) -> None:
     with button_col:
         verify = st.button("가입코드 확인", type="secondary", use_container_width=True, key="hw_signup_verify")
 
+    from modules.shared.self_affiliation import clear_signup_manager_cache, signup_manager_candidates
+    if join_code.strip() != str(st.session_state.get("hw_signup_verified_code") or ""):
+        clear_signup_manager_cache(st.session_state)
+        st.session_state.pop("hw_signup_branches", None)
+        st.session_state.pop("hw_signup_verified_code", None)
     if verify:
+        clear_signup_manager_cache(st.session_state)
         try:
             branches = auth.signup_affiliations(join_code)
             if not branches:
@@ -159,12 +165,13 @@ def render_signup_dialog(auth: HwarangAuthService) -> None:
         format_func=SIGNUP_POSITIONS.get, key="hw_signup_position")
     choices = eligible_units(branches, position_code)
     if not choices:
+        clear_signup_manager_cache(st.session_state)
         st.info("이 가입코드로 선택할 수 있는 소속이 없습니다. 다른 직책 또는 가입코드를 확인해 주세요.")
         return
     labels = {b["organization_code"]: f"{b.get('parent_name') or '화랑'} · {b['organization_name']}" for b in choices}
     org_code = st.selectbox("소속", list(labels), format_func=labels.get, key="hw_signup_org_"+position_code)
     try:
-        people = auth.signup_managers(verified_code, org_code, position_code)
+        people = signup_manager_candidates(auth, st.session_state, verified_code, org_code, position_code)
     except HwarangAuthError as exc:
         st.error(str(exc)); return
     managers = manager_fields(people, key="hw_signup_manager_"+org_code+"_"+position_code)
