@@ -438,10 +438,6 @@ let dayListReturn=null,dayListUndo=null,dayListMode='time';
 function dayListOwner(item){
  return item.common?'지점 공통':item.ownerName||latest.roster?.[item.member]||calendarBoot.members?.[item.member]||'구성원';
 }
-function dayListTitle(item,grouped){
- if(grouped)return item.title||item.short;
- return calendarBoot.team&&!calendarBoot.member&&item.title?dayListOwner(item)+' · '+item.title:item.short;
-}
 function dayListGroups(items){
  const groups=new Map();
  for(const item of items){
@@ -468,25 +464,37 @@ function paintDayList(){
  const fresh=el('div'),list=el('div','','day-list-scroll');if(calendarSearchFocus&&calendarSearch){fresh.append(button('‹ 검색 결과로',openCalendarSearch));if(!prefs.showCompleted||!prefs.showWeekends)fresh.append(el('p','검색한 일정은 숨김 설정과 관계없이 표시됩니다.','hint'));}
  fresh.append(el('p',(latest.scopeLabel||'내 일정')+(calendarLoading?' · 조회 중':' · '+items.length+'건'),'hint'));
  const nav=el('div','','day-list-nav');nav.append(button('‹ 이전 날짜',()=>openDayList(iso(add(date(day),-1)))),button('오늘',()=>openDayList(latest.today)),button('다음 날짜 ›',()=>openDayList(iso(add(date(day),1)))));fresh.append(nav);
+ const head=panel.querySelector('.panel-head'),oldModes=head.querySelector('.day-list-modes');
  if(canGroup){
-  const modes=el('div','','day-list-modes');modes.setAttribute('role','group');modes.setAttribute('aria-label','일정 정렬 방식');
-  for(const [value,label] of [['time','시간순'],['member','구성원별']]){
-   const toggle=button(label,()=>{if(dayListMode===value)return;dayListMode=value;const current=body.querySelector('.day-list-scroll');if(current)current.scrollTop=0;paintDayList()});
-   toggle.setAttribute('aria-pressed',String(dayListMode===value));modes.append(toggle);
-  }
-  fresh.append(modes);
- }
+  const makeModes=placement=>{
+   const modes=el('div','','day-list-modes '+placement);modes.setAttribute('role','group');modes.setAttribute('aria-label','일정 정렬 방식');
+   for(const [value,label] of [['time','시간순'],['member','구성원별']]){
+    const toggle=button(label,()=>{if(dayListMode===value)return;dayListMode=value;const current=body.querySelector('.day-list-scroll');if(current)current.scrollTop=0;paintDayList()});
+    toggle.setAttribute('aria-pressed',String(dayListMode===value));modes.append(toggle);
+   }
+   return modes;
+  };
+  const headerModes=makeModes('day-list-modes-desktop');
+  if(oldModes)syncNode(oldModes,headerModes);else head.insertBefore(headerModes,head.lastElementChild);
+  fresh.append(makeModes('day-list-modes-mobile'));
+ }else oldModes?.remove();
  if(calendarLoading){const loading=el('p','일정을 불러오는 중입니다.','hint');loading.setAttribute('role','status');list.append(loading)}
  if(calendarLoadError)list.append(button('다시 불러오기',()=>reloadCalendar(true)));
  if(!items.length&&!calendarLoading&&!calendarLoadError)list.append(el('p','등록된 일정이 없습니다.','hint'));
  const groups=grouped?dayListGroups(items):[{items}];
  for(const group of groups){
-  if(grouped){const title=el('h4',group.name+' · '+group.items.length+'건','day-list-group');title.dataset.key='group-'+group.key;list.append(title)}
+  if(grouped){const title=el('h4',group.name+' · '+group.items.length+'건','day-list-group day-list-member-group');title.dataset.key='group-'+group.key;list.append(title)}
   let pending=false;
   for(const item of group.items){
   if(item.timePending&&!pending&&!grouped){list.append(el('h4','시간 미정','day-list-group'));pending=true}
   const line=el('div','','day-list-row');line.dataset.key=item.id;if(item.id===calendarSearchFocus?.id)line.classList.add('calendar-search-highlight');
-  const info=button('',()=>openDetail(item.id),'day-list-info');info.append(el('strong',item.start?item.start.slice(0,5):item.timePending?(grouped?'시간 미정':''): '종일','day-list-time'),el('span',dayListTitle(item,grouped),'day-list-title'),el('small',item.kind+(item.place?' · '+item.place:''),'day-list-meta'));line.append(info);
+  const ownerColumn=!grouped&&calendarBoot.team&&!calendarBoot.member&&!!item.title;
+  const info=button('',()=>openDetail(item.id),'day-list-info');
+  if(ownerColumn)info.classList.add('day-list-with-owner');
+  info.append(el('strong',item.start?item.start.slice(0,5):item.timePending?'시간 미정':'종일','day-list-time'));
+  if(ownerColumn)info.append(el('span',dayListOwner(item),'day-list-owner'));
+  info.append(el('span',grouped||ownerColumn?(item.title||item.short):item.short,'day-list-title'),
+   el('small',item.kind+(item.place?' · '+item.place:''),'day-list-meta'));line.append(info);
   if(item.done)line.append(el('span','✓ 완료','day-list-done'));
   else if(item.member===calendarBoot.uid&&item.kind!=='휴무'&&item.status==='예정'&&item.revision!=null){
    const error=el('div','','panel-error');
@@ -499,7 +507,7 @@ function paintDayList(){
     if(completed){completed.classList.add('calendar-completed');completed.addEventListener('animationend',()=>completed.classList.remove('calendar-completed'),{once:true})}
     mutate();
    }),'day-list-complete',item.short+' 완료 처리');line.append(complete,error);
-  }else if(item.kind!=='휴무')line.append(el('small',item.status||''));
+  }else if(item.kind!=='휴무'&&item.status)line.append(el('span',item.status,'day-list-status'));
   line.append(button('›',()=>openDetail(item.id),'',item.short+' 상세 보기'));list.append(line);
   }
  }

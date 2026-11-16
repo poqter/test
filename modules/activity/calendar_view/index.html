@@ -112,6 +112,30 @@ body dialog.calendar-panel[data-day-list]>.panel-content{display:flex;flex-direc
 .day-list-modes button{min-height:42px}
 .day-list-modes button[aria-pressed=true]{background:#e5f2f1;border-color:#699e9f;color:#155461;font-weight:700}
 .day-list-footer{position:static;margin-bottom:0;padding-bottom:0}
+/* Branch day details keep their controls outside the scrolling list. */
+.day-list-modes-desktop{display:none;margin:0}
+.day-list-info{align-items:start;min-width:0;grid-template-columns:60px minmax(0,1fr);grid-template-areas:"time title" "time meta"}
+.day-list-info .day-list-time{grid-area:time;font-variant-numeric:tabular-nums}
+.day-list-title{grid-area:title;overflow-wrap:anywhere}
+.day-list-meta{grid-area:meta;overflow-wrap:anywhere}
+.day-list-info.day-list-with-owner{grid-template-areas:"time owner" "time title" "time meta"}
+.day-list-owner{grid-area:owner;justify-self:start;max-width:100%;color:#155461;background:#e5f2f1;padding:2px 7px;border-radius:5px;font-size:13px;overflow-wrap:anywhere}
+.day-list-row{padding:10px 0;flex-wrap:nowrap}
+.day-list-row:has(.panel-error:not(:empty)){flex-wrap:wrap}
+.day-list-member-group{margin:9px 0 2px;padding:6px 8px}
+.day-list-member-group:first-child{margin-top:0}
+.day-list-member-group+.day-list-row{border-top-color:transparent}
+.day-list-status{color:#526779;background:#f1f4f7;border-radius:5px;padding:3px 6px;font-size:12px;flex:none}
+.day-list-complete,.day-list-done,.day-list-row>button:last-child{flex:none}
+@media(min-width:680px){
+ .day-list-modes-desktop{display:flex}
+ .day-list-modes-mobile{display:none}
+ .day-list-info.day-list-with-owner{grid-template-columns:60px 84px minmax(0,1fr);grid-template-areas:"time owner title" "time owner meta"}
+}
+@media(max-width:400px){
+ .day-list-info,.day-list-info.day-list-with-owner{grid-template-columns:49px minmax(0,1fr);column-gap:6px}
+ .day-list-row{gap:4px}
+}
 </style><header><div class="nav" id="nav"></div><div class="tools" id="tools"></div></header><div class="legend" aria-label="활동 종류별 색상"><span data-kind="TA">TA 고객 연락</span><span data-kind="AP">AP 초회 상담</span><span data-kind="PC">PC 프레젠테이션 / 클로징</span><span data-kind="CS">CS 고객 관리</span></div><div id="refreshing" class="refreshing" role="status" aria-live="polite"></div><div id="move-notice" role="status" hidden></div><div id="grid" class="grid"></div><section class="agenda" id="agenda"></section><script>
 const post=(type,data)=>parent.postMessage({isStreamlitMessage:true,type,...data},location.origin);
 const emit=(action,value)=>calendarAction(action,value);
