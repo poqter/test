@@ -132,7 +132,7 @@ def _request_test():
 def render_test_panel(service, token, status, weather_ready):
     with st.expander('시험 발송'):
         st.caption('지금 정기 브리핑과 같은 모양으로 나에게 보냅니다. 정기 발송 시간은 바뀌지 않습니다.')
-        st.caption('한 번에 1개 메시지 · 최소 1분 간격 · 본인 하루 5회 · 전체 하루 10회. 긴 내용은 시험 발송하지 않습니다.')
+        st.caption('한 번에 1개 메시지. 진행 중이거나 결과가 불확실한 요청은 다시 보내지 않습니다. 무료 사용량과 정기 발송 몫을 보호합니다.')
         try:
             last = rpc(service, token, 'kakao_my_test_status')
         except HwarangAuthError:
@@ -151,7 +151,7 @@ def render_test_panel(service, token, status, weather_ready):
         if feedback == 'requested':
             st.success('시험 발송을 요청했습니다. 카카오 접수 상태와 실제 수신을 확인해 주세요.')
         elif feedback == 'failed':
-            st.warning('시험 요청을 완료하지 못했습니다. 최근 상태, 연결, 요청 간격과 무료 한도를 확인해 주세요.')
+            st.warning('시험 요청을 완료하지 못했습니다. 최근 상태, 연결과 무료 사용량을 확인해 주세요.')
         st.button('시험 메시지 보내기', key='kakao_test_send', on_click=_request_test,
                   disabled=not weather_ready or status.get('dispatch_ready') is False or state in ('queued', 'processing', 'uncertain'))
         if st.button('시험 상태 새로고침', key='kakao_test_refresh'):
