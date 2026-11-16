@@ -27,7 +27,10 @@ export function makeTestWorker(env,fetcher=fetch) {
    if(!Number.isFinite(token.expires_at)||token.expires_at<Date.now()+120000||!Number.isFinite(token.refresh_expires_at)||token.refresh_expires_at<=Date.now())throw Error('Reconnect before test');
    const region=job.summary?.preferences?.weather_region_key;if(!region)throw Error('Region missing');
    let weather,args,claim;
-   try {
+   if(job.cached_weather_only){
+    if(job.cached_weather?.status!=='ok'||job.cached_weather.day!==job.day)throw Error('Fresh cached weather required');
+    weather=job.cached_weather;
+   }else try {
     const issue=forecastBase();args={p_region_key:region,p_forecast_day:job.day,p_base_date:issue.base_date,p_base_time:issue.base_time};
     claim=await rpc('kakao_service_weather_claim',args);
     if(claim?.status==='cached')weather={...claim.forecast,region_name:claim.region_name};
@@ -41,7 +44,7 @@ export function makeTestWorker(env,fetcher=fetch) {
     weather={status:'unavailable',region_name:claim?.region_name};
    }
    const parts=briefing(job.day,job.summary.events,job.summary.empty_explicit,weather);
-   const text='🧪 테스트 · 정기 발송과 별개\n'+parts.join('\n');
+   const text='🧪 테스트 · 정기 발송과 별개\n\n'+parts.join('\n');
    if(text.length>200)throw Error('Test exceeds single message cap');
    if(await rpc('kakao_test_validate',{p_id:job.id,p_claim_token:job.claim_token})!==true)throw Error('Authorization changed');
    attempted=true;

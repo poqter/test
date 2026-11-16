@@ -26,3 +26,13 @@ test('authorization changes and expired credentials fail before sending',async()
 test('timeout or lost acceptance persistence is uncertain and never retried',async()=>{for(const config of [{timeout:true},{persist:false}]){const r=await run(config);assert.equal(r.sends,1);assert.equal(r.result.status,503);assert.equal(r.calls.at(-1)[1].p_status,'uncertain');}});
 test('weather unavailable still clearly reports missing weather',async()=>{assert.equal((await run()).sends,1);});
 test('missing authorization and disabled gate cannot query credentials',async()=>{for(const disabled of [false,true]){let calls=0;const h=makeTestWorker(n=>n==='KAKAO_MULTI_ENABLED'&&disabled?'false':values[n],()=>{calls++;throw Error('No call');});const r=await h(new Request(values.SUPABASE_URL,{method:'POST',body:'{}'}));assert.equal(r.status,disabled?503:401);assert.equal(calls,0);}});
+test('cached-only second test does not claim or fetch weather',async()=>{
+ const day=new Date(Date.now()+9*3600000).toISOString().slice(0,10);let sends=0;
+ const cipher=await seal({access_token:'t',expires_at:Date.now()+900000,refresh_expires_at:Date.now()+9000000},values.KAKAO_MULTI_TOKEN_KEY,'owner',1);
+ const h=makeTestWorker(n=>values[n],async(u,i)=>{
+  if(u.endsWith('/kakao_test_claim'))return Response.json({id:'r',owner_id:'owner',generation:1,claim_token:'c',day,encrypted_tokens:cipher,cached_weather_only:true,cached_weather:{status:'ok',day,region_name:'서울특별시',low:11,high:16,morning:'맑음',afternoon:'흐림',issued_day:day,issued_time:'02:00'},summary:{events:[],preferences:{weather_region_key:'seoul'}}});
+  if(u.endsWith('/kakao_test_validate')||u.endsWith('/kakao_test_complete'))return Response.json(true);
+  if(u.startsWith('https://kapi.kakao.com/')){sends++;return Response.json({result_code:0});}
+  throw Error('Unexpected weather or regular request');
+ });assert.equal((await h(req())).status,200);assert.equal(sends,1);
+});

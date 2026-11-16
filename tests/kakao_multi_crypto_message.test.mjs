@@ -24,3 +24,16 @@ test('wrong-day and invalid weather fail closed',()=>{
  for(const weather of [{status:'ok',day:'2026-11-15'},{status:'ok',day:'2026-11-16',low:100,high:200}])
  assert.ok(briefing('2026-11-16',[],true,weather).join('').includes('확인하지 못했습니다'));
 });
+test('intentional blank lines improve sections and event spacing',()=>{
+ const weather={status:'ok',day:'2026-11-17',region_name:'서울특별시',low:11,high:16,morning:'맑음',afternoon:'흐림',issued_day:'2026-11-17',issued_time:'02:00'};
+ const text=briefing('2026-11-17',[{id:'a',start_time:'09:00',title:'상담'},{id:'b',start_time:'11:00',title:'방문'}],false,weather).join('\n');
+ assert.ok(text.includes('일정\n\n09:00 상담\n\n11:00 방문\n\n🌤'));
+ assert.ok(text.includes('시도 대표\n\n오전'));assert.ok(text.includes('최고 16℃\n\n기상청'));
+});
+test('blank boundaries never create empty or oversized parts',()=>{
+ for(const lines of [['','','가','','','나','',''],['가'.repeat(198),'','나'],['😀'.repeat(100),'','🌤'],['','']]){
+  const parts=splitLines(lines);assert.ok(parts.every(p=>p.trim()&&p.length<=200&&!p.startsWith('\n')&&!p.endsWith('\n')));
+  assert.equal(parts.join('').replaceAll('\n',''),lines.join(''));
+ }
+ assert.deepEqual(splitLines(['가','','','나']),['가\n\n나']);
+});
