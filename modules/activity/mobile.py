@@ -1,5 +1,6 @@
 """Mobile workspace navigation over the existing activity records and RLS."""
 from datetime import date, datetime
+from uuid import uuid4
 import streamlit as st
 from modules.activity import center, redesign, ux
 from modules.shared.hwarang_auth import HwarangAuthError
@@ -181,7 +182,30 @@ def alert_button(db):
             alerts_dialog(db)
 
 
+def accept_widget_date(params, state):
+    """Apply only navigation hints, after the normal calendar login gate."""
+    raw_day = params.get('widget_day')
+    if raw_day is None:
+        return
+    scope = params.get('widget_scope', 'mine')
+    for key in ('widget_day', 'widget_scope'):
+        if key in params:
+            del params[key]
+    try:
+        day = date.fromisoformat(raw_day)
+    except (TypeError, ValueError):
+        return
+    if day.isoformat() != raw_day or not 1900 <= day.year <= 2100 or scope not in ('mine', 'branch'):
+        return
+    state.update(mobile_page='캘린더', sales_anchor=day, sales_view='날짜별',
+                 sales_calendar_team=scope=='branch', sales_widget_day=raw_day)
+    state.pop('sales_calendar_member', None)
+    state.pop('sales_persistent_boot', None)
+    state['calendar_scope_generation'] = 'widget_' + uuid4().hex
+
+
 def run(logout):
+    accept_widget_date(st.query_params, st.session_state)
     ux.styles()
     import streamlit.components.v1 as components
     from pathlib import Path

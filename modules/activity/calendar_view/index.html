@@ -230,7 +230,7 @@ function render(a){
  latest=a;loadPrefs(a);configureSync(a);
 
  document.body.classList.toggle("mobile-shell",!!a.hideMobileApp);
- const {mode,day,today}=a,events=a.events.filter(e=>prefs.showCompleted||!e.done||e.id===calendarSearchFocus?.id),hide=!prefs.showWeekends&&!(calendarSearchFocus&&isWeekend(calendarSearchFocus.day)),anchor=date(day),month=mode==='월간',key=mode+day;
+ const {mode,day,today}=a,events=a.events.filter(e=>prefs.showCompleted||!e.done||e.id===calendarSearchFocus?.id),hide=!(a.widgetDay===day&&mode==='날짜별')&&!prefs.showWeekends&&!(calendarSearchFocus&&isWeekend(calendarSearchFocus.day)),anchor=date(day),month=mode==='월간',key=mode+day;
  if(context!==key){
    selected=day;
    if(!context){try{const saved=JSON.parse(sessionStorage.getItem('hwarang.calendar.selection.'+a.mobileSession?.uid)||'null');if(saved?.context===key&&/^\d{4}-\d{2}-\d{2}$/.test(saved.selected))selected=saved.selected}catch{}}

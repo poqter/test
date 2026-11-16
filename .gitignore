@@ -35,3 +35,5 @@ tests/studio_db/node_modules/
 
 # Synthetic browser diagnostics are CI artifacts, never source.
 test-results/
+
+/android/calendar-widget/build/
