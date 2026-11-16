@@ -51,7 +51,7 @@ if st.query_params.get("briefing_health") == "1":
     st.code("HWARANG_BRIEFING_RELEASE=" + release['engine_version'] +
             ";READY=" + str(release['code_matches_release']).lower())
     import hashlib
-    activity_files=("support_request.py","record_editor.py","manager_ui.py","weekly_review.py","read_state.py","center.py","redesign.py","manager.py","daily.py","daily_bridge.html","ux.py","contracts.py","calendar_view/index.html","mobile.py","calendar_bridge.html","device.py","calendar_service.py","calendar_view/persistent.js","calendar_view/sync.js","calendar_view/realtime.js","calendar_view/host.js","calendar_view/search.js","workspace_calendar.py","../shell/workspace_v2.py","../shell/home_briefing.py","../shared/workspace_design.css")
+    activity_files=("support_request.py","record_editor.py","manager_ui.py","weekly_review.py","read_state.py","center.py","redesign.py","manager.py","daily.py","daily_bridge.html","ux.py","contracts.py","calendar_view/index.html","mobile.py","kakao_settings.py","calendar_bridge.html","device.py","calendar_service.py","calendar_view/persistent.js","calendar_view/sync.js","calendar_view/realtime.js","calendar_view/host.js","calendar_view/search.js","workspace_calendar.py","../shell/workspace_v2.py","../shell/home_briefing.py","../shared/workspace_design.css")
     activity_hash=hashlib.sha256(b"".join((Path(__file__).parent / "modules/activity" / name).read_bytes() for name in activity_files)).hexdigest()[:16]
     st.code("HWARANG_ACTIVITY_RELEASE="+activity_hash)
     org_files=("organization_picker.py","account_admin_ui.py","admin_center_ui.py","hwarang_auth.py")
@@ -490,6 +490,8 @@ def main() -> None:
         if active == "sales_activity":
             from modules.activity.view_scope import render_settings
             render_settings("workspace")
+            from modules.activity.kakao_settings import render_entry as render_kakao_entry
+            render_kakao_entry("workspace")
         if st.button("내 계정 · 비밀번호 변경", key="hw_my_account", use_container_width=True):
             account_dialog(auth)
         st.caption("버전 " + BUILD_ID)

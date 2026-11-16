@@ -77,6 +77,9 @@ jobs:
           node tests/calendar_result_save.mjs
           node tests/calendar_runtime.mjs
           node tests/calendar_search.mjs
+      - name: Kakao opt-in notification security regression
+        if: ${{ !cancelled() }}
+        run: node --test tests/kakao_multi*.test.mjs
       - name: Customer reader HTTP regression
         if: ${{ !cancelled() }}
         run: node --test tests/test_briefing_public.mjs
