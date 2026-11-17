@@ -42,6 +42,19 @@ public final class SetupActivity extends Activity {
                 data.setIncludeDone(enabled); MonthWidget.paintAll(this);
             });
             body.addView(done);
+            android.widget.Switch titles = new android.widget.Switch(this);
+            titles.setText("월간 내 일정에 제목 표시");
+            titles.setMinHeight(Math.round(48 * getResources().getDisplayMetrics().density));
+            titles.setChecked(data.showsTitles());
+            titles.setOnCheckedChangeListener((button, enabled) -> {
+                data.setShowTitles(enabled);
+                MonthWidget.paintAll(this);
+                if (enabled) MonthWidget.schedule(this);
+            });
+            body.addView(titles);
+            TextView titleHint = new TextView(this);
+            titleHint.setText("이 기기에만 적용됩니다.");
+            body.addView(titleHint);
             Button pin = new Button(this);
             pin.setText("홈 화면에 위젯 추가");
             pin.setOnClickListener(v -> {
