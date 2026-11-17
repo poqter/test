@@ -1,8 +1,8 @@
-import {digest,unseal} from '../hwarang-kakao/crypto.mjs';
+import {digest,unseal,seal} from '../hwarang-kakao/crypto.mjs';
 import {briefing} from '../hwarang-kakao/message.mjs';
 import {forecastBase} from '../hwarang-kakao/weather.mjs';
 import {fetchWebWeather} from '../hwarang-kakao/weather-web.mjs';
-import {sendMemo,template} from '../hwarang-kakao/kakao-api.mjs';
+import {sendMemo,template,refreshToken,ReauthenticationRequired} from '../hwarang-kakao/kakao-api.mjs';
 /** One explicit self-test, one message maximum. Never changes a daily batch or schedule. */
 export function makeTestWorker(env,fetcher=fetch) {
  const reply=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
@@ -22,12 +22,19 @@ export function makeTestWorker(env,fetcher=fetch) {
    if(!/^[a-f0-9]{64}$/.test(input?.ticket||''))return reply({error:'Unauthorized'},401);
    job=await rpc('kakao_test_claim',{p_ticket_hash:await digest(input.ticket)});
    if(!job?.claim_token)return reply({error:'Unavailable or already used'},409);
-   const token=await unseal(job.encrypted_tokens,env('KAKAO_MULTI_TOKEN_KEY'),job.owner_id,job.generation);
-   // Do not rotate shared credentials for a test. Expiring connections fail before sending.
-   if(!Number.isFinite(token.expires_at)||token.expires_at<Date.now()+120000||!Number.isFinite(token.refresh_expires_at)||token.refresh_expires_at<=Date.now())throw Error('Reconnect before test');
+   let token=await unseal(job.encrypted_tokens,env('KAKAO_MULTI_TOKEN_KEY'),job.owner_id,job.generation);
+   if(!Number.isFinite(token.refresh_expires_at)||token.refresh_expires_at<=Date.now())throw new ReauthenticationRequired();
+   if(!Number.isFinite(token.expires_at)||token.expires_at<=Date.now()+300000){
+    if(await rpc('kakao_test_validate',{p_id:job.id,p_claim_token:job.claim_token})!==true)throw Error('Authorization changed');
+    token=await refreshToken(fetcher,{clientId:env('KAKAO_REST_API_KEY'),clientSecret:env('KAKAO_CLIENT_SECRET')},token);
+    const cipher=await seal(token,env('KAKAO_MULTI_TOKEN_KEY'),job.owner_id,job.generation);
+    if(await rpc('kakao_service_rotate',{p_owner:job.owner_id,p_generation:job.generation,p_previous_cipher:job.encrypted_tokens,p_new_cipher:cipher})!==true)throw Error('Token changed');
+   }
+   if(job.sample_body!=null&&(typeof job.sample_body!=='string'||!job.sample_body.trim()||job.sample_body.length>200))throw Error('Invalid sample');
    const region=job.summary?.preferences?.weather_region_key;if(!region)throw Error('Region missing');
    let weather,args,claim;
-   if(job.cached_weather_only){
+   if(job.sample_body!=null){weather=undefined;
+   }else if(job.cached_weather_only){
     if(job.cached_weather?.status!=='ok'||job.cached_weather.day!==job.day)throw Error('Fresh cached weather required');
     weather=job.cached_weather;
    }else try {
@@ -44,16 +51,17 @@ export function makeTestWorker(env,fetcher=fetch) {
     weather={status:'unavailable',region_name:claim?.region_name};
    }
    const parts=briefing(job.day,job.summary.events,job.summary.empty_explicit,weather);
-   const text=parts.join('\n');
+   const text=job.sample_body??parts.join('\n');
    if(text.length>200)throw Error('Test exceeds single message cap');
    if(await rpc('kakao_test_validate',{p_id:job.id,p_claim_token:job.claim_token})!==true)throw Error('Authorization changed');
    attempted=true;
    await sendMemo(fetcher,token.access_token,template(text,'https://hwarang-calendar.streamlit.app/calendar?view=mobile-calendar'));
    if(await rpc('kakao_test_complete',{p_id:job.id,p_claim_token:job.claim_token,p_status:'accepted'})!==true)throw Error('Acceptance unrecorded');
-   return reply({accepted:true});
-  }catch{
+   return reply({accepted:true,length:text.length});
+  }catch(error){
+   const reason=error instanceof ReauthenticationRequired?'reconnect_required':['Authorization changed','Token changed','Invalid sample','Test exceeds single message cap'].includes(error?.message)?error.message:'preflight_failed';
    if(job?.claim_token)await rpc('kakao_test_complete',{p_id:job.id,p_claim_token:job.claim_token,p_status:attempted?'uncertain':'failed'}).catch(()=>{});
-   return reply({error:attempted?'Outcome uncertain; do not retry':'Test not sent'},503);
+   return reply({error:attempted?'Outcome uncertain; do not retry':'Test not sent',reason:attempted?'uncertain':reason},503);
   }
  };
 }
