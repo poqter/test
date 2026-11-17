@@ -1,5 +1,0 @@
--- DEPRECATED: no every-minute polling is permitted for this feature.
--- Use KAKAO_MULTI_DYNAMIC_CRON_DRAFT.sql only after extension/permission/free-cost review.
--- It creates one shared schedule per distinct requested HH:MM, a DB-only +10min backstop,
--- and bounded one-use-ticket continuations only while work remains. Never add a minute poll.
--- Do not activate gates or invoke reconcile until staging and production prerequisites are verified.

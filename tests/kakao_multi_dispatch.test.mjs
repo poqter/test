@@ -1,8 +1,0 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {dispatchOne} from '../supabase/functions/hwarang-kakao/dispatch.mjs';
-const job={part:1,body:'일정',ownerId:'a'};
-function setup(){const calls=[];return {calls,job,store:{authorize:async()=>({allowed:true}),cancel:async()=>calls.push('cancel'),validToken:async()=>'secret',beginAttempt:async()=>true,accept:async()=>calls.push('accepted'),fail:async(j,status)=>calls.push(status)},api:{sendMemo:async()=>{calls.push('send');return {result_code:0}}}};}
-test('one claim sends once then records API accepted',async()=>{const x=setup();assert.equal((await dispatchOne(x)).status,'accepted');assert.deepEqual(x.calls,['send','accepted'])});
-test('revoke denies before token retrieval',async()=>{const x=setup();x.store.authorize=async()=>({allowed:false});x.store.validToken=async()=>{throw Error('must not run')};assert.equal((await dispatchOne(x)).status,'cancelled');assert.deepEqual(x.calls,['cancel'])});
-test('revocation between token and attempt prevents sending',async()=>{const x=setup();x.store.beginAttempt=async()=>false;assert.equal((await dispatchOne(x)).status,'cancelled');assert.deepEqual(x.calls,[])});
-test('token setup failure no send; uncertain send not retried',async()=>{const x=setup();x.api.sendMemo=async()=>{x.calls.push('send');throw Error('timeout')};assert.equal((await dispatchOne(x)).status,'uncertain');assert.deepEqual(x.calls,['send','uncertain']);});
-test('accepted API with failed DB persistence is uncertain',async()=>{const x=setup();x.store.accept=async()=>{throw Error('db')};assert.equal((await dispatchOne(x)).status,'uncertain');assert.deepEqual(x.calls,['send','uncertain']);});

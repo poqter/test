@@ -1,7 +1,0 @@
-<LinearLayout android:id="@+id/wide_entry_row" xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">
-    <FrameLayout android:id="@+id/stripe" android:layout_width="3dp" android:layout_height="16dp"/>
-    <TextView android:id="@+id/entry" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
-        android:gravity="center_vertical" android:paddingStart="4dp" android:singleLine="true" android:ellipsize="end"
-        android:includeFontPadding="true" android:textSize="9sp" android:textColor="#234857"/>
-</LinearLayout>
