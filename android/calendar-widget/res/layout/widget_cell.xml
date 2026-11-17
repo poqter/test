@@ -1,2 +1,11 @@
-<TextView xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/cell" android:layout_width="0dp" android:layout_height="match_parent"
-    android:layout_weight="1" android:gravity="center" android:maxLines="3" android:includeFontPadding="false" android:textSize="11sp" android:textColor="#173446"/>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/cell"
+    android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+    android:orientation="vertical" android:paddingStart="1dp" android:paddingEnd="1dp">
+    <FrameLayout android:layout_width="match_parent" android:layout_height="1dp" android:background="#E7EDF0"/>
+    <TextView android:id="@+id/date_number" android:layout_width="24dp" android:layout_height="17dp" android:layout_gravity="center_horizontal"
+        android:gravity="center" android:textStyle="bold" android:textSize="13sp" android:includeFontPadding="false"/>
+    <TextView android:id="@+id/count" android:layout_width="wrap_content" android:layout_height="11dp" android:layout_gravity="center_horizontal"
+        android:gravity="center" android:paddingStart="3dp" android:paddingEnd="3dp" android:singleLine="true" android:textSize="9sp"
+        android:includeFontPadding="false" android:textColor="#234857" android:background="@drawable/count_badge" android:visibility="gone"/>
+    <LinearLayout android:id="@+id/entries" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"/>
+</LinearLayout>

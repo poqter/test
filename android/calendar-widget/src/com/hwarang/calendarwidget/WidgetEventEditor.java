@@ -85,7 +85,7 @@ final class WidgetEventEditor {
         expand(state.getBoolean("expanded"));
         status = activity.text("", 14, COLOR);
         status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-        fields.addView(status);
+        root.addView(status);
 
         LinearLayout footer = new LinearLayout(activity);
         cancel = activity.button("취소", this::cancel);
