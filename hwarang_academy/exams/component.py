@@ -32,8 +32,7 @@ def process(repo, event, attempt):
                      **({'number': payload['number']} if action == 'check' else {}))
 
 
-@st.fragment
-def active(repo, initial):
+def render_active(repo, initial):
     key = '_academy_exam_wire_' + initial['id']
     state = st.session_state.setdefault(key, {'attempt': initial, 'ack': None, 'error': ''})
     if not state['error'] and str(initial.get('server_now','')) > str(state['attempt'].get('server_now','')):
@@ -53,3 +52,6 @@ def active(repo, initial):
         state['error'] = ('다른 화면에서 답안이 변경되었습니다. 저장된 답안으로 다시 불러오세요.'
                           if str(exc) == 'CONFLICT' else '저장을 확인하지 못했습니다. 선택한 답은 화면에 보관 중입니다.')
     st.rerun(scope='fragment')
+
+
+active = st.fragment(render_active)

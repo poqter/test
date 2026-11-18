@@ -40,6 +40,11 @@ def allowed_ids(role: str | None) -> list[str]:
                 if app_access.get("academy", False):
                     result.append(app_id)
                 continue
+            if app_id == "insurance_cbt":
+                profile = (st.session_state.get("hwarang_auth") or {}).get("profile") or {}
+                if app_access.get("academy") and "academy.assessment" in allowed_codes and profile.get("is_active"):
+                    result.append(app_id)
+                continue
             required = WORKSPACE_APP_PERMISSION.get(app_id)
             if required is None or required in allowed_codes:
                 result.append(app_id)
@@ -75,15 +80,17 @@ def navigate(
     """
     session = st.session_state if state is None else state
     role = session.get("login_user")
-    target = normalize_route(page_id, role, allowed=session.get("ws_allowed_ids"))
+    permitted = session.get("ws_allowed_ids")
+    if permitted is None:
+        permitted = allowed_ids(role)
+    target = normalize_route(page_id, role, allowed=permitted)
     # Only this browser-local editor needs a discard decision. Authorization
     # remains authoritative: a revoked tool must never be kept open by this guard.
     component_key = session.get("pdf_tools_component_key", "")
     work = (session.get(component_key) or {}) if component_key else {}
     leaving_pdf = session.get("active_app") == "image_to_pdf" and target != "image_to_pdf"
     confirmed = session.pop("pdf_tools_leave_confirmed", False)
-    pdf_allowed = "image_to_pdf" in session.get("ws_allowed_ids", allowed_ids(role))
-    if leaving_pdf and isinstance(work, dict) and work.get("hasWork") and pdf_allowed and not confirmed:
+    if leaving_pdf and isinstance(work, dict) and work.get("hasWork") and "image_to_pdf" in permitted and not confirmed:
         session["pdf_tools_pending_navigation"] = {"page": target, "mode": mode}
         if rerun is None and state is None:
             st.rerun()

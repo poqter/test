@@ -6,7 +6,7 @@ from collections import defaultdict
 import pandas as pd
 import streamlit as st
 from modules.shared.ui_components import page_header, page_footer
-from modules.consultation.coverage_comparison_data import METRICS, extract_pdf, format_won, format_coverage, summarize_candidate
+from modules.consultation.coverage_comparison_data import ComparisonPageLimit, MAX_COMPARISON_PAGES, METRICS, extract_pdf, format_won, format_coverage, summarize_candidate
 from modules.consultation.coverage_brief_report import comparison_pdf
 
 
@@ -41,6 +41,8 @@ def _read_pdf(upload, password=""):
     key='coverage_proposal_parse_'+hashlib.sha256(upload.getvalue()+password.encode()).hexdigest()
     if key not in st.session_state:
         try: st.session_state[key]=extract_pdf(upload.getvalue(), password)
+        except ComparisonPageLimit:
+            raise
         except Exception:st.session_state[key]={'rows':[],'premiums':[],'warnings':['PDF를 읽지 못했습니다. 비밀번호 또는 파일을 확인하고 보장 내용을 직접 입력해 주세요.']}
     return st.session_state[key]
 
@@ -52,7 +54,11 @@ def _input_file(file, group, idx):
     try: encrypted=PdfReader(BytesIO(file.getvalue())).is_encrypted
     except Exception: encrypted=False
     password=st.text_input(f'{group} {idx+1} PDF 비밀번호',type='password',key=f'{token}_password') if encrypted else ''
-    data=_read_pdf(file,password)
+    try:
+        data=_read_pdf(file,password)
+    except ComparisonPageLimit as exc:
+        st.error(f"{file.name} · {exc}")
+        return None
     with st.expander(f'{group} {idx+1} · {file.name}',expanded=True):
         for warning in data['warnings']:st.caption(warning)
         if data['rows']:
@@ -116,7 +122,7 @@ def run():
     total_bytes=0
     for file in current_files+proposed_files:
         try:
-            validate_upload(file.name,file.getvalue(),session_total=total_bytes,allow_encrypted_pdf=True)
+            validate_upload(file.name,file.getvalue(),session_total=total_bytes,allow_encrypted_pdf=True,max_pdf_pages=MAX_COMPARISON_PAGES)
             total_bytes+=file.size
         except ValidationError as exc:
             st.error('파일 확인: '+str(exc)); return
@@ -142,7 +148,8 @@ def run():
             except Exception:st.error('현재 엑셀을 읽지 못했습니다. 보장분석 도우미에 사용하는 원본 엑셀을 확인해 주세요.')
         else:current.append(_input_file(file,'현재',i))
     proposed=[_input_file(file,'제안',i) for i,file in enumerate(proposed_files)]
-    if not current or len(current)!=len(current_files):return
+    if len(current) != len(current_files) or any(item is None for item in current + proposed):
+        return
     c=_combine(current,'현재 보험')
     plans=[_combine(proposed,'통합 제안')] if mode=='모두 합쳐 비교' else proposed
     names=[p['name'].strip() for p in plans]

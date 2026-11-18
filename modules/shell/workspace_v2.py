@@ -8,7 +8,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import streamlit as st
 
-from modules.shell.app_registry import APP_BY_ID, SEARCH_ALIASES, AppSpec
+from modules.shell.app_registry import APP_BY_ID, SEARCH_ALIASES, AppSpec, home_tools
 from modules.resources.insurer_portal import render_home_quick_search
 from modules.shared.external_apps import external_app_url
 from modules.shared.hwarang_auth import HwarangAuthError, HwarangAuthService, SupabaseConfig
@@ -237,13 +237,13 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
 # Home tabs only change the visible tool set; registered destinations and permissions stay authoritative.
 _HOME_TOPICS = (
     ("고객 상담", "CUSTOMER CONSULTING", "고객 상담을 준비하세요", "보장을 살펴보고, 고객에게 맞는 제안을 정리합니다.",
-     ("analyzer", "remodeling", "consultation_helper", "coverage_proposal", "comparison_builder", "insurance_claim_guide", "surgery_search", "image_to_pdf")),
+     home_tools("consult")),
     ("보험 비교 · 계산", "COMPARE & CALCULATE", "선택지를 명확하게 비교하세요", "보장과 숫자를 나란히 놓고 판단할 수 있습니다.",
-     ("silson_generation_comparison", "quick_calculators", "deposit_vs_shortpay", "renewal_vs_nonrenewal", "inheritance_tax")),
+     home_tools("compare")),
     ("실적 관리", "PERFORMANCE MANAGEMENT", "업무 결과를 한눈에 확인하세요", "실적과 수수료를 정리하고 흐름을 살펴봅니다.",
-     ("convention", "summer", "manager_results", "commission_calculator")),
+     home_tools("performance")),
     ("자료 · 교육", "RESOURCES & LEARNING", "업무 자료를 찾아보세요", "원수사 정보와 교육 자료를 한곳에서 확인합니다.",
-     ("insurer_portal", "academy")),
+     home_tools("resources")),
 )
 
 
@@ -272,7 +272,7 @@ _PREMIUM_EMOJI = {
     "surgery_search": "🔎", "coverage_proposal": "📈", "comparison_builder": "📊", "insurance_claim_guide": "📋", "silson_generation_comparison": "🔍",
     "quick_calculators": "🧮", "deposit_vs_shortpay": "🌱", "renewal_vs_nonrenewal": "⚖️",
     "inheritance_tax": "🏛️", "convention": "🏆", "summer": "☀️", "manager_results": "📈",
-    "commission_calculator": "💼", "insurer_portal": "📂", "academy": "🎓", "briefing": "📰",
+    "commission_calculator": "💼", "insurer_portal": "📂", "academy": "🎓", "insurance_cbt": "📝", "briefing": "📰",
 }
 
 
@@ -333,7 +333,7 @@ def render_home(allowed_ids, navigate, notice):
                     st.markdown('<div class="brand-feature-icon" aria-hidden="true">🛡️</div>',unsafe_allow_html=True)
                     st.subheader('보장 분석 도우미');st.caption(_HOME_SHORT_COPY['analyzer'])
                     _launch_widget(APP_BY_ID['analyzer'],'분석 시작 →',key='brand_analyze',primary=True,navigate=navigate)
-        with others:grid(_HOME_TOPICS[0][4][1:],'consult')
+        with others:grid([key for key in _HOME_TOPICS[0][4] if key != "analyzer"],'consult')
     with st.container(key='brand_pair_wrap'):
         calc,performance=st.columns(2,gap='medium')
         for col,topic in zip((calc,performance),_HOME_TOPICS[1:3]):

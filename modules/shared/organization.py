@@ -90,9 +90,15 @@ def active_profile(*, org_id: str | None = None, state=None, db_path: str | None
     return copy.deepcopy(max(active or [records[0]], key=lambda v: (v["effective_from"], v["revision"])))
 
 
-def validate_profile(candidate: dict) -> dict:
+def organization_tool_options() -> dict[str, str]:
     from modules.shell.app_registry import APPS
-    allowed = {app.id for app in APPS if app.enabled}
+    options = {app.id: app.label for app in APPS if app.enabled and app.id != "insurance_cbt"}
+    options["academy"] = "화랑 ACADEMY · 보험시험 CBT"
+    return options
+
+
+def validate_profile(candidate: dict) -> dict:
+    allowed = organization_tool_options()
     out = {key: copy.deepcopy(candidate[key]) for key in (
         "effective_from", "brand_name", "header_color", "accent_color", "allowed_tools",
         "commission_default_payout_percent", "payout_rule_label") if key in candidate}
@@ -161,4 +167,7 @@ def permitted_tools(tool_ids: list[str]) -> list[str]:
     # Only remove existing role permissions; organization settings never grant
     # access that the application's unchanged role map does not allow.
     enabled = set(active_profile()["allowed_tools"])
+    # The temporary WORKSPACE CBT entry inherits the existing ACADEMY organization setting.
+    if "academy" in enabled:
+        enabled.add("insurance_cbt")
     return [tool for tool in tool_ids if tool in enabled]

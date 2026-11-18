@@ -7,7 +7,7 @@ from modules.shared.refresh import refresh_current
 import pandas as pd
 import altair as alt
 from .repository import Repository
-from .component import active
+from .component import active, render_active
 from .analytics import KST,stamp,mode_label,in_window,summarize
 MANAGERS={'team_leader','deputy_branch_manager','branch_manager','division_head','chief_representative'}
 
@@ -176,6 +176,25 @@ def _dashboard(repo,profile):
 
 @st.fragment
 def render(auth,owner,permissions,profile):
+    render_exam(auth, owner, permissions, profile, active)
+
+
+def run_workspace():
+    from modules.shared.hwarang_auth import HwarangAuthService, SupabaseConfig
+    identity = st.session_state.get("hwarang_auth") or {}
+    profile = identity.get("profile") or {}
+    permissions = set(identity.get("feature_permissions") or ())
+    if not (profile.get("id") and profile.get("is_active")
+            and (identity.get("app_access") or {}).get("academy")
+            and "academy.assessment" in permissions):
+        st.warning("시험·평가 이용 권한이 필요합니다.")
+        return
+    auth = HwarangAuthService(SupabaseConfig.from_mapping(st.secrets))
+    # The WORKSPACE tool fragment revalidates identity on each interaction.
+    render_exam(auth, profile["id"], permissions, profile, render_active)
+
+
+def render_exam(auth, owner, permissions, profile, active_surface):
     st.title('보험시험 CBT')
     if 'academy.assessment' not in permissions:st.warning('시험·평가 이용 권한이 필요합니다.');return
     st.markdown('<style>.exam-prose{font-size:18px;line-height:1.85;overflow-wrap:anywhere;margin:12px 0}</style>',unsafe_allow_html=True)
@@ -197,7 +216,7 @@ def render(auth,owner,permissions,profile):
                 if st.button('← 시험 목록',help='저장된 시험은 이어 풀 수 있으며 제한시간은 계속 흐릅니다.'):_close()
                 if st.button('시험 중단',key='abort_active'):
                     st.session_state['_academy_exam_abort']=aid;refresh_current()
-                active(repo,a)
+                active_surface(repo,a)
             return
         tabs=['시험 시작','나의 응시 기록']
         if profile.get('role')=='super_admin' or profile.get('position_code') in MANAGERS:tabs.append('조직 학습 현황')
