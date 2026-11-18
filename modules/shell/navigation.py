@@ -41,16 +41,15 @@ def allowed_ids(role: str | None) -> list[str]:
                     result.append(app_id)
                 continue
             if app_id == "insurance_cbt":
-                continue  # Inherits the organization’s ACADEMY gate below.
+                profile = (st.session_state.get("hwarang_auth") or {}).get("profile") or {}
+                if app_access.get("academy") and "academy.assessment" in allowed_codes and profile.get("is_active"):
+                    result.append(app_id)
+                continue
             required = WORKSPACE_APP_PERMISSION.get(app_id)
             if required is None or required in allowed_codes:
                 result.append(app_id)
         from modules.shared.organization import permitted_tools
-        result = permitted_tools(result)
-        if ("academy" in result and "academy.assessment" in allowed_codes
-                and (st.session_state.get("hwarang_auth") or {}).get("profile", {}).get("is_active")):
-            result.append("insurance_cbt")
-        return result
+        return permitted_tools(result)
 
     permitted = ROLE_PERMISSIONS.get(role or "", frozenset())
     from modules.shared.organization import permitted_tools

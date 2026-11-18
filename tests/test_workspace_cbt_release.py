@@ -65,7 +65,9 @@ def test_cbt_authorization(monkeypatch, active, academy, assessment, org, expect
         "hw_app_access": {"academy": academy}, "hw_feature_permissions": ["academy.assessment"] if assessment else [],
     })
     monkeypatch.setattr(organization, "active_profile", lambda: {"allowed_tools": ["academy"] if org else []})
-    assert ("insurance_cbt" in navigation.allowed_ids("Admin")) == expected
+    allowed = navigation.allowed_ids("Admin")
+    assert "academy" not in allowed
+    assert ("insurance_cbt" in allowed) == expected
 
 
 def test_menu_uses_resolved_permissions(monkeypatch):
