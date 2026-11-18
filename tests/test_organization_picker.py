@@ -54,8 +54,8 @@ class Auth:
  def _require_super_admin(self,actor):pass
  def _request(self,*args,**kwargs):return []
  def admin_user_snapshot(self, actor, uid):
-  return dict(profile=dict(id=uid,display_name='테스트',login_id='test',role='user',is_active=True,position_code='team_leader',organization_unit_id='dream'),app_access={{'workspace':True,'academy':True,'calculator':False}},feature_permissions=['academy.practice'])
- def admin_reference_data(self, actor):return dict(organizations={ROWS!r},positions={POSITIONS!r},permissions=[dict(permission_code='academy.practice',app_code='academy',display_name='연습'),dict(permission_code='academy.simulator',app_code='academy',display_name='시뮬레이터')])
+  return dict(profile=dict(id=uid,display_name='테스트',login_id='test',role='user',is_active=True,position_code='team_leader',organization_unit_id='dream'),app_access={{'workspace':True,'academy':True,'calculator':False}},feature_permissions=['academy.assessment'])
+ def admin_reference_data(self, actor):return dict(organizations={ROWS!r},positions={POSITIONS!r},permissions=[dict(permission_code='academy.assessment',app_code='academy',display_name='연습'),dict(permission_code='academy.simulator',app_code='academy',display_name='시뮬레이터')])
  def admin_apply_user_changes(self,**changes):
   st.session_state['saved']=changes
   return self.admin_user_snapshot('admin','other')
@@ -71,4 +71,4 @@ _user_permissions(Auth(),'admin','other')
     assert saved['organization_unit_id']=='vision' and saved['position_code']=='division_head'
     assert saved['role']=='user'
     assert saved['app_access']=={'workspace':True,'academy':True,'calculator':False}
-    assert saved['permissions']=={'academy.practice':True}
+    assert saved['permissions']=={'academy.assessment':True}

@@ -179,7 +179,7 @@ def main() -> None:
     from modules.shell.app_registry import APP_BY_ID
 
     if not APP_BY_ID["academy"].enabled:
-        st.info("화랑 ACADEMY는 현재 비공개입니다.")
+        st.info("화랑 ACADEMY는 현재 비공개입니다. 개편 기간에는 WORKSPACE의 자료 · 교육에서 보험시험 CBT를 이용해 주세요.")
         return
 
     try:

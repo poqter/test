@@ -12,8 +12,7 @@ import streamlit as st
 from modules.shared.refresh import refresh_current
 
 from modules.shared.hwarang_auth import HwarangAuthError, HwarangAuthService
-from importlib.util import find_spec
-from modules.shared.external_apps import academy_url, calculator_url
+from modules.shared.external_apps import calculator_url
 
 
 _KST = ZoneInfo("Asia/Seoul")
@@ -25,7 +24,7 @@ _ROLE_LABELS = {
 _APP_LABELS = {
     "workspace": "WORKSPACE",
     "calculator": "CALCULATOR",
-    "academy": "ACADEMY",
+    "academy": "보험시험 CBT",
 }
 _UNIT_LABELS = {
     "root": "전체",
@@ -37,21 +36,13 @@ _PAGE_LABELS = {
     "dashboard": "대시보드",
     "operations": "운영 점검",
     "accounts": "계정 · 권한",
-    "assets": "상담 자산",
-    "simulator_dashboard": "상담 운영 현황",
-    "academy": "상담 이력 · 평가",
-    "ai": "AI 사용량 · 비용",
-    "settings": "시스템 설정",
+    "briefing_switch": "브리핑 생성 설정",
 }
 _PAGE_SUBTITLES = {
     "dashboard": "플랫폼 운영 상태와 지금 확인해야 할 항목을 한눈에 봅니다.",
     "operations": "문제와 근거를 확인하고 점검 기록·요청문을 정리합니다.",
     "accounts": "사용자 계정, 앱 접근권한, 세부 기능 권한을 관리합니다.",
-    "assets": "상담 자산의 배정과 조정 이력을 확인합니다.",
-    "simulator_dashboard": "상담 세션과 이용량을 확인합니다.",
-    "academy": "상담 훈련 Session과 평가 결과를 운영 관점에서 확인합니다.",
-    "ai": "AI 사용량, 비용, 차단·실패 내역을 운영합니다.",
-    "settings": "AI 서비스, 크레딧 정책, 모델·Guardrail과 위험 작업을 관리합니다.",
+    "briefing_switch": "새 브리핑 생성 허용 여부를 관리합니다.",
 }
 
 _EVENT_LABELS = {
@@ -307,14 +298,25 @@ def _cached_reference_data(auth: HwarangAuthService, actor_id: str) -> dict[str,
     return data
 
 
-_SIMULATOR_PERMISSIONS = {"academy.simulator", "academy.formal_ai_assessment", "academy.voice_simulator"}
-
-
-def _simulator_available():
-    return all(find_spec(name) is not None for name in (
-        "hwarang_academy.studio", "modules.shared.admin_assets", "modules.shared.ai_guardrails",
-        "modules.shared.simulator_admin_ui",
-    ))
+def _render_briefing_switch(auth, actor_id):
+    rows = _safe_rows(auth, "/rest/v1/hwarang_ai_runtime_config",
+                      params={"select": "service_enabled", "config_id": "eq.1"})
+    if len(rows) != 1 or not isinstance(rows[0].get("service_enabled"), bool):
+        st.error("브리핑 생성 설정을 확인할 수 없습니다.")
+        return
+    enabled = rows[0]["service_enabled"]
+    st.write("현재 새 브리핑 생성이 " + ("허용됩니다." if enabled else "중지되어 있습니다."))
+    st.caption("이미 공개한 브리핑의 조회와 공유는 계속 이용할 수 있습니다.")
+    # The button key ties the intent to the displayed state on concurrent edits.
+    if st.button("새 브리핑 생성 중지" if enabled else "새 브리핑 생성 재개",
+                 key=f"hw_briefing_switch_{enabled}"):
+        requested = not enabled
+        result = auth._request("POST", "/rest/v1/rpc/admin_set_briefing_service_enabled", admin=True,
+                               json={"p_actor": actor_id, "p_expected": enabled, "p_enabled": requested})
+        if result is not requested:
+            st.error("브리핑 설정 저장 결과를 확인할 수 없습니다.")
+            return
+        st.rerun()
 
 
 def _fetch_users(auth):
@@ -348,8 +350,8 @@ def _render_dashboard(auth, actor_id):
     st.button("계정 · 권한 열기", on_click=_page_change, args=("accounts",))
     st.button("운영 점검 열기", on_click=_page_change, args=("operations",))
     st.subheader("앱 연결 구성")
-    for label, url in (("ACADEMY", academy_url()), ("CALCULATOR", calculator_url())):
-        st.caption(f"{label} · {'연결 구성' if url else '주소 미설정'}")
+    st.caption("ACADEMY · 개편 중 (보험시험 CBT 운영)")
+    st.caption("CALCULATOR · " + ("연결 구성" if calculator_url() else "주소 미설정"))
 
 
 def _render_accounts(auth, actor_id):
@@ -368,7 +370,7 @@ def _render_accounts(auth, actor_id):
         "사용자": row.get("display_name"), "로그인 ID": row.get("login_id"), "소속": row.get("organization_name"),
         "직책": row.get("position_name"), "시스템 권한": row.get("system_role_name"),
         "계정": "활성" if row.get("is_active") else "비활성", "최근 접속": _fmt_relative(row.get("last_login_at")),
-        "ACADEMY": "사용 가능" if row.get("academy_access") else "제한",
+        "보험시험 앱 접근": "허용" if row.get("academy_access") else "제한",
     } for row in filtered], hide_index=True, use_container_width=True, on_select="rerun",
         selection_mode="single-row", key="hw_admin_profile_table")
     indices = event.selection.rows
@@ -402,11 +404,7 @@ def render_sidebar() -> None:
         groups = [
             ("운영", [("dashboard", "대시보드"), ("operations", "운영 점검"), ("accounts", "계정 · 권한")]),
         ]
-        if _simulator_available():
-            groups.append(("삭제 예정 · 상담 시뮬레이터", [
-                ("simulator_dashboard", "상담 운영 현황"), ("assets", "Credit · Voice"),
-                ("academy", "상담 이력 · 평가"), ("ai", "사용량 · 비용"), ("settings", "학습 · 브리핑 AI 설정"),
-            ]))
+        groups.append(("시스템", [("briefing_switch", "브리핑 생성 설정")]))
         for group, items in groups:
             st.caption(group)
             for code, label in items:
@@ -500,7 +498,7 @@ def _user_permissions(auth: HwarangAuthService, actor_id: str, uid: str) -> None
 
     positions = [r for r in refs.get("positions", []) if r.get("is_active", True)]
     orgs = [r for r in refs.get("organizations", []) if r.get("is_active", True)]
-    perms = [item for item in refs.get("permissions", []) if item.get("permission_code") not in _SIMULATOR_PERMISSIONS]
+    perms = [item for item in refs.get("permissions", []) if item.get("app_code") != "academy" or item.get("permission_code") == "academy.assessment"]
     st.markdown('<div class="hw-section-head">기본 정보</div>', unsafe_allow_html=True)
     from .organization_picker import render_affiliation, valid_affiliation, render_managers
     position_code, organization_unit_id = render_affiliation(orgs, positions, profile, 'hw_affiliation_'+uid)
@@ -617,7 +615,7 @@ def render(auth: HwarangAuthService) -> None:
         return
 
     page = str(st.session_state.setdefault("hw_admin_center_page", "dashboard"))
-    if page not in _PAGE_LABELS or (page not in {"dashboard", "operations", "accounts"} and not _simulator_available()):
+    if page not in _PAGE_LABELS:
         page = "dashboard"
         st.session_state["hw_admin_center_page"] = page
 
@@ -633,7 +631,6 @@ def render(auth: HwarangAuthService) -> None:
             elif page == "accounts":
                 _render_accounts(auth, actor_id)
             else:
-                from . import simulator_admin_ui
-                simulator_admin_ui.render(page, auth, actor_id)
+                _render_briefing_switch(auth, actor_id)
         except HwarangAuthError as exc:
             st.error(str(exc))
