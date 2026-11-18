@@ -6,6 +6,17 @@ import pandas as pd
 import numpy as np
 import re
 
+from modules.performance.insurers import (
+    is_hanwha_life_series,
+    is_db_nonlife_series,
+    is_kb_nonlife_series,
+    is_hanwha_nonlife_series,
+    is_heungkuk_nonlife_series,
+    is_nonlife_series,
+    is_life_series,
+    is_other_life_series,
+)
+
 APP_VERSION = "1.1.0"
 
 MONTHLY_TARGET = 500_000
@@ -165,63 +176,6 @@ def autosize_columns_full(ws, padding=5):
 
         ws.column_dimensions[column_cells[0].column_letter].width = max_len + padding
 
-def is_hanwha_life_series(ins: pd.Series) -> pd.Series:
-    ins = ins.astype(str).str.strip()
-
-    return (
-        ins.str.contains("한화", na=False)
-        & ins.str.contains("생명", na=False)
-    )
-
-def is_db_nonlife_series(ins: pd.Series) -> pd.Series:
-    ins = ins.astype(str).str.strip()
-
-    return (
-        ins.str.contains("DB", case=False, na=False)
-        & (
-            ins.str.contains("손", na=False)
-            | ins.str.contains("화재", na=False)
-            | ins.str.contains("손해", na=False)
-        )
-    )
-
-def is_kb_nonlife_series(ins: pd.Series) -> pd.Series:
-    ins = ins.astype(str).str.strip()
-
-    return (
-        ins.str.contains("KB", case=False, na=False)
-        & (
-            ins.str.contains("손", na=False)
-            | ins.str.contains("화재", na=False)
-            | ins.str.contains("손해", na=False)
-        )
-    )
-
-def is_hanwha_nonlife_series(ins: pd.Series) -> pd.Series:
-    ins = ins.astype(str).str.strip()
-
-    return (
-        ins.str.contains("한화", na=False)
-        & (
-            ins.str.contains("손", na=False)
-            | ins.str.contains("화재", na=False)
-            | ins.str.contains("손해", na=False)
-        )
-        & ~is_hanwha_life_series(ins)
-    )
-
-def is_heungkuk_nonlife_series(ins: pd.Series) -> pd.Series:
-    ins = ins.astype(str).str.strip()
-
-    return (
-        ins.str.contains("흥국", na=False)
-        & (
-            ins.str.contains("화재", na=False)
-            | ins.str.contains("손", na=False)
-            | ins.str.contains("손해", na=False)
-        )
-    )
-
 def is_special_nonlife_series(ins: pd.Series) -> pd.Series:
     """
     썸머 우대 손해보험사:
@@ -233,25 +187,6 @@ def is_special_nonlife_series(ins: pd.Series) -> pd.Series:
         | is_hanwha_nonlife_series(ins)
         | is_heungkuk_nonlife_series(ins)
     )
-
-def is_nonlife_series(ins: pd.Series) -> pd.Series:
-    ins = ins.astype(str).str.strip()
-
-    return (
-        ins.str.contains("손해|손보|화재|해상", regex=True, na=False)
-        | is_special_nonlife_series(ins)
-    )
-
-def is_life_series(ins: pd.Series) -> pd.Series:
-    ins = ins.astype(str).str.strip()
-
-    return (
-        ins.str.contains("생명", na=False)
-        | ins.str.contains("라이프", na=False)
-    )
-
-def is_other_life_series(ins: pd.Series) -> pd.Series:
-    return is_life_series(ins) & ~is_hanwha_life_series(ins)
 
 def load_df(uploaded_file) -> pd.DataFrame:
     from io import BytesIO
