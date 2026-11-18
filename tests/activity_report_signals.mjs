@@ -41,7 +41,7 @@ await migration('20261109182715_activity_report_workflow.sql');
 await db.exec('alter table sales_events add column deleted_at timestamptz');
 await migration('20261109204457_support_request_recipient.sql');
 await migration('20261111034813_activity_daily_period_sync.sql');
-await migration('20261119001000_activity_signal_targets.sql');
+await migration('20261118155101_activity_signal_targets.sql');
 
 const save = async (date, ap, base, draft, submit, help='') => {
     const detail = date === day && ap > 0;
