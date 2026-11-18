@@ -65,12 +65,18 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           node-version: 22
+      - name: Install CBT and learning DB dependencies
+        id: exam_deps
+        if: ${{ !cancelled() }}
+        run: npm ci --ignore-scripts --prefix tests/exams
       - name: CBT database and cancellation regression
         if: ${{ !cancelled() }}
         run: |
-          npm ci --ignore-scripts --prefix tests/exams
           node tests/exams/database.mjs
           python tests/exams/workspace_flow.py
+      - name: FP course and new profile after simulator retirement
+        if: ${{ !cancelled() && steps.exam_deps.outcome == 'success' }}
+        run: node tests/foundation_db.mjs
       - name: Install synthetic DB dependencies
         id: synthetic_db
         if: ${{ !cancelled() }}

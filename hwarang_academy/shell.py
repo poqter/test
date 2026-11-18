@@ -23,22 +23,23 @@ def shell(profile,permissions):
     current=st.session_state.get('_academy_surface','academy')
     with st.sidebar:
         st.markdown('### 화랑 ACADEMY')
-        st.caption('배움과 상담 연습')
+        st.caption('배움과 상담 연습' if 'academy.simulator' in permissions else '교육과 학습 기록')
         for key,label,permission in [('academy','아카데미 홈',None),('exams','보험시험 CBT','academy.assessment'),('courses','교육 과정',None),('library','교육자료실','academy.library'),('my_learning','나의 학습','academy.my_learning'),('simulator','상담 연습','academy.simulator'),('history','상담 기록','academy.simulator')]:
             if not permission or permission in permissions:
                 st.button(label,key='academy_nav_'+key,type='primary' if current==key else 'secondary',on_click=go,args=(key,),use_container_width=True)
         st.caption('Planned & Built by 박병선 팀장')
 
-def home(auth,owner,permissions,profile,credit_status):
+def home(auth,owner,permissions,profile):
     from hwarang_academy.education.ui import rpc
-    from hwarang_academy.studio.repository import Repository
     catalog = None
     def home_catalog():
         nonlocal catalog
         if catalog is None:catalog = rpc(auth,owner,'catalog') or []
         return catalog
-    st.title('오늘의 배움을 상담으로 이어가세요')
-    st.caption('교육과 상담 연습을 한곳에서 시작하세요.')
+    show_practice = 'academy.simulator' in permissions
+    st.title('오늘의 배움을 상담으로 이어가세요' if show_practice else '화랑 ACADEMY')
+    if show_practice:
+        st.caption('교육과 상담 연습을 한곳에서 시작하세요.')
     if 'academy.new_hire' in permissions:
         with st.container(border=True):
             st.subheader('FP 기초 과정 · 고객 미션')
@@ -55,7 +56,7 @@ def home(auth,owner,permissions,profile,credit_status):
             locked=blocked('fp-foundation-v2',profile)
             st.button('🔒 기능 정비 중' if locked else '새 과정 열기 →',key='onboarding_home',on_click=course_open,args=('fp-foundation-v2',),type='primary',disabled=locked)
     with st.container(key='brand_pair_wrap'):
-        left,right=st.columns(2)
+        left, right = st.columns(2) if show_practice else (st.container(), None)
         with left, st.container(key='brand_feature_learning'):
             st.subheader('나의 교육')
             try:
@@ -76,11 +77,12 @@ def home(auth,owner,permissions,profile,credit_status):
             except Exception:
                 st.warning('교육 진도를 불러오지 못했습니다.')
                 st.button('다시 확인',key='academy_home_retry')
-        with right, st.container(key='brand_feature_practice'):
-            st.subheader('상담 연습')
-            if 'academy.simulator' not in permissions:
-                st.caption('상담 연습 이용 권한이 필요합니다.')
-            else:
+        if show_practice:
+            from hwarang_academy.studio.repository import Repository
+            from modules.shared.ai_guardrails import get_training_credit_status
+
+            with right, st.container(key='brand_feature_practice'):
+                st.subheader('상담 연습')
                 try:
                     rows=Repository(auth,owner).rows() or []
                     active=next((x for x in rows if str(x.get('ended')).lower() not in ('true','1')),None)
@@ -93,6 +95,7 @@ def home(auth,owner,permissions,profile,credit_status):
                             st.session_state.pop('_studio_preview',None)
                         go('simulator');st.rerun()
                 except Exception:st.warning('상담 기록을 불러오지 못했습니다.')
+                credit_status = get_training_credit_status(auth, owner)
                 if credit_status:
                     st.caption(f'남은 크레딧 {credit_status.available_credits:,} · 음성 {credit_status.voice_available_seconds//60}분')
                 else:st.caption('이용량을 불러오지 못했습니다.')

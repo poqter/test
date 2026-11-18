@@ -1,4 +1,4 @@
-import {PGlite} from './studio_db/node_modules/@electric-sql/pglite/dist/index.js';
+import {PGlite} from './exams/node_modules/@electric-sql/pglite/dist/index.js';
 import fs from 'node:fs';
 const db=new PGlite();
 await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;
@@ -16,16 +16,29 @@ for(const n of [1,3,4,5,6,7,8,9,10,11,12,13,14,15,17,18,23,24,25,26]){
 }
 for(const n of [25,26]){const name=fs.readdirSync(root).find(x=>x.startsWith(String(n)+'_'));await db.exec(fs.readFileSync(root+'/'+name,'utf8'));}
 console.log('MIGRATION PASS; 25/26 repeat-safe');
+// Rehearse retirement only in this in-memory DB. New profiles must still
+// initialize learning and app access once the asset account tables are gone.
+await db.exec(`
+    drop trigger on_profile_created_ai_credit_account on public.profiles;
+    drop trigger on_profile_created_voice_account on public.profiles;
+    alter table public.hwarang_ai_credit_accounts rename to retired_credit_accounts;
+    alter table public.hwarang_voice_accounts rename to retired_voice_accounts;
+`);
 const owner='00000000-0000-0000-0000-000000000001', manager='00000000-0000-0000-0000-000000000002', outsider='00000000-0000-0000-0000-000000000003';
 await db.exec(`alter table auth.users disable trigger user;
 insert into auth.users(id,email) values('${owner}','owner@test.invalid'),('${manager}','manager@test.invalid'),('${outsider}','other@test.invalid');
 insert into public.profiles(id,login_id,display_name,role,is_active) values('${owner}','testowner','교육생','user',true),('${manager}','testmanager','관리자','super_admin',true),('${outsider}','testother','외부직원','user',true);
 insert into public.hwarang_app_access(user_id,app_code,is_enabled) values('${owner}','academy',true),('${manager}','academy',true),('${outsider}','academy',true) on conflict(user_id,app_code) do update set is_enabled=true;
-update public.hwarang_ai_runtime_config set service_enabled=true,text_enabled=true,voice_enabled=true,assessment_enabled=true;
+
 `);
 
 
 const assert=(await import('node:assert/strict')).default;
+const initialized = await db.query(`
+    select exists(select 1 from public.academy_learning_profiles where user_id=$1) learning,
+           exists(select 1 from public.hwarang_app_access where user_id=$1 and app_code='workspace') workspace
+`, [owner]);
+assert.deepEqual(initialized.rows[0], {learning:true, workspace:true});
 await db.exec(fs.readFileSync(root+'/20261030015818_academy_onboarding_v1.sql','utf8'));
 await db.exec(fs.readFileSync(root+'/20261114030828_academy_fp_foundation_v2.sql','utf8'));
 const reviewer='00000000-0000-0000-0000-000000000004';

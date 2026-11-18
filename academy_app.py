@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from importlib.util import find_spec
 import html
 from urllib.parse import urlsplit, urlunsplit
 
@@ -9,14 +10,8 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 from hwarang_academy.auth_service import AcademyAuthError, AcademyAuthService, SupabaseConfig
-from hwarang_academy.content import ROOT, SCENARIOS, MODES, validate_content
-from hwarang_academy.service import AppState, handle, present
 from modules.shared.external_apps import workspace_url
-from modules.shared.ai_guardrails import get_training_credit_status
-from modules.shared.academy_credit_ui import render_training_credit_strip
 from modules.shared.build_info import BUILD_ID as PLATFORM_BUILD_ID
-from hwarang_academy.history import TrainingHistory, initialize_history, save_history, public_history
-from hwarang_academy.review_export import review_html
 
 
 st.set_page_config(
@@ -26,21 +21,31 @@ st.set_page_config(
     initial_sidebar_state="auto",
 )
 
-if st.query_params.get("stability_health") == "1":
-    from hwarang_academy.studio.provider import SPEECH_BUILD
+def simulator_installed() -> bool:
+    return all(find_spec(name) is not None for name in (
+        "hwarang_academy.studio", "modules.shared.ai_guardrails", "modules.shared.academy_credit_ui",
+    ))
 
-    st.code("HWARANG_UI_RELEASE=" + PLATFORM_BUILD_ID + "\nHWARANG_STUDIO_SPEECH=" + SPEECH_BUILD)
+
+if st.query_params.get("stability_health") == "1":
+    release = "HWARANG_UI_RELEASE=" + PLATFORM_BUILD_ID
+    if simulator_installed():
+        from hwarang_academy.studio.provider import SPEECH_BUILD
+        release += "\nHWARANG_STUDIO_SPEECH=" + SPEECH_BUILD
+    st.code(release)
     st.stop()
 
 
 @lru_cache(maxsize=1)
 def component():
+    from hwarang_academy.content import ROOT
     return components.declare_component("hwarang_academy_v118", path=str(ROOT / "frontend"))
 
 
 @lru_cache(maxsize=1)
 def validate_academy_content() -> bool:
     """Validate static ACADEMY content once per process instead of every rerun."""
+    from hwarang_academy.content import validate_content
     validate_content()
     return True
 
@@ -188,22 +193,16 @@ def main() -> None:
         render_workspace_gate()
         return
 
-    validate_academy_content()
     feature_permissions = set(identity.get("feature_permissions") or ())
     viewer_profile = identity.get("profile", {}) if isinstance(identity.get("profile"), dict) else {}
     viewer_user_id = str(viewer_profile.get("id") or "")
-    credit_status = get_training_credit_status(auth, viewer_user_id) if viewer_user_id else None
-
-    independent = st.query_params.get("view") == "simulator"
+    installed = simulator_installed()
+    if not installed:
+        feature_permissions.discard("academy.simulator")
+    independent = installed and st.query_params.get("view") == "simulator"
     if independent and "academy.simulator" not in feature_permissions:
         render_workspace_gate("이 계정에는 AI 상담 시뮬레이터 이용 권한이 없습니다.")
         return
-    sid = st.query_params.get("scenario", "C07-S01")
-    mode = st.query_params.get("mode", "GUIDE")
-    if sid not in SCENARIOS:
-        sid = "C07-S01"
-    if mode not in MODES:
-        mode = "GUIDE"
 
     # Parent portal and simulator landing are separate authenticated surfaces.
     if st.session_state.get('_academy_model_owner') not in (None, viewer_user_id):
@@ -214,17 +213,18 @@ def main() -> None:
     if '_academy_surface' not in st.session_state:
         st.session_state['_academy_surface'] = 'simulator' if independent else 'academy'
 
-    from hwarang_academy.shell import shell, home, legacy_history
+    surface = st.session_state['_academy_surface']
+    learning_surfaces = ('academy', 'exams', 'courses', 'library', 'my_learning')
+    if surface not in learning_surfaces and (
+        surface not in ('simulator', 'history', 'legacy') or 'academy.simulator' not in feature_permissions
+    ):
+        st.session_state['_academy_surface'] = 'academy'
+
+    from hwarang_academy.shell import shell, home
     shell(viewer_profile,feature_permissions)
     if st.session_state.get('_academy_surface')=='academy':
-        home(auth,viewer_user_id,feature_permissions,viewer_profile,credit_status)
+        home(auth,viewer_user_id,feature_permissions,viewer_profile)
         return
-    if st.session_state.get('_academy_surface')=='simulator' and not st.session_state.get('_studio_open') and 'academy.simulator' in feature_permissions:
-        from hwarang_academy.shell import go
-        go('simulator')
-    if st.session_state.get('_academy_surface')=='history' and 'academy.simulator' in feature_permissions:
-        legacy_history(auth,viewer_user_id)
-
     if st.session_state.get('_academy_surface')=='exams':
         from hwarang_academy.exams.ui import render as render_exams
         render_exams(auth,viewer_user_id,feature_permissions,viewer_profile)
@@ -234,6 +234,29 @@ def main() -> None:
         from hwarang_academy.education.ui import render as render_learning
         render_learning(auth,viewer_user_id,feature_permissions,viewer_profile,st.session_state['_academy_surface'])
         return
+
+    from modules.shared.ai_guardrails import get_training_credit_status
+    from modules.shared.academy_credit_ui import render_training_credit_strip
+    from hwarang_academy.content import MODES, SCENARIOS
+    from hwarang_academy.history import TrainingHistory, initialize_history, save_history, public_history
+    from hwarang_academy.review_export import review_html
+    from hwarang_academy.service import AppState, handle, present
+
+    validate_academy_content()
+    credit_status = get_training_credit_status(auth, viewer_user_id) if viewer_user_id else None
+    sid = st.query_params.get("scenario", "C07-S01")
+    mode = st.query_params.get("mode", "GUIDE")
+    if sid not in SCENARIOS:
+        sid = "C07-S01"
+    if mode not in MODES:
+        mode = "GUIDE"
+
+    if st.session_state.get('_academy_surface')=='simulator' and not st.session_state.get('_studio_open') and 'academy.simulator' in feature_permissions:
+        from hwarang_academy.shell import go
+        go('simulator')
+    if st.session_state.get('_academy_surface')=='history' and 'academy.simulator' in feature_permissions:
+        from hwarang_academy.shell import legacy_history
+        legacy_history(auth,viewer_user_id)
 
     # AI Studio reuses the authenticated identity and leaves the legacy engine/history intact.
     if 'academy.simulator' in feature_permissions:

@@ -142,7 +142,7 @@ def _team(auth,owner,course,rpc):
     total=len(course['lessons']); reviews=sum(bool(l.get('mentor_required')) for l in course['lessons'])
     try: rows=rpc(auth,owner,'team',p_id=course['id']) or []
     except Exception:st.error('조직 학습 현황을 불러오지 못했습니다.');return
-    st.caption('현재 조직 연결에 따라 조회 가능한 구성원만 표시합니다. AI 상담 자유연습 기록은 이 화면에 포함하지 않습니다.')
+    st.caption('현재 조직 연결에 따라 조회 가능한 구성원만 표시합니다.')
     if not rows:st.info('조회 가능한 구성원이 없습니다.');return
     org=st.selectbox('소속',['전체']+sorted({r['organization'] for r in rows}))
     state=st.selectbox('학습 상태',['전체','검토 대기','시작 전','학습 중','수료'])

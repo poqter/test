@@ -43,7 +43,7 @@ def render(auth, owner, permissions, profile, surface):
         return
     courses=[r for r in items if r['kind']=='course' and r.get('published') and r.get('permission') in permissions]
     if surface=='my_learning':
-        st.caption('신입 공통 과정의 실습과 진도는 연결된 상위 관리자도 확인할 수 있습니다. AI 상담 기록은 시뮬레이터에서 확인하세요.')
+        st.caption('신입 공통 과정의 실습과 진도는 연결된 상위 관리자도 확인할 수 있습니다.')
         for course in courses:
             if course.get('learning_mode')=='practice':
                 from .onboarding import completion
