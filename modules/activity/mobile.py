@@ -54,8 +54,10 @@ def menu_items(db,logout,prefix):
                   type='primary' if ('활동 기록' if st.session_state.get('mobile_page')=='주간 기록' else st.session_state.get('mobile_page','캘린더'))==name else 'secondary')
     from modules.activity.view_scope import render_settings
     render_settings(prefix)
-    from modules.activity.kakao_settings import render_entry
+    from modules.activity.kakao_settings import render_admin_entry, render_entry
     render_entry(prefix)
+    auth_profile = st.session_state.get('hwarang_auth', {}).get('profile', {})
+    render_admin_entry(auth_profile.get('role') == 'super_admin', prefix)
     st.divider()
     st.html('<button type="button" class="calendar-install" style="width:100%;min-height:44px;border:1px solid #d8e1e8;border-radius:8px;background:white;color:#18334c;font:inherit;cursor:pointer">홈 화면에 설치</button>')
     from modules.activity.launch import render_workspace_return

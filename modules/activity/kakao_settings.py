@@ -508,6 +508,6 @@ def admin_dialog():
         st.error('카카오 브리핑 관리 요청을 처리하지 못했습니다. 현재 상태를 다시 확인해 주세요.')
 
 
-def render_admin_entry(is_super_admin):
-    if is_super_admin and enabled() and st.button('카카오 브리핑 관리', key='hw_kakao_admin_settings', width='stretch'):
+def render_admin_entry(is_super_admin, prefix="hw"):
+    if is_super_admin and enabled() and st.button('카카오 브리핑 관리', key=prefix + '_kakao_admin_settings', width='stretch'):
         admin_dialog()
