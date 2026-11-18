@@ -10,7 +10,7 @@ class Auth:
  def _require_super_admin(self,actor):return {'id':actor,'role':'super_admin'}
  def _request(self,method,path,**kw):
   if path == '/rest/v1/rpc/hwarang_studio_report_incidents':
-   return []
+   raise AssertionError('retired simulator was queried')
   rows=st.session_state.setdefault('test_reviews',[])
   if method=='POST':
    row=dict(id=len(rows)+1,created_at=op.now(),**kw['json']);rows.insert(0,row);return [row]

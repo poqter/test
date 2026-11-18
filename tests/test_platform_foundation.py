@@ -91,7 +91,7 @@ def test_admin_reads_do_not_cache_failure_or_cross_accounts(monkeypatch):
 def test_recovery_ui_keeps_input_and_recovers_committed_result_once():
     from streamlit.testing.v1 import AppTest
     source='''import streamlit as st
-from modules.shared import admin_assets, admin_center_ui as ui
+from modules.shared import admin_assets, simulator_admin_ui as ui
 from modules.shared.hwarang_auth import HwarangAuthError
 st.session_state['login_profile']={'id':'admin'}
 class Auth:

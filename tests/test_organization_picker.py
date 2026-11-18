@@ -55,7 +55,7 @@ class Auth:
  def _request(self,*args,**kwargs):return []
  def admin_user_snapshot(self, actor, uid):
   return dict(profile=dict(id=uid,display_name='테스트',login_id='test',role='user',is_active=True,position_code='team_leader',organization_unit_id='dream'),app_access={{'workspace':True,'academy':True,'calculator':False}},feature_permissions=['academy.practice'])
- def admin_reference_data(self, actor):return dict(organizations={ROWS!r},positions={POSITIONS!r},permissions=[dict(permission_code='academy.practice',app_code='academy',display_name='연습')])
+ def admin_reference_data(self, actor):return dict(organizations={ROWS!r},positions={POSITIONS!r},permissions=[dict(permission_code='academy.practice',app_code='academy',display_name='연습'),dict(permission_code='academy.simulator',app_code='academy',display_name='시뮬레이터')])
  def admin_apply_user_changes(self,**changes):
   st.session_state['saved']=changes
   return self.admin_user_snapshot('admin','other')

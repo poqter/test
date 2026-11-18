@@ -188,22 +188,20 @@ def render(auth,actor):
     left.caption('문제를 확인하고 필요한 요청을 정리하세요.')
     if right.button('최신 상태 조회',key='ops_refresh',use_container_width=True):
         _github.clear();_details.clear()
-        for key in ['ops_github','ops_briefing','ops_studio']:
+        for key in ['ops_github','ops_briefing']:
             if key in st.session_state:st.session_state[key]['at']=0
     github,gerr=_session_load('ops_github',_github,300)
     briefing,berr=_session_load('ops_briefing',lambda:op.briefing_overview(auth,actor))
-    studio,serr=_session_load('ops_studio',lambda:op.studio_report_overview(auth,actor))
-    sources=[('GitHub',github,gerr),('브리핑',briefing,berr),('ACADEMY 평가',studio,serr)]
+    sources=[('GitHub',github,gerr),('브리핑',briefing,berr)]
     for label,data,err in sources:
         if err:st.warning(label+' · '+err)
     collected=[(data or {}).get('collected_at') for _,data,_ in sources if (data or {}).get('collected_at')]
     st.caption('마지막 수집 기준: '+op.display_time(min(collected) if collected else None))
     with st.expander('수집 시각과 점검 범위'):
         for label,data,err in sources:st.caption(label+' 마지막 수집: '+op.display_time((data or {}).get('collected_at')))
-        st.caption('GitHub: main 최근 40회 내 워크플로별 최신 결과 · 브리핑: 최근 작업 60건/게시 기록 90건 · ACADEMY 평가: 최근 7일의 근거 검증 실패 최대 30건. 미수집 범위는 정상 판정하지 않습니다.')
+        st.caption('GitHub: main 최근 40회 내 워크플로별 최신 결과 · 브리핑: 최근 작업 60건/게시 기록 90건. 미수집 범위는 정상 판정하지 않습니다.')
     issues=[op.run_issue(r,github['history']) for r in github['runs']] if github else []
     issues+=op.briefing_issues(briefing) if briefing else []
-    issues+=op.studio_report_issues(studio) if studio else []
     if not issues:
         st.info('확인 가능한 결과가 없습니다. 수집 상태를 먼저 확인해 주세요.');return
     issues.sort(key=lambda i:({'실패':0,'확인 필요':1,'진행 중':2,'통과':3,'게시 예정':4,'정규 게시 휴무':4}.get(i['result'],1),i['title']))

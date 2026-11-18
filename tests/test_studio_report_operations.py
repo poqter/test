@@ -1,4 +1,4 @@
-from modules.shared import operations
+from modules.shared import operations, simulator_admin_ui
 
 
 def test_report_incidents_copy_only_diagnostic_fields():
@@ -13,7 +13,7 @@ def test_report_incidents_copy_only_diagnostic_fields():
         'raw_dialogue': '원본이 복사되면 안 됩니다.',
     }]}
 
-    issue, = operations.studio_report_issues(incidents)
+    issue, = simulator_admin_ui.studio_report_issues(incidents)
     request = operations.request_text([issue])
     assert '2026-11-14 12:00 KST' in request
     assert '학습자 원문과 인용 불일치' in request
