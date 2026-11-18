@@ -119,3 +119,16 @@
 - `public.admin_update_hwarang_ai_runtime(p_actor_user_id uuid, p_service_enabled boolean, p_text_enabled boolean, p_voice_enabled boolean, p_assessment_enabled boolean, p_soft_limit_percent integer, p_contact_label text, p_contact_url text)`
 - `public.get_hwarang_admin_operations_summary(p_actor_user_id uuid)`
 - `public.hwarang_reserve_briefing_request(p_date date, p_kind text)`
+
+## 전면 개편 기간의 운영 상태와 물리 삭제 순서
+
+11월 19일 변경 기준으로 운영 ACADEMY에서 계속 제공하는 기능은 WORKSPACE의 보험시험 CBT이다. 신입교육·자료실·실습·관리자 피드백은 일시 정지하고 기록을 보존한다. 상담·Credit·Voice의 실제 삭제는 별도의 후속 변경이다.
+
+| 순서 | 작업 | 다음으로 넘어가는 기준 |
+|---|---|---|
+| 1 | 사용자·관리자 상담/교육 진입을 닫고 새 상담 요청을 중지한다. 미정산 요청과 잔액·원장, 교육·시험 기준 수량을 기록한다. | 진행·미확정 요청을 정산하고 비용 이력을 보존 |
+| 2 | 현재 브리핑 스위치의 값을 보존한다. 브리핑 생성 권한을 바꾸는 관리자 화면은 스위치 한 필드만 갱신한다. | 읽기 `modules/briefing/repository.py`와 예약 `public.hwarang_reserve_briefing_request`가 동일한 값을 사용. 격리 DB에서 켜짐·꺼짐·권한·감사를 확인 |
+| 3 | 현행 `hwarang_ai_runtime_config` 행을 계속 보존하거나, 독립 브리핑 설정에 값을 이관하고 두 읽기 경로와 쓰기 경로를 함께 전환한다. | 실제 브리핑 정상 생성과 중지 상태의 생성 차단을 각각 검증한 뒤 구형 스위치 퇴역. 운영 발송 없이 격리 환경에서 장애·복구 경로 확인 |
+| 4 | CBT·신입교육 이력과 보관할 상담 이력·원장을 백업하고 복원한다. 운영 복제본에서 두 자산 발급 트리거만 분리한다. | 신규 가입·앱 접근·교육 프로필 생성, 기존 CBT 문항·응시 상태·점수 대조 |
+| 5 | 외부 호출과 자동검사를 정리한 뒤 상담 전용 집계 뷰와 RPC, 그 다음 전용 테이블을 참조 관계의 역순으로 처리한다. | `RESTRICT`로 객체별 예상 의존성을 확인하고 공통 프로필·조직·권한·감사와 브리핑에는 참조 손실이 없음을 확인 |
+| 6 | 검증한 후속 migration을 적용하고 CBT·로그인·관리자·브리핑을 재확인한다. | 기준 수량·샘플 응시 이력·브리핑 예약/조회·공유와 복원 결과를 기록하고 퇴역 완료 판정 |

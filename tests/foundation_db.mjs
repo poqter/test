@@ -16,6 +16,19 @@ for(const n of [1,3,4,5,6,7,8,9,10,11,12,13,14,15,17,18,23,24,25,26]){
 }
 for(const n of [25,26]){const name=fs.readdirSync(root).find(x=>x.startsWith(String(n)+'_'));await db.exec(fs.readFileSync(root+'/'+name,'utf8'));}
 console.log('MIGRATION PASS; 25/26 repeat-safe');
+// Verify the pause with the original signup triggers installed, then roll back
+// this fixture before the separate physical-retirement rehearsal below.
+const pauseSql = fs.readFileSync(root+"/20261118183927_pause_academy_except_cbt.sql","utf8");
+const probe = "00000000-0000-4000-8000-000000000077";
+await db.exec("begin");
+await db.exec(pauseSql);
+await db.exec("alter table auth.users disable trigger user");
+await db.query("insert into auth.users(id,email) values($1,'paused@example.invalid')",[probe]);
+await db.query("insert into public.profiles(id,login_id,display_name,role,is_active) values($1,'pauseprobe','가입 확인','user',true)",[probe]);
+const signup = await db.query(`select exists(select 1 from public.academy_learning_profiles where user_id=$1)
+    and exists(select 1 from public.hwarang_app_access where user_id=$1 and app_code='workspace') as ready`,[probe]);
+if (signup.rows[0].ready !== true) throw new Error("Paused signup did not initialize");
+await db.exec("rollback");
 // Rehearse retirement only in this in-memory DB. New profiles must still
 // initialize learning and app access once the asset account tables are gone.
 await db.exec(`
@@ -64,4 +77,22 @@ assert.equal((await db.query("select count(*)::int n from public.hwarang_learnin
 await db.exec('reset role;set role authenticated');
 await assert.rejects(()=>call(manager,'l03',0,{}),/permission denied/);
 await assert.rejects(()=>db.query('select * from public.hwarang_learning_work_events'),/permission denied/);
+// Run the final maintenance policy against real seeded course and CBT schemas.
+await db.exec("reset role");
+await db.exec(fs.readFileSync(new URL("./exams/v1_schema.sql", import.meta.url),"utf8"));
+await db.exec(pauseSql);
+await db.exec("set role service_role");
+assert.ok(Array.isArray((await db.query("select public.hwarang_exam($1,'list','{}') as catalog",[manager])).rows[0].catalog));
+const toggle = (actor,prev,next) => db.query("select public.admin_set_briefing_service_enabled($1,$2,$3) as enabled",[actor,prev,next]);
+const state = () => db.query("select service_enabled,text_enabled,voice_enabled,assessment_enabled from public.hwarang_ai_runtime_config where config_id=1");
+const initial=(await state()).rows[0].service_enabled;
+await assert.rejects(() => toggle(owner,initial,!initial), /SUPER_ADMIN_REQUIRED/);
+assert.equal((await toggle(manager,initial,!initial)).rows[0].enabled,!initial);
+await assert.rejects(() => toggle(manager,initial,!initial), /BRIEFING_STATE_CHANGED/);
+await toggle(manager,!initial,initial);
+assert.deepEqual((await state()).rows[0],{service_enabled:initial,text_enabled:false,voice_enabled:false,assessment_enabled:false});
+assert.equal((await db.query("select count(*)::int n from public.hwarang_learning_work_events where lesson_id='m1'")).rows[0].n,4);
+await db.exec("set role authenticated");
+await assert.rejects(() => db.query("select * from public.academy_sessions"), /permission denied/);
+await assert.rejects(() => toggle(manager,initial,!initial), /permission denied/);
 await db.close();console.log('PASS foundation DB: gate, grading, drafts, version conflicts, locks, resubmission, real review, audit, isolation, legacy preservation');

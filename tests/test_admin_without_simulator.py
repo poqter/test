@@ -2,10 +2,9 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 
-@pytest.mark.parametrize("page", ["dashboard", "accounts", "operations", "assets"])
+@pytest.mark.parametrize("page", ["dashboard", "accounts", "operations", "assets", "academy", "simulator_dashboard", "ai", "settings"])
 def test_retained_admin_routes_with_simulator_removed(page, monkeypatch):
-    from modules.shared import admin_center_ui, operations_ui
-    monkeypatch.setattr(admin_center_ui, "_simulator_available", lambda: False)
+    from modules.shared import operations_ui
     monkeypatch.setattr(operations_ui, "_github", lambda: dict(runs=[], commits=[], history=[]))
     source = """
 import streamlit as st
@@ -32,5 +31,31 @@ ui.render(Auth())
     paths = app.session_state['reads']
     assert paths and all(method == 'GET' for method, _ in paths)
     assert all('studio' not in path and 'asset' not in path for _, path in paths)
-    assert app.session_state['hw_admin_center_page'] == ('dashboard' if page == 'assets' else page)
+    assert app.session_state['hw_admin_center_page'] == ('dashboard' if page not in {'dashboard', 'accounts', 'operations'} else page)
     assert not any(b.label == 'Credit · Voice' for b in app.button)
+
+
+def test_briefing_switch_uses_only_the_shared_setting():
+    app = AppTest.from_string("""
+import streamlit as st
+from modules.shared import admin_center_ui as ui
+st.session_state.update(login_profile={'id':'admin','role':'super_admin'}, hw_admin_center_page='briefing_switch')
+class Auth:
+    def _require_super_admin(self, actor):
+        assert actor == 'admin'
+    def _request(self, method, path, **kwargs):
+        enabled = st.session_state.get('enabled', True)
+        if method == 'GET':
+            assert path == '/rest/v1/hwarang_ai_runtime_config'
+            return [{'service_enabled': enabled}]
+        assert path == '/rest/v1/rpc/admin_set_briefing_service_enabled'
+        assert kwargs['json'] == {'p_actor':'admin','p_expected':enabled,'p_enabled':not enabled}
+        st.session_state['enabled'] = not enabled
+        return not enabled
+ui.render(Auth())
+""").run()
+    assert not app.exception
+    app.button(key='hw_briefing_switch_True').click().run()
+    assert not app.exception and app.session_state['enabled'] is False
+    app.button(key='hw_briefing_switch_False').click().run()
+    assert not app.exception and app.session_state['enabled'] is True
