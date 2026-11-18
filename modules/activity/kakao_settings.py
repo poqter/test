@@ -1,5 +1,6 @@
 """Opt-in Kakao self-memo settings; identity and authorization remain server-owned."""
-from datetime import time
+from datetime import datetime, time
+from zoneinfo import ZoneInfo
 import hashlib
 import re
 import uuid
@@ -323,7 +324,6 @@ ADMIN_TEST_BLOCKS = {
 
 
 def _render_admin_actions(service, token, target, row, regions):
-    name = row.get('label') or '이용자'
     st.caption('카카오 연결 · ' + STATUSES.get(row.get('connection_status'), '확인 필요'))
     saved_region = row.get('weather_region_key')
     # Keep an unavailable saved region visible so opening the form cannot silently replace it.
@@ -352,18 +352,12 @@ def _render_admin_actions(service, token, target, row, regions):
                 else:
                     st.warning('다른 곳에서 설정이 변경되었습니다. 상태를 새로고침한 뒤 다시 확인해 주세요.')
 
-    st.subheader('시험 발송')
-    status = row.get('test_status')
-    if status:
-        st.caption('최근 시험 · ' + ADMIN_TEST_STATES.get(status, '확인 필요'))
-        if row.get('test_at'):
-            from datetime import datetime
-            from zoneinfo import ZoneInfo
 
-            stamp = datetime.fromisoformat(row['test_at']).astimezone(ZoneInfo('Asia/Seoul'))
-            st.caption(stamp.strftime('%Y-%m-%d %H:%M:%S') + ' · 한국 시간')
+def _render_admin_test(service, token, target, row):
+    name = row.get('label') or '이용자'
+    status = row.get('test_status')
     st.caption('선택한 이용자의 나와의 채팅으로 메시지 1건을 보냅니다.')
-    can_test = row.get('connection_status') == 'connected' and bool(saved_region) and not row.get('admin_paused')
+    can_test = row.get('connection_status') == 'connected' and bool(row.get('weather_region_key')) and not row.get('admin_paused')
     request_key = f'hw_kakao_admin_test_request_{target}'
     if st.button(f'{name}님에게 시험 메시지 보내기', disabled=not can_test or status in ('queued', 'processing', 'uncertain'), key=f'hw_kakao_admin_send_{target}'):
         request_id = st.session_state.setdefault(request_key, str(uuid.uuid4()))
@@ -376,6 +370,115 @@ def _render_admin_actions(service, token, target, row, regions):
             st.warning(ADMIN_TEST_BLOCKS.get(result.get('reason'), '시험 발송을 요청하지 못했습니다.'))
     if st.button('상태 새로고침', key='hw_kakao_admin_refresh'):
         st.rerun(scope='fragment')
+
+
+HISTORY_KINDS = {'regular': '정기', 'test': '시험', 'welcome': '첫 브리핑'}
+RECEIPT_LABELS = {'unconfirmed': '확인 전', 'delivered': '도착 확인', 'reported_missing': '미수신 신고'}
+KST = ZoneInfo('Asia/Seoul')
+
+
+def _history_time(value):
+    return datetime.fromisoformat(value).astimezone(KST) if value else None
+
+
+def _history_clock(value):
+    stamp = _history_time(value)
+    return stamp.strftime('%H:%M:%S' if stamp.second else '%H:%M') if stamp else '기록 없음'
+
+
+def _history_result(event):
+    accepted, total = event.get('accepted_parts', 0), event.get('total_parts', 0)
+    if 0 < accepted < total:
+        return f'일부 접수 · {accepted}/{total}건'
+    status = event.get('status')
+    if status == 'accepted':
+        return '카카오 접수 완료'
+    if status == 'reserved':
+        return '대기'
+    if event.get('kind') != 'regular' and not event.get('outcome'):
+        return ADMIN_TEST_STATES.get(status, outcome_label(event))
+    return outcome_label(event)
+
+
+def _history_card(event, kind):
+    st.markdown('**최근 ' + HISTORY_KINDS[kind] + ' 발송**')
+    if event is None:
+        st.caption('발송 기록 없음')
+        return
+    st.write(f"{event['day']} · {_history_result(event)}")
+    reference = _history_time(event.get('reference_at'))
+    accepted = _history_time(event.get('accepted_at'))
+    label = '예약' if kind == 'regular' else '요청'
+    timing = f"{label} {_history_clock(event.get('reference_at'))}"
+    if accepted:
+        timing += f" → 접수 {_history_clock(event['accepted_at'])}"
+        if reference and accepted >= reference:
+            seconds = int((accepted - reference).total_seconds())
+            minutes, seconds = divmod(seconds, 60)
+            elapsed = f'{minutes}분 {seconds}초' if minutes else f'{seconds}초'
+            timing += f' · {elapsed} 경과'
+    st.caption(timing)
+    st.caption('실제 수신 · ' + RECEIPT_LABELS.get(event.get('receipt'), '확인 전'))
+
+
+def _render_admin_history(service, token, target, row, history):
+    latest = {event['kind']: event for event in history if event['kind_rank'] == 1}
+    regular, test = latest.get('regular'), latest.get('test')
+    regular_col, test_col = st.columns(2)
+    with regular_col:
+        _history_card(regular, 'regular')
+    with test_col:
+        _history_card(test, 'test')
+        _render_admin_test(service, token, target, row)
+    if regular and test and regular.get('generation') is not None and test.get('generation') is not None:
+        same_connection = regular['generation'] == test['generation']
+        st.caption('최근 정기·시험 발송 · ' + ('같은 카카오 연결' if same_connection else '연결 이력이 서로 다름'))
+
+    st.subheader('최근 7일 발송 이력')
+    st.caption('한국 시간 · 실제 수신 상태는 관리자가 이용자에게 확인한 기록입니다.')
+    filters = {'all': '전체', **HISTORY_KINDS}
+    kind = st.radio('발송 유형', list(filters), format_func=filters.get, horizontal=True, key=f'hw_kakao_history_kind_{target}')
+    recent = [e for e in history if e['in_recent_period'] and (kind == 'all' or e['kind'] == kind)]
+    if not recent:
+        st.caption('선택한 유형의 최근 7일 이력이 없습니다.')
+        return
+    st.dataframe([
+        {'날짜': e['day'], '유형': HISTORY_KINDS[e['kind']],
+         '예약·요청': ('연결 후 자동' if e['kind'] == 'welcome' else _history_clock(e.get('reference_at'))),
+         '카카오 접수': _history_clock(e['accepted_at']) if e.get('accepted_at') else '—',
+         '결과': _history_result(e), '실제 수신': RECEIPT_LABELS.get(e.get('receipt'), '확인 전')}
+        for e in recent
+    ], hide_index=True)
+    with st.expander('발송 상세 · 수신 확인 기록'):
+        rows = {e['event_id']: e for e in recent}
+        event_id = st.selectbox(
+            '확인할 발송', list(rows), key=f'hw_kakao_history_event_{target}_{kind}',
+            format_func=lambda key: f"{rows[key]['day']} · {HISTORY_KINDS[rows[key]['kind']]} · "
+            f"{_history_clock(rows[key].get('reference_at'))} · {_history_result(rows[key])}",
+        )
+        event = rows[event_id]
+        st.write('처리 결과 · ' + _history_result(event))
+        if event['kind'] == 'test':
+            st.write('시험 요청자 · ' + (event.get('request_actor') or '기록 없음'))
+        connection = {True: '현재 연결과 동일', False: '현재와 연결 이력이 다름'}.get(event.get('current_connection'), '기록 없음')
+        st.write('발송 당시 카카오 연결 · ' + connection)
+        if event.get('total_parts', 0) > 1:
+            st.caption(f"카카오 접수 {event['accepted_parts']}/{event['total_parts']}건 · 표의 접수 시각은 마지막 접수 기준")
+        if event.get('receipt_at'):
+            stamp = _history_time(event['receipt_at']).strftime('%Y-%m-%d %H:%M:%S')
+            st.caption(f"최근 확인 · {event.get('receipt_actor') or '기록 없음'} · {stamp}")
+        if event.get('accepted_parts', 0) or event.get('status') == 'uncertain' or event.get('outcome') == 'outcome_uncertain':
+            receipt = event.get('receipt') or 'unconfirmed'
+            with st.form(f'hw_kakao_receipt_{target}_{event_id}_{event.get("receipt_at")}'):
+                new_receipt = st.selectbox(
+                    '실제 수신 상태', list(RECEIPT_LABELS), index=list(RECEIPT_LABELS).index(receipt),
+                    format_func=RECEIPT_LABELS.get,
+                )
+                if st.form_submit_button('수신 확인 저장') and new_receipt != receipt:
+                    rpc(service, token, 'kakao_super_admin_record_receipt', {
+                        'p_owner_id': target, 'p_kind': event['kind'], 'p_event_id': event_id, 'p_receipt': new_receipt,
+                    })
+                    st.rerun(scope='fragment')
 
 
 @st.dialog('카카오 브리핑 관리', width='large')
@@ -397,7 +500,10 @@ def admin_dialog():
             st.success('시험 발송을 요청했습니다. 실제 수신은 이용자의 나와의 채팅에서 확인해 주세요.')
         region_rows = rpc(service, token, 'kakao_weather_regions')
         regions = {None: '지역 미설정', **{r['region_key']: r['display_name'] for r in region_rows}}
-        _render_admin_actions(service, token, target, choices[target], regions)
+        history = rpc(service, token, 'kakao_super_admin_history', {'p_owner_id': target})
+        _render_admin_history(service, token, target, choices[target], history)
+        with st.expander('이용자 설정'):
+            _render_admin_actions(service, token, target, choices[target], regions)
     except HwarangAuthError:
         st.error('카카오 브리핑 관리 요청을 처리하지 못했습니다. 현재 상태를 다시 확인해 주세요.')
 
