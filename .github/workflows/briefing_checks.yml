@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    paths: ['.github/scripts/**', 'app.py', 'academy_app.py', 'calculator_app.py', 'hwarang_academy/**', 'supabase/migrations/**', 'modules/briefing/**', 'modules/shared/**', 'modules/activity/**', 'modules/calculators/**', 'modules/consultation/**', 'modules/performance/**', 'data/calculator*.json', 'FINANCIAL_CALCULATORS_CATALOG.json', 'public_reader/**', 'tests/**', 'requirements.txt', 'constraints.txt', 'STAGE1_CHANGED_FILES.json', '.github/workflows/**']
+    paths: ['.github/scripts/**', 'app.py', 'academy_app.py', 'calculator_app.py', 'hwarang_academy/**', 'supabase/migrations/**', 'modules/briefing/**', 'modules/shared/**', 'modules/shell/**', 'modules/activity/**', 'modules/calculators/**', 'modules/consultation/**', 'modules/performance/**', 'data/calculator*.json', 'FINANCIAL_CALCULATORS_CATALOG.json', 'public_reader/**', 'tests/**', 'requirements.txt', 'constraints.txt', 'STAGE1_CHANGED_FILES.json', '.github/workflows/**']
   workflow_dispatch:
 permissions:
   contents: read
@@ -41,6 +41,7 @@ jobs:
         if: ${{ !cancelled() && steps.python_setup.outcome == 'success' }}
         run: python -m pytest -q
       - name: Activity browser regression (synthetic data only)
+        if: ${{ !cancelled() && steps.browser_setup.outcome == 'success' }}
         run: python tests/activity_ui/run_checks.py
       - name: PDF editor browser regression (synthetic files only)
         run: python tests/pdf_tools/check_browser.py
@@ -65,11 +66,17 @@ jobs:
         run: |
           npm ci --ignore-scripts --prefix tests/exams
           node tests/exams/database.mjs
+          python tests/exams/workspace_flow.py
+      - name: Install synthetic DB dependencies
+        id: synthetic_db
+        if: ${{ !cancelled() }}
+        run: npm ci --ignore-scripts --prefix tests/studio_db
       - name: Academy learning authorization and persistence regression
         if: ${{ !cancelled() }}
+        run: node tests/studio_db/check.mjs
+      - name: Calendar database regression
+        if: ${{ !cancelled() && steps.synthetic_db.outcome == 'success' }}
         run: |
-          npm ci --ignore-scripts --prefix tests/studio_db
-          node tests/studio_db/check.mjs
           node tests/activity_db.mjs
           node tests/calendar_scope_sync.mjs
           node tests/calendar_scope_realtime.mjs

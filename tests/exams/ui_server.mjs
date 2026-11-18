@@ -16,6 +16,7 @@ create function private.is_org_descendant(a uuid,b uuid) returns boolean languag
 const platform=fs.readFileSync('supabase/migrations/06_Platform_Update.sql','utf8');
 await db.exec(platform.slice(platform.indexOf('create or replace function private.can_user_view('),platform.indexOf('revoke all on function private.can_user_view')));
 await db.exec(sql);await db.exec(sql);await db.exec(fs.readFileSync('supabase/operations/UPGRADE_CBT_UX_V2.sql','utf8'));await db.exec(fs.readFileSync('supabase/operations/UPGRADE_CBT_UX_V2.sql','utf8')); // repeatable schema
+await db.exec(fs.readFileSync('supabase/migrations/20261105021857_cbt_abort_attempt.sql','utf8'));
 for(const b of bank) await db.query('insert into hwarang_exam_bank(id,title,family,revision,data) values($1,$2,$3,$4,$5)',[b.id,b.title,b.family,b.revision,b.data]);
 const uid=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const orgs=[['root','총괄',null],['head_unit','본부',100],['branch','지점',101],['team','1팀',102],['team','2팀',102]];

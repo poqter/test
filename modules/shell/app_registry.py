@@ -24,6 +24,7 @@ class AppSpec:
     enabled: bool = True
     source_status: str = "legacy"
     external_app_key: str | None = None
+    home_slot: tuple[str, int] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,32 +50,33 @@ GROUPS: Final[tuple[GroupSpec, ...]] = (
 APPS: Final[tuple[AppSpec, ...]] = (
     AppSpec("sales_activity", "영업활동 관리", "performance", "일정과 일일·주간 활동 기록을 확인합니다.", ("일정","일일","주간"), "modules.activity.center", icon_key="performance", order=4, external_app_key="calendar_url", source_status="standalone"),
     AppSpec("briefing", "브리핑 센터", "briefing", "경제·보험·국내뉴스의 핵심 변화와 오늘의 Action을 확인합니다.", ("브리핑", "뉴스", "경제", "시장", "보험업계", "오늘의 이슈"), "modules.briefing.briefing_center", icon_key="official", order=5, source_status="v1.6"),
-    AppSpec("consultation_helper", "상담 질문지 제작기", "consultation", "필요한 질문을 골라 고객 맞춤 상담 질문지를 만듭니다.", ("상담", "질문지", "질문", "메모", "상담 준비", "PDF"), "modules.consultation.consultation_helper", icon_key="consultation", order=10, source_status="stage3"),
-    AppSpec("quick_calculators", "종합 계산기 센터 (88개)", "calculators", "보험·생활자금·연금·재무·세금·상속·법인 실무 계산을 한곳에서 제공합니다.", ("보험나이", "상령일", "총납입", "비상자금", "납입면제", "교육자금", "은퇴", "저축", "물가", "부채", "세금", "상속", "증여", "승계", "법인", "연금"), "modules.calculators.quick_calculators", icon_key="calculator", order=20, source_status="standalone", external_app_key="calculator_url"),
-    AppSpec("deposit_vs_shortpay", "적금 vs 단기납", "calculators", "10년 기준 적금과 단기납의 예상 결과를 비교합니다.", ("저축", "적금", "단기납", "환급"), "modules.calculators.comparison.deposit_vs_shortpay", icon_key="compare", order=30),
-    AppSpec("renewal_vs_nonrenewal", "갱신 vs 비갱신", "calculators", "보험료 변동을 반영해 장기 총납입액을 비교합니다.", ("갱신보험료", "총납입", "갱신형", "비갱신형"), "modules.calculators.comparison.renewal_vs_nonrenewal", icon_key="compare", order=40),
-    AppSpec("inheritance_tax", "상속세 계산기", "calculators", "예상 상속세와 부족한 현금성 납부재원을 계산합니다.", ("상속세", "상속", "재산", "납부재원"), "modules.calculators.tax.inheritance_tax", icon_key="tax", order=50, enabled=False),
-    AppSpec("analyzer", "보장 분석 도우미", "analysis", "보험사 보장분석 자료를 고객용 양식으로 변환합니다.", ("보장분석", "증권", "고객용", "엑셀"), "modules.consultation.analyzer", icon_key="analysis", order=60),
-    AppSpec("remodeling", "보험 리모델링", "analysis", "변경안을 비교하고 고객용 엑셀 자료를 만듭니다.", ("보험료", "변경안", "리모델링"), "modules.consultation.remodeling", icon_key="remodeling", order=70),
-    AppSpec("silson_generation_comparison", "실손보험 세대 비교", "analysis", "현재 가입 실손과 5세대 실손의 보험료와 입원 보장을 비교합니다.", ("실손", "실비", "세대", "입원"), "modules.calculators.comparison.silson_generation_comparison", icon_key="medical", order=80),
-    AppSpec("coverage_proposal", "보험 보장비교 제안 보고서", "materials", "현재 보험과 제안안을 비교하고 추천 보고서를 만듭니다.", ("보험 비교", "제안", "보장", "추천"), "modules.consultation.coverage_proposal", icon_key="compare", order=85, source_status="v1"),
-    AppSpec("comparison_builder", "고객용 비교표 제작기", "materials", "가입안별 보험료·보장을 비교하고 고객용 PDF로 전달합니다.", ("비교표", "가입안", "보험료", "PDF"), "modules.consultation.comparison_builder", icon_key="materials", order=90, source_status="stage5"),
-    AppSpec("insurance_claim_guide", "보험금 청구 가이드", "materials", "청구 항목별 필요서류를 확인하고 관련 담보를 찾습니다.", ("청구서류", "진단서", "보험금", "안내문"), "modules.consultation.insurance_claim_guide", icon_key="claim", order=100),
-    AppSpec("academy", "화랑 ACADEMY", "education", "교육·실습·평가·상담 시뮬레이션을 별도 아카데미에서 진행합니다.", ("교육", "아카데미", "실습", "상담 시뮬레이터", "신입", "평가", "인증", "성장"), "academy_app", icon_key="education", order=110, enabled=False, source_status="standalone", external_app_key="academy_url"),
-    AppSpec("image_to_pdf", "PDF·이미지 도구", "materials", "PDF와 이미지를 편집·압축하고 하나 또는 여러 파일로 저장합니다.", ("PDF", "이미지", "합치기", "분할", "압축", "ZIP", "유틸"), "modules.resources.image_to_pdf", icon_key="materials", order=106, source_status="v2"),
-    AppSpec("surgery_search", "수술명·수술종별 검색", "materials", "수술명으로 1~3종·1~5종 참고 분류를 검색합니다.", ("수술", "종수술", "수술명", "수술비", "분류"), "modules.resources.surgery_search", icon_key="medical", order=105, source_status="v1"),
-    AppSpec("insurer_portal", "원수사·공식자료 포털", "official", "보험사 전산·연락처·서식과 공식기관 자료를 찾습니다.", ("전산", "원수사", "보험사", "서식", "공공사이트", "콜센터", "포털"), "modules.resources.insurer_portal", icon_key="official", order=120, source_status="stage7"),
-    AppSpec("convention", "컨벤션 계산기", "performance", "계약 실적을 환산하고 컨벤션 달성 여부를 확인합니다.", ("실적", "달성", "컨벤션", "환산"), "modules.performance.convention", icon_key="performance", order=130),
-    AppSpec("summer", "썸머 계산기", "performance", "7·8월 업적을 반영해 썸머 업적을 계산합니다.", ("실적", "썸머", "업적", "여름"), "modules.performance.summer", icon_key="performance", order=140),
-    AppSpec("manager_results", "매니저 업적 환산", "performance", "지점 실적 환산금액을 집계합니다.", ("지점", "매니저", "조직", "환산"), "modules.performance.manager_results", icon_key="performance", order=150),
-    AppSpec("commission_calculator", "수수료 계산기", "performance", "예시표에서 상품별 수수료율을 찾아 예상 수당을 계산합니다.", ("수당", "수수료", "예시표", "수수료율"), "modules.performance.commission_calculator", icon_key="performance", order=160),
+    AppSpec("consultation_helper", "상담 질문지 제작기", "consultation", "필요한 질문을 골라 고객 맞춤 상담 질문지를 만듭니다.", ("상담", "질문지", "질문", "메모", "상담 준비", "PDF"), "modules.consultation.consultation_helper", icon_key="consultation", order=10, source_status="stage3", home_slot=("consult", 30)),
+    AppSpec("quick_calculators", "종합 계산기 센터 (88개)", "calculators", "보험·생활자금·연금·재무·세금·상속·법인 실무 계산을 한곳에서 제공합니다.", ("보험나이", "상령일", "총납입", "비상자금", "납입면제", "교육자금", "은퇴", "저축", "물가", "부채", "세금", "상속", "증여", "승계", "법인", "연금"), "modules.calculators.quick_calculators", icon_key="calculator", order=20, source_status="standalone", external_app_key="calculator_url", home_slot=("compare", 20)),
+    AppSpec("deposit_vs_shortpay", "적금 vs 단기납", "calculators", "10년 기준 적금과 단기납의 예상 결과를 비교합니다.", ("저축", "적금", "단기납", "환급"), "modules.calculators.comparison.deposit_vs_shortpay", icon_key="compare", order=30, home_slot=("compare", 30)),
+    AppSpec("renewal_vs_nonrenewal", "갱신 vs 비갱신", "calculators", "보험료 변동을 반영해 장기 총납입액을 비교합니다.", ("갱신보험료", "총납입", "갱신형", "비갱신형"), "modules.calculators.comparison.renewal_vs_nonrenewal", icon_key="compare", order=40, home_slot=("compare", 40)),
+    AppSpec("inheritance_tax", "상속세 계산기", "calculators", "예상 상속세와 부족한 현금성 납부재원을 계산합니다.", ("상속세", "상속", "재산", "납부재원"), "modules.calculators.tax.inheritance_tax", icon_key="tax", order=50, enabled=False, home_slot=("compare", 50)),
+    AppSpec("analyzer", "보장 분석 도우미", "analysis", "보험사 보장분석 자료를 고객용 양식으로 변환합니다.", ("보장분석", "증권", "고객용", "엑셀"), "modules.consultation.analyzer", icon_key="analysis", order=60, home_slot=("consult", 10)),
+    AppSpec("remodeling", "보험 리모델링", "analysis", "변경안을 비교하고 고객용 엑셀 자료를 만듭니다.", ("보험료", "변경안", "리모델링"), "modules.consultation.remodeling", icon_key="remodeling", order=70, home_slot=("consult", 20)),
+    AppSpec("silson_generation_comparison", "실손보험 세대 비교", "analysis", "현재 가입 실손과 5세대 실손의 보험료와 입원 보장을 비교합니다.", ("실손", "실비", "세대", "입원"), "modules.calculators.comparison.silson_generation_comparison", icon_key="medical", order=80, home_slot=("compare", 10)),
+    AppSpec("coverage_proposal", "보험 보장비교 제안 보고서", "materials", "현재 보험과 제안안을 비교하고 추천 보고서를 만듭니다.", ("보험 비교", "제안", "보장", "추천"), "modules.consultation.coverage_proposal", icon_key="compare", order=85, source_status="v1", home_slot=("consult", 40)),
+    AppSpec("comparison_builder", "고객용 비교표 제작기", "materials", "가입안별 보험료·보장을 비교하고 고객용 PDF로 전달합니다.", ("비교표", "가입안", "보험료", "PDF"), "modules.consultation.comparison_builder", icon_key="materials", order=90, source_status="stage5", home_slot=("consult", 50)),
+    AppSpec("insurance_claim_guide", "보험금 청구 가이드", "materials", "청구 항목별 필요서류를 확인하고 관련 담보를 찾습니다.", ("청구서류", "진단서", "보험금", "안내문"), "modules.consultation.insurance_claim_guide", icon_key="claim", order=100, home_slot=("consult", 60)),
+    AppSpec("insurance_cbt", "보험시험 CBT", "education", "모의시험 응시와 오답 복습, 응시 기록을 확인합니다.", ("시험", "CBT", "모의고사"), "hwarang_academy.exams.ui", entrypoint="run_workspace", icon_key="education", order=109, home_slot=("resources", 15)),
+    AppSpec("academy", "화랑 ACADEMY", "education", "교육·실습·평가·상담 시뮬레이션을 별도 아카데미에서 진행합니다.", ("교육", "아카데미", "실습", "상담 시뮬레이터", "신입", "평가", "인증", "성장"), "academy_app", icon_key="education", order=110, enabled=False, source_status="standalone", external_app_key="academy_url", home_slot=("resources", 20)),
+    AppSpec("image_to_pdf", "PDF·이미지 도구", "materials", "PDF와 이미지를 편집·압축하고 하나 또는 여러 파일로 저장합니다.", ("PDF", "이미지", "합치기", "분할", "압축", "ZIP", "유틸"), "modules.resources.image_to_pdf", icon_key="materials", order=106, source_status="v2", home_slot=("consult", 80)),
+    AppSpec("surgery_search", "수술명·수술종별 검색", "materials", "수술명으로 1~3종·1~5종 참고 분류를 검색합니다.", ("수술", "종수술", "수술명", "수술비", "분류"), "modules.resources.surgery_search", icon_key="medical", order=105, source_status="v1", home_slot=("consult", 70)),
+    AppSpec("insurer_portal", "원수사·공식자료 포털", "official", "보험사 전산·연락처·서식과 공식기관 자료를 찾습니다.", ("전산", "원수사", "보험사", "서식", "공공사이트", "콜센터", "포털"), "modules.resources.insurer_portal", icon_key="official", order=120, source_status="stage7", home_slot=("resources", 10)),
+    AppSpec("convention", "컨벤션 계산기", "performance", "계약 실적을 환산하고 컨벤션 달성 여부를 확인합니다.", ("실적", "달성", "컨벤션", "환산"), "modules.performance.convention", icon_key="performance", order=130, home_slot=("performance", 10)),
+    AppSpec("summer", "썸머 계산기", "performance", "7·8월 업적을 반영해 썸머 업적을 계산합니다.", ("실적", "썸머", "업적", "여름"), "modules.performance.summer", icon_key="performance", order=140, home_slot=("performance", 20)),
+    AppSpec("manager_results", "매니저 업적 환산", "performance", "지점 실적 환산금액을 집계합니다.", ("지점", "매니저", "조직", "환산"), "modules.performance.manager_results", icon_key="performance", order=150, home_slot=("performance", 30)),
+    AppSpec("commission_calculator", "수수료 계산기", "performance", "예시표에서 상품별 수수료율을 찾아 예상 수당을 계산합니다.", ("수당", "수수료", "예시표", "수수료율"), "modules.performance.commission_calculator", icon_key="performance", order=160, home_slot=("performance", 40)),
 )
 
 APP_BY_ID: Final[Mapping[str, AppSpec]] = MappingProxyType({app.id: app for app in APPS})
 APP_IDS: Final[tuple[str, ...]] = tuple(app.id for app in APPS)
 ROLES: Final[tuple[str, ...]] = ("Admin", "Manager1", "Basic", "Crew", "Dream")
 
-_ALL = frozenset(APP_IDS)
+_ALL = frozenset(APP_IDS) - {"insurance_cbt"}
 ROLE_PERMISSIONS: Final[Mapping[str, frozenset[str]]] = MappingProxyType({
     "Admin": _ALL,
     "Manager1": _ALL,
@@ -82,6 +84,11 @@ ROLE_PERMISSIONS: Final[Mapping[str, frozenset[str]]] = MappingProxyType({
     "Crew": frozenset({"image_to_pdf", "sales_activity", "briefing", "analyzer", "deposit_vs_shortpay", "renewal_vs_nonrenewal", "insurer_portal", "insurance_claim_guide", "surgery_search", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "coverage_proposal", "academy"}),
     "Dream": frozenset({"image_to_pdf", "sales_activity", "briefing", "analyzer", "remodeling", "deposit_vs_shortpay", "renewal_vs_nonrenewal", "inheritance_tax", "insurer_portal", "insurance_claim_guide", "surgery_search", "silson_generation_comparison", "convention", "summer", "quick_calculators", "consultation_helper", "comparison_builder", "coverage_proposal", "academy"}),
 })
+
+def home_tools(section: str) -> tuple[str, ...]:
+    placed = [app for app in APPS if app.home_slot and app.home_slot[0] == section]
+    return tuple(app.id for app in sorted(placed, key=lambda app: app.home_slot[1]))
+
 
 # Search aliases are static public labels only. Customer input never enters this index.
 SEARCH_ALIASES: Final[Mapping[str, tuple[str, str | None]]] = MappingProxyType({

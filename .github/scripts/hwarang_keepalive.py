@@ -24,6 +24,11 @@ APP_TARGETS = (
 )
 
 
+def scheduled_targets():
+    academy_enabled = os.getenv("ACADEMY_KEEPALIVE_ENABLED", "").strip().lower() == "true"
+    return tuple(target for target in APP_TARGETS if target.name != "ACADEMY" or academy_enabled)
+
+
 def ping_supabase() -> None:
     """Create a very small Data API read so an active Free project records activity."""
     base_url = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
@@ -58,7 +63,7 @@ def visit_streamlit_apps() -> None:
 
         failures: list[str] = []
         try:
-            for target in APP_TARGETS:
+            for target in scheduled_targets():
                 page = context.new_page()
                 try:
                     print(f"[VISIT] {target.name}: {target.url}")

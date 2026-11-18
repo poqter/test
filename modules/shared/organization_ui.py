@@ -40,7 +40,7 @@ def render():
         c1, c2 = st.columns(2)
         candidate["header_color"] = c1.color_picker("헤더 색상", profile["header_color"])
         candidate["accent_color"] = c2.color_picker("포인트 색상", profile["accent_color"])
-        options = {app.id: app.label for app in APPS if app.enabled}
+        options = {app.id: app.label for app in APPS if app.enabled and app.id != "insurance_cbt"}
         candidate["allowed_tools"] = st.multiselect("운영할 메뉴", list(options), default=profile["allowed_tools"], format_func=options.get)
         candidate["commission_default_payout_percent"] = st.number_input("수수료 기본 지급률 (%)", min_value=0.0, max_value=100.0, value=float(profile["commission_default_payout_percent"]), step=0.1, format="%.12g")
         candidate["payout_rule_label"] = st.text_input("지급 기준명", value=profile["payout_rule_label"], max_chars=100)

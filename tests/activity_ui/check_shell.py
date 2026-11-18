@@ -13,14 +13,19 @@ st.set_page_config(initial_sidebar_state="collapsed")
 workspace.inject_global_styles()
 workspace.apply_workspace_design()
 from modules.shared.brand_ui import apply
-if st.session_state.get('test_tool_view'):
+if st.session_state.get('active_app') == 'analyzer':
  st.markdown('<div class="hw-task-marker"></div>',unsafe_allow_html=True)
 else:apply()
-def change_view():st.session_state['test_tool_view']=not st.session_state.get('test_tool_view',False)
+from modules.shell.navigation import navigate
+st.session_state['ws_allowed_ids']=['analyzer']
+def change_view():
+ target='home' if st.session_state.get('active_app')=='analyzer' else 'analyzer'
+ navigate(target,state=st.session_state)
 with st.sidebar:st.button('메뉴 항목')
 from modules.shared.brand_ui import identity
 identity('WORKSPACE',{{'display_name':'Test'}})
 st.button('화면 전환',on_click=change_view)
+st.caption('ROUTE='+st.session_state.get('active_app','home'))
 st.session_state['shell_runs']=st.session_state.get('shell_runs',0)+1
 st.caption('SHELL_RUNS='+str(st.session_state['shell_runs']))
 def tool(*args,**kwargs):
@@ -72,8 +77,10 @@ workspace.render_task_content('synthetic','user',['synthetic'])
                     sidebar=page.get_by_test_id('stSidebar')
                     expect(sidebar).to_have_css('width','260px')
                     page.get_by_role('button',name='화면 전환',exact=True).click()
+                    expect(page.get_by_text('ROUTE=analyzer',exact=True)).to_be_visible()
                     expect(sidebar).to_have_css('width','260px')
                     page.get_by_role('button',name='화면 전환',exact=True).click()
+                    expect(page.get_by_text('ROUTE=home',exact=True)).to_be_visible()
                     expect(sidebar).to_have_css('width','260px')
 
                 page.get_by_test_id('stSidebarCollapseButton').locator('button').click()

@@ -27,6 +27,13 @@ def _classify(name):
     if any(x in s for x in ('통풍','당뇨','골절','화상')):return '기타 보장'
     return None
 
+MAX_COMPARISON_PAGES = 160
+
+
+class ComparisonPageLimit(ValueError):
+    pass
+
+
 def extract_pdf(data: bytes, password: str = ""):
     """Return distinct candidate rows and premium candidates with source pages.
 
@@ -34,7 +41,8 @@ def extract_pdf(data: bytes, password: str = ""):
     policy interpretation and rows require explicit human review.
     """
     with pdfplumber.open(BytesIO(data), password=password or "") as pdf:
-        if len(pdf.pages)>160:raise ValueError('PDF는 160쪽 이내로 나누어 올려 주세요.')
+        if len(pdf.pages) > MAX_COMPARISON_PAGES:
+            raise ComparisonPageLimit(f'PDF는 {MAX_COMPARISON_PAGES}쪽 이내로 나누어 올려 주세요.')
         pages=[(i+1,p.extract_text() or '') for i,p in enumerate(pdf.pages)]
     if not any(t.strip() for _,t in pages):
         return {'rows':[], 'premiums':[], 'warnings':['텍스트를 읽을 수 없는 PDF입니다. 계약정보를 직접 입력해 주세요.'], 'page_count':len(pages)}

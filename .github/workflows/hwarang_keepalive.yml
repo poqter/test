@@ -21,6 +21,7 @@ jobs:
     env:
       WORKSPACE_URL: https://hwarang-workspace.streamlit.app
       CALCULATOR_URL: https://hwarang-calculator.streamlit.app
+      ACADEMY_KEEPALIVE_ENABLED: ${{ vars.ACADEMY_KEEPALIVE_ENABLED || 'false' }}
       ACADEMY_URL: https://hwarang-academy.streamlit.app
       CALENDAR_URL: https://hwarang-calendar.streamlit.app
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

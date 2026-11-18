@@ -92,7 +92,7 @@ def active_profile(*, org_id: str | None = None, state=None, db_path: str | None
 
 def validate_profile(candidate: dict) -> dict:
     from modules.shell.app_registry import APPS
-    allowed = {app.id for app in APPS if app.enabled}
+    allowed = {app.id for app in APPS if app.enabled and app.id != "insurance_cbt"}
     out = {key: copy.deepcopy(candidate[key]) for key in (
         "effective_from", "brand_name", "header_color", "accent_color", "allowed_tools",
         "commission_default_payout_percent", "payout_rule_label") if key in candidate}
