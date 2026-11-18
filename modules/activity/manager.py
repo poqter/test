@@ -4,7 +4,8 @@ from datetime import timedelta
 import streamlit as st
 from modules.activity import ux
 
-CODES=('TA','AP','PC','CS','약속 확보')
+from modules.activity.daily import COUNTS
+from modules.activity.period_summary import daily_rows, totals
 
 def required_days(start,end,today):
     return [start+timedelta(days=i) for i in range((end-start).days+1)
@@ -19,16 +20,16 @@ def summarize(members,events,reports,contracts,tasks,start,end,today,now):
     result=[]
     for uid,member in members.items():
         own=[e for e in grouped['events'][uid] if not e.get('deleted_at')]
-        from modules.activity.period_summary import daily_rows
         daily=daily_rows(grouped['reports'][uid],start,end,{uid})
+        counts = totals(daily)
         submitted={r['day'] for r in daily}&due
         missing=[e for e in own if e['kind']!='휴무' and e['status']=='예정' and (e['day']<str(today) or e['day']==str(today) and (e.get('end_time') or e.get('start_time') or '23:59:59')<now.strftime('%H:%M:%S'))]
         support=[dict(type='event',id=e['id'],day=e['day'],text=e['help']) for e in own if e.get('help') and e['status'] not in ('취소','연기')]
         support += [dict(type='report',id=r['id'],day=r['day'],text=r['data']['help']) for r in daily if r['data'].get('help')]
         overdue=[t for t in grouped['tasks'][uid] if not t.get('scheduled') and t['due']<str(today)]
-        result.append(dict(uid=uid,name=member['label'],counts={k:sum(int(r.get('data',{}).get('counts',{}).get(k,0) or 0) for r in daily) for k in CODES},
+        result.append(dict(uid=uid,name=member['label'],counts=counts,
             submitted=len(submitted),required=len(due),unsubmitted=len(due-submitted),missing=len(missing),help=len(support),late=len(overdue),
-            contracts=sum(int(r.get('data',{}).get('counts',{}).get('청약',0) or 0) for r in daily),support=support,tasks=overdue))
+            contracts=counts['청약'],support=support,tasks=overdue))
     return result
 
 def registration_summary(db,today,members):
@@ -103,7 +104,7 @@ def render(db,today):
             st.session_state['manager_status_v2']='전체'
         st.button('필터 초기화',on_click=reset)
     if not visible:return
-    from modules.activity.period_summary import table, totals, daily_rows
+    from modules.activity.period_summary import table
     display_members={r['uid']:members[r['uid']] for r in visible}
     ui.counts(totals(daily_rows(reports,start,end,display_members)))
     view=st.segmented_control('집계 보기',['일자별','직원별'],default='일자별',required=True,key='manager_table_mode')
@@ -136,25 +137,28 @@ def render(db,today):
         visible=visible[(page-1)*25:page*25]
     mobile=ux.compact()
     left,right=st.columns([1.5,1]) if not mobile else (st.container(),None)
+    metric_widths = {'약속 확보': 0.9, '청약': 0.8}
+    column_widths = [2, 1.4, *(metric_widths.get(key, 0.6) for key in COUNTS), 2.2]
     with left,st.container(key='manager_table'):
-        if not ux.compact():
-            cols=st.columns([2,1.4,0.6,0.6,0.6,0.6,0.9,0.8,2.2])
-            for col,label in zip(cols,['직원','기록 제출',*CODES,'청약','확인할 사항']):col.markdown('**'+label+'**')
+        if not mobile:
+            cols=st.columns(column_widths)
+            for col,label in zip(cols,['직원','기록 제출',*COUNTS,'확인할 사항']):col.markdown('**'+label+'**')
         for r in visible:
             flags=' · '.join(f'{label} {r[field]}' for label,field in filters[:3] if r[field]) or '없음'
             submission=('제출' if r['submitted'] else '미제출') if start==end and r['required'] else f"{r['submitted']}/{r['required']}일 제출" if r['required'] else '예정'
             with st.container(key='manager_row_'+r['uid']):
-                if ux.compact():
+                values = [str(r['counts'][key]) + ('건' if key == '청약' else '') for key in COUNTS]
+                if mobile:
                     if st.button(r['name']+' ›',key='member_open_'+r['uid'],width='stretch'):
                         select(r['uid']);ux.navigate({'type':'member','uid':r['uid'],'day':str(day),'period':'일일' if period=='일일' else '주간','range_start':str(start),'range_end':str(end)})
-                    st.caption(submission+' · '+' · '.join(f'{k} {r["counts"][k]}' for k in CODES)+f' · 청약 {r["contracts"]}건')
+                    st.caption(submission+' · '+' · '.join(f'{key} {value}' for key, value in zip(COUNTS, values)))
                     st.caption(flags)
                 else:
-                    cols=st.columns([2,1.4,0.6,0.6,0.6,0.6,0.9,0.8,2.2],vertical_alignment='center')
+                    cols=st.columns(column_widths,vertical_alignment='center')
                     cols[0].button(r['name'],key='member_open_'+r['uid'],width='stretch',on_click=select,args=(r['uid'],),type='primary' if r['uid']==selected else 'secondary')
                     cols[1].write(submission)
-                    for col,k in zip(cols[2:7],CODES):col.write(str(r['counts'][k]))
-                    cols[7].write(f'{r["contracts"]}건');cols[8].caption(flags)
+                    for col, value in zip(cols[2:-1], values):col.write(value)
+                    cols[-1].caption(flags)
     if right is not None:
         with right,st.container(key='manager_detail'):
             ui.navigation(ids,selected,'manager_nav_')

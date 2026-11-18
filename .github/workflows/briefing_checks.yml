@@ -79,6 +79,9 @@ jobs:
           node tests/calendar_result_save.mjs
           node tests/calendar_runtime.mjs
           node tests/calendar_search.mjs
+      - name: Daily record signals and manager totals
+        if: ${{ !cancelled() }}
+        run: python tests/check_activity_signal_totals.py
       - name: Kakao opt-in notification security regression
         if: ${{ !cancelled() }}
         run: node --test tests/kakao_multi*.test.mjs
