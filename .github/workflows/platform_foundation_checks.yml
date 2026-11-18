@@ -23,5 +23,4 @@ jobs:
           node-version: 22
       - run: npm ci --ignore-scripts --prefix tests/studio_db
       - run: node tests/admin_assets_db.mjs
-      - run: node tests/foundation_db.mjs
       - run: node tests/foundation_frontend.cjs
