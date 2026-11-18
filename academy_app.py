@@ -171,6 +171,12 @@ def _consume_workspace_launch(auth: AcademyAuthService) -> dict | None:
 
 
 def main() -> None:
+    from modules.shell.app_registry import APP_BY_ID
+
+    if not APP_BY_ID["academy"].enabled:
+        st.info("화랑 ACADEMY는 현재 비공개입니다.")
+        return
+
     try:
         auth = auth_service()
     except AcademyAuthError as exc:
