@@ -308,3 +308,100 @@ def settings_dialog():
 def render_entry(prefix):
     if enabled() and st.button('카카오 브리핑', key=prefix + '_kakao_settings', width='stretch'):
         settings_dialog()
+
+
+ADMIN_TEST_STATES = {
+    'queued': '대기 중', 'processing': '발송 중', 'accepted': '카카오 접수 완료',
+    'failed': '미발송', 'expired': '요청 만료', 'uncertain': '결과 확인 필요',
+}
+ADMIN_TEST_BLOCKS = {
+    'service_unavailable': '현재 발송 서비스가 중지되어 있습니다.',
+    'connection_unavailable': '이용자의 연결 상태, 날씨 지역 또는 일시중지 설정을 확인해 주세요.',
+    'previous_request_pending': '처리 중이거나 결과 확인이 필요한 시험 요청이 있습니다.',
+    'function_budget': '현재 시험 발송 사용량 한도에 도달했습니다.',
+}
+
+
+def _render_admin_actions(service, token, target, row, regions):
+    name = row.get('label') or '이용자'
+    st.caption('카카오 연결 · ' + STATUSES.get(row.get('connection_status'), '확인 필요'))
+    saved_region = row.get('weather_region_key')
+    # Keep an unavailable saved region visible so opening the form cannot silently replace it.
+    if saved_region and saved_region not in regions:
+        regions = {**regions, saved_region: '현재 저장된 지역 · 사용 불가'}
+    version = str(row.get('updated_at') or '')
+    with st.form(f'kakao_admin_preferences_{target}_{version}'):
+        active = st.toggle('정기 브리핑 받기', value=bool(row.get('enabled')))
+        time_value = st.time_input('받을 시간 · 한국 시간', value=_local_time(row.get('time')), step=60)
+        days = st.multiselect('받을 요일', list(DAYS), default=[d for d in row.get('days', []) if d in DAYS], format_func=DAYS.get)
+        region = st.selectbox('브리핑 날씨 지역', list(regions), index=list(regions).index(saved_region), format_func=regions.get)
+        empty = st.checkbox('일정이 없는 날에도 받기', value=bool(row.get('send_empty')))
+        paused = st.checkbox('관리자 일시중지', value=bool(row.get('admin_paused')))
+        if st.form_submit_button('설정 저장', type='primary'):
+            if not days or (active and not region):
+                st.error('받을 요일과 정기 발송에 필요한 날씨 지역을 확인해 주세요.')
+            else:
+                result = rpc(service, token, 'kakao_super_admin_save', {
+                    'p_owner_id': target, 'p_expected_updated_at': version, 'p_enabled': active,
+                    'p_time': time_value.strftime('%H:%M'), 'p_days': days, 'p_send_empty': empty,
+                    'p_region_key': region, 'p_admin_paused': paused,
+                })
+                if result is True:
+                    st.session_state['hw_kakao_admin_saved'] = target
+                    st.rerun(scope='fragment')
+                else:
+                    st.warning('다른 곳에서 설정이 변경되었습니다. 상태를 새로고침한 뒤 다시 확인해 주세요.')
+
+    st.subheader('시험 발송')
+    status = row.get('test_status')
+    if status:
+        st.caption('최근 시험 · ' + ADMIN_TEST_STATES.get(status, '확인 필요'))
+        if row.get('test_at'):
+            from datetime import datetime
+            from zoneinfo import ZoneInfo
+
+            stamp = datetime.fromisoformat(row['test_at']).astimezone(ZoneInfo('Asia/Seoul'))
+            st.caption(stamp.strftime('%Y-%m-%d %H:%M:%S') + ' · 한국 시간')
+    st.caption('선택한 이용자의 나와의 채팅으로 메시지 1건을 보냅니다.')
+    can_test = row.get('connection_status') == 'connected' and bool(saved_region) and not row.get('admin_paused')
+    request_key = f'hw_kakao_admin_test_request_{target}'
+    if st.button(f'{name}님에게 시험 메시지 보내기', disabled=not can_test or status in ('queued', 'processing', 'uncertain'), key=f'hw_kakao_admin_send_{target}'):
+        request_id = st.session_state.setdefault(request_key, str(uuid.uuid4()))
+        result = rpc(service, token, 'kakao_super_admin_test', {'p_owner_id': target, 'p_request_id': request_id})
+        if isinstance(result, dict):
+            if result.get('id'):
+                st.session_state.pop(request_key, None)
+                st.session_state['hw_kakao_admin_test_requested'] = target
+                st.rerun(scope='fragment')
+            st.warning(ADMIN_TEST_BLOCKS.get(result.get('reason'), '시험 발송을 요청하지 못했습니다.'))
+    if st.button('상태 새로고침', key='hw_kakao_admin_refresh'):
+        st.rerun(scope='fragment')
+
+
+@st.dialog('카카오 브리핑 관리', width='large')
+def admin_dialog():
+    try:
+        service, token = client()
+        rows = rpc(service, token, 'kakao_super_admin_list')
+        if not rows:
+            st.info('저장된 브리핑 설정이 있는 이용자가 없습니다.')
+            return
+        choices = {str(row['owner_id']): row for row in rows}
+        target = st.selectbox(
+            '관리할 이용자', list(choices), key='hw_kakao_admin_owner',
+            format_func=lambda owner: f"{choices[owner]['label']} ({choices[owner]['login_id']})",
+        )
+        if st.session_state.pop('hw_kakao_admin_saved', None) == target:
+            st.success('이용자의 브리핑 설정을 저장했습니다.')
+        if st.session_state.pop('hw_kakao_admin_test_requested', None) == target:
+            st.success('시험 발송을 요청했습니다. 실제 수신은 이용자의 나와의 채팅에서 확인해 주세요.')
+        region_rows = rpc(service, token, 'kakao_weather_regions')
+        regions = {None: '지역 미설정', **{r['region_key']: r['display_name'] for r in region_rows}}
+        _render_admin_actions(service, token, target, choices[target], regions)
+    except HwarangAuthError:
+        st.error('카카오 브리핑 관리 요청을 처리하지 못했습니다. 현재 상태를 다시 확인해 주세요.')
+
+
+def render_admin_entry(is_super_admin):
+    if is_super_admin and enabled() and st.button('카카오 브리핑 관리', key='hw_kakao_admin_settings', width='stretch'):
+        admin_dialog()

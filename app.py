@@ -504,8 +504,9 @@ def main() -> None:
         if active == "sales_activity":
             from modules.activity.view_scope import render_settings
             render_settings("workspace")
-            from modules.activity.kakao_settings import render_entry as render_kakao_entry
+            from modules.activity.kakao_settings import render_admin_entry, render_entry as render_kakao_entry
             render_kakao_entry("workspace")
+            render_admin_entry(is_super_admin)
         if st.button("내 계정 · 비밀번호 변경", key="hw_my_account", use_container_width=True):
             account_dialog(auth)
         st.caption("버전 " + BUILD_ID)
