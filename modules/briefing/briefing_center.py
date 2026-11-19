@@ -7,7 +7,7 @@ from typing import Callable
 import streamlit as st
 from .repository import BriefingRepository, BriefingRepositoryError
 from .runtime import PROFILE_LABELS, body_quality_ready
-from .public_body import customer_body, staff_body, public_html, public_pdf
+from .public_body import customer_body, staff_body
 from .display import render_body, stamp
 from .diagnostics import build_info, failure_diagnostic
 from .scheduler import generate_group
@@ -212,17 +212,7 @@ def _combined_sharing(repo, selected_day=None, *, use_cache=False):
                 packet = shared['packet']; sender = packet['sender']
                 st.caption('아래 문구의 복사 버튼으로 링크까지 복사한 뒤 카카오톡·문자에 붙여넣으세요.')
                 st.code(f"{sender['name']} {sender['position']}이 전하는 오늘의 브리핑\n{day} · 소식 {len(packet['body']['issues'])}개\n{url}", language=None)
-                a,b = st.columns(2)
-                a.link_button('고객 화면 열기', url, use_container_width=True)
-                pdf_key = 'share_pdf_'+shared['token']
-                if b.button('고객 PDF 준비', key=key+'_prepare_pdf', use_container_width=True):
-                    try:
-                        st.session_state[pdf_key] = public_pdf(packet)
-                    except Exception:
-                        st.warning('PDF를 준비하지 못했습니다. 다시 시도해 주세요.')
-                if pdf_key in st.session_state:
-                    b.download_button('고객 PDF 저장', st.session_state[pdf_key], mime='application/pdf',
-                        file_name=f'hwarang_briefing_{day}.pdf', key=key+'_pdf', use_container_width=True)
+                st.link_button('고객 화면 열기', url, use_container_width=True)
                 if st.button('이 공유 링크 취소', key=key+'_revoke'):
                     try:
                         repo.revoke_share(shared['token'],uid)

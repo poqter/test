@@ -4,7 +4,7 @@
   "briefing_code_sha256": {
     "__init__.py": "66c4884dd2d46a2e672f3dc686c8c53e1cbfc0ff7af3a3ee7917ef0b6e90ad47",
     "api_errors.py": "20ca68aa829159e97f59d18b429b36fb588dfde1ae3d78f35ef5d5d6b108b7dd",
-    "briefing_center.py": "09cb8b09a9f01101f1128519349f9c6ce249a62a1dd9f925faac3f51c741c203",
+    "briefing_center.py": "7110d5a44f1997169aebe89b8fa245753ad57e67b8c11e08ac65d44896bf2968",
     "business_calendar.py": "d65fbee6e2102e2d4cd60c11979b3cfba4255971d8c0e4d291f41112731b8dd9",
     "checkpoints.py": "0dab7e7c2cf62f597c33f3c5658a3cad5c1053760fa26c97cafbf2297dc1fd3c",
     "clustering.py": "4a34591a00905fbd299d1f7c1bcfeaa5b3fd87380c43b3a50269cdbb155f356a",
@@ -27,7 +27,7 @@
     "normalize.py": "8c6ee011704e83a3ccf06dc3de55b0d7d4bb349eaf3f3b679c94da9481a12e3d",
     "openai_analysis.py": "67c7e7f344262bea638238ef48c51569a00cc25a508afd8c21a7bdca5f230918",
     "openai_discovery.py": "74976818d5561021cbaa6742b7880489162b0a768fa5de799d3b5505b39c5394",
-    "operations_ui.py": "82aa6996ed22740a0209ff1885a97a96e5ad67d8b0b1959e97dc3edd9924389f",
+    "operations_ui.py": "16efa6626732ac4c6369778a6ba180cd0d6784c5a3c30d1fd0966164b34ffbe7",
     "phase_b.py": "66951a822e3bee6d53a00d81fcd02a4eeec5e16e48c64104bb7b0f02c90d2475",
     "phase_c.py": "f919869246c972b005a3039d7f9b34f34e330a97f4e13c61ca78fc9f78ce8b2a",
     "preflight.py": "d13d780bb60e8f1726230a01d87ae535bf5c02bda9f2545fd373ede6b06d4273",

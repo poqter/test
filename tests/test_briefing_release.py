@@ -116,7 +116,7 @@ def test_article_market_publish_has_no_daily_manual_approval():
     repo.publish_revision.assert_called_once_with('MARKET','rev-MARKET')
 
 
-def test_combined_share_button_and_pdf_work_without_ai(monkeypatch):
+def test_combined_share_offers_customer_link_without_pdf_or_ai(monkeypatch):
     import modules.briefing.briefing_center as center
     saved=[bundle(code) for code in ('MARKET','NEWS','INSURANCE')]
     packet=build_combined_packet(saved,{'name':'검수用 이름','position':'팀장'},'https://example.org','x'*43)
@@ -138,8 +138,13 @@ _combined_sharing(_repo())
     assert not button.disabled
     button.click().run()
     assert not app.exception and not app.get('download_button')
-    next(b for b in app.button if b.label=='고객 PDF 준비').click().run()
-    assert not app.exception and app.get('download_button')
+    assert '고객 PDF 준비' not in [b.label for b in app.button]
+    reader, = app.get('link_button')
+    assert reader.proto.label == '고객 화면 열기'
+    assert reader.proto.url == 'https://example.org?token=' + 'x' * 43
+    next(b for b in app.button if b.label=='이 공유 링크 취소').click().run()
+    repo.revoke_share.assert_called_once_with('x'*43, 'synthetic')
+    assert not app.exception and not app.get('link_button')
     repo.create_combined_share.assert_called_once()
     repo.reserve_request.assert_not_called()
 

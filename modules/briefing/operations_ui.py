@@ -109,7 +109,7 @@ def render_correction(repo,bundle):
     content=(bundle['snapshot'].get('content_payload') or {});issues=(content.get('issues') or [])+(content.get('important_updates') or [])
     if bundle['revision'].get('publication_status')!='published' or not issues:return
     with st.expander('공개 문구 정정 · AI 호출 없음'):
-        st.caption('정정은 새 판으로 저장됩니다. 원래 출처·지표·수집 기준은 유지하며 기존 공유 링크의 본문과 PDF를 함께 갱신합니다. 카카오톡에 이미 저장된 미리보기 이미지는 즉시 바뀌지 않을 수 있습니다.')
+        st.caption('정정은 새 판으로 저장됩니다. 원래 출처·지표·수집 기준은 유지됩니다. 정정한 내용을 보내려면 새 판에서 공유 링크를 만드세요. 카카오톡에 이미 저장된 미리보기 이미지는 즉시 바뀌지 않을 수 있습니다.')
         chosen=st.selectbox('정정할 소식',range(len(issues)),format_func=lambda i:issues[i]['title'],key='correct_select_'+bundle['revision']['id'])
         row=issues[chosen]
         with st.form('correct_'+bundle['revision']['id']+'_'+str(chosen)):
@@ -136,7 +136,7 @@ def render_important_update(repo, bundle):
     with st.expander('주말 긴급 공지 추가' if weekend else '중요 공식 발표 추가 · 필요할 때만'):
         if weekend:
             st.caption('월요일 오전 8시 전에 조치가 필요한 소관 기관·보험사의 공식 공지만 추가합니다. 정규판 게시일은 유지합니다.')
-        st.caption('새 공식 발표를 확인한 관리자가 추가합니다. 정규 기사와 별도로 표시하며, 공유 링크와 최신 PDF에 반영합니다. AI 호출은 없습니다.')
+        st.caption('새 공식 발표를 확인한 관리자가 추가합니다. 정규 기사와 별도로 표시합니다. 추가한 내용을 보내려면 새 판에서 공유 링크를 만드세요. AI 호출은 없습니다.')
         code=bundle['briefing']['profile_code']
         from .profile_rules import PROFILE_RULES
         with st.form('important_update_'+bundle['revision']['id']):
