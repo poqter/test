@@ -32,9 +32,9 @@ if (signup.rows[0].ready !== true) throw new Error("Paused signup did not initia
 await db.exec("rollback");
 // Rehearse retirement only in this in-memory DB. New profiles must still
 // initialize learning and app access once the asset account tables are gone.
+const detachAssets = fs.readFileSync(root + '/20261119184030_detach_signup_asset_triggers.sql', 'utf8');
+await db.exec(detachAssets);
 await db.exec(`
-    drop trigger on_profile_created_ai_credit_account on public.profiles;
-    drop trigger on_profile_created_voice_account on public.profiles;
     alter table public.hwarang_ai_credit_accounts rename to retired_credit_accounts;
     alter table public.hwarang_voice_accounts rename to retired_voice_accounts;
 `);
