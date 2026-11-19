@@ -35,7 +35,7 @@ ui.render(Auth())
     assert not any(b.label == 'Credit · Voice' for b in app.button)
 
 
-def test_briefing_switch_uses_only_the_shared_setting():
+def test_briefing_switch_uses_briefing_policy():
     app = AppTest.from_string("""
 import streamlit as st
 from modules.shared import admin_center_ui as ui
@@ -46,8 +46,9 @@ class Auth:
     def _request(self, method, path, **kwargs):
         enabled = st.session_state.get('enabled', True)
         if method == 'GET':
-            assert path == '/rest/v1/hwarang_ai_runtime_config'
-            return [{'service_enabled': enabled}]
+            assert path == '/rest/v1/hwarang_briefing_operating_policy'
+            assert kwargs['params'] == {'select':'generation_enabled','policy_key':'eq.WORKSPACE'}
+            return [{'generation_enabled': enabled}]
         assert path == '/rest/v1/rpc/admin_set_briefing_service_enabled'
         assert kwargs['json'] == {'p_actor':'admin','p_expected':enabled,'p_enabled':not enabled}
         st.session_state['enabled'] = not enabled

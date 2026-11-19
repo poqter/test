@@ -28,7 +28,7 @@ def render_operations(repo):
             st.warning('자동 정리 상태를 불러오지 못했습니다.')
     with st.expander('실행 이력 · 상세 오류 · 비용'):
         try:
-            enabled=repo.ai_generation_enabled();st.info('전체 AI: '+('켜짐' if enabled else '꺼짐 · 유료 브리핑 생성 중단'))
+            enabled=repo.ai_generation_enabled();st.info('새 브리핑 생성 ' + ('허용' if enabled else '중지'))
             status=repo.operation_status(day)
             if status['runs']:st.dataframe(status['runs'],hide_index=True,use_container_width=True)
             else:st.warning('최근 7일 브리핑 예약 실행 기록이 없습니다. GitHub Actions의 HWARANG Daily Briefing 활성화와 Secrets 설정을 확인해 주세요.')

@@ -299,12 +299,12 @@ def _cached_reference_data(auth: HwarangAuthService, actor_id: str) -> dict[str,
 
 
 def _render_briefing_switch(auth, actor_id):
-    rows = _safe_rows(auth, "/rest/v1/hwarang_ai_runtime_config",
-                      params={"select": "service_enabled", "config_id": "eq.1"})
-    if len(rows) != 1 or not isinstance(rows[0].get("service_enabled"), bool):
+    rows = _safe_rows(auth, "/rest/v1/hwarang_briefing_operating_policy",
+                      params={"select": "generation_enabled", "policy_key": "eq.WORKSPACE"})
+    if len(rows) != 1 or not isinstance(rows[0].get("generation_enabled"), bool):
         st.error("브리핑 생성 설정을 확인할 수 없습니다.")
         return
-    enabled = rows[0]["service_enabled"]
+    enabled = rows[0]["generation_enabled"]
     st.write("현재 새 브리핑 생성이 " + ("허용됩니다." if enabled else "중지되어 있습니다."))
     st.caption("이미 공개한 브리핑의 조회와 공유는 계속 이용할 수 있습니다.")
     # The button key ties the intent to the displayed state on concurrent edits.

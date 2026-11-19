@@ -380,7 +380,7 @@ def _render_generate_panel(repo):
     disabled = before_cutoff or not preflight_ready(checks) or not repo.ai_generation_enabled()
     st.caption('수집 마감 · '+'07:30'+' KST. 이후 발행된 뉴스는 다음 아침 브리핑에 포함됩니다.')
     if not repo.ai_generation_enabled():
-        st.warning('전체 AI가 꺼져 있습니다. 관리자센터에서 전체 AI 서비스를 켜면 생성할 수 있습니다.')
+        st.warning('관리자센터의 브리핑 생성 설정에서 새 브리핑 생성을 재개할 수 있습니다.')
     if before_cutoff:
         st.info('오늘 수집 마감 시각 이후에 생성할 수 있습니다.')
     if retry:

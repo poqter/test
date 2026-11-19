@@ -510,7 +510,7 @@ def generate_and_store_briefings(
     repo = repository or BriefingRepository()
     profiles = {str(row.get("profile_code")): row for row in repo.profiles()}
     if not repo.ai_generation_enabled():
-        raise BriefingRunError('플랫폼 AI 서비스가 꺼져 있습니다. 유료 생성은 시작하지 않았습니다.')
+        raise BriefingRunError('관리자센터에서 새 브리핑 생성을 중지했습니다.')
     requested = tuple(code for code in profile_codes if code in profiles and bool(profiles[code].get("is_enabled", True)))
     if not requested:
         raise BriefingRunError("활성화된 브리핑 Profile이 없습니다")
