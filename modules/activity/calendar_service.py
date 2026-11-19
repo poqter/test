@@ -213,11 +213,44 @@ def save_event(db,a):
         key=rows[0]['id']
     return {'id':key,'day':str(day)}
 
+def empty_day_state(db):
+    today=str(datetime.now(KST).date())
+    rows=db.request('POST','rpc/sales_calendar_days',body={'first_day':today,'last_day':today})
+    active=[r for r in rows if r['day']==today and not r.get('common')
+            and db.uid in (r['owner'],r.get('companion'))
+            and not r.get('deleted_at') and r['status'] not in ('취소','연기')]
+    confirmed=bool(db.request('GET','sales_empty_days',{'owner':'eq.'+db.uid,'day':'eq.'+today,'select':'owner'}))
+    return {'day':today,'confirmed':confirmed,'has_events':bool(active)}
+
+
+def save_empty_day(db,args):
+    state=empty_day_state(db)
+    if args.get('day')!=state['day']:
+        raise ValueError('날짜가 변경됐습니다. 오늘 일정 없음 화면을 다시 열어 주세요.')
+    confirmed=args.get('confirmed')
+    if type(confirmed) is not bool:
+        raise ValueError('일정 없음 등록 여부를 확인해 주세요.')
+    if confirmed and state['has_events']:
+        raise ValueError('오늘 개인 일정 또는 휴무가 등록되어 있습니다. 기존 일정을 확인해 주세요.')
+    params={'owner':'eq.'+db.uid,'day':'eq.'+state['day']}
+    if confirmed:
+        db.request('POST','sales_empty_days',body={'day':state['day']},prefer='resolution=ignore-duplicates')
+    else:
+        db.request('DELETE','sales_empty_days',params)
+    db._reads.clear()
+    current=empty_day_state(db)
+    if current['day']!=state['day'] or current['confirmed']!=confirmed:
+        raise HwarangAuthError('저장 결과를 확인하지 못했습니다. 상태를 다시 확인해 주세요.')
+    return current
+
+
 def command(db,op,a):
     if op=="support_recipients":
         from modules.activity.support_request import recipients
         return recipients(db)
     db._reads.clear()
+    if op=='empty_day':return empty_day_state(db)
+    if op=='save_empty_day':return save_empty_day(db,a)
     if op=='load':return snapshot(db,a)
     if op=='detail':return detail(db,a['id'],bool(a.get('lazy_contracts')))
     if op=='detail_contracts':return contract_rows(db,event(db,a['id'],own=True))

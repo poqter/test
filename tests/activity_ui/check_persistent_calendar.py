@@ -26,6 +26,13 @@ try:
      page.screenshot(path='/tmp/calendar-failure.png');print('GEOMETRY',iframe.bounding_box(),f.evaluate('({inner:innerHeight,frame:lastFrameHeight,body:document.body.getBoundingClientRect().toJSON(),panel:calendarPanel?.getBoundingClientRect().toJSON(),client:calendarPanel?.clientHeight,scroll:calendarPanel?.scrollHeight,scrollTop:calendarPanel?.scrollTop})'),flush=True);raise
    def backdrop():
     box=iframe.bounding_box();page.mouse.click(box['x']+2,box['y']+2)
+   click('＋ 일정 등록');f.get_by_label('일정명',exact=True).fill('일정 없음 전환 후 보존')
+   click('오늘 일정 없음');expect(f.get_by_role('dialog',name='오늘 일정 없음',exact=True)).to_be_visible()
+   click('오늘 일정 없음 등록');expect(f.get_by_role('button',name='일정 없음 등록 취소',exact=True)).to_be_visible()
+   expect(f.get_by_text('등록했습니다. 같은 날짜에 일정이나 휴무를 추가하면 자동 해제됩니다.',exact=True)).to_be_visible()
+   click('일정 없음 등록 취소');expect(f.get_by_text('등록을 취소했습니다.',exact=True)).to_be_visible()
+   click('일정 입력으로 돌아가기');expect(f.get_by_label('일정명',exact=True)).to_have_value('일정 없음 전환 후 보존')
+   click('팝업 닫기');click('저장하지 않고 닫기')
    click('＋ 일정 등록');expect(f.get_by_role('dialog')).to_be_visible();expect(f.get_by_label('일정명',exact=True)).to_be_focused()
    f.evaluate("async () => {await Promise.all(calendarPanel.getAnimations().map(a=>a.finished.catch(()=>{})))}")
    geometry=f.evaluate("({b:calendarPanel.getBoundingClientRect().toJSON(),w:innerWidth,h:innerHeight})")

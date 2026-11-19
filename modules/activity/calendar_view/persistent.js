@@ -359,6 +359,27 @@ function wireCalendarDrop(box,day){
  box.ondragleave=e=>e.currentTarget.classList.remove('drop-target');
  box.ondrop=e=>{e.preventDefault();e.currentTarget.classList.remove('drop-target');const item=calendarDrag;calendarDrag=null;suppressClickUntil=Date.now()+450;if(item)moveCalendarEvent(item,day)};
 }
+async function openEmptyDay(returnDay){
+ const body=createPanel('오늘 일정 없음'),panel=calendarPanel,form=el('form');body.append(form);form.onsubmit=e=>e.preventDefault();
+ const status=el('p','오늘 등록 상태를 확인하는 중…','hint'),error=feedback(form),actions=el('div','','editor-actions');
+ form.prepend(status);form.append(actions);
+ const owner=calendarBoot.uid,access=calendarBoot.access;
+ const current=()=>panel===calendarPanel&&panel.open&&owner===calendarBoot.uid&&access===calendarBoot.access;
+ const paint=state=>{
+  if(!current())return;
+  status.textContent=state.day+' · '+(state.confirmed?'일정 없음으로 등록되어 있습니다.':state.has_events?'오늘 개인 일정 또는 휴무가 등록되어 있습니다.':'아직 일정 없음으로 등록하지 않았습니다.');
+  actions.replaceChildren();
+  const back=button('일정 입력으로 돌아가기',()=>openEditor(null,'new',returnDay));
+  const save=button(state.confirmed?'일정 없음 등록 취소':'오늘 일정 없음 등록',()=>runButton(save,error,async()=>{
+   const result=await rpc('save_empty_day',{day:state.day,confirmed:!state.confirmed});
+   if(!current())return;
+   paint(result);error.textContent=result.confirmed?'등록했습니다. 같은 날짜에 일정이나 휴무를 추가하면 자동 해제됩니다.':'등록을 취소했습니다.';
+  }),'primary');
+  save.disabled=!state.confirmed&&state.has_events;actions.append(back,save);
+ };
+ const load=async()=>{error.textContent='';actions.replaceChildren();try{const state=await rpc('empty_day');paint(state)}catch(e){if(!current())return;status.textContent='등록 상태를 확인하지 못했습니다.';error.textContent=e.message;actions.append(button('다시 확인',load),button('일정 입력으로 돌아가기',()=>openEditor(null,'new',returnDay)))}};
+ await load();
+}
 let recipientFlight=null;
 async function openEditor(row,kind,day){
  const editing=['edit','result'].includes(kind),key=kind+':'+(row?.id||day),saved=calendarDrafts.get(key);
@@ -409,6 +430,7 @@ async function openEditor(row,kind,day){
   const choice=el('div','','switch leave-switch');form.prepend(choice);
   const ordinary=button('일정',()=>{activity.value='미분류';if(title.value==='휴무')title.value='';paintLeave();form.dispatchEvent(new Event('change',{bubbles:true}))});
   const leave=button('휴무',()=>{activity.value='휴무';paintLeave();form.dispatchEvent(new Event('change',{bubbles:true}))});choice.append(ordinary,leave);
+  if(kind==='new')choice.append(button('오늘 일정 없음',()=>openEmptyDay(day)));
   const leaveOptions=el('div','','leave-options');pair.after(leaveOptions);
   const multi=field(leaveOptions,'여러 날','leave_multiple',!!v.leave_multiple,'checkbox');multi.parentElement.hidden=editing;
   const until=field(leaveOptions,'종료일','leave_end',v.leave_end||v.day,'date');until.min=v.day;

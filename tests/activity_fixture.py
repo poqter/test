@@ -13,6 +13,7 @@ class FakeRecords:
         self.members={UID:{"member":UID,"label":"테스트 작성자","unit":"unit","managed":True},OTHER:{"member":OTHER,"label":"테스트 구성원","unit":"unit","managed":True}}
         self.me=self.members[UID]
         self.auth=SimpleNamespace(config=SimpleNamespace(url="https://example.invalid",publishable_key="fake"),_request=lambda *a,**k:[])
+        st.session_state.setdefault("fixture_empty_days",[])
         st.session_state.setdefault("fixture_contracts",[])
         st.session_state.setdefault("fixture_events",[dict(id=EVENT,owner=UID,unit="unit",day="2026-11-06",start_time="14:00:00",end_time="15:00:00",time_pending=False,title="상담 테스트",kind="AP",status="예정",place="상담실",note="기존 메모",help="",result="",common=False,companion=None,revision=1,previous_event=None,case_id=None)])
         st.session_state.setdefault("fixture_reports",[])
@@ -22,6 +23,15 @@ class FakeRecords:
         st.session_state.setdefault("fixture_checks",[])
     def request(self,method,table,params=None,body=None,prefer=None):
         st.session_state.setdefault("fixture_reads",[]).append((method,table))
+        if table=='sales_empty_days':
+            rows=st.session_state['fixture_empty_days']
+            if method=='POST':
+                value={'owner':self.uid,**body}
+                if value not in rows:rows.append(value)
+            if method=='DELETE':
+                st.session_state['fixture_empty_days']=[r for r in rows if not all(str(r.get(k))==v[3:] for k,v in params.items())]
+            if method=='GET':return deepcopy([r for r in rows if all(k=='select' or str(r.get(k))==v[3:] for k,v in (params or {}).items())])
+            return []
         if table=='rpc/sales_check_daily_period':
             from modules.shared.hwarang_auth import HwarangAuthError
             rows=[r for r in st.session_state['fixture_reports'] if r['owner']==body['p_owner'] and r['period']=='일일' and r['submitted'] and body['p_first']<=r['day']<=body['p_last']]

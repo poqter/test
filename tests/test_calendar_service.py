@@ -278,3 +278,50 @@ def test_fast_detail_batches_reads_and_reuses_authorized_branch(db):
     result=command(db,'detail',{'id':EVENT,'lazy_contracts':True})
     assert result['row']==row and result['contracts'] is None
     assert len(calls)==1
+
+
+def test_empty_day_register_read_and_undo_uses_self(db):
+ from modules.activity.calendar_service import empty_day_state
+ state=command(db,'empty_day',{})
+ assert state['confirmed'] is False and state['has_events'] is False
+ args={'day':state['day'],'confirmed':True,'owner':OTHER}
+ assert command(db,'save_empty_day',args)['confirmed'] is True
+ assert command(db,'save_empty_day',args)['confirmed'] is True
+ assert st.session_state['fixture_empty_days']==[{'owner':UID,'day':state['day']}]
+ assert command(db,'save_empty_day',dict(args,confirmed=False))['confirmed'] is False
+ assert not st.session_state['fixture_empty_days']
+
+
+@pytest.mark.parametrize('kind',['AP','휴무'])
+def test_empty_day_rejects_active_personal_or_leave(db,kind):
+ today=command(db,'empty_day',{})['day']
+ st.session_state['fixture_events'][0].update(day=today,kind=kind)
+ with pytest.raises(ValueError,match='개인 일정 또는 휴무'):
+  command(db,'save_empty_day',{'day':today,'confirmed':True})
+ assert not st.session_state['fixture_empty_days']
+
+
+@pytest.mark.parametrize('patch',[{'common':True},{'status':'취소'},{'status':'연기'},{'owner':OTHER}])
+def test_empty_day_ignores_common_cancelled_and_other_events(db,patch):
+ today=command(db,'empty_day',{})['day']
+ st.session_state['fixture_events'][0].update(day=today,**patch)
+ assert command(db,'save_empty_day',{'day':today,'confirmed':True})['confirmed']
+
+
+def test_empty_day_blocks_companion_and_wrong_day_and_verifies_write(db,monkeypatch):
+ today=command(db,'empty_day',{})['day']
+ with pytest.raises(ValueError,match='날짜가 변경'):
+  command(db,'save_empty_day',{'day':'2000-01-01','confirmed':True})
+ with pytest.raises(ValueError,match='등록 여부'):
+  command(db,'save_empty_day',{'day':today,'confirmed':'true'})
+ st.session_state['fixture_events'][0].update(day=today,owner=OTHER,companion=UID)
+ with pytest.raises(ValueError,match='개인 일정 또는 휴무'):
+  command(db,'save_empty_day',{'day':today,'confirmed':True})
+ st.session_state['fixture_events']=[]
+ original=db.request
+ def no_save(method,table,*a,**kw):
+  if method=='POST' and table=='sales_empty_days':return []
+  return original(method,table,*a,**kw)
+ monkeypatch.setattr(db,'request',no_save)
+ with pytest.raises(HwarangAuthError,match='저장 결과'):
+  command(db,'save_empty_day',{'day':today,'confirmed':True})
