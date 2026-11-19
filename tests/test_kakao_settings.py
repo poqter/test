@@ -367,3 +367,29 @@ def test_welcome_operational_hold_is_explicit_not_claimed_sending():
     assert not at.exception
     assert any('아직 대기 중' in x.value and '다시 저장' in x.value for x in at.info)
     assert not any('처리하고 있습니다' in x.value for x in at.info)
+
+def test_member_preference_and_preview_are_self_scoped_and_do_not_send():
+    at = AppTest.from_string("""
+import streamlit as st
+from unittest.mock import Mock
+from modules.activity.kakao_settings import render_member_briefing
+service=Mock()
+def call(method,path,**kwargs):
+    st.session_state.setdefault('member_calls',[]).append((path,kwargs))
+    state={'eligible':True,'enabled':True,'branch':{'members':[{'name':'합성FP'}]}}
+    if path.endswith('member-preview'):
+        return {**state,'parts':['합성FP 1건']}
+    return state
+service._request.side_effect=call
+render_member_briefing(service,'self-token')
+""").run()
+    assert not at.exception
+    at.checkbox[0].uncheck()
+    at.button(key='FormSubmitter:kakao_member_preferences-구성원 설정 저장').click().run()
+    writes=[c for c in at.session_state['member_calls'] if c[0].endswith('kakao_save_member_briefing')]
+    assert writes[-1][1]['json']=={'p_enabled':False}
+    assert writes[-1][1]['access_token']=='self-token'
+    at.button(key='kakao_member_preview').click().run()
+    assert not at.exception
+    assert at.code[0].value=='합성FP 1건'
+    assert not any('request_test' in c[0] or 'send' in c[0] for c in at.session_state['member_calls'])
