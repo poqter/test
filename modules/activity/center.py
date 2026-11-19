@@ -185,6 +185,15 @@ def calendar(db,today):
     import logging
     if hasattr(db,"token"):db.token=st.session_state.get("hwarang_auth",{}).get("access_token",db.token)
     state=st.session_state
+    briefing_scope=st.query_params.get('briefing')
+    if briefing_scope in ('branch','personal'):
+        state['sales_calendar_team']=briefing_scope=='branch'
+        state.pop('sales_calendar_member',None)
+        state['sales_anchor']=today
+        state.pop('sales_persistent_boot',None)
+        state['sales_briefing_entry']=True
+        state['calendar_scope_generation']=state.get('calendar_scope_generation',0)+1
+        del st.query_params['briefing']
     owner=state.get("sales_persistent_owner")
     if owner!=db.uid:
         state["sales_persistent_owner"]=db.uid
@@ -216,6 +225,7 @@ def calendar(db,today):
         member=state.get("sales_calendar_member") if db.me["managed"] else None
         if member not in db.members:member=None
         state["sales_persistent_boot"]=calendar_service.bootstrap(db,today,state.get("sales_anchor",today),state.get("sales_view","월간"),team,member)
+        if state.pop('sales_briefing_entry',False):state['sales_persistent_boot']['briefingEntry']=True
     if 'sales_widget_day' in state:
         state['sales_persistent_boot']['widgetDay'] = state.pop('sales_widget_day')
     # No conditional Streamlit elements before this mount: its position and key are fixed.

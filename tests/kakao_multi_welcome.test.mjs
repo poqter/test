@@ -2,18 +2,19 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {makeWelcomeWorker} from '../supabase/functions/hwarang-kakao-welcome/worker.mjs';
 import {seal} from '../supabase/functions/hwarang-kakao/crypto.mjs';
-import {briefing} from '../supabase/functions/hwarang-kakao/message.mjs';
+import {briefing,briefingBundle} from '../supabase/functions/hwarang-kakao/message.mjs';
 const env={SUPABASE_URL:'https://offline.invalid',SUPABASE_SERVICE_ROLE_KEY:'synthetic',KAKAO_MULTI_ENABLED:'true',KAKAO_MULTI_TOKEN_KEY:'x'.repeat(32)};
 const request=()=>new Request('https://offline.invalid/welcome',{method:'POST',body:JSON.stringify({ticket:'a'.repeat(64)})});
 async function fixture(options={}) {
  const now=Date.now(),weather={status:'unavailable',region_name:'서울'};
  const summary={events:options.empty?[]:[{id:'event',title:options.long?'긴 일정 😀 '.repeat(70):'상담',start_time:'09:00',end_time:'10:00',place:'사무실',status:'예정'}],empty_explicit:false,preferences:{weather_region_key:'web:1100000000',send_empty:false}};
- const expected=options.parts??briefing('2026-11-17',summary.events,false,weather);
- const job={id:'welcome',owner_id:'owner',day:'2026-11-17',generation:1,claim_token:'claim',summary,parts:options.parts??null,next_part:options.nextPart??1,expires_at:new Date(now+(options.deadlineMs??600000)).toISOString(),encrypted_tokens:await seal({access_token:'synthetic-access',refresh_token:'synthetic-refresh',expires_at:now+(options.tokenMs??3600000),refresh_expires_at:now+86400000},env.KAKAO_MULTI_TOKEN_KEY,'owner',1)};
- const calls=[],sends=[],completion=[],failures=[];let reservation,part=0,continuations=0;
+ if(options.branch){summary.identity={position:'branch_manager'};summary.branch={name:'드림지점',members:[{name:'김민수',count:3,state:'scheduled'}]};}
+ const expected=options.parts??briefingBundle('2026-11-17',summary,weather).map(p=>p.body);
+ const job={id:'welcome',owner_id:'owner',day:'2026-11-17',generation:1,claim_token:'claim',summary,parts:options.parts??null,next_part:options.nextPart??1,branch_parts:options.branchParts??0,expires_at:new Date(now+(options.deadlineMs??600000)).toISOString(),encrypted_tokens:await seal({access_token:'synthetic-access',refresh_token:'synthetic-refresh',expires_at:now+(options.tokenMs??3600000),refresh_expires_at:now+86400000},env.KAKAO_MULTI_TOKEN_KEY,'owner',1)};
+ const calls=[],sends=[],templates=[],completion=[],failures=[];let reservation,part=0,continuations=0;
  const fetcher=async(url,init)=>{
   if(url==='https://kapi.kakao.com/v2/api/talk/memo/default/send'){
-   sends.push(JSON.parse(new URLSearchParams(init.body).get('template_object')).text);
+   templates.push(JSON.parse(new URLSearchParams(init.body).get('template_object')));sends.push(templates.at(-1).text);
    assert.equal(init.headers.Authorization,'Bearer synthetic-access');
    if(options.onSend)options.onSend();
    if(options.uncertainPart===part)throw Error('Synthetic lost response');
@@ -25,6 +26,7 @@ async function fixture(options={}) {
   switch(name){
    case 'kakao_welcome_claim':return Response.json(options.noClaim?null:job);
    case 'kakao_service_weather_claim':return Response.json({status:'unavailable',region_name:'서울'});
+   case 'kakao_welcome_reserve_branch':assert.equal(args.p_branch_parts,1);
    case 'kakao_welcome_reserve':reservation=args.p_parts;return Response.json({reserved:true});
    case 'kakao_welcome_begin_part':part=args.p_part;return Response.json({claimed:true,body:expected[part-1]});
    case 'kakao_welcome_validate':return Response.json(options.revoked!==true);
@@ -36,7 +38,7 @@ async function fixture(options={}) {
  };
  const worker=makeWelcomeWorker(n=>env[n],fetcher);
  const response=await worker(request());
- return {response,result:await response.json(),calls,sends,completion,failures,reservation,expected,continuations};
+ return {templates,response,result:await response.json(),calls,sends,completion,failures,reservation,expected,continuations};
 }
 test('welcome exact regular-format multipart is reserved losslessly and sent in order',async()=>{
  const r=await fixture({long:true});assert.equal(r.response.status,200);assert.equal(r.result.accepted,true);assert.ok(r.expected.length>1);assert.deepEqual(r.reservation,r.expected);assert.deepEqual(r.sends,r.expected);assert.ok(r.sends.every(s=>s.length<=200));assert.deepEqual(r.completion,r.expected.map((_,i)=>[i+1,'accepted']));assert.equal(r.failures.length,0);
@@ -83,4 +85,12 @@ test('welcome disabled or malformed request cannot touch ledger',async()=>{
 
 test('welcome first-day confirmation includes empty schedule plus weather despite normal send_empty=false',async()=>{
  const r=await fixture({empty:true});assert.equal(r.result.accepted,true);assert.ok(r.sends.join('\n').includes('아직 등록된 일정이 없습니다.'));assert.ok(r.sends.join('\n').includes('날씨'));
+});
+
+test('branch welcome uses ordered messages and distinct buttons',async()=>{
+ const r=await fixture({branch:true});assert.equal(r.response.status,200);assert.equal(r.sends.length,2);assert.match(r.sends[0],/김민수 3건/);assert.match(r.sends[1],/날씨/);
+ assert.deepEqual(r.templates.map(t=>t.button_title),['오늘 지점 일정 보기','내 일정 보기']);
+});
+test('branch welcome continuation retains persisted button type',async()=>{
+ const r=await fixture({parts:['branch accepted','branch remaining','personal'],nextPart:2,branchParts:2});assert.equal(r.response.status,200);assert.deepEqual(r.templates.map(t=>t.button_title),['오늘 지점 일정 보기','내 일정 보기']);
 });

@@ -26,6 +26,29 @@ export function briefing(day, events, emptyConfirmed=false, weather=undefined) {
   return splitLines(lines);
 }
 
+/** Staff counts only; personal weather remains in the following personal message(s). */
+export function branchBriefing(day, branch) {
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!Array.isArray(branch?.members))throw Error('Invalid branch');
+  const clean=s=>String(s||'').replace(/[\r\n]+/g,' ').trim();
+  const weekday='일월화수목금토'[new Date(day+'T00:00:00Z').getUTCDay()];
+  const heading=`${Number(day.slice(5,7))}/${Number(day.slice(8))}(${weekday}) ${clean(branch.name)} 일정`;
+  const lines=[heading,'','[직원별 일정]'];
+  const scheduled=branch.members.filter(m=>m.count>0);
+  for(let i=0;i<scheduled.length;i+=2)lines.push(scheduled.slice(i,i+2).map(m=>`${clean(m.name)} ${m.count}건`).join(' · '));
+  if(!scheduled.length)lines.push('등록된 직원 일정 없음');
+  const count=state=>branch.members.filter(m=>m.state===state).length;
+  lines.push('',`휴무 ${count('leave')}명 · 일정 없음 ${count('empty')}명`,`미등록 ${count('missing')}명`);
+  return splitLines(lines);
+}
+
+export function briefingBundle(day, summary, weather) {
+  const branch=summary.identity?.position==='branch_manager'&&summary.branch;
+  return [
+    ...(branch?branchBriefing(day,branch).map(body=>({kind:'branch',body})):[]),
+    ...briefing(day,summary.events,summary.empty_explicit,weather).map(body=>({kind:'personal',body})),
+  ];
+}
+
 /** Weather is a validated daily forecast, never raw provider HTML or a user address. */
 export function weatherLines(day, weather) {
   const label=typeof weather?.region_name==='string' && weather.region_name.length<=80 && !/[\r\n]/.test(weather.region_name)?weather.region_name:'';
