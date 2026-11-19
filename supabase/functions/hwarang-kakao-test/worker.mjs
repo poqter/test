@@ -1,9 +1,9 @@
 import {digest,unseal,seal} from '../hwarang-kakao/crypto.mjs';
-import {briefing} from '../hwarang-kakao/message.mjs';
+import {briefingBundle} from '../hwarang-kakao/message.mjs';
 import {forecastBase} from '../hwarang-kakao/weather.mjs';
 import {fetchWebWeather} from '../hwarang-kakao/weather-web.mjs';
 import {sendMemo,template,refreshToken,ReauthenticationRequired} from '../hwarang-kakao/kakao-api.mjs';
-/** One explicit self-test, one message maximum. Never changes a daily batch or schedule. */
+/** Explicit self-test with the regular briefing bundle. Never changes a daily batch or schedule. */
 export function makeTestWorker(env,fetcher=fetch) {
  const reply=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
  const base=env('SUPABASE_URL'),key=env('SUPABASE_SERVICE_ROLE_KEY');
@@ -14,7 +14,7 @@ export function makeTestWorker(env,fetcher=fetch) {
  return async request=>{
   if(request.method!=='POST')return reply({error:'Method not allowed'},405);
   if(env('KAKAO_MULTI_ENABLED')!=='true')return reply({error:'Disabled'},503);
-  let job,attempted=false;
+  let job,attempted=false,acceptedParts=0;
   try {
    if(Number(request.headers.get('content-length')||0)>256)return reply({error:'Unauthorized'},401);
    const raw=await request.text();if(raw.length>256)return reply({error:'Unauthorized'},401);
@@ -50,18 +50,24 @@ export function makeTestWorker(env,fetcher=fetch) {
     if(args&&claim?.lease_token)await rpc('kakao_service_weather_complete',{...args,p_lease_token:claim.lease_token,p_forecast:null}).catch(()=>{});
     weather={status:'unavailable',region_name:claim?.region_name};
    }
-   const parts=briefing(job.day,job.summary.events,job.summary.empty_explicit,weather);
-   const text=job.sample_body??parts.join('\n');
-   if(text.length>200)throw Error('Test exceeds single message cap');
-   if(await rpc('kakao_test_validate',{p_id:job.id,p_claim_token:job.claim_token})!==true)throw Error('Authorization changed');
-   attempted=true;
-   await sendMemo(fetcher,token.access_token,template(text,'https://hwarang-calendar.streamlit.app/calendar?view=mobile-calendar'));
+   const bundle=job.sample_body!=null
+    ?[{kind:'personal',body:job.sample_body}]
+    :briefingBundle(job.day,job.summary,weather);
+   if(!bundle.length||bundle.some(p=>typeof p.body!=='string'||!p.body.trim()||p.body.length>200))throw Error('Invalid manifest');
+   for(const part of bundle){
+    // Recheck the complete snapshot (including members) before every send.
+    // Any partial or ambiguous delivery closes this request; never retry the bundle.
+    if(await rpc('kakao_test_validate',{p_id:job.id,p_claim_token:job.claim_token})!==true)throw Error('Authorization changed');
+    attempted=true;
+    await sendMemo(fetcher,token.access_token,template(part.body,'https://hwarang-calendar.streamlit.app/calendar?view=mobile-calendar&calendar_briefing='+part.kind,part.kind));
+    acceptedParts++;
+   }
    if(await rpc('kakao_test_complete',{p_id:job.id,p_claim_token:job.claim_token,p_status:'accepted'})!==true)throw Error('Acceptance unrecorded');
-   return reply({accepted:true,length:text.length});
+   return reply({accepted:true,parts:acceptedParts,length:bundle.reduce((n,p)=>n+p.body.length,0)});
   }catch(error){
-   const reason=error instanceof ReauthenticationRequired?'reconnect_required':['Authorization changed','Token changed','Invalid sample','Test exceeds single message cap'].includes(error?.message)?error.message:'preflight_failed';
+   const reason=error instanceof ReauthenticationRequired?'reconnect_required':['Authorization changed','Token changed','Invalid sample','Invalid manifest'].includes(error?.message)?error.message:'preflight_failed';
    if(job?.claim_token)await rpc('kakao_test_complete',{p_id:job.id,p_claim_token:job.claim_token,p_status:attempted?'uncertain':'failed'}).catch(()=>{});
-   return reply({error:attempted?'Outcome uncertain; do not retry':'Test not sent',reason:attempted?'uncertain':reason},503);
+   return reply({error:attempted?'Outcome uncertain; do not retry':'Test not sent',reason:attempted?'uncertain':reason,accepted_parts:acceptedParts},503);
   }
  };
 }

@@ -161,8 +161,8 @@ def _request_test():
 
 def render_test_panel(service, token, status, weather_ready):
     with st.expander('시험 발송'):
-        st.caption('지금 정기 브리핑과 같은 모양으로 나에게 보냅니다. 정기 발송 시간은 바뀌지 않습니다.')
-        st.caption('한 번에 1개 메시지. 진행 중이거나 결과가 불확실한 요청은 다시 보내지 않습니다. 무료 사용량과 정기 발송 몫을 보호합니다.')
+        st.caption('현재 저장된 설정으로 정기 브리핑과 동일하게 보냅니다. 구성원 브리핑 대상자는 구성원 일정 → 내 일정·날씨 순서로 받습니다.')
+        st.caption('긴 내용은 메시지당 200자 이내로 나누며, 미등록 명단은 이름 단위로 나눕니다. 정기 발송 시간은 바뀌지 않습니다.')
         try:
             last = rpc(service, token, 'kakao_my_test_status')
         except HwarangAuthError:
@@ -172,6 +172,7 @@ def render_test_panel(service, token, status, weather_ready):
         state = last.get('status')
         if state == 'none':
             state = None
+        st.caption('일부 메시지만 도착했거나 전송 결과가 불확실하면 자동으로 다시 보내지 않습니다.')
         labels = {'queued': '대기 중', 'processing': '발송 중', 'accepted': '카카오 접수 완료', 'failed': '미발송', 'expired': '요청 만료', 'uncertain': '결과 확인 필요 · 재발송하지 않음'}
         if state:
             st.caption('최근 시험: ' + labels.get(state, '확인 필요'))
