@@ -617,8 +617,11 @@ class BriefingRepository:
             'p_actor':actor,'p_automatic':bool(automatic),'p_external':bool(external),'p_scheduled':bool(scheduled)})
 
     def ai_generation_enabled(self):
-        row=self._first(self._request('GET','/rest/v1/hwarang_ai_runtime_config',params={'config_id':'eq.1','select':'service_enabled'}))
-        return bool(row and row.get('service_enabled'))
+        row = self._first(self._request(
+            'GET', '/rest/v1/hwarang_briefing_operating_policy',
+            params={'policy_key': 'eq.WORKSPACE', 'select': 'generation_enabled'},
+        ))
+        return bool(row and row.get('generation_enabled') is True)
 
     def sync_business_calendar(self, day):
         from .business_calendar import calendar_rows

@@ -1,3 +1,4 @@
+import {verifyBriefingGeneration} from './briefing_generation_db.mjs';
 import {PGlite} from './exams/node_modules/@electric-sql/pglite/dist/index.js';
 import fs from 'node:fs';
 const db=new PGlite();
@@ -95,4 +96,5 @@ assert.equal((await db.query("select count(*)::int n from public.hwarang_learnin
 await db.exec("set role authenticated");
 await assert.rejects(() => db.query("select * from public.academy_sessions"), /permission denied/);
 await assert.rejects(() => toggle(manager,initial,!initial), /permission denied/);
+await verifyBriefingGeneration(db, manager, owner);
 await db.close();console.log('PASS foundation DB: gate, grading, drafts, version conflicts, locks, resubmission, real review, audit, isolation, legacy preservation');
