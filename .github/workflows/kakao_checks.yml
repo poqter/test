@@ -1,10 +1,10 @@
 name: Kakao briefing checks
 on:
   pull_request:
-    paths: ['supabase/functions/hwarang-kakao*/**', 'supabase/operations/KAKAO_BRANCH_BRIEFING_PATCH.sql', 'tests/kakao*', 'modules/activity/center.py', 'modules/activity/calendar_view/persistent.js', '.github/workflows/kakao_checks.yml']
+    paths: ['supabase/functions/hwarang-kakao*/**', 'supabase/operations/KAKAO_BRANCH*.sql', 'tests/kakao*', 'modules/activity/center.py', 'modules/activity/calendar_view/persistent.js', '.github/workflows/kakao_checks.yml']
   push:
     branches: [main]
-    paths: ['supabase/functions/hwarang-kakao*/**', 'supabase/operations/KAKAO_BRANCH_BRIEFING_PATCH.sql', 'tests/kakao*', '.github/workflows/kakao_checks.yml']
+    paths: ['supabase/functions/hwarang-kakao*/**', 'supabase/operations/KAKAO_BRANCH*.sql', 'tests/kakao*', '.github/workflows/kakao_checks.yml']
 permissions:
   contents: read
 jobs:
