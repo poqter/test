@@ -236,7 +236,7 @@ def test_dispatch_off_is_explicit_without_changing_subscription():
     at=app({'connection_status':'connected','dispatch_ready':False,'enabled':True,'time':'08:00','days':[1],'send_empty':True})
     assert not at.exception
     assert any('자동 발송이 꺼져' in i.value for i in at.info)
-    assert all(c[0].endswith(('kakao_my_status', 'kakao_weather_regions', 'kakao_my_test_status')) for c in at.session_state['calls'])
+    assert all(c[0].endswith(('kakao_my_status', 'kakao_weather_regions', 'kakao_my_test_status', 'kakao_member_briefing_status')) for c in at.session_state['calls'])
 
 
 def test_new_dispatch_off_does_not_mislabel_preserved_personal_briefing():
