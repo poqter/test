@@ -77,7 +77,7 @@ export function makeWelcomeWorker(env,fetcher=fetch) {
     if(await rpc('kakao_welcome_validate',identity)!==true)throw Error('Authorization changed');
     checkDeadline();checkToken();attempted=true;
     const kind=n<=branchParts?'branch':'personal';
-    await sendMemo(fetcher,token.access_token,template(claimed.body,'https://hwarang-calendar.streamlit.app/calendar?view=mobile-calendar&briefing='+kind,kind));
+    await sendMemo(fetcher,token.access_token,template(claimed.body,'https://hwarang-calendar.streamlit.app/calendar?view=mobile-calendar&calendar_briefing='+kind,kind));
     if(await rpc('kakao_welcome_complete_part',{...identity,p_part:n,p_status:'accepted'})!==true)throw Error('Acceptance unrecorded');
     acceptedParts++;part=null;attempted=false;
    }

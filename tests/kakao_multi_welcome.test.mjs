@@ -90,7 +90,9 @@ test('welcome first-day confirmation includes empty schedule plus weather despit
 test('branch welcome uses ordered messages and distinct buttons',async()=>{
  const r=await fixture({branch:true});assert.equal(r.response.status,200);assert.equal(r.sends.length,2);assert.match(r.sends[0],/김민수 3건/);assert.match(r.sends[1],/날씨/);
  assert.deepEqual(r.templates.map(t=>t.button_title),['오늘 지점 일정 보기','내 일정 보기']);
+ for(const t of r.templates){const u=new URL(t.link.web_url);assert.equal(u.searchParams.has('briefing'),false);assert.ok(u.searchParams.has('calendar_briefing'));}
 });
 test('branch welcome continuation retains persisted button type',async()=>{
  const r=await fixture({parts:['branch accepted','branch remaining','personal'],nextPart:2,branchParts:2});assert.equal(r.response.status,200);assert.deepEqual(r.templates.map(t=>t.button_title),['오늘 지점 일정 보기','내 일정 보기']);
+ for(const t of r.templates){const u=new URL(t.link.web_url);assert.equal(u.searchParams.has('briefing'),false);assert.ok(u.searchParams.has('calendar_briefing'));}
 });

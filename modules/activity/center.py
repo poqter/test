@@ -185,7 +185,7 @@ def calendar(db,today):
     import logging
     if hasattr(db,"token"):db.token=st.session_state.get("hwarang_auth",{}).get("access_token",db.token)
     state=st.session_state
-    briefing_scope=st.query_params.get('briefing')
+    briefing_scope=st.query_params.get('calendar_briefing')
     if briefing_scope in ('branch','personal'):
         state['sales_calendar_team']=briefing_scope=='branch'
         state.pop('sales_calendar_member',None)
@@ -193,7 +193,7 @@ def calendar(db,today):
         state.pop('sales_persistent_boot',None)
         state['sales_briefing_entry']=True
         state['calendar_scope_generation']=state.get('calendar_scope_generation',0)+1
-        del st.query_params['briefing']
+        del st.query_params['calendar_briefing']
     owner=state.get("sales_persistent_owner")
     if owner!=db.uid:
         state["sales_persistent_owner"]=db.uid

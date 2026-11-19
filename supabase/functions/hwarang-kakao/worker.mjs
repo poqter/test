@@ -110,7 +110,7 @@ export function makeWorker(env,fetcher=fetch) {
      if(!(await rpc('kakao_service_validate_claim',{p_job_id:job.job_id,p_claim_token:job.claim_token})))throw Error('Authorization changed');
      attempted=true;
      const kind=job.message_kind==='branch'?'branch':'personal';
-     await sendMemo(fetcher,token.access_token,template(job.body,'https://hwarang-calendar.streamlit.app/calendar?view=mobile-calendar&briefing='+kind,kind));
+     await sendMemo(fetcher,token.access_token,template(job.body,'https://hwarang-calendar.streamlit.app/calendar?view=mobile-calendar&calendar_briefing='+kind,kind));
      const recorded=await rpc('kakao_service_complete',{p_job_id:job.job_id,p_claim_token:job.claim_token,p_status:'accepted'});
      if(recorded!==true)throw Error('Acceptance not persisted');
      processed++;return true;

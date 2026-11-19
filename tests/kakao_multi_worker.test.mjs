@@ -77,3 +77,8 @@ test('branch manager reserves branch first and personal weather even when send_e
  assert.equal((await h(request())).status,200);assert.equal(weatherCalls,1);assert.equal(reservation.p_branch_parts,1);
  assert.equal(reservation.p_parts.length,2);assert.match(reservation.p_parts[0],/직원 2건/);assert.match(reservation.p_parts[1],/서울 날씨/);
 });
+test('calendar memo link cannot trigger the public briefing reader',async()=>{
+ const calls=await run();const sent=calls.find(([u])=>u.startsWith('https://kapi.'));
+ const message=JSON.parse(new URLSearchParams(sent[1]).get('template_object'));
+ const url=new URL(message.link.web_url);assert.equal(url.searchParams.has('briefing'),false);assert.equal(url.searchParams.get('calendar_briefing'),'personal');
+});
