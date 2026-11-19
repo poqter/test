@@ -6,6 +6,7 @@ import time
 from dataclasses import dataclass
 
 import requests
+from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
 
@@ -14,11 +15,12 @@ from playwright.sync_api import sync_playwright
 class AppTarget:
     name: str
     url: str
+    entry_selector: str | None = None
 
 
 APP_TARGETS = (
-    AppTarget("WORKSPACE", os.getenv("WORKSPACE_URL", "https://hwarang-workspace.streamlit.app")),
-    AppTarget("CALCULATOR", os.getenv("CALCULATOR_URL", "https://hwarang-calculator.streamlit.app")),
+    AppTarget("WORKSPACE", os.getenv("WORKSPACE_URL", "https://hwarang-workspace.streamlit.app"), ".hw-auth-copy h1"),
+    AppTarget("CALCULATOR", os.getenv("CALCULATOR_URL", "https://hwarang-calculator.streamlit.app"), ".calc-gate h1"),
     AppTarget("ACADEMY", os.getenv("ACADEMY_URL", "https://hwarang-academy.streamlit.app")),
     AppTarget("CALENDAR", os.getenv("CALENDAR_URL", "https://hwarang-calendar.streamlit.app")),
 )
@@ -52,6 +54,31 @@ def ping_supabase() -> None:
     print(f"[OK] Supabase ping: HTTP {response.status_code}")
 
 
+def wait_for_entry(page, target: AppTarget) -> None:
+    deadline = time.monotonic() + 120
+    wake_requested = False
+    last_state = "waiting for the app entry"
+    while time.monotonic() < deadline:
+        try:
+            for frame in page.frames:
+                if frame.locator(target.entry_selector).first.is_visible():
+                    print(f"[READY] {target.name}: entry visible; wake_requested={wake_requested}", flush=True)
+                    return
+                wake = frame.get_by_role("button", name="Yes, get this app back up!", exact=True)
+                if not wake_requested and wake.is_visible():
+                    wake.click(timeout=5000)
+                    wake_requested = True
+                    last_state = "wake requested"
+                    print(f"[WAKE] {target.name}", flush=True)
+                    break
+        except PlaywrightError as exc:
+            if page.is_closed():
+                raise
+            last_state = type(exc).__name__
+        page.wait_for_timeout(1000)
+    raise RuntimeError(f"{target.name}: entry not visible within 120s ({last_state})")
+
+
 def visit_streamlit_apps() -> None:
     """Open each public Streamlit app as a real browser session without HWARANG login."""
     with sync_playwright() as playwright:
@@ -72,12 +99,13 @@ def visit_streamlit_apps() -> None:
                         wait_until="domcontentloaded",
                         timeout=90_000,
                     )
-                    # Streamlit frontend may need time to establish its websocket and wake the app.
-                    page.wait_for_timeout(15_000)
-
-                    status = response.status if response is not None else "n/a"
-                    title = page.title().strip() or "(no title)"
-                    print(f"[OK] {target.name}: HTTP {status}, title={title!r}")
+                    if response is None or response.status >= 400:
+                        raise RuntimeError(f"Navigation failed: HTTP {response.status if response else 'n/a'}")
+                    if target.entry_selector:
+                        wait_for_entry(page, target)
+                    else:
+                        page.wait_for_timeout(15_000)
+                        print(f"[VISITED] {target.name}: HTTP {response.status}, title={page.title()!r}")
                 except PlaywrightTimeoutError as exc:
                     failures.append(f"{target.name}: browser timeout ({exc})")
                 except Exception as exc:  # noqa: BLE001 - workflow should report all targets
