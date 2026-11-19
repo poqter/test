@@ -37,7 +37,9 @@ export function branchBriefing(day, branch) {
   for(let i=0;i<scheduled.length;i+=2)lines.push(scheduled.slice(i,i+2).map(m=>`${clean(m.name)} ${m.count}건`).join(' · '));
   if(!scheduled.length)lines.push('등록된 직원 일정 없음');
   const count=state=>branch.members.filter(m=>m.state===state).length;
-  lines.push('',`휴무 ${count('leave')}명 · 일정 없음 ${count('empty')}명`,`미등록 ${count('missing')}명`);
+  const leave=branch.members.filter(m=>m.on_leave===true||(m.on_leave===undefined&&m.state==='leave')).length;
+  const missing=branch.members.filter(m=>m.state==='missing');
+  lines.push('',`휴무 ${leave}명 · 일정 없음 ${count('empty')}명`,`미등록 ${missing.length}명${missing.length?': '+missing.map(m=>clean(m.name)).join('·'):''}`);
   return splitLines(lines);
 }
 

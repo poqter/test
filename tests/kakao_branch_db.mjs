@@ -13,6 +13,7 @@ alter table public.kakao_multi_batches alter id set default gen_random_uuid(),al
 alter table public.kakao_multi_jobs alter id set default gen_random_uuid(),alter status set default 'reserved';
 `);
 await db.exec(fs.readFileSync(new URL('../supabase/operations/KAKAO_BRANCH_BRIEFING_PATCH.sql',import.meta.url),'utf8'));
+await db.exec(fs.readFileSync(new URL('../supabase/operations/KAKAO_BRANCH_LEAVE_EXCLUSIONS_PATCH.sql',import.meta.url),'utf8'));
 const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
 const day=(await db.query("select (now() at time zone 'Asia/Seoul')::date::text as day")).rows[0].day;
 await db.query("insert into organization_units(id,name,is_active) values($1,'테스트지점',true)",[id(99)]);
@@ -26,6 +27,16 @@ await db.query('insert into sales_empty_days values($1,$2)',[id(4),day]);
 const snapshot=async(owner=1)=>(await db.query('select private.kakao_service_snapshot($1,$2) s',[id(owner),day])).rows[0].s;
 let s=await snapshot();assert.deepEqual(s.branch.members.map(m=>[m.name,m.count,m.state]),[['직원2',1,'scheduled'],['직원3',0,'leave'],['직원4',0,'empty'],['직원5',0,'missing'],['직원9',0,'excluded']]);
 assert.equal((await snapshot(2)).branch,null);
+await event(2,'휴무');await event(2,'휴무');
+s=await snapshot();assert.equal(s.branch.members.find(m=>m.name==='직원2').count,1);assert.equal(s.branch.members.find(m=>m.name==='직원2').on_leave,true);
+assert.equal(s.branch.members.filter(m=>m.on_leave).length,2,'leave counted by person, including scheduled people');
+await db.query("insert into profiles(id,display_name,position_code,organization_unit_id,is_active) values($1,'합성 테스트','fp',$2,true)",[id(10),id(99)]);
+await db.query("insert into private.kakao_briefing_member_exclusions(member_id,reason) values($1,'synthetic fixture')",[id(10)]);
+assert.ok(!(await snapshot()).branch.members.some(m=>m.id===id(10)));
+await event(10);assert.ok(!(await snapshot()).branch.members.some(m=>m.id===id(10)),'excluded with schedules too');
+await db.query("update profiles set display_name='이름변경' where id=$1",[id(10)]);
+assert.ok(!(await snapshot()).branch.members.some(m=>m.id===id(10)),'stable identity exclusion');
+
 await event(2,'AP','예정',false,5);s=await snapshot();assert.equal(s.branch.members.find(m=>m.name==='직원5').count,1);
 await db.exec("insert into kakao_multi_controls(singleton,enabled,monthly_message_budget,monthly_function_budget,cost_verified_until) values(true,true,100,100,now()+interval '1 day')");
 await db.query("insert into kakao_multi_connections(owner_id,status,generation,talk_message_granted,account_id,encrypted_tokens) values($1,'connected',1,true,'synthetic','synthetic')",[id(1)]);
