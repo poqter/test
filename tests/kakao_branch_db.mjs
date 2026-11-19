@@ -14,7 +14,7 @@ alter table public.kakao_multi_jobs alter id set default gen_random_uuid(),alter
 `);
 await db.exec(fs.readFileSync(new URL('../supabase/operations/KAKAO_BRANCH_BRIEFING_PATCH.sql',import.meta.url),'utf8'));
 await db.exec(fs.readFileSync(new URL('../supabase/operations/KAKAO_BRANCH_LEAVE_EXCLUSIONS_PATCH.sql',import.meta.url),'utf8'));
-await db.exec("create table sales_team_assignments(member uuid,leader uuid);create table sales_deputy_assignments(member uuid,leader uuid);create function private.kakao_require_user() returns uuid language sql as $select null::uuid$;");
+await db.exec("create table sales_team_assignments(member uuid,leader uuid);create table sales_deputy_assignments(member uuid,leader uuid);create function private.kakao_require_user() returns uuid language sql as $$select null::uuid$$;");
 await db.exec(fs.readFileSync(new URL('../supabase/operations/KAKAO_BRANCH_CONNECTED_MEMBERS_PATCH.sql',import.meta.url),'utf8'));
 const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
 const day=(await db.query("select (now() at time zone 'Asia/Seoul')::date::text as day")).rows[0].day;
