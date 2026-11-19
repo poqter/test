@@ -1,5 +1,5 @@
 import {digest,unseal} from '../hwarang-kakao/crypto.mjs';
-import {briefing} from '../hwarang-kakao/message.mjs';
+import {briefingBundle} from '../hwarang-kakao/message.mjs';
 import {forecastBase} from '../hwarang-kakao/weather.mjs';
 import {fetchWebWeather} from '../hwarang-kakao/weather-web.mjs';
 import {sendMemo,template,ReauthenticationRequired} from '../hwarang-kakao/kakao-api.mjs';
@@ -52,12 +52,13 @@ export function makeWelcomeWorker(env,fetcher=fetch) {
     if(!Number.isFinite(token.expires_at)||token.expires_at<Date.now()+120000||!Number.isFinite(token.refresh_expires_at)||token.refresh_expires_at<=Date.now())throw new ReauthenticationRequired();
    };
    checkToken();
-   let parts=job.parts;
+   let parts=job.parts,branchParts=job.branch_parts||0;
    if(parts==null){
     const weather=await weatherFor(job);
-    parts=briefing(job.day,job.summary.events,job.summary.empty_explicit,weather);
+    const bundle=briefingBundle(job.day,job.summary,weather);
+    parts=bundle.map(p=>p.body);branchParts=bundle.filter(p=>p.kind==='branch').length;
     if(!Array.isArray(parts)||!parts.length||parts.some(p=>typeof p!=='string'||!p.trim()||p.length>200))throw Error('Invalid manifest');
-    const reservation=await rpc('kakao_welcome_reserve',{...identity,p_parts:parts});
+    const reservation=branchParts?await rpc('kakao_welcome_reserve_branch',{...identity,p_parts:parts,p_branch_parts:branchParts}):await rpc('kakao_welcome_reserve',{...identity,p_parts:parts});
     if(reservation?.reserved!==true)throw Error('Manifest not reserved');
    }
    if(!Array.isArray(parts)||!parts.length||parts.some(p=>typeof p!=='string'||!p.trim()||p.length>200))throw Error('Invalid manifest');
@@ -75,7 +76,8 @@ export function makeWelcomeWorker(env,fetcher=fetch) {
     if(claimed?.claimed!==true||claimed.body!==parts[n-1])throw Error('Part unavailable or changed');
     if(await rpc('kakao_welcome_validate',identity)!==true)throw Error('Authorization changed');
     checkDeadline();checkToken();attempted=true;
-    await sendMemo(fetcher,token.access_token,template(claimed.body,'https://hwarang-calendar.streamlit.app/calendar?view=mobile-calendar'));
+    const kind=n<=branchParts?'branch':'personal';
+    await sendMemo(fetcher,token.access_token,template(claimed.body,'https://hwarang-calendar.streamlit.app/calendar?view=mobile-calendar&calendar_briefing='+kind,kind));
     if(await rpc('kakao_welcome_complete_part',{...identity,p_part:n,p_status:'accepted'})!==true)throw Error('Acceptance unrecorded');
     acceptedParts++;part=null;attempted=false;
    }

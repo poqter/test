@@ -1,4 +1,4 @@
-import {briefing} from './message.mjs';
+import {briefingBundle} from './message.mjs';
 import {forecastBase} from './weather.mjs';
 import {fetchWebWeather} from './weather-web.mjs';
 import {unseal,seal,digest} from './crypto.mjs';
@@ -56,11 +56,16 @@ export function makeWorker(env,fetcher=fetch) {
    }
    for(const item of due.slice(0,25)) {
     if(Date.now()-tickStarted>20000)break;
-    const skipEmpty=Array.isArray(item.summary.events)&&item.summary.events.length===0&&item.summary.preferences?.send_empty===false;
+    const hasBranch=item.summary.identity?.position==='branch_manager'&&!!item.summary.branch;
+    const skipEmpty=!hasBranch&&Array.isArray(item.summary.events)&&item.summary.events.length===0&&item.summary.preferences?.send_empty===false;
     const weather=skipEmpty?{status:'unavailable'}:await weatherFor(item);
-    const parts=briefing(item.day,item.summary.events,item.summary.empty_explicit,weather);
+    const bundle=briefingBundle(item.day,item.summary,weather);
+    const parts=bundle.map(p=>p.body);
     if(!parts.length||parts.some(p=>typeof p!=='string'||!p.trim()||p.length>200))throw Error('Invalid manifest');
-    const reserved=await rpc('kakao_service_reserve',{p_owner:item.owner_id,p_day:item.day,p_generation:item.generation,p_parts:parts,p_scope_hash:item.scope_hash});
+    const args={p_owner:item.owner_id,p_day:item.day,p_generation:item.generation,p_parts:parts,p_scope_hash:item.scope_hash};
+    const reserved=hasBranch
+      ?await rpc('kakao_service_reserve_branch',{...args,p_branch_parts:bundle.filter(p=>p.kind==='branch').length})
+      :await rpc('kakao_service_reserve',args);
     if(reserved?.batch_id)progress=true;
    }
    const pending=await rpc('kakao_service_pending',{p_limit:25});
@@ -104,7 +109,8 @@ export function makeWorker(env,fetcher=fetch) {
      // This second atomic authorization check is required after potential refresh latency.
      if(!(await rpc('kakao_service_validate_claim',{p_job_id:job.job_id,p_claim_token:job.claim_token})))throw Error('Authorization changed');
      attempted=true;
-     await sendMemo(fetcher,token.access_token,template(job.body,'https://hwarang-calendar.streamlit.app/calendar?view=mobile-calendar'));
+     const kind=job.message_kind==='branch'?'branch':'personal';
+     await sendMemo(fetcher,token.access_token,template(job.body,'https://hwarang-calendar.streamlit.app/calendar?view=mobile-calendar&calendar_briefing='+kind,kind));
      const recorded=await rpc('kakao_service_complete',{p_job_id:job.job_id,p_claim_token:job.claim_token,p_status:'accepted'});
      if(recorded!==true)throw Error('Acceptance not persisted');
      processed++;return true;

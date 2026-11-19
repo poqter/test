@@ -63,3 +63,22 @@ for(const mode of ['missing_region','cache','cache_error'])test('weather integra
  assert.equal(weatherCalls,mode==='missing_region'?0:1);assert.ok(calls.every(u=>u.startsWith(values.SUPABASE_URL)));
  if(mode==='cache'){assert.ok(manifests[0].includes('서울 송파구 날씨'));assert.ok(manifests[0].includes('강수 20%'));assert.ok(!manifests[0].includes('기상청'));}else assert.ok(manifests[0].includes('확인하지 못했습니다'));
 });
+test('branch manager reserves branch first and personal weather even when send_empty is false',async()=>{
+ let reservation,weatherCalls=0;
+ const h=makeWorker(env,async(u,i)=>{
+  if(u.endsWith('/kakao_service_consume_tick')||u.endsWith('/kakao_service_tick_enter')||u.endsWith('/kakao_service_expire')||u.endsWith('/kakao_service_continue'))return Response.json(true);
+  if(u.endsWith('/kakao_service_gate'))return Response.json({enabled:true});
+  if(u.endsWith('/kakao_service_due'))return Response.json([{owner_id:'manager',day:'2026-11-20',generation:1,scope_hash:'hash',summary:{identity:{position:'branch_manager'},branch:{name:'드림지점',members:[{name:'직원',count:2,state:'scheduled'}]},events:[],preferences:{send_empty:false,weather_region_key:'web:1100000000'}}}]);
+  if(u.endsWith('/kakao_service_weather_claim')){weatherCalls++;return Response.json({status:'cached',region_name:'서울',forecast:{status:'ok',day:'2026-11-20',low:1,high:9,morning:'맑음',afternoon:'흐림',issued_day:'2026-11-20',issued_time:'05:00'}});}
+  if(u.endsWith('/kakao_service_reserve_branch')){reservation=JSON.parse(i.body);return Response.json({batch_id:'batch'});}
+  if(u.endsWith('/kakao_service_pending'))return Response.json([]);
+  throw Error('unexpected '+u);
+ });
+ assert.equal((await h(request())).status,200);assert.equal(weatherCalls,1);assert.equal(reservation.p_branch_parts,1);
+ assert.equal(reservation.p_parts.length,2);assert.match(reservation.p_parts[0],/직원 2건/);assert.match(reservation.p_parts[1],/서울 날씨/);
+});
+test('calendar memo link cannot trigger the public briefing reader',async()=>{
+ const calls=await run();const sent=calls.find(([u])=>u.startsWith('https://kapi.'));
+ const message=JSON.parse(new URLSearchParams(sent[1]).get('template_object'));
+ const url=new URL(message.link.web_url);assert.equal(url.searchParams.has('briefing'),false);assert.equal(url.searchParams.get('calendar_briefing'),'personal');
+});

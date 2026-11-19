@@ -2,11 +2,11 @@
 export class ReauthenticationRequired extends Error { constructor(){super('Reauthentication required');this.name='ReauthenticationRequired';} }
 export const MEMO_ENDPOINT='https://kapi.kakao.com/v2/api/talk/memo/default/send';
 export const TOKEN_ENDPOINT='https://kauth.kakao.com/oauth/token';
-export function template(text, calendarUrl) {
+export function template(text, calendarUrl, kind='personal') {
  const url=new URL(calendarUrl);
  if(url.protocol!=='https:' || url.hostname!=='hwarang-calendar.streamlit.app' || url.username || url.password) throw new Error('Invalid calendar URL');
  if(typeof text!=='string'||!text.trim()||text.length>200) throw new Error('Text must contain 1–200 UTF-16 units');
- return {object_type:'text',text,link:{web_url:url.href,mobile_web_url:url.href},button_title:'내 일정 보기'};
+ return {object_type:'text',text,link:{web_url:url.href,mobile_web_url:url.href},button_title:kind==='branch'?'오늘 지점 일정 보기':'내 일정 보기'};
 }
 export function mergeTokens(previous, response, now=Date.now()) {
  if(typeof response.access_token!=='string'||!response.access_token || !Number.isFinite(response.expires_in)||response.expires_in<=0) throw new Error('Invalid token response');
