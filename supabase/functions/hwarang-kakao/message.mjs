@@ -39,12 +39,27 @@ export function branchBriefing(day, branch) {
   const count=state=>branch.members.filter(m=>m.state===state).length;
   const leave=branch.members.filter(m=>m.on_leave===true||(m.on_leave===undefined&&m.state==='leave')).length;
   const missing=branch.members.filter(m=>m.state==='missing');
-  lines.push('',`휴무 ${leave}명 · 일정 없음 ${count('empty')}명`,`미등록 ${missing.length}명${missing.length?': '+missing.map(m=>clean(m.name)).join('·'):''}`);
+  lines.push('',`휴무 ${leave}명 · 일정 없음 ${count('empty')}명`);
+  let line=`미등록 ${missing.length}명`,names=0;
+  for(const member of missing) {
+    const name=clean(member.name);
+    if(name.length>200)throw Error('Member name exceeds message limit');
+    const candidate=line+(names?'·':': ')+name;
+    if(candidate.length<=200){line=candidate;names++;continue;}
+    lines.push(line);line='미등록(계속): '+name;names=1;
+    if(line.length>200){lines.push('미등록(계속):');line=name;}
+  }
+  lines.push(line);
   return splitLines(lines);
 }
 
+export function hasMemberBriefing(summary) {
+ return ['branch_manager','team_leader','deputy_branch_manager'].includes(summary.identity?.position)
+  && summary.preferences?.member_briefing_enabled!==false && Array.isArray(summary.branch?.members) && summary.branch.members.length>0;
+}
+
 export function briefingBundle(day, summary, weather) {
-  const branch=summary.identity?.position==='branch_manager'&&summary.branch;
+  const branch=hasMemberBriefing(summary)&&summary.branch;
   return [
     ...(branch?branchBriefing(day,branch).map(body=>({kind:'branch',body})):[]),
     ...briefing(day,summary.events,summary.empty_explicit,weather).map(body=>({kind:'personal',body})),

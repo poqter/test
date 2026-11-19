@@ -188,6 +188,33 @@ def render_test_panel(service, token, status, weather_ready):
             st.rerun()
 
 
+
+def render_member_briefing(service, token):
+    state = rpc(service, token, 'kakao_member_briefing_status')
+    if not isinstance(state, dict) or not state.get('eligible'):
+        return
+    members = (state.get('branch') or {}).get('members') or []
+    with st.expander('구성원 브리핑 설정 · 미리보기'):
+        st.caption('실제 직책과 조직 연결을 기준으로 집계합니다. 화면 조회 권한과는 별개입니다.')
+        with st.form('kakao_member_preferences'):
+            active = st.checkbox('구성원 브리핑 받기', value=bool(state.get('enabled')))
+            if st.form_submit_button('구성원 설정 저장'):
+                rpc(service, token, 'kakao_save_member_briefing', {'p_enabled': active})
+                st.success('구성원 브리핑 설정을 저장했습니다. 개인 브리핑 설정은 유지됩니다.')
+        if not members:
+            st.info('연결된 구성원이 없습니다. 개인 브리핑만 발송됩니다.')
+        else:
+            st.caption('집계 대상 ' + str(len(members)) + '명 · ' + ' · '.join(m['name'] for m in members))
+            if st.button('오늘 구성원 메시지 미리보기', key='kakao_member_preview'):
+                preview = service._request('POST', '/functions/v1/hwarang-kakao/member-preview', access_token=token, json={})
+                if not preview.get('enabled'):
+                    st.caption('구성원 수신이 꺼져 있습니다. 아래는 수신을 켰을 때의 내용입니다.')
+                for i, body in enumerate(preview.get('parts') or [], 1):
+                    st.caption(f'구성원 메시지 {i}')
+                    st.code(body, language=None)
+                st.caption('미리보기는 발송하지 않습니다. 실제 발송 시점의 일정과 연결 상태에 따라 내용이 달라질 수 있습니다.')
+
+
 def render_panel():
     if not enabled():
         return
@@ -265,6 +292,7 @@ def render_panel():
                         st.success('받을 시간과 신청 설정을 저장했습니다. 실제 발송은 서비스 운영 상태와 무료 한도에 따라 처리됩니다.')
                         if active and isinstance(status.get('welcome'), dict) and status['welcome'].get('status') == 'waiting_setup':
                             st.info('첫 브리핑 준비가 완료되면 오늘 내용을 한 번 보냅니다. 상태를 새로고침해 확인해 주세요.')
+            render_member_briefing(service, token)
             render_test_panel(service, token, status, weather_ready)
             if st.checkbox('연결을 해제하고 앞으로의 발송을 중지합니다.', key='kakao_disconnect_confirm'):
                 if st.button('카카오 연결 해제', key='kakao_disconnect'):

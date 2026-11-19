@@ -1,4 +1,4 @@
-import {briefingBundle} from './message.mjs';
+import {briefingBundle,hasMemberBriefing} from './message.mjs';
 import {forecastBase} from './weather.mjs';
 import {fetchWebWeather} from './weather-web.mjs';
 import {unseal,seal,digest} from './crypto.mjs';
@@ -56,7 +56,7 @@ export function makeWorker(env,fetcher=fetch) {
    }
    for(const item of due.slice(0,25)) {
     if(Date.now()-tickStarted>20000)break;
-    const hasBranch=item.summary.identity?.position==='branch_manager'&&!!item.summary.branch;
+    const hasBranch=hasMemberBriefing(item.summary);
     const skipEmpty=!hasBranch&&Array.isArray(item.summary.events)&&item.summary.events.length===0&&item.summary.preferences?.send_empty===false;
     const weather=skipEmpty?{status:'unavailable'}:await weatherFor(item);
     const bundle=briefingBundle(item.day,item.summary,weather);

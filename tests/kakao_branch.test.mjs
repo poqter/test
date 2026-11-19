@@ -21,7 +21,7 @@ test('overflow preserves every employee before personal parts, max 200 UTF-16',(
  const branch=parts.slice(0,firstPersonal).map(p=>p.body).join('\n');for(const m of s.branch.members)assert.ok(branch.includes(m.name+' '+m.count+'건'));
 });
 test('system admin and team leaders do not gain branch briefing',()=>{
- for(const position of ['team_leader','fp','platform_administrator'])assert.ok(briefingBundle(day,{...summary,identity:{position,role:'super_admin'}},weather).every(p=>p.kind==='personal'));
+ for(const position of ['fp','platform_administrator'])assert.ok(briefingBundle(day,{...summary,identity:{position,role:'super_admin'}},weather).every(p=>p.kind==='personal'));
 });
 
 test('leave and work count independently; missing names retain order',()=>{
@@ -34,4 +34,23 @@ test('many missing names are split without loss under 200 units',()=>{
  const parts=briefingBundle(day,s,weather);assert.ok(parts.every(p=>p.body.length<=200));
  const text=parts.filter(p=>p.kind==='branch').map(p=>p.body).join('');
  for(const member of s.branch.members)assert.ok(text.includes(member.name));
+});
+
+test('connected roles receive member summary, but empty scope and disabled setting do not',()=>{
+ for(const position of ['team_leader','deputy_branch_manager']){
+  const s={...summary,identity:{position,role:'super_admin'}};
+  assert.equal(briefingBundle(day,s,weather)[0].kind,'branch');
+  assert.ok(briefingBundle(day,{...s,branch:{name:'팀',members:[]}},weather).every(p=>p.kind==='personal'));
+  assert.ok(briefingBundle(day,{...s,preferences:{member_briefing_enabled:false}},weather).every(p=>p.kind==='personal'));
+ }
+});
+test('missing names are atomic, including boundaries and emoji',()=>{
+ for(const size of [1,20,70,250]){
+  const s=structuredClone(summary);
+  s.branch.members=Array.from({length:size},(_,i)=>({name:'이름'+String(i).padStart(3,'0')+'😀가나다',count:0,state:'missing'}));
+  const parts=briefingBundle(day,s,weather).filter(p=>p.kind==='branch');
+  assert.ok(parts.every(p=>p.body.length<=200));
+  for(const m of s.branch.members)assert.equal(parts.filter(p=>p.body.includes(m.name)).length,1);
+  if(size>20)assert.ok(parts.some(p=>p.body.includes('미등록(계속):')));
+ }
 });

@@ -7,3 +7,16 @@ test('forged owner input ignored; begin binds verified user',async()=>{let paylo
 test('callback requires browser cookie and valid state before exchange',async()=>{const h=makeHandler(env,()=>{throw Error('unexpected');});assert.equal((await h(new Request(values.SUPABASE_URL+'/callback?state='+'a'.repeat(64)+'&code=abc'))).status,400)});
 test('consumed state fails closed without token exchange',async()=>{let calls=0;const h=makeHandler(env,async()=>{calls++;return Response.json([])});const r=await h(new Request(values.SUPABASE_URL+'/callback?state='+'a'.repeat(64)+'&code=abc',{headers:{cookie:'hwarang_kakao='+'b'.repeat(64)}}));assert.equal(r.status,400);assert.equal(calls,1)});
 test('callback only writes pending proof hash, never raw receipt or direct activation',async()=>{let saved;const h=makeHandler(env,async(url,init)=>{if(url.includes('/kakao_multi_oauth?'))return Response.json([{id:'ticket',owner_id:'owner',generation:2}]);if(url==='https://kauth.kakao.com/oauth/token')return Response.json({access_token:'access',refresh_token:'refresh',expires_in:3600,refresh_token_expires_in:86400,scope:'talk_message'});if(url==='https://kapi.kakao.com/v1/user/access_token_info')return Response.json({id:123,app_id:1652822});if(url.endsWith('/kakao_service_finish')){saved=JSON.parse(init.body);return Response.json({pending:true});}throw Error('unexpected');});const r=await h(new Request(values.SUPABASE_URL+'/callback?state='+'a'.repeat(64)+'&code=abc',{headers:{cookie:'hwarang_kakao='+'b'.repeat(64)}}));assert.equal(r.status,200);const text=await r.text();const receipt=text.match(/[a-f0-9]{64}$/)[0];assert.notEqual(saved.p_receipt_hash,receipt);assert.equal(JSON.stringify(saved).includes(receipt),false);assert.equal(saved.p_owner,undefined);assert.equal(saved.p_ticket_id,'ticket');assert.ok(text.includes('다른 사람에게'));});
+
+test('member preview rejects anonymous and service tokens',async()=>{
+ const h=makeHandler(env,()=>{throw Error('unexpected');});
+ for(const authorization of ['', 'Bearer server'])assert.equal((await h(new Request(values.SUPABASE_URL+'/member-preview',{method:'POST',headers:{authorization}}))).status,401);
+});
+test('member preview uses caller token, ignores forged owner and never sends',async()=>{
+ const calls=[];const h=makeHandler(env,async(url,init)=>{
+  calls.push(url);assert.ok(url.endsWith('/rpc/kakao_member_briefing_status'));assert.equal(init.headers.Authorization,'Bearer user');assert.deepEqual(JSON.parse(init.body),{});
+  return Response.json({eligible:true,enabled:true,day:'2026-11-20',branch:{name:'팀',members:[{name:'연결FP',count:1,state:'scheduled'}]}});
+ });
+ const r=await h(new Request(values.SUPABASE_URL+'/member-preview',{method:'POST',headers:{authorization:'Bearer user'},body:JSON.stringify({owner_id:'victim'})}));
+ assert.equal(r.status,200);const state=await r.json();assert.ok(state.parts[0].includes('연결FP 1건'));assert.equal(calls.length,1);
+});
