@@ -1,3 +1,4 @@
+import {branchBriefing} from './message.mjs';
 import {random,digest,seal} from './crypto.mjs';
 export function makeHandler(env,fetcher=fetch) {
  const base=env('SUPABASE_URL'),service=env('SUPABASE_SERVICE_ROLE_KEY'),client=env('KAKAO_REST_API_KEY'),secret=env('KAKAO_CLIENT_SECRET'),encryption=env('KAKAO_MULTI_TOKEN_KEY');
@@ -13,6 +14,13 @@ export function makeHandler(env,fetcher=fetch) {
    // Deployment is inert until costs, schema and OAuth domain registration are verified.
    if(env('KAKAO_MULTI_ENABLED')!=='true')return reply({error:'현재 준비 중입니다.'},503);
    if(!base||!service||!client||!secret||!encryption)return reply({error:'연결 설정을 확인해 주세요.'},503);
+   if(path==='member-preview'&&req.method==='POST') {
+    const bearer=req.headers.get('authorization')?.match(/^Bearer (\S+)$/)?.[1];
+    if(!bearer||bearer===service)return reply({error:'로그인이 필요합니다.'},401);
+    const state=await request('/rest/v1/rpc/kakao_member_briefing_status','POST',{},bearer);
+    const members=state.branch?.members||[];
+    return reply({...state,parts:state.eligible&&members.length?branchBriefing(state.day,state.branch):[]});
+   }
    if(path==='connect'&&req.method==='POST') {
     const bearer=req.headers.get('authorization')?.match(/^Bearer (\S+)$/)?.[1];
     if(!bearer||bearer===service)return reply({error:'로그인이 필요합니다.'},401);
