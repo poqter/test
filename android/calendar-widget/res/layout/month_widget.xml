@@ -12,6 +12,7 @@
         <TextView android:id="@+id/refresh" style="@style/WidgetAction" android:text="↻" android:contentDescription="일정 새로고침"/>
         <TextView android:id="@+id/setup" style="@style/WidgetAction" android:text="설정"/>
     </LinearLayout>
+    <TextView android:id="@+id/empty" android:layout_width="match_parent" android:layout_height="40dp" android:gravity="center" android:text="오늘 일정 없음 등록" android:textColor="#00716e" android:textSize="12sp"/>
     <LinearLayout android:id="@+id/grid" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="vertical"/>
     <TextView android:id="@+id/status" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="10sp" android:textColor="#486174" android:maxLines="2"/>
 </LinearLayout>

@@ -310,8 +310,8 @@ def test_empty_day_ignores_common_cancelled_and_other_events(db,patch):
 
 def test_empty_day_blocks_companion_and_wrong_day_and_verifies_write(db,monkeypatch):
  today=command(db,'empty_day',{})['day']
- with pytest.raises(ValueError,match='날짜가 변경'):
-  command(db,'save_empty_day',{'day':'2000-01-01','confirmed':True})
+ with pytest.raises(ValueError,match='날짜'):
+  command(db,'save_empty_day',{'day':'not-a-date','confirmed':True})
  with pytest.raises(ValueError,match='등록 여부'):
   command(db,'save_empty_day',{'day':today,'confirmed':'true'})
  st.session_state['fixture_events'][0].update(day=today,owner=OTHER,companion=UID)
@@ -325,3 +325,14 @@ def test_empty_day_blocks_companion_and_wrong_day_and_verifies_write(db,monkeypa
  monkeypatch.setattr(db,'request',no_save)
  with pytest.raises(HwarangAuthError,match='저장 결과'):
   command(db,'save_empty_day',{'day':today,'confirmed':True})
+
+
+def test_empty_day_selected_date_does_not_use_today(db):
+ today=command(db,'empty_day',{})['day']
+ st.session_state['fixture_events'][0].update(day=today)
+ for target in ['2027-01-17','2026-01-17']:
+  state=command(db,'save_empty_day',{'day':target,'confirmed':True})
+  assert state['day']==target and state['confirmed']
+  assert command(db,'empty_day',{'day':today})['has_events']
+  assert not command(db,'empty_day',{'day':today})['confirmed']
+  assert not command(db,'save_empty_day',{'day':target,'confirmed':False})['confirmed']
