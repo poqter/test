@@ -1,17 +1,25 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent"
     android:orientation="vertical" android:padding="8dp" android:background="@drawable/widget_background">
     <LinearLayout android:layout_width="match_parent" android:layout_height="32dp" android:gravity="center_vertical">
-        <TextView android:id="@+id/heading" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:gravity="center_vertical" android:textColor="#123c4b" android:textStyle="bold" android:textSize="16sp" android:text="화랑 월간 달력"/>
         <TextView android:id="@+id/prev" style="@style/WidgetAction" android:text="‹" android:contentDescription="이전 달"/>
-        <TextView android:id="@+id/today" style="@style/WidgetAction" android:text="오늘"/>
+        <TextView android:id="@+id/heading" android:layout_width="wrap_content" android:layout_height="match_parent" android:gravity="center_vertical" android:textColor="#123c4b" android:textStyle="bold" android:textSize="16sp" android:text="11월"/>
         <TextView android:id="@+id/next" style="@style/WidgetAction" android:text="›" android:contentDescription="다음 달"/>
-    </LinearLayout>
-    <LinearLayout android:layout_width="match_parent" android:layout_height="27dp" android:gravity="center_vertical">
-        <TextView android:id="@+id/mine" style="@style/WidgetAction" android:text="내 일정"/>
-        <TextView android:id="@+id/branch" style="@style/WidgetAction" android:text="지점 일정"/>
+        <FrameLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="1dp"/>
+        <TextView android:id="@+id/today" style="@style/WidgetAction" android:text="오늘"/>
         <TextView android:id="@+id/refresh" style="@style/WidgetAction" android:text="↻" android:contentDescription="일정 새로고침"/>
         <TextView android:id="@+id/setup" style="@style/WidgetAction" android:text="설정"/>
     </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="28dp" android:gravity="center_vertical">
+        <TextView android:id="@+id/mine" style="@style/WidgetAction" android:text="내 일정"/>
+        <TextView android:id="@+id/branch" style="@style/WidgetAction" android:text="지점 일정"/>
+        <TextView android:id="@+id/member_search" style="@style/WidgetAction" android:text="⌕"
+            android:contentDescription="구성원 검색" android:visibility="gone"/>
+        <TextView android:id="@+id/member_selected" style="@style/WidgetAction" android:layout_width="0dp"
+            android:layout_weight="1" android:singleLine="true" android:ellipsize="end" android:visibility="gone"/>
+        <TextView android:id="@+id/member_all" style="@style/WidgetAction" android:text="전체"
+            android:contentDescription="전체 구성원 일정 보기" android:visibility="gone"/>
+    </LinearLayout>
+    <LinearLayout android:id="@+id/weekdays" android:layout_width="match_parent" android:layout_height="20dp"/>
     <LinearLayout android:id="@+id/grid" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="vertical"/>
-    <TextView android:id="@+id/status" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="10sp" android:textColor="#486174" android:maxLines="2"/>
+    <TextView android:id="@+id/status" android:layout_width="match_parent" android:layout_height="wrap_content" android:visibility="gone" android:textSize="10sp" android:textColor="#486174" android:maxLines="2"/>
 </LinearLayout>

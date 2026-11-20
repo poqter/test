@@ -20,17 +20,19 @@ public final class WidgetRefresh extends JobService {
                     try { data.refresh(month, false); }
                     catch (WidgetData.HttpFailure fallback) {
                         if (fallback.code == 401 || fallback.code == 403) { data.clear(); status = fallback.code == 403 ? "권한 없음" : ""; }
-                        else status = "갱신 지연 · 다시 시도해 주세요";
-                    } catch (Exception fallback) { status = "갱신 지연 · 다시 시도해 주세요"; }
+                        else status = MonthWidget.REFRESH_FAILED;
+                    } catch (Exception fallback) { status = MonthWidget.REFRESH_FAILED; }
                 } else if (failure.code == 401 || failure.code == 403) {
                     data.clear();
                     status = failure.code == 403 ? "권한 없음" : "";
-                } else status = "갱신 지연 · 다시 시도해 주세요";
+                } else status = MonthWidget.REFRESH_FAILED;
             } catch (Exception failure) {
-                status = "갱신 지연 · 다시 시도해 주세요";
+                status = MonthWidget.REFRESH_FAILED;
             } finally {
                 data.prefs.edit().putString("state", status).apply();
+                MonthWidget.finishRefresh();
                 MonthWidget.paintAll(this);
+                if (WidgetStyle.refresh(data.prefs)) MonthWidget.paintAll(this);
                 jobFinished(params, false);
             }
         });
