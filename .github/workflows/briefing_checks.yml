@@ -88,6 +88,7 @@ jobs:
         if: ${{ !cancelled() && steps.synthetic_db.outcome == 'success' }}
         run: |
           node tests/calendar_empty_day.mjs
+          node tests/calendar_widget.mjs
           node tests/activity_db.mjs
           node tests/calendar_scope_sync.mjs
           node tests/calendar_scope_realtime.mjs

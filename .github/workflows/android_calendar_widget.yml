@@ -28,6 +28,11 @@ jobs:
           sdkmanager="$ANDROID_SDK_ROOT/cmdline-tools/bin/sdkmanager"
           (set +o pipefail; yes | "$sdkmanager" --sdk_root="$ANDROID_SDK_ROOT" --licenses)
           "$sdkmanager" --sdk_root="$ANDROID_SDK_ROOT" 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Test numeric time entry
+        run: |
+          mkdir -p "$RUNNER_TEMP/clock-test"
+          javac -d "$RUNNER_TEMP/clock-test" android/calendar-widget/src/com/hwarang/calendarwidget/Clock.java android/calendar-widget/tests/ClockTest.java
+          java -cp "$RUNNER_TEMP/clock-test" com.hwarang.calendarwidget.ClockTest
       - name: Build and verify a signed internal test APK
         env:
           ANDROID_SDK_ROOT: ${{ runner.temp }}/widget-sdk

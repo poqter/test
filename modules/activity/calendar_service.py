@@ -213,8 +213,13 @@ def save_event(db,a):
         key=rows[0]['id']
     return {'id':key,'day':str(day)}
 
-def empty_day_state(db):
-    today=str(datetime.now(KST).date())
+def empty_day_state(db, day=None):
+    today=day if day is not None else str(datetime.now(KST).date())
+    try:
+        parsed=date.fromisoformat(today)
+        if parsed.isoformat()!=today or not 1900<=parsed.year<=2100:raise ValueError()
+    except (ValueError,TypeError):
+        raise ValueError('등록할 날짜를 확인해 주세요.')
     rows=db.request('POST','rpc/sales_calendar_days',body={'first_day':today,'last_day':today})
     active=[r for r in rows if r['day']==today and not r.get('common')
             and db.uid in (r['owner'],r.get('companion'))
@@ -224,21 +229,20 @@ def empty_day_state(db):
 
 
 def save_empty_day(db,args):
-    state=empty_day_state(db)
-    if args.get('day')!=state['day']:
-        raise ValueError('날짜가 변경됐습니다. 오늘 일정 없음 화면을 다시 열어 주세요.')
+    state=empty_day_state(db,args.get('day'))
+    if args.get('day') is None:raise ValueError('등록할 날짜를 확인해 주세요.')
     confirmed=args.get('confirmed')
     if type(confirmed) is not bool:
         raise ValueError('일정 없음 등록 여부를 확인해 주세요.')
     if confirmed and state['has_events']:
-        raise ValueError('오늘 개인 일정 또는 휴무가 등록되어 있습니다. 기존 일정을 확인해 주세요.')
+        raise ValueError('선택한 날짜에 개인 일정 또는 휴무가 등록되어 있습니다. 기존 일정을 확인해 주세요.')
     params={'owner':'eq.'+db.uid,'day':'eq.'+state['day']}
     if confirmed:
         db.request('POST','sales_empty_days',body={'day':state['day']},prefer='resolution=ignore-duplicates')
     else:
         db.request('DELETE','sales_empty_days',params)
     db._reads.clear()
-    current=empty_day_state(db)
+    current=empty_day_state(db,state['day'])
     if current['day']!=state['day'] or current['confirmed']!=confirmed:
         raise HwarangAuthError('저장 결과를 확인하지 못했습니다. 상태를 다시 확인해 주세요.')
     return current
@@ -249,7 +253,7 @@ def command(db,op,a):
         from modules.activity.support_request import recipients
         return recipients(db)
     db._reads.clear()
-    if op=='empty_day':return empty_day_state(db)
+    if op=='empty_day':return empty_day_state(db,a.get('day'))
     if op=='save_empty_day':return save_empty_day(db,a)
     if op=='load':return snapshot(db,a)
     if op=='detail':return detail(db,a['id'],bool(a.get('lazy_contracts')))

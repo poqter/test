@@ -89,6 +89,7 @@ public final class MonthWidget extends AppWidgetProvider {
 
     private static final class DayMark {
         int count;
+        boolean personal;
         boolean leave;
         final LinkedHashSet<String> kinds = new LinkedHashSet<>();
     }
@@ -98,21 +99,20 @@ public final class MonthWidget extends AppWidgetProvider {
         if (rows == null) return result;
         for (int i = 0; i < rows.length(); i++) {
             JSONObject event = rows.optJSONObject(i);
-            if (event == null || (!includeDone && event.optBoolean("done"))) continue;
+            if (event == null) continue;
             DayMark mark = result.computeIfAbsent(event.optString("day"), unused -> new DayMark());
-            mark.count++;
+            mark.personal |= event.optBoolean("personal");
+            if (!includeDone && event.optBoolean("done")) continue;
             String kind = event.optString("kind");
             if ("휴무".equals(kind)) mark.leave = true;
-            else mark.kinds.add(kind);
+            else { mark.count++; mark.kinds.add(kind); }
         }
         return result;
     }
 
     private static PendingIntent dateLink(Context context, LocalDate day, boolean team, int id) {
-        Uri link = Uri.parse("https://hwarang-calendar.streamlit.app/").buildUpon()
-            .appendQueryParameter("view", "mobile-calendar").appendQueryParameter("widget_day", day.toString())
-            .appendQueryParameter("widget_scope", team ? "branch" : "mine").build();
-        Intent intent = new Intent(Intent.ACTION_VIEW, link).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        Intent intent=new Intent(context,DayActivity.class).setData(Uri.parse("hwarang-widget://day/"+day+"/"+team))
+            .putExtra("day",day.toString()).putExtra("team",team);
         return PendingIntent.getActivity(context, id, intent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
@@ -142,6 +142,8 @@ public final class MonthWidget extends AppWidgetProvider {
         int[] actions = {R.id.prev, R.id.today, R.id.next, R.id.mine, R.id.branch, R.id.refresh};
         String[] names = {"prev", "today", "next", "mine", "branch", "refresh"};
         for (int i = 0; i < actions.length; i++) view.setOnClickPendingIntent(actions[i], action(context, names[i], id));
+        view.setOnClickPendingIntent(R.id.empty, PendingIntent.getActivity(context, id,
+            new Intent(context, DayActivity.class), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
         view.setOnClickPendingIntent(R.id.setup, PendingIntent.getActivity(context, id,
             new Intent(context, SetupActivity.class), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
         view.setTextViewText(R.id.status, !connected ? ("권한 없음".equals(state) ? "일정 조회 권한을 확인해 주세요" : "설정에서 화랑 계정을 연결해 주세요")
@@ -155,6 +157,9 @@ public final class MonthWidget extends AppWidgetProvider {
         Bundle sizes = manager.getAppWidgetOptions(id);
         boolean compact = sizes.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 300) < 300
             || sizes.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 270) < 270;
+        java.util.Set<String> emptyDays = new java.util.HashSet<>();
+        JSONArray confirmed = cache.optJSONArray("empty_days");
+        if (confirmed != null) for(int i=0;i<confirmed.length();i++) emptyDays.add(confirmed.optString(i));
         LocalDate today = LocalDate.now(SEOUL);
         LocalDate first = month.atDay(1);
         int offset = (first.getDayOfWeek().getValue() - (sunday ? 0 : 1) + 7) % 7;
@@ -170,7 +175,7 @@ public final class MonthWidget extends AppWidgetProvider {
                 DayMark mark = marks.get(day.toString());
                 SpannableStringBuilder label = new SpannableStringBuilder(String.valueOf(day.getDayOfMonth()));
                 if (mark != null) {
-                    label.append("\n").append(String.valueOf(mark.count));
+                    if (mark.count>0) label.append("\n").append(String.valueOf(mark.count));
                     if (mark.leave) label.append(compact ? " 휴" : " 휴무");
                     if (!compact && !mark.kinds.isEmpty()) {
                         label.append("\n");
@@ -184,9 +189,14 @@ public final class MonthWidget extends AppWidgetProvider {
                         }
                     }
                 }
+                String registration="";
+                if (connected && !team && confirmed!=null && (mark==null || !mark.personal)) {
+                    registration=emptyDays.contains(day.toString())?"일정 없음":"미등록";
+                    label.append("\n").append(registration);
+                }
                 RemoteViews date = cell(context, label, today.equals(day) ? 0xff006b6d : 0xff173446);
                 if (today.equals(day)) date.setInt(R.id.cell, "setBackgroundColor", 0xffd8ede8);
-                date.setContentDescription(R.id.cell, day.toString() + (mark == null ? "" : " 일정 " + mark.count + "건") + (today.equals(day) ? " 오늘" : ""));
+                date.setContentDescription(R.id.cell, day.toString() + (mark == null ? "" : " 일정 " + mark.count + "건") + " " + registration + (today.equals(day) ? " 오늘" : ""));
                 date.setOnClickPendingIntent(R.id.cell, dateLink(context, day, team, id));
                 line.addView(R.id.row, date);
             }

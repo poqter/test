@@ -159,10 +159,10 @@ final class WidgetData {
 
     String cacheKey(YearMonth month, boolean team) { return "month:" + month + ":" + team; }
 
-    private static JSONArray month(String token, YearMonth month, boolean team) throws Exception {
-        return request("/rest/v1/rpc/sales_calendar_compact", token, new JSONObject()
+    private static JSONObject month(String token, YearMonth month, boolean team) throws Exception {
+        return request("/rest/v1/rpc/sales_widget_month", token, new JSONObject()
             .put("first_day", month.atDay(1).toString()).put("last_day", month.atEndOfMonth().toString())
-            .put("p_team", team)).getJSONArray("rows");
+            .put("p_team", team));
     }
 
     void refresh(YearMonth month, boolean team) throws Exception {
@@ -179,9 +179,29 @@ final class WidgetData {
         }
     }
 
+
+    JSONObject call(String function, JSONObject args) throws Exception {
+        JSONObject session=loadSession();
+        if(session==null)throw new HttpFailure(401);
+        if(session.getLong("expires")<=System.currentTimeMillis()/1000+30)session=renew(session);
+        return request("/rest/v1/rpc/"+function,session.getString("access"),args);
+    }
+    JSONObject day(String day,boolean team) throws Exception {
+        return call("sales_widget_month",new JSONObject().put("first_day",day).put("last_day",day).put("p_team",team));
+    }
+    void setEmpty(String day,boolean confirmed) throws Exception {
+        JSONObject result=call("sales_empty_day_set",new JSONObject().put("p_day",day).put("p_confirmed",confirmed));
+        if(!day.equals(result.optString("day"))||result.optBoolean("confirmed")!=confirmed)throw new java.io.IOException("Unverified write");
+    }
+    void refreshVisible() throws Exception {
+        refresh(MonthWidget.shown(this),prefs.getBoolean("team",false));
+        prefs.edit().putString("state","").apply();
+    }
+
     private void fetchMonth(JSONObject session, YearMonth month, boolean team) throws Exception {
         String token = session.getString("access");
-        JSONArray events = month(token, month, team);
+        JSONObject payload = month(token, month, team);
+        JSONArray events = payload.getJSONArray("rows");
         JSONObject user = request("/auth/v1/user", token, null);
         if (!session.getString("uid").equals(user.getString("id"))) throw new HttpFailure(401);
         JSONObject metadata = user.optJSONObject("user_metadata");
@@ -190,16 +210,18 @@ final class WidgetData {
         JSONArray safe = new JSONArray();
         for (int i = 0; i < events.length(); i++) {
             JSONObject event = events.getJSONObject(i);
+            if ("취소".equals(event.optString("status")) || "연기".equals(event.optString("status"))) continue;
             String kind = event.optString("kind");
             if (!java.util.Arrays.asList("TA", "AP", "PC", "CS", "청약", "휴무").contains(kind)) kind = "기타";
             safe.put(new JSONObject().put("day", event.getString("day")).put("kind", kind)
-                .put("done", "완료".equals(event.optString("status"))));
+                .put("done", "완료".equals(event.optString("status")))
+                .put("personal", !event.optBoolean("common") && (session.getString("uid").equals(event.optString("owner")) || session.getString("uid").equals(event.optString("companion")))));
         }
         SharedPreferences.Editor edit = prefs.edit();
         for (String name : prefs.getAll().keySet()) {
             if (name.startsWith("month:") && !name.startsWith("month:" + month + ":")) edit.remove(name);
         }
         edit.putBoolean("sunday", sunday).putString(cacheKey(month, team),
-            new JSONObject().put("rows", safe).put("at", System.currentTimeMillis()).toString()).apply();
+            new JSONObject().put("rows", safe).put("empty_days",payload.getJSONArray("empty_days")).put("at", System.currentTimeMillis()).toString()).apply();
     }
 }
