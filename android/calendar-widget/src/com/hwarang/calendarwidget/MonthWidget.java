@@ -111,10 +111,8 @@ public final class MonthWidget extends AppWidgetProvider {
     }
 
     private static PendingIntent dateLink(Context context, LocalDate day, boolean team, int id) {
-        Uri link = Uri.parse("https://hwarang-calendar.streamlit.app/").buildUpon()
-            .appendQueryParameter("view", "mobile-calendar").appendQueryParameter("widget_day", day.toString())
-            .appendQueryParameter("widget_scope", team ? "branch" : "mine").build();
-        Intent intent = new Intent(Intent.ACTION_VIEW, link).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        Intent intent=new Intent(context,DayActivity.class).setData(Uri.parse("hwarang-widget://day/"+day+"/"+team))
+            .putExtra("day",day.toString()).putExtra("team",team);
         return PendingIntent.getActivity(context, id, intent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
@@ -145,7 +143,7 @@ public final class MonthWidget extends AppWidgetProvider {
         String[] names = {"prev", "today", "next", "mine", "branch", "refresh"};
         for (int i = 0; i < actions.length; i++) view.setOnClickPendingIntent(actions[i], action(context, names[i], id));
         view.setOnClickPendingIntent(R.id.empty, PendingIntent.getActivity(context, id,
-            new Intent(context, EmptyDayActivity.class), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
+            new Intent(context, DayActivity.class), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
         view.setOnClickPendingIntent(R.id.setup, PendingIntent.getActivity(context, id,
             new Intent(context, SetupActivity.class), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
         view.setTextViewText(R.id.status, !connected ? ("권한 없음".equals(state) ? "일정 조회 권한을 확인해 주세요" : "설정에서 화랑 계정을 연결해 주세요")

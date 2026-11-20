@@ -6,7 +6,7 @@
         <activity android:name=".SetupActivity" android:exported="true">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
         </activity>
-        <activity android:name=".EmptyDayActivity" android:exported="false"/>
+        <activity android:name=".DayActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden"/>
         <service android:name=".WidgetRefresh" android:exported="true" android:permission="android.permission.BIND_JOB_SERVICE"/>
         <receiver android:name=".MonthWidget" android:exported="false">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>

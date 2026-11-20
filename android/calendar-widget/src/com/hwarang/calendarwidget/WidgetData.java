@@ -180,14 +180,22 @@ final class WidgetData {
     }
 
 
-    void confirmEmpty(String day) throws Exception {
-        JSONObject session = loadSession();
-        if (session == null) throw new HttpFailure(401);
-        if (session.getLong("expires") <= System.currentTimeMillis()/1000+30) session=renew(session);
-        // A failed/uncertain write is never automatically retried.
-        JSONObject result=request("/rest/v1/rpc/sales_empty_day_set",session.getString("access"),
-            new JSONObject().put("p_day",day).put("p_confirmed",true));
-        if (!day.equals(result.optString("day")) || !result.optBoolean("confirmed")) throw new java.io.IOException("Unverified write");
+    JSONObject call(String function, JSONObject args) throws Exception {
+        JSONObject session=loadSession();
+        if(session==null)throw new HttpFailure(401);
+        if(session.getLong("expires")<=System.currentTimeMillis()/1000+30)session=renew(session);
+        return request("/rest/v1/rpc/"+function,session.getString("access"),args);
+    }
+    JSONObject day(String day,boolean team) throws Exception {
+        return call("sales_widget_month",new JSONObject().put("first_day",day).put("last_day",day).put("p_team",team));
+    }
+    void setEmpty(String day,boolean confirmed) throws Exception {
+        JSONObject result=call("sales_empty_day_set",new JSONObject().put("p_day",day).put("p_confirmed",confirmed));
+        if(!day.equals(result.optString("day"))||result.optBoolean("confirmed")!=confirmed)throw new java.io.IOException("Unverified write");
+    }
+    void refreshVisible() throws Exception {
+        refresh(MonthWidget.shown(this),prefs.getBoolean("team",false));
+        prefs.edit().putString("state","").apply();
     }
 
     private void fetchMonth(JSONObject session, YearMonth month, boolean team) throws Exception {
