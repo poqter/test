@@ -57,6 +57,10 @@ begin
   select 1 from public.sales_events x where x.owner=auth.uid() and x.day=d and x.status='예정' and x.deleted_at is null and x.id<>p_id and x.start_time is not null
   and (s=x.start_time or s<coalesce(x.end_time,x.start_time) and x.start_time<coalesce(e,s))
  ) then return jsonb_build_object('overlap',true);end if;
+ if s is not null and old.companion is not null and old.status='예정' and not p_overlap and exists(
+  select 1 from public.sales_companion_busy_times(d,d,old.companion) x where x.id<>p_id
+  and (s=x.start_time or s<coalesce(x.end_time,x.start_time) and x.start_time<coalesce(e,s))
+ ) then return jsonb_build_object('overlap',true);end if;
  if old.id is not null then
   update public.sales_events set day=d,title=t,kind=k,start_time=s,end_time=e,time_pending=pending,
    place=coalesce(p_data->>'place',''),note=coalesce(p_data->>'note','') where id=p_id and revision=p_revision returning * into saved;
@@ -70,3 +74,17 @@ begin
 end $$;
 revoke all on function public.sales_widget_save(uuid,integer,jsonb,boolean) from public,anon;
 grant execute on function public.sales_widget_save(uuid,integer,jsonb,boolean) to authenticated;
+
+create or replace function private.sales_empty_day_guard() returns trigger
+language plpgsql security definer set search_path='' as $$
+begin
+ perform pg_advisory_xact_lock(hashtextextended(new.owner::text||':'||new.day::text,20261120));
+ if exists(select 1 from public.sales_events e
+ join public.profiles author on author.id=e.owner and author.is_active and author.organization_unit_id=e.unit
+ join public.profiles member on member.id=new.owner and member.is_active and member.organization_unit_id=e.unit
+ where new.owner in (e.owner,e.companion) and e.day=new.day
+ and not e.common and e.deleted_at is null and e.status not in ('취소','연기')) then
+  raise exception '선택한 날짜에 개인 일정 또는 휴무가 등록되어 있습니다. 기존 일정을 확인해 주세요.';
+ end if;
+ return new;
+end $$;

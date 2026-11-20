@@ -11,7 +11,7 @@ try:
    with socket.create_connection(('127.0.0.1',8511),timeout=.2):break
   except OSError:time.sleep(.2)
  with sync_playwright() as p:
-  launch={'headless':True,'args':['--no-sandbox','--no-zygote','--single-process']}
+  launch={'headless':True,'args':['--no-sandbox']}
   if os.getenv('PLAYWRIGHT_CHROMIUM_EXECUTABLE'):launch['executable_path']=os.environ['PLAYWRIGHT_CHROMIUM_EXECUTABLE']
   for width in (390,820,1440):
    browser=p.chromium.launch(**launch)
@@ -26,7 +26,7 @@ try:
      page.screenshot(path='/tmp/calendar-failure.png');print('GEOMETRY',iframe.bounding_box(),f.evaluate('({inner:innerHeight,frame:lastFrameHeight,body:document.body.getBoundingClientRect().toJSON(),panel:calendarPanel?.getBoundingClientRect().toJSON(),client:calendarPanel?.clientHeight,scroll:calendarPanel?.scrollHeight,scrollTop:calendarPanel?.scrollTop})'),flush=True);raise
    def backdrop():
     box=iframe.bounding_box();page.mouse.click(box['x']+2,box['y']+2)
-   click('＋ 일정 등록');expect(f.get_by_label('일정명',exact=True)).to_be_focused();f.evaluate("async () => {await Promise.all(calendarPanel.getAnimations().map(a=>a.finished.catch(()=>{})))}");f.get_by_label('일정명',exact=True).fill('일정 없음 전환 후 보존');expect(f.get_by_label('일정명',exact=True)).to_have_value('일정 없음 전환 후 보존')
+   click('＋ 일정 등록');expect(f.get_by_label('일정명',exact=True)).to_be_focused();f.evaluate("async () => {await Promise.all(calendarPanel.getAnimations().map(a=>a.finished.catch(()=>{})))}");f.get_by_label('일정명',exact=True).click();f.get_by_label('일정명',exact=True).fill('일정 없음 전환 후 보존');expect(f.get_by_label('일정명',exact=True)).to_have_value('일정 없음 전환 후 보존')
    f.get_by_label('날짜',exact=True).fill('2027-01-17');click('일정 없음');expect(f.get_by_role('dialog',name='일정 없음',exact=True)).to_be_visible()
    click('일정 없음 등록');expect(f.get_by_role('button',name='일정 없음 등록 취소',exact=True)).to_be_visible()
    expect(f.get_by_text('등록했습니다. 같은 날짜에 일정이나 휴무를 추가하면 자동 해제됩니다.',exact=True)).to_be_visible()
