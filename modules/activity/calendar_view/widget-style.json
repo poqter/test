@@ -33,5 +33,25 @@
   "weekDivider": "#DFE7EA",
   "webLabel": "웹 캘린더 ↗",
   "tabSelectedText": "#FFFFFF",
-  "tabIdleText": "#486174"
+  "tabIdleText": "#486174",
+  "webInk": {
+    "TA": "#164B91",
+    "AP": "#146044",
+    "PC": "#623A91",
+    "CS": "#85450B",
+    "상담": "#654833",
+    "활동": "#075B64",
+    "기타": "#35465B",
+    "common": "#711738"
+  },
+  "webFill": {
+    "TA": "#EAF2FF",
+    "AP": "#E4F5EB",
+    "PC": "#F2EBFC",
+    "CS": "#FFF1DF",
+    "상담": "#F6EFE8",
+    "활동": "#E2F5F6",
+    "기타": "#EEF1F5",
+    "common": "#FCEAF1"
+  }
 }
