@@ -18,8 +18,7 @@ try:
    page=c.new_page()
    page.route('https://api.github.com/repos/poqter/test/releases/tags/*', lambda route: route.fulfill(json={'assets':[{'browser_download_url':'https://github.com/poqter/test/releases/download/'+route.request.url.rsplit('/',1)[1]+'/hwarang-month-widget.apk'}]}))
    page.goto('http://127.0.0.1:8504');cal=page.frame_locator('iframe[title="modules.activity.center.sales_calendar_view"]')
-   if 'Android' in ua:
-    page.frame_locator('iframe[title="modules.activity.center.sales_calendar_view"]').get_by_role('dialog').filter(has_text='새 위젯 설치하기').get_by_role('button',name='닫기',exact=True).click()
+   page.frame_locator('iframe[title="modules.activity.center.sales_calendar_view"]').get_by_role('dialog').filter(has_text='새 위젯 설치하기').get_by_role('button',name='닫기',exact=True).click()
    expect(cal.get_by_role('button',name='월간',exact=True)).to_have_attribute('aria-pressed','true')
    page.evaluate("""() => {const badge=document.createElement('a');badge.className='_viewerBadge_probe';badge.textContent='Streamlit';badge.href='https://streamlit.io/cloud';document.body.append(badge);const avatar=document.createElement('div');avatar.className='_profilePreview_probe';avatar.innerHTML='<a><img data-testid="appCreatorAvatar"></a>';document.body.append(avatar)}""")
    expect(page.locator('._viewerBadge_probe')).to_be_hidden()
