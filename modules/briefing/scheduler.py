@@ -173,7 +173,8 @@ def catch_up(repo, now=None):
         return outcomes
 
     # Publish saved editions first: a slow/failed MARKET cannot hold NEWS hostage.
-    publish_independently()
+    initial = publish_independently()
+    finished = bool(initial) and all(row['status'] == 'already_published' for row in initial)
     generation = {}
     local=clock().astimezone(KST)
     if time(6,30)<=local.time()<time(7,30):
@@ -190,6 +191,9 @@ def catch_up(repo, now=None):
         codes = [c for c in GROUPS[group] if profiles.get(c, {}).get('is_enabled') is not False]
         if not codes:
             generation[group] = {'status': 'disabled'}
+            continue
+        if finished:
+            generation[group] = {'status': 'reused', 'reason': 'stored_editions'}
             continue
         try:
             existing = [repo.bundle_for_date(c, day, include_draft=True, publication_only=True) for c in codes]
@@ -219,7 +223,7 @@ def catch_up(repo, now=None):
             generation[group] = {'status': 'failed', 'diagnostic': failure_diagnostic(exc)}
         # Commit each available edition without waiting for another group.
         publish_independently()
-    publication = publish_independently()
+    publication = initial if finished else publish_independently()
     due = due_profiles()
     complete = bool(due) and all(r['status'] in ('published', 'already_published') for r in publication)
     notification_required = False
