@@ -151,7 +151,7 @@ function calendarAction(action,value){
   else latest={...latest,day:value};
   selected=latest.day;context=null;
   const nextRange=rangeKey(...desiredRange());
-  if(previousRange===nextRange&&realtimeReady&&!signalPending&&!calendarLoading&&!calendarLoadError&&calendarCache.has(nextRange)&&!calendarCache.get(nextRange).movePending){
+  if(previousRange===nextRange&&realtimeReady&&!syncBusy&&!syncFailed&&!pendingRefresh&&!signalPending&&!calendarLoading&&!calendarLoadError&&calendarCache.has(nextRange)&&!calendarCache.get(nextRange).movePending){
    render(latest);return;
   }
   calendarLoading=true;render(latest);reloadCalendar();return;

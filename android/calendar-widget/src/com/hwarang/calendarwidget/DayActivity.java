@@ -43,29 +43,12 @@ public final class DayActivity extends Activity {
         });
     }
     private void refreshWidget(){WidgetData.io.execute(()->{try{data.refreshVisible();}catch(Exception ex){data.prefs.edit().putString("state","갱신 지연 · 새로고침해 주세요").apply();}MonthWidget.paintAll(this);});}
-    private String loadedDay;
-    private JSONObject loadedRows;
-    private long loadedAt;
-
-    @Override protected void onStop() {
-        loadedRows = null;
-        super.onStop();
-    }
-
     private void load(){ load(false); }
     private void load(boolean force){
         screen(day+(team?" · 지점 일정":" · 내 일정"));
         button("날짜 선택",()->pick(day,d->{day=d;load();}));button("새 일정 등록",()->editor(null));button("다시 불러오기",()->load(true));button("닫기",this::finish);
         final String selected=day;
-        final boolean reuse = !force && !team && selected.equals(loadedDay) && loadedRows != null
-            && android.os.SystemClock.elapsedRealtime() - loadedAt < 300000;
-        final JSONObject previous = reuse ? loadedRows : null;
-        task(()->previous != null ? previous : data.day(selected,team),payload->{
-            if (!reuse) {
-                loadedDay = selected;
-                loadedRows = payload;
-                loadedAt = android.os.SystemClock.elapsedRealtime();
-            }
+        task(()->data.day(selected,team,force),payload->{
             JSONArray rows=payload.getJSONArray("rows"),empty=payload.getJSONArray("empty_days");boolean personal=false,confirmed=false;
             for(int i=0;i<empty.length();i++)if(selected.equals(empty.optString(i)))confirmed=true;
             for(int i=0;i<rows.length();i++){

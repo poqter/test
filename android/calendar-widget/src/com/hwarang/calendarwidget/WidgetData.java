@@ -132,6 +132,8 @@ final class WidgetData {
     }
 
     void clear() {
+        lastDay = null;
+        lastSession = null;
         SharedPreferences.Editor edit = prefs.edit().remove("session").remove("uid").remove("sunday").remove("includeDone").putBoolean("team", false);
         for (String name : prefs.getAll().keySet()) if (name.startsWith("month:")) edit.remove(name);
         edit.commit();
@@ -170,6 +172,7 @@ final class WidgetData {
     }
 
     void refresh(YearMonth month, boolean team) throws Exception {
+        lastDay = null;
         JSONObject session;
         try { session = loadSession(); }
         catch (Exception invalidStore) { throw new HttpFailure(401); }
@@ -185,13 +188,40 @@ final class WidgetData {
 
 
     JSONObject call(String function, JSONObject args) throws Exception {
+        lastDay = null;
         JSONObject session=loadSession();
         if(session==null)throw new HttpFailure(401);
         if(session.getLong("expires")<=System.currentTimeMillis()/1000+30)session=renew(session);
         return request("/rest/v1/rpc/"+function,session.getString("access"),args);
     }
-    JSONObject day(String day,boolean team) throws Exception {
-        return call("sales_widget_month",new JSONObject().put("first_day",day).put("last_day",day).put("p_team",team));
+    // Accessed by the single widget I/O executor. Only the owner's rows are reusable.
+    private static JSONObject lastDay;
+    private static String lastDate, lastSession;
+    private static long lastRead;
+
+    JSONObject day(String day, boolean team, boolean force) throws Exception {
+        String session = prefs.getString("session", "");
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (!force && !team && !session.isEmpty() && session.equals(lastSession)
+                && day.equals(lastDate) && lastDay != null && now - lastRead < 300000) {
+            return lastDay;
+        }
+        lastDay = null;
+        JSONObject result = call("sales_widget_month", new JSONObject().put("first_day", day)
+                .put("last_day", day).put("p_team", team));
+        String owner = prefs.getString("uid", "");
+        JSONArray rows = result.getJSONArray("rows");
+        if (!team && !owner.isEmpty()) {
+            for (int i = 0; i < rows.length(); i++) {
+                JSONObject row = rows.getJSONObject(i);
+                if (row.optBoolean("common") || !owner.equals(row.optString("owner"))) return result;
+            }
+            lastDate = day;
+            lastSession = prefs.getString("session", "");
+            lastRead = android.os.SystemClock.elapsedRealtime();
+            lastDay = new JSONObject().put("rows", rows).put("empty_days", result.getJSONArray("empty_days"));
+        }
+        return result;
     }
     void setEmpty(String day,boolean confirmed) throws Exception {
         JSONObject result=call("sales_empty_day_set",new JSONObject().put("p_day",day).put("p_confirmed",confirmed));
