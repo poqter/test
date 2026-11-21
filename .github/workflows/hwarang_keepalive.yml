@@ -24,6 +24,7 @@ jobs:
       ACADEMY_KEEPALIVE_ENABLED: ${{ vars.ACADEMY_KEEPALIVE_ENABLED || 'false' }}
       ACADEMY_URL: https://hwarang-academy.streamlit.app
       CALENDAR_URL: https://hwarang-calendar.streamlit.app
+      SUPABASE_KEEPALIVE_ENABLED: ${{ vars.SUPABASE_KEEPALIVE_ENABLED || 'false' }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
 
