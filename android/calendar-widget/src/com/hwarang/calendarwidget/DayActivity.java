@@ -88,10 +88,12 @@ public final class DayActivity extends Activity {
                 if(!"취소".equals(row.optString("status")) && !"연기".equals(row.optString("status")))visible.add(row);
             }
             visible.sort(java.util.Comparator.comparing(r->r.isNull("start_time")?(r.optBoolean("time_pending")?"99":"00"):r.optString("start_time")));
-            int common=0;
+            int common=0, individual=0; boolean leave=false;
             for(JSONObject row:visible){
                 boolean shared=row.optBoolean("common");
-                if(shared)common++;
+                if("휴무".equals(row.optString("kind")))leave=true;
+                else if(shared)common++;
+                else individual++;
                 if(!shared&&(account.equals(row.optString("owner"))||account.equals(row.optString("companion"))))personal=true;
                 LinearLayout line=new LinearLayout(this);line.setGravity(android.view.Gravity.CENTER_VERTICAL);
                 line.setMinimumHeight(dp(62));line.setPadding(0,dp(6),0,dp(6));body.addView(line);
@@ -106,7 +108,7 @@ public final class DayActivity extends Activity {
                 line.addView(label("›",20));line.setFocusable(true);line.setOnClickListener(v->{if(!busy)detail(row);});
             }
             confirmedEmpty=confirmed;hasPersonal=personal;
-            status.setText((team?"지점 일정 ":"내 일정 ")+(visible.size()-common)+"건"+(common>0?" · 지점 공통 "+common+"건":"")+(confirmed?" · 내 일정 없음":""));
+            status.setText("개인 "+individual+"건"+(common>0?" · 지점 공통 "+common+"건":"")+(leave?" · 휴무":"")+(confirmed?" · 내 일정 없음":""));
             primary(button("＋ 일정 등록",()->editor(null)));
         },false);
     }
