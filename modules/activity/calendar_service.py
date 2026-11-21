@@ -233,13 +233,11 @@ def save_empty_day(db,args):
         target, confirmed = args.get('day'), args.get('confirmed')
         if type(confirmed) is not bool or not target:
             raise ValueError('날짜와 등록 여부를 확인해 주세요.')
-        result = db.request('POST', 'rpc/sales_empty_day_set', body={'p_day':target,'p_confirmed':confirmed})
+        result = db.request('POST', 'rpc/sales_empty_day_update_state', body={'p_day':target,'p_confirmed':confirmed})
         db._reads.clear()
         if not isinstance(result, dict) or result.get('day') != target or result.get('confirmed') is not confirmed:
             raise HwarangAuthError('저장 결과를 확인하지 못했습니다.')
-        if confirmed:
-            return {**result, 'has_events':False}
-        return empty_day_state(db,target)
+        return result
     state=empty_day_state(db,args.get('day'))
     if args.get('day') is None:raise ValueError('등록할 날짜를 확인해 주세요.')
     confirmed=args.get('confirmed')
