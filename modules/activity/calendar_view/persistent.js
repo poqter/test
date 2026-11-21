@@ -580,9 +580,10 @@ function paintDayList(){
 
 async function offerAndroidWidgetUpdate() {
 
- const tag='widget-v0.2.4', seen='hwarang-widget-notice-reinstall-'+tag;
+ const tag='widget-v0.2.5', seen='hwarang-widget-notice-reinstall-'+tag;
+ const suppressed=()=>{try{return localStorage.getItem(seen)==='1'}catch{return false}};
  try {
-  if(localStorage.getItem(seen)) return;
+  if(suppressed()) return;
   const response=await fetch('https://api.github.com/repos/poqter/test/releases/tags/'+tag,{credentials:'omit'});
   if(!response.ok) return;
   const release=await response.json();
@@ -592,16 +593,19 @@ async function offerAndroidWidgetUpdate() {
    const active=document.querySelector('dialog[open]');
    await new Promise(resolve=>active.addEventListener('close',resolve,{once:true}));
   }
-  if(localStorage.getItem(seen)) return;
+  if(suppressed()) return;
   const panel=document.createElement('dialog'),heading=document.createElement('h2'),description=document.createElement('p');
-  heading.textContent='화랑 월간 달력 0.2.4 업데이트';
+  panel.className='widget-update-notice';panel.setAttribute('aria-labelledby','widget-update-title');heading.id='widget-update-title';
+  const label=document.createElement('label'),checkbox=document.createElement('input');
+  checkbox.type='checkbox';label.append(checkbox,document.createTextNode('이번 버전 공지 다시 보지 않기'));
+  heading.textContent='화랑 월간 달력 0.2.5 업데이트';
   description.style.whiteSpace='pre-line';
-  description.textContent='월간 위젯에서 일정 시간과 제목을 확인하고, 날짜별 목록에서 활동 유형과 장소를 볼 수 있습니다. 지점 공통 일정은 별도로 강조됩니다. 새로 연결할 때는 WORKSPACE 아이디를 사용하세요.\n\n0.2.2 이상은 기존 앱 위에 업데이트하세요. 0.2.1 이하 시험판은 설정 → 애플리케이션에서 화랑 월간 달력을 삭제한 뒤 재설치하고 계정을 연결하세요.';
+  description.textContent='날짜 칸 안에서 시간과 제목을 확인하고, 위젯에서 웹 캘린더를 바로 열 수 있습니다. 날짜를 누르면 홈 화면 위에 일정 목록이 열립니다.\n\n0.2.2 이상은 기존 앱 위에 업데이트하세요. 0.2.1 이하 시험판은 설정 → 애플리케이션에서 화랑 월간 달력을 삭제한 뒤 재설치하고 계정을 연결하세요.';
   const install=document.createElement('a'),close=document.createElement('button');
-  install.href=url;install.target='_blank';install.rel='noopener';install.textContent=/Android/i.test(navigator.userAgent)?'새 위젯 설치하기':'안드로이드 APK 다운로드';
+  install.href=url;install.target='_blank';install.rel='noopener';install.textContent='새 위젯 설치하기';
   close.textContent='닫기';close.onclick=()=>panel.close();
-  panel.addEventListener('close',()=>{localStorage.setItem(seen,'1');panel.remove()},{once:true});
-  panel.append(heading,description,install,close);document.body.append(panel);panel.showModal();
+  panel.addEventListener('close',()=>{if(checkbox.checked){try{localStorage.setItem(seen,'1')}catch{}}panel.remove()},{once:true});
+  panel.append(heading,description,label,install,close);document.body.append(panel);panel.showModal();
  } catch { /* An unavailable release must not interrupt the calendar. */ }
 }
 if(typeof window!=='undefined' && typeof navigator!=='undefined') void offerAndroidWidgetUpdate();

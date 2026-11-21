@@ -79,8 +79,8 @@ jobs:
           tools="$ANDROID_HOME/build-tools/35.0.0"
           apk="$RUNNER_TEMP/widget-release/hwarang-month-widget.apk"
           "$tools/apksigner" verify --print-certs "$apk" | grep -Fxi 'Signer #1 certificate SHA-256 digest: 924513f70eb3c2ac5e535c12cd7af8fdc29a27f39642ebff2d9be9d777978569'
-          "$tools/aapt" dump badging "$apk" | grep -F "package: name='com.hwarang.calendarwidget' versionCode='6' versionName='0.2.4'"
+          "$tools/aapt" dump badging "$apk" | grep -F "package: name='com.hwarang.calendarwidget' versionCode='7' versionName='0.2.5'"
       - name: Publish verified APK
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create widget-v0.2.4 "$RUNNER_TEMP/widget-release/hwarang-month-widget.apk" --target "$GITHUB_SHA" --title "화랑 월간 달력 0.2.4" --notes "기존 임시 서명 버전에서 전환 시 재설치가 필요할 수 있습니다." --latest=false
+        run: gh release create widget-v0.2.5 "$RUNNER_TEMP/widget-release/hwarang-month-widget.apk" --target "$GITHUB_SHA" --title "화랑 월간 달력 0.2.5" --notes "기존 임시 서명 버전에서 전환 시 재설치가 필요할 수 있습니다." --latest=false
