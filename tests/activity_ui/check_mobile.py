@@ -113,7 +113,10 @@ try:
         page.close()
         for width,agent in [(1920,None),(1440,None),(820,'Mozilla/5.0 (Linux; Android 14; Tablet) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36')]:
             page=browser.new_page(viewport={'width':width,'height':950},**({'user_agent':agent} if agent else {}))
+            page.route('https://api.github.com/repos/poqter/test/releases/tags/*', lambda route: route.fulfill(json={'assets':[{'browser_download_url':'https://github.com/poqter/test/releases/download/'+route.request.url.rsplit('/',1)[1]+'/hwarang-month-widget.apk'}]}))
             page.goto('http://127.0.0.1:8504')
+            if agent and 'Android' in agent:
+                page.frame_locator('iframe[title="modules.activity.center.sales_calendar_view"]').get_by_role('dialog').filter(has_text='새 위젯 설치하기').get_by_role('button',name='닫기',exact=True).click()
             expect(page.locator('.st-key-mobile_header')).to_be_visible()
             cal=page.frame_locator('iframe[title="modules.activity.center.sales_calendar_view"]')
             daily=cal.get_by_role('button',name='일별',exact=True)
