@@ -89,6 +89,7 @@ public final class DayActivity extends Activity {
             }
             visible.sort(java.util.Comparator.comparing(r->r.isNull("start_time")?(r.optBoolean("time_pending")?"99":"00"):r.optString("start_time")));
             int common=0, individual=0; boolean leave=false;
+            WidgetStyle style=WidgetStyle.read(this);
             for(JSONObject row:visible){
                 boolean shared=row.optBoolean("common");
                 if("휴무".equals(row.optString("kind")))leave=true;
@@ -96,15 +97,15 @@ public final class DayActivity extends Activity {
                 else individual++;
                 if(!shared&&(account.equals(row.optString("owner"))||account.equals(row.optString("companion"))))personal=true;
                 LinearLayout line=new LinearLayout(this);line.setGravity(android.view.Gravity.CENTER_VERTICAL);
-                line.setMinimumHeight(dp(62));line.setPadding(0,dp(6),0,dp(6));body.addView(line);
+                line.setMinimumHeight(dp(62));int padding=dp(style.size("popupRowPaddingDp",6,2,12));line.setPadding(0,padding,0,padding);body.addView(line);
                 String clock=row.isNull("start_time")?(row.optBoolean("time_pending")?"시간 미정":"종일"):time(row,"start_time");
-                line.addView(label(clock,14),new LinearLayout.LayoutParams(dp(62),-2));
-                android.view.View accent=new android.view.View(this);accent.setBackgroundColor(shared?0xff9d2455:MonthWidget.DOTS.getOrDefault(row.optString("kind"),0xff687789));
+                line.addView(label(clock,style.size("popupTimeSp",14,12,18)),new LinearLayout.LayoutParams(dp(62),-2));
+                android.view.View accent=new android.view.View(this);accent.setBackgroundColor(style.accent(shared?"common":row.optString("kind")));
                 line.addView(accent,new LinearLayout.LayoutParams(dp(3),dp(34)));
                 LinearLayout words=new LinearLayout(this);words.setOrientation(1);words.setPadding(dp(10),0,0,0);
                 line.addView(words,new LinearLayout.LayoutParams(0,-2,1));
-                words.addView(label(row.optString("title",row.optString("kind","일정")),16));
-                String place=text(row,"place");words.addView(label((shared?"지점 공통 · ":"")+row.optString("kind")+(place.isEmpty()?"":" · "+place),12));
+                words.addView(label(row.optString("title",row.optString("kind","일정")),style.size("popupTitleSp",16,13,20)));
+                String place=text(row,"place");words.addView(label((shared?"지점 공통 · ":"")+row.optString("kind")+(place.isEmpty()?"":" · "+place),style.size("popupMetaSp",12,10,16)));
                 line.addView(label("›",20));line.setFocusable(true);line.setOnClickListener(v->{if(!busy)detail(row);});
             }
             confirmedEmpty=confirmed;hasPersonal=personal;
