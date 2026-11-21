@@ -117,8 +117,8 @@ public final class DayActivity extends Activity {
             screen("일정 상세");headerAction("‹","목록으로 돌아가기",()->load());
             status.setText(row.optBoolean("common")?"지점 공통":"");
             body.addView(label(row.optString("title"),20));
-            for(String[] value:new String[][]{{"일시",row.optString("day")+"  "+(text(row,"start_time").isEmpty()?(row.optBoolean("time_pending")?"시간 미정":"종일"):time(row,"start_time"))+(text(row,"end_time").isEmpty()?"":" – "+time(row,"end_time"))},{"활동 유형",text(row,"kind")},{"장소",text(row,"place")},{"메모",text(row,"note")}}){
-                if(!value[1].isEmpty()){TextView v=label(value[0]+"   "+value[1],15);v.setPadding(0,dp(9),0,dp(9));body.addView(v);}
+            for(String[] entry:new String[][]{{"일시",row.optString("day")+"  "+(text(row,"start_time").isEmpty()?(row.optBoolean("time_pending")?"시간 미정":"종일"):time(row,"start_time"))+(text(row,"end_time").isEmpty()?"":" – "+time(row,"end_time"))},{"활동 유형",text(row,"kind")},{"장소",text(row,"place")},{"메모",text(row,"note")}}){
+                if(!entry[1].isEmpty()){TextView v=label(entry[0]+"   "+entry[1],15);v.setPadding(0,dp(9),0,dp(9));body.addView(v);}
             }
             if(account.equals(row.optString("owner")))primary(button("수정",()->editor(row)));
         },false);
@@ -152,14 +152,14 @@ public final class DayActivity extends Activity {
         if(row!=null&&!text(row,"series_id").isEmpty())status.setText("이번 회차만 수정합니다.");
         Button save=button(row==null?"일정 등록":"변경 저장",()->{});
         primary(save);
-        modes.setOnCheckedChangeListener((g,id)->{
+        modes.setOnCheckedChangeListener((g,checkedId)->{
             boolean hide=empty.isChecked();for(int i=firstField;i<body.indexOfChild(save);i++)body.getChildAt(i).setVisibility(hide?8:0);
             if(!hide && all.isChecked())times.setVisibility(8);
             save.setText(hide?(confirmedEmpty?"일정 없음 등록 취소":"이 날 내 일정 없음으로 등록"):"일정 등록");
         });
         save.setOnClickListener(v->{if(busy)return;try{
             if(row==null&&empty.isChecked()){
-                task(()->{data.setEmpty(day,!confirmedEmpty);return new JSONObject();},v->{refreshWidget();load(true);},true);return;
+                task(()->{data.setEmpty(day,!confirmedEmpty);return new JSONObject();},result->{refreshWidget();load(true);},true);return;
             }
             String k=kind.getSelectedItem().toString();boolean leave="휴무".equals(k);String s=all.isChecked()||leave?"":Clock.parse(start.getText().toString()),e=all.isChecked()||leave?"":Clock.parse(end.getText().toString());
             String name=leave?"휴무":title.getText().toString().trim();if(name.isEmpty())throw new IllegalArgumentException("일정명을 입력해 주세요.");if(!e.isEmpty()&&(s.isEmpty()||e.compareTo(s)<=0))throw new IllegalArgumentException("종료 시간은 시작 시간보다 늦어야 합니다.");
