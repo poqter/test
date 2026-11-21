@@ -17,6 +17,7 @@ jobs:
           apk=android/staff-releases/0.2.3/hwarang-month-widget.apk
           tools="$ANDROID_HOME/build-tools/35.0.0"
           "$tools/apksigner" verify --print-certs "$apk" | grep -Fxi 'Signer #1 certificate SHA-256 digest: 924513f70eb3c2ac5e535c12cd7af8fdc29a27f39642ebff2d9be9d777978569'
+          "$tools/aapt" dump permissions "$apk" | grep -Fx "uses-permission: name='android.permission.ACCESS_NETWORK_STATE'"
           "$tools/aapt" dump badging "$apk" | grep -F "package: name='com.hwarang.calendarwidget' versionCode='5' versionName='0.2.3'"
   publish:
     if: github.event_name == 'push'
