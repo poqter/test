@@ -43,7 +43,8 @@ final class WidgetData {
             conn.setConnectTimeout(3500);
             conn.setReadTimeout(3500);
             conn.setRequestProperty("apikey", KEY);
-            conn.setRequestProperty("X-Hwarang-Widget-Version", "0.2.3");
+            conn.setRequestProperty("X-Hwarang-Widget-Version", "0.2.4");
+            
             if (token != null) conn.setRequestProperty("Authorization", "Bearer " + token);
             if (body != null) {
                 conn.setRequestMethod("POST");
@@ -78,8 +79,8 @@ final class WidgetData {
         return generator.generateKey();
     }
 
-    private JSONObject loadSession() throws Exception {
-        String encrypted = prefs.getString("session", "");
+    private JSONObject loadSession() throws Exception { return decrypt(prefs.getString("session","")); }
+    private JSONObject decrypt(String encrypted) throws Exception {
         if (encrypted.isEmpty()) return null;
         String[] parts = encrypted.split(":", 2);
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
@@ -87,6 +88,15 @@ final class WidgetData {
         return new JSONObject(new String(cipher.doFinal(Base64.decode(parts[1], Base64.NO_WRAP)), StandardCharsets.UTF_8));
     }
 
+    JSONObject cachedMonth(YearMonth month, boolean team) throws Exception {
+        String raw=prefs.getString(cacheKey(month,team),"{}");
+        return raw.startsWith("{") ? new JSONObject(raw) : decrypt(raw);
+    }
+    private String encrypt(JSONObject value) throws Exception {
+        Cipher cipher=Cipher.getInstance("AES/GCM/NoPadding");
+        cipher.init(Cipher.ENCRYPT_MODE,key());
+        return Base64.encodeToString(cipher.getIV(),Base64.NO_WRAP)+":"+Base64.encodeToString(cipher.doFinal(value.toString().getBytes(StandardCharsets.UTF_8)),Base64.NO_WRAP);
+    }
     private JSONObject saveSession(JSONObject response, String previousUser) throws Exception {
         JSONObject user = response.optJSONObject("user");
         String uid = user == null ? previousUser : user.getString("id");
@@ -106,9 +116,9 @@ final class WidgetData {
         return session;
     }
 
-    void signIn(String email, String password) throws Exception {
-        JSONObject response = request("/auth/v1/token?grant_type=password", null,
-            new JSONObject().put("email", email).put("password", password));
+    void signIn(String loginId, String password) throws Exception {
+        JSONObject response = request("/functions/v1/widget-login", null,
+            new JSONObject().put("login_id", loginId).put("password", password));
         // Verify calendar access before retaining this device session.
         month(response.getString("access_token"), MonthWidget.currentMonth(), false);
         clear();
@@ -135,6 +145,7 @@ final class WidgetData {
     void clear() {
         lastDay = null;
         lastSession = null;
+        prefs.edit().remove("canCommon").apply();
         SharedPreferences.Editor edit = prefs.edit().remove("session").remove("uid").remove("sunday").remove("includeDone").putBoolean("team", false);
         for (String name : prefs.getAll().keySet()) if (name.startsWith("month:")) edit.remove(name);
         edit.commit();
@@ -210,6 +221,7 @@ final class WidgetData {
         lastDay = null;
         JSONObject result = call("sales_widget_month", new JSONObject().put("first_day", day)
                 .put("last_day", day).put("p_team", team));
+        prefs.edit().putBoolean("canCommon",result.optBoolean("can_common")).apply();
         String owner = prefs.getString("uid", "");
         JSONArray rows = result.getJSONArray("rows");
         if (!team && !owner.isEmpty()) {
@@ -238,7 +250,7 @@ final class WidgetData {
         JSONObject payload = month(token, month, team);
         JSONArray events = payload.getJSONArray("rows");
         boolean sunday = prefs.getBoolean("sunday", false);
-        // Cache only day, status, and permitted display category. No names or titles are persisted.
+        // Store only displayable widget fields inside the Android Keystore-encrypted month cache.
         JSONArray safe = new JSONArray();
         for (int i = 0; i < events.length(); i++) {
             JSONObject event = events.getJSONObject(i);
@@ -246,14 +258,14 @@ final class WidgetData {
             String kind = event.optString("kind");
             if (!java.util.Arrays.asList("TA", "AP", "PC", "CS", "청약", "휴무").contains(kind)) kind = "기타";
             safe.put(new JSONObject().put("day", event.getString("day")).put("kind", kind)
-                .put("common",event.optBoolean("common")).put("done", "완료".equals(event.optString("status")))
+                .put("title",event.optBoolean("readable",false)?event.optString("title",kind):kind).put("start",event.isNull("start_time")?"":event.optString("start_time")).put("common",event.optBoolean("common")).put("done", "완료".equals(event.optString("status")))
                 .put("personal", !event.optBoolean("common") && (session.getString("uid").equals(event.optString("owner")) || session.getString("uid").equals(event.optString("companion")))));
         }
         SharedPreferences.Editor edit = prefs.edit();
         for (String name : prefs.getAll().keySet()) {
             if (name.startsWith("month:") && !name.startsWith("month:" + month + ":")) edit.remove(name);
         }
-        edit.putBoolean("sunday", sunday).putString(cacheKey(month, team),
-            new JSONObject().put("rows", safe).put("empty_days",payload.getJSONArray("empty_days")).put("at", System.currentTimeMillis()).toString()).apply();
+        edit.putBoolean("canCommon",payload.optBoolean("can_common")).putBoolean("sunday", sunday).putString(cacheKey(month, team),
+            encrypt(new JSONObject().put("rows", safe).put("empty_days",payload.getJSONArray("empty_days")).put("at", System.currentTimeMillis()))).apply();
     }
 }

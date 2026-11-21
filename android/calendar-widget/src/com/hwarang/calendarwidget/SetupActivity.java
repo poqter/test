@@ -120,9 +120,9 @@ public final class SetupActivity extends Activity {
         } else {
             EditText email = new EditText(this);
             email.setSingleLine();
-            email.setHint("화랑 계정 이메일");
-            email.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
-            email.setAutofillHints("emailAddress");
+            email.setHint("WORKSPACE 아이디");
+            email.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+            email.setAutofillHints("username");
             body.addView(email);
             EditText password = new EditText(this);
             password.setSingleLine();
@@ -135,7 +135,7 @@ public final class SetupActivity extends Activity {
             body.addView(signIn);
             signIn.setOnClickListener(v -> {
                 String address = email.getText().toString().trim(), secret = password.getText().toString();
-                if (address.isEmpty() || secret.isEmpty()) { status.setText("이메일과 비밀번호를 입력해 주세요."); return; }
+                if (address.isEmpty() || secret.isEmpty()) { status.setText("아이디와 비밀번호를 입력해 주세요."); return; }
                 signIn.setEnabled(false);
                 password.setText("");
                 WidgetData.io.execute(() -> {
@@ -149,7 +149,7 @@ public final class SetupActivity extends Activity {
                             signIn.setEnabled(true);
                             status.setText(error.code == 403 ? "캘린더 이용 권한을 확인해 주세요." : error.code == 429
                                 ? "잠시 후 다시 시도해 주세요." : error.code >= 500
-                                ? "연결이 지연되고 있습니다. 다시 시도해 주세요." : "이메일과 비밀번호를 확인해 주세요.");
+                                ? "연결이 지연되고 있습니다. 다시 시도해 주세요." : "아이디와 비밀번호를 확인해 주세요.");
                         });
                     } catch (Exception error) {
                         runOnUiThread(() -> { signIn.setEnabled(true); status.setText("연결하지 못했습니다. 다시 시도해 주세요."); });
