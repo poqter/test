@@ -106,11 +106,10 @@ def publish_ready(repo, day, codes, *, now=None):
     results=[]
     profiles={r['profile_code']:r for r in repo.profiles()}
     policy=None
-    load_bundle=getattr(repo,'publication_bundle',repo.bundle_for_date)
     for code in codes:
         if profiles.get(code,{}).get('is_enabled') is False:
             results.append({'profile':code,'status':'disabled'});continue
-        bundle=load_bundle(code,day,include_draft=True)
+        bundle=repo.bundle_for_date(code,day,include_draft=True,publication_only=True)
         if not bundle:results.append({'profile':code,'status':'no_snapshot'});continue
         revision=bundle['revision']; qa=bundle['snapshot'].get('qa_payload') or {}
         publish_at=datetime.combine(day,PUBLICATION_TIME,KST)
@@ -193,8 +192,7 @@ def catch_up(repo, now=None):
             generation[group] = {'status': 'disabled'}
             continue
         try:
-            load_bundle = getattr(repo, 'publication_bundle', repo.bundle_for_date)
-            existing = [load_bundle(c, day, include_draft=True) for c in codes]
+            existing = [repo.bundle_for_date(c, day, include_draft=True, publication_only=True) for c in codes]
             if all(existing):
                 generation[group] = {'status': 'reused', 'reason': 'stored_editions'}
                 continue
