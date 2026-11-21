@@ -180,12 +180,11 @@ public final class MonthWidget extends AppWidgetProvider {
                 int dayHeight=(height-100)/weeks;
                 boolean leave=mark!=null && mark.leave;
                 int total=mark==null?0:mark.events.size();
-                int available=dayHeight-18-(leave?13:0);
                 float fontScale=context.getResources().getConfiguration().fontScale;
-                int textLine=(int)Math.ceil(14*fontScale);
+                int available=dayHeight-3-(int)Math.ceil((15+(leave?14:0))*fontScale);
+                int textLine=(int)Math.ceil(17*fontScale)+1;
                 int limit=Math.min(2,Math.max(0,available/textLine));
                 if(total>limit)limit=Math.min(limit,Math.max(0,(available-(int)Math.ceil(12*fontScale))/textLine));
-                int titleLines=available-(total>limit?(int)Math.ceil(12*fontScale):0)>=2*textLine*Math.min(total,limit)?2:1;
                 date.setTextViewText(R.id.number,String.valueOf(day.getDayOfMonth()));
                 date.setTextColor(R.id.number,day.getDayOfWeek()==java.time.DayOfWeek.SUNDAY?0xffad354a:day.getDayOfWeek()==java.time.DayOfWeek.SATURDAY?0xff326a9c:0xff183449);
                 if(today.equals(day)){
@@ -200,7 +199,6 @@ public final class MonthWidget extends AppWidgetProvider {
                 for(int n=0;n<Math.min(total,limit);n++){
                     JSONObject event=mark.events.get(n);
                     date.setViewVisibility(rows[n],android.view.View.VISIBLE);
-                    date.setInt(titles[n],"setMaxLines",titleLines);
                     date.setTextViewText(titles[n],event.optString("title",event.optString("kind")));
                     int color=event.optBoolean("common")?0xff995815:DOTS.getOrDefault(event.optString("kind"),0xff367684);
                     date.setInt(accents[n],"setBackgroundColor",color);
