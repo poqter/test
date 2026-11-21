@@ -213,3 +213,13 @@ def test_monday_news_includes_friday_after_publication():
     assert classify_freshness(friday_publication, instant) == 'core_window'
     assert classify_freshness(datetime.fromisoformat('2026-11-13T07:59:59+09:00'), instant) == 'stale'
     assert classify_freshness(datetime.fromisoformat('2026-11-15T15:00:00+09:00'), instant) == 'core_window'
+
+
+def test_published_watchdog_checks_each_edition_once(generate):
+    repo = Repo()
+    repo.saved = {code: edition(code, 'published') for code in ('NEWS', 'INSURANCE', 'MARKET')}
+    repo.bundle_for_date = Mock(wraps=repo.bundle_for_date)
+    result = s.catch_up(repo, at('08:35:00'))
+    assert result['status'] == 'published'
+    assert repo.bundle_for_date.call_count == 3
+    generate.assert_not_called()

@@ -183,8 +183,11 @@ def alerts_dialog(db):
 def alert_button(db):
     # Keep the trigger in the header's normal layout; only this fragment reruns
     # when opening notifications, rather than rebuilding the entire page.
-    unread=db.request('GET','sales_notices',{'seen':'eq.false','select':'id','limit':'50'})
-    label='알림'+(' '+str(len(unread))+('+' if len(unread)==50 else '') if unread else '')
+    label = getattr(db, '_alert_button_label', None)
+    if label is None or not st.session_state.get('mobile_alerts'):
+        unread=db.request('GET','sales_notices',{'seen':'eq.false','select':'id','limit':'50'})
+        label='알림'+(' '+str(len(unread))+('+' if len(unread)==50 else '') if unread else '')
+        db._alert_button_label = label
     with st.container(key='mobile_alert_trigger'):
         if st.button(label,icon=':material/notifications:',key='mobile_alerts',width='stretch'):
             alerts_dialog(db)
