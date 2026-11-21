@@ -218,7 +218,6 @@ def render(db,today,period,fixed_day=None):
         end=day+6*DAY if period=='주간' else day
         events=db.period('sales_events',day,end,owner='eq.'+db.uid,order='day.asc,start_time.asc.nullsfirst')
         daily=db.period('sales_reports',day,end,owner='eq.'+db.uid,period='eq.일일') if period=='주간' else []
-        contracts=db.period('sales_contracts',day,end,owner='eq.'+db.uid)
         source=weekly_source(daily) if period=='주간' else None
         mobile=ux.compact()
         def import_values(source):
@@ -229,6 +228,7 @@ def render(db,today,period,fixed_day=None):
             if v['source_versions'] and v['source_versions']!=source['source_versions']:st.info('일일 기록이 변경되었습니다. 직접 수정한 항목을 유지하며 초안을 갱신할 수 있습니다.')
             st.button('일일 기록에서 초안 가져오기',key=key+'import',on_click=import_values,args=(source,),disabled=not source['coverage'])
         def references():
+            contracts=db.period('sales_contracts',day,end,owner='eq.'+db.uid)
             if period=='일일':
                 st.markdown('**'+('오늘 일정' if day==today else '선택한 날짜의 일정')+f' · {len(events)}건**')
                 event_list(db,events,'daily_reference_')
