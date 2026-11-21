@@ -1,2 +1,2 @@
 <TextView xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/cell" android:layout_width="0dp" android:layout_height="match_parent"
-    android:layout_weight="1" android:gravity="center" android:maxLines="3" android:includeFontPadding="false" android:textSize="11sp" android:textColor="#173446"/>
+    android:layout_weight="1" android:gravity="center" android:maxLines="8" android:ellipsize="end" android:includeFontPadding="false" android:textSize="11sp" android:textColor="#173446"/>

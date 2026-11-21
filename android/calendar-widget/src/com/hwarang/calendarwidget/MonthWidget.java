@@ -92,6 +92,7 @@ public final class MonthWidget extends AppWidgetProvider {
         boolean personal;
         boolean leave;
         boolean common;
+        final java.util.ArrayList<JSONObject> events=new java.util.ArrayList<>();
         final LinkedHashSet<String> kinds = new LinkedHashSet<>();
     }
 
@@ -104,6 +105,7 @@ public final class MonthWidget extends AppWidgetProvider {
             DayMark mark = result.computeIfAbsent(event.optString("day"), unused -> new DayMark());
             mark.personal |= event.optBoolean("personal");
             if (!includeDone && event.optBoolean("done")) continue;
+            mark.events.add(event);
             mark.common |= event.optBoolean("common");
             String kind = event.optString("kind");
             if ("휴무".equals(kind)) mark.leave = true;
@@ -134,8 +136,8 @@ public final class MonthWidget extends AppWidgetProvider {
         boolean sunday = data.prefs.getBoolean("sunday", false);
         String state = data.prefs.getString("state", "");
         JSONObject cache;
-        try { cache = new JSONObject(data.prefs.getString(data.cacheKey(month, team), "{}")); }
-        catch (org.json.JSONException error) { cache = new JSONObject(); }
+        try { cache = data.cachedMonth(month, team); }
+        catch (Exception error) { cache = new JSONObject(); }
         Map<String, DayMark> marks = summarize(cache.optJSONArray("rows"), data.prefs.getBoolean("includeDone", true));
         RemoteViews view = new RemoteViews(context.getPackageName(), R.layout.month_widget);
         view.setTextViewText(R.id.heading, month.getYear() + "년 " + month.getMonthValue() + "월");
@@ -144,8 +146,6 @@ public final class MonthWidget extends AppWidgetProvider {
         int[] actions = {R.id.prev, R.id.today, R.id.next, R.id.mine, R.id.branch, R.id.refresh};
         String[] names = {"prev", "today", "next", "mine", "branch", "refresh"};
         for (int i = 0; i < actions.length; i++) view.setOnClickPendingIntent(actions[i], action(context, names[i], id));
-        view.setOnClickPendingIntent(R.id.empty, PendingIntent.getActivity(context, id,
-            new Intent(context, DayActivity.class), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
         view.setOnClickPendingIntent(R.id.setup, PendingIntent.getActivity(context, id,
             new Intent(context, SetupActivity.class), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
         view.setTextViewText(R.id.status, !connected ? ("권한 없음".equals(state) ? "일정 조회 권한을 확인해 주세요" : "설정에서 화랑 계정을 연결해 주세요")
@@ -177,15 +177,20 @@ public final class MonthWidget extends AppWidgetProvider {
                 DayMark mark = marks.get(day.toString());
                 SpannableStringBuilder label = new SpannableStringBuilder(String.valueOf(day.getDayOfMonth()));
                 if (mark != null) {
-                    if (mark.count>0 || mark.leave) {
-                        int start=label.length();
-                        label.append(" ●");
-                        int color=mark.common?0xff914d0b:mark.leave?0xff53657d:DOTS.getOrDefault(mark.kinds.iterator().next(),0xff167b7b);
-                        label.setSpan(new ForegroundColorSpan(color),start,label.length(),Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    mark.events.sort(java.util.Comparator.comparing(e->e.optString("start")));
+                    int limit=compact?1:2;
+                    for(int n=0;n<Math.min(limit,mark.events.size());n++){
+                        JSONObject event=mark.events.get(n);
+                        String clock=event.optString("start");
+                        String title=event.optString("title",event.optString("kind"));
                         label.append("\n");
-                        if(mark.count>0) label.append(mark.common?"공통 포함 ": "").append(String.valueOf(mark.count)).append("건");
-                        if(mark.leave) label.append(mark.count>0?" · 휴":"휴무");
+                        int start=label.length();
+                        if(event.optBoolean("common"))label.append("공통 ");
+                        if(clock.length()>=5)label.append(clock.substring(0,5)).append(" ");
+                        label.append(title.length()>16?title.substring(0,15)+"…":title);
+                        if(event.optBoolean("common"))label.setSpan(new ForegroundColorSpan(0xff914d0b),start,label.length(),Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                     }
+                    if(mark.events.size()>limit)label.append("\n외 ").append(String.valueOf(mark.events.size()-limit)).append("건");
                 }
                 String registration="";
                 if (connected && !team && confirmed!=null && (mark==null || !mark.personal)) {
