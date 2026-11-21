@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from concurrent.futures import Future
+from threading import Lock
 import logging
 import re
 import time
@@ -20,6 +22,9 @@ _ID_RE = re.compile(r"^[A-Za-z0-9._-]{3,32}$")
 _EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 _LOGGER = logging.getLogger("hwarang.auth")
 _PROFILE_REFRESH_SECONDS = 60
+_refresh_lock = Lock()
+_refresh_requests = {}
+
 
 
 class HwarangAuthError(RuntimeError):
@@ -717,6 +722,27 @@ class HwarangAuthService:
         }
 
 
+    def _refresh_token_once(self, token):
+        key = (self.config.url, token)
+        with _refresh_lock:
+            pending = _refresh_requests.get(key)
+            leader = pending is None
+            if leader:
+                pending = _refresh_requests[key] = Future()
+        if not leader:
+            return pending.result()
+        try:
+            response = self._request("POST", "/auth/v1/token", admin=False,
+                                     params={"grant_type": "refresh_token"}, json={"refresh_token": token})
+            pending.set_result(response)
+            return response
+        except BaseException as exc:
+            pending.set_exception(exc)
+            raise
+        finally:
+            with _refresh_lock:
+                _refresh_requests.pop(key, None)
+
     def refresh(self, auth_state: dict[str, Any]) -> dict[str, Any]:
         """Refresh the Auth token and periodically revalidate account access.
 
@@ -729,13 +755,7 @@ class HwarangAuthService:
         refresh_token = str(updated.get("refresh_token") or "")
 
         if refresh_token and int(updated.get("expires_at") or 0) <= now + 120:
-            token = self._request(
-                "POST",
-                "/auth/v1/token",
-                admin=False,
-                params={"grant_type": "refresh_token"},
-                json={"refresh_token": refresh_token},
-            )
+            token = self._refresh_token_once(refresh_token)
             if not isinstance(token, dict) or not token.get("access_token"):
                 raise HwarangAuthError("로그인 시간이 만료되었습니다. 다시 로그인해 주세요.")
             updated.update(

@@ -146,9 +146,15 @@ function calendarAction(action,value){
  if(action==='mode'||action==='date'){
   if(typeof calendarSearchFocus!=='undefined')calendarSearchFocus=null;
   selectedByUser=null;
+  const previousRange=rangeKey(...desiredRange());
   if(action==='mode'){latest={...latest,mode:value,day:selected||latest.day};}
   else latest={...latest,day:value};
-  selected=latest.day;context=null;calendarLoading=true;render(latest);reloadCalendar();return;
+  selected=latest.day;context=null;
+  const nextRange=rangeKey(...desiredRange());
+  if(previousRange===nextRange&&realtimeReady&&!signalPending&&!calendarLoading&&!calendarLoadError&&calendarCache.has(nextRange)&&!calendarCache.get(nextRange).movePending){
+   render(latest);return;
+  }
+  calendarLoading=true;render(latest);reloadCalendar();return;
  }
  if(action==='weekends'){render(latest);if(latest.mode==='월간'&&monthWeekStart===0)reloadCalendar();return}
  if(action==='new'){openEditor(null,'new',value||selected);return}

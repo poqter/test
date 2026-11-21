@@ -98,6 +98,10 @@ final class WidgetData {
         byte[] encrypted = cipher.doFinal(session.toString().getBytes(StandardCharsets.UTF_8));
         if (!prefs.edit().putString("uid", uid).putString("session", Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP)
             + ":" + Base64.encodeToString(encrypted, Base64.NO_WRAP)).commit()) throw new java.io.IOException("Could not store session");
+        if (user != null && user.has("user_metadata")) {
+            JSONObject metadata = user.optJSONObject("user_metadata");
+            prefs.edit().putBoolean("sunday", metadata != null && metadata.optInt("hwarang_calendar_month_week_start", 1) == 0).apply();
+        }
         return session;
     }
 
@@ -202,10 +206,7 @@ final class WidgetData {
         String token = session.getString("access");
         JSONObject payload = month(token, month, team);
         JSONArray events = payload.getJSONArray("rows");
-        JSONObject user = request("/auth/v1/user", token, null);
-        if (!session.getString("uid").equals(user.getString("id"))) throw new HttpFailure(401);
-        JSONObject metadata = user.optJSONObject("user_metadata");
-        boolean sunday = metadata != null && metadata.optInt("hwarang_calendar_month_week_start", 1) == 0;
+        boolean sunday = prefs.getBoolean("sunday", false);
         // Cache only day, status, and permitted display category. No names or titles are persisted.
         JSONArray safe = new JSONArray();
         for (int i = 0; i < events.length(); i++) {

@@ -43,6 +43,8 @@ await migration('20261109204457_support_request_recipient.sql');
 await migration('20261111034813_activity_daily_period_sync.sql');
 await migration('20261118155101_activity_signal_targets.sql');
 
+await migration('20261121141000_activity_report_conflict_status.sql');
+
 const save = async (date, ap, base, draft, submit, help='') => {
     const detail = date === day && ap > 0;
     const counts = {TA:detail ? 2 : 0, AP:ap, PC:detail ? 3 : 0, CS:detail ? 1 : 0, '약속 확보':detail ? 4 : 0, '청약':detail ? 1 : 0};
@@ -76,6 +78,10 @@ await capture(1,1);
 await save(day,9,1,1,true,'지원 B');
 await capture(2,2);
 await assert.rejects(() => save(day,20,1,0,true), /변경/);
+await db.exec("begin; set local request.method='POST'");
+await save(day,20,1,0,true);
+assert.equal((await select("select current_setting('response.status') as status"))[0].status, '409');
+await db.exec('commit');
 assert.equal(await version('sales_reports',day),2);
 
 await db.query("insert into sales_events(id,unit,day,kind,title,help,help_recipient) values($1,$1,$2,'AP','기존','동행 요청',$3)",[worker,day,manager]);

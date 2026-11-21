@@ -84,8 +84,8 @@ def confirmed_save(db, request, old):
     return None
 
 
-def persist(db,d,day,period,submit=False,slot=None):
-    if d.get('saving'):return False
+def persist(db,d,day,period,submit=False,slot=None,*,manual=False):
+    if d.get('saving') or (d.get('conflict') and not manual):return False
     if submit and period=='일일' and not any(d['values'][c] for c in COUNTS) and not d['values']['no_activity']:
         d['save_error']='활동 건수를 입력하거나 ‘활동 없는 날’을 선택해 주세요.'
         if slot is not None:slot.error(d['save_error'])
@@ -201,7 +201,7 @@ def render(db,today,period,fixed_day=None):
             status_slot.error(d['save_error'])
             retry_submit = d.get('retry_submit', False)
             if st.button('다시 제출' if retry_submit else '다시 저장', key=key+'retry'):
-                if persist(db,d,day,period,submit=retry_submit,slot=status_slot) and retry_submit:
+                if persist(db,d,day,period,submit=retry_submit,slot=status_slot,manual=True) and retry_submit:
                     if fixed_day is not None:ux.back()
                     else:ux.refresh()
             with st.expander('최신 저장 내용 확인',key=key+'conflict_view'):
