@@ -9,6 +9,16 @@ now=1100;intervals[0]();ok(el('timer').textContent==='49:59');ok(el('question').
 choice.click();let req=last();ok(req.action==='save');ok(el('saved').textContent==='저장 중…');ok(el('choices').firstChild===choice);
 // Rapid changes remain visible and queue after the in-flight revision.
 el('choices').children[1].click();a.answers={'1':1};a.revision=1;render(req.id);req=last();ok(req.payload.answers['1']===2);ok(req.payload.revision===1);a.answers={'1':2};a.revision=2;render(req.id);ok(el('saved').textContent==='저장 완료');ok(el('choices').children[1].getAttribute('aria-pressed')==='true');
+// A hidden exam keeps its answers without issuing heartbeat requests.
+let hidden=true;
+Object.defineProperty(w.document,'hidden',{get:()=>hidden});
+const hiddenCount=messages.length;
+intervals[1]();
+ok(messages.length===hiddenCount);
+hidden=false;
+w.document.dispatchEvent(new w.Event('visibilitychange'));
+ok(last().action==='poll');
+render(last().id);
 // Heartbeat cannot erase user input selected while its reply is in flight.
 intervals[1]();req=last();el('choices').firstChild.click();render(req.id);req=last();ok(req.action==='save'&&req.payload.answers['1']===1);a.answers={'1':1};a.revision=3;render(req.id);
 // Failure retains selection and retry payload; no false saved message.
