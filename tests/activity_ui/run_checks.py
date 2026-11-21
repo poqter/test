@@ -23,6 +23,8 @@ def run_case(name):
     def track(context):
         if context in contexts:return
         contexts.append(context)
+        # Cases exercising publication override this offline default at page scope.
+        context.route('https://api.github.com/repos/poqter/test/releases/tags/*',lambda route:route.fulfill(status=404,body='{}'))
         context.tracing.start(screenshots=True,snapshots=True,sources=False)
         context.on('page',track_page)
     def track_page(page):
