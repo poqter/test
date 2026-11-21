@@ -753,15 +753,7 @@ class BriefingRepository:
                     return self.bundle_from_parts(briefing, revision, snapshot)
         return None
 
-    def bundle_for_date(self, profile_code: str, briefing_date: date | str, *, include_draft: bool = False) -> dict[str, Any] | None:
-        parts = self._edition_parts(profile_code, briefing_date, include_draft)
-        return self.bundle_from_parts(*parts) if parts else None
-
-    def publication_bundle(self, code, day, *, include_draft=True):
-        parts = self._edition_parts(code, day, include_draft, publication_only=True)
-        return dict(zip(('briefing', 'revision', 'snapshot'), parts)) if parts else None
-
-    def _edition_parts(self, profile_code, briefing_date, include_draft, *, publication_only=False):
+    def bundle_for_date(self, profile_code: str, briefing_date: date | str, *, include_draft: bool = False, publication_only: bool = False) -> dict[str, Any] | None:
         briefing = self._first(self._request(
             "GET",
             "/rest/v1/hwarang_briefings",
@@ -790,7 +782,9 @@ class BriefingRepository:
             ))
         else:
             snapshot = self._snapshot_for_revision(str(revision["id"]))
-        return (briefing, revision, snapshot) if snapshot else None
+        if not snapshot:return None
+        if publication_only:return {'briefing': briefing, 'revision': revision, 'snapshot': snapshot}
+        return self.bundle_from_parts(briefing, revision, snapshot)
 
     def bundle_from_parts(self, briefing: dict[str, Any], revision: dict[str, Any], snapshot: dict[str, Any]) -> dict[str, Any]:
         snapshot_id = str(snapshot["id"])
