@@ -24,6 +24,7 @@ public final class DayActivity extends Activity {
         day=getIntent().getStringExtra("day");if(day==null)day=LocalDate.now(ZoneId.of("Asia/Seoul")).toString();
         try{LocalDate.parse(day);}catch(Exception ex){finish();return;}
         android.view.Window window=getWindow();
+        window.setGravity(android.view.Gravity.CENTER);
         int width=getResources().getDisplayMetrics().widthPixels;
         int limit=Math.round(440*getResources().getDisplayMetrics().density);
         window.setLayout(Math.min(limit,(int)(width*.92)),android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -62,10 +63,10 @@ public final class DayActivity extends Activity {
     }
     private EditText field(String label,String value,int type){TextView l=new TextView(this);l.setText(label);body.addView(l);EditText e=new EditText(this);e.setContentDescription(label);e.setText(value);e.setInputType(type);body.addView(e);return e;}
     private void task(Task work,Done done,boolean write){
-        if(busy)return;if(account.isEmpty()||!account.equals(data.prefs.getString("uid",""))){status.setText("설정에서 계정을 연결한 뒤 다시 열어 주세요.");return;}
+        if(busy)return;if(account.isEmpty()||!account.equals(data.prefs.getString("uid",""))){status.setText("화랑 월간 달력 앱에서 계정을 연결한 뒤 다시 열어 주세요.");return;}
         busy=true;int current=generation;TextView message=status;message.setText(write?"저장 중…":"불러오는 중…");
         WidgetData.io.execute(()->{JSONObject value=null;String error=null;
-            try{value=work.run();}catch(WidgetData.HttpFailure ex){error=ex.code==401?"연결이 만료되었습니다. 설정에서 다시 연결해 주세요.":ex.code==403?"조회·수정 권한을 확인해 주세요.":ex.code==409?"일정이 변경되었습니다. 목록에서 다시 열어 주세요.":"처리하지 못했습니다. 해당 날짜의 일정·휴무와 입력 내용을 확인해 주세요.";}
+            try{value=work.run();}catch(WidgetData.HttpFailure ex){error=ex.code==401?"연결이 만료되었습니다. 화랑 월간 달력 앱에서 다시 연결해 주세요.":ex.code==403?"조회·수정 권한을 확인해 주세요.":ex.code==409?"일정이 변경되었습니다. 목록에서 다시 열어 주세요.":"처리하지 못했습니다. 해당 날짜의 일정·휴무와 입력 내용을 확인해 주세요.";}
             catch(Exception ex){error=write?"저장 결과를 확인하지 못했습니다. 목록에서 반영 여부를 확인해 주세요.":"연결을 확인한 뒤 다시 불러와 주세요.";}
             final JSONObject result=value;final String failure=error;
             runOnUiThread(()->{busy=false;if(isFinishing()||current!=generation)return;if(!account.equals(data.prefs.getString("uid",""))){finish();return;}

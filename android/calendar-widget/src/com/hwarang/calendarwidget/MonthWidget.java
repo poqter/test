@@ -115,7 +115,7 @@ public final class MonthWidget extends AppWidgetProvider {
     }
 
     private static PendingIntent dateLink(Context context, LocalDate day, boolean team, int id) {
-        Intent intent=new Intent(context,DayActivity.class).setData(Uri.parse("hwarang-widget://day/"+day+"/"+team))
+        Intent intent=new Intent(context,DayActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS).setData(Uri.parse("hwarang-widget://day/"+day+"/"+team))
             .putExtra("day",day.toString()).putExtra("team",team);
         return PendingIntent.getActivity(context, id, intent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     }
@@ -146,19 +146,17 @@ public final class MonthWidget extends AppWidgetProvider {
         int[] actions = {R.id.prev, R.id.today, R.id.next, R.id.mine, R.id.branch, R.id.refresh};
         String[] names = {"prev", "today", "next", "mine", "branch", "refresh"};
         for (int i = 0; i < actions.length; i++) view.setOnClickPendingIntent(actions[i], action(context, names[i], id));
-        view.setOnClickPendingIntent(R.id.setup, PendingIntent.getActivity(context, id,
-            new Intent(context, SetupActivity.class), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
-        view.setTextViewText(R.id.status, !connected ? ("권한 없음".equals(state) ? "일정 조회 권한을 확인해 주세요" : "설정에서 화랑 계정을 연결해 주세요")
+        view.setOnClickPendingIntent(R.id.web, PendingIntent.getActivity(context, id,
+            new Intent(Intent.ACTION_VIEW,Uri.parse("https://hwarang-calendar.streamlit.app/calendar?view=mobile-calendar")), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
+        view.setTextViewText(R.id.status, !connected ? ("권한 없음".equals(state) ? "일정 조회 권한을 확인해 주세요" : "화랑 월간 달력 앱에서 계정을 연결해 주세요")
             : !state.isEmpty() ? state : !cache.has("rows") ? "일정 확인 중" : marks.isEmpty() ? "표시할 일정 없음" : "");
         view.removeAllViews(R.id.grid);
-        RemoteViews weekdays = row(context);
+        view.removeAllViews(R.id.weekdays);
         for (char weekday : (sunday ? "일월화수목금토" : "월화수목금토일").toCharArray())
-            weekdays.addView(R.id.row, cell(context, String.valueOf(weekday), 0xff486174));
-        view.addView(R.id.grid, weekdays);
+            view.addView(R.id.weekdays, cell(context, String.valueOf(weekday), 0xff486174));
+
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
         Bundle sizes = manager.getAppWidgetOptions(id);
-        boolean compact = sizes.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 300) < 300
-            || sizes.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 270) < 270;
         java.util.Set<String> emptyDays = new java.util.HashSet<>();
         JSONArray confirmed = cache.optJSONArray("empty_days");
         if (confirmed != null) for(int i=0;i<confirmed.length();i++) emptyDays.add(confirmed.optString(i));
@@ -175,32 +173,46 @@ public final class MonthWidget extends AppWidgetProvider {
                     continue;
                 }
                 DayMark mark = marks.get(day.toString());
-                SpannableStringBuilder label = new SpannableStringBuilder(String.valueOf(day.getDayOfMonth()));
-                if (mark != null) {
-                    mark.events.sort(java.util.Comparator.comparing(e->e.optString("start")));
-                    int limit=compact?1:2;
-                    for(int n=0;n<Math.min(limit,mark.events.size());n++){
-                        JSONObject event=mark.events.get(n);
-                        String clock=event.optString("start");
-                        String title=event.optString("title",event.optString("kind"));
-                        label.append("\n");
-                        int start=label.length();
-                        if(event.optBoolean("common"))label.append("공통 ");
-                        if(clock.length()>=5)label.append(clock.substring(0,5)).append(" ");
-                        label.append(title.length()>16?title.substring(0,15)+"…":title);
-                        if(event.optBoolean("common"))label.setSpan(new ForegroundColorSpan(0xff914d0b),start,label.length(),Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-                    }
-                    if(mark.events.size()>limit)label.append("\n외 ").append(String.valueOf(mark.events.size()-limit)).append("건");
+                RemoteViews date=new RemoteViews(context.getPackageName(),R.layout.widget_date);
+                boolean wide=sizes.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH,300)>=535;
+                int height=sizes.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,270);
+                int dayHeight=(height-100)/weeks;
+                int limit=dayHeight>=(wide?43:76)?2:1;
+                int total=mark==null?0:mark.events.size();
+                String number=String.valueOf(day.getDayOfMonth());
+                if(total>limit)number+=" +"+(total-limit);
+                date.setTextViewText(R.id.number,number);
+                if(today.equals(day)){
+                    date.setInt(R.id.number,"setBackgroundColor",0xff007577);
+                    date.setTextColor(R.id.number,0xffffffff);
                 }
-                String registration="";
-                if (connected && !team && confirmed!=null && (mark==null || !mark.personal)) {
-                    registration=emptyDays.contains(day.toString())?"일정 없음":"미등록";
-                    if (mark==null || (mark.count==0 && !mark.leave)) label.append("\n").append(registration);
+                int[] clocks={R.id.first_time,R.id.second_time},titles={R.id.first_title,R.id.second_title};
+                if(mark!=null)mark.events.sort(java.util.Comparator.comparing(e->e.optString("start")));
+                for(int n=0;n<2;n++){
+                    boolean visible=n<total && n<limit;
+                    date.setViewVisibility(clocks[n],visible && !wide && dayHeight>=40?0:8);
+                    date.setViewVisibility(titles[n],visible?0:8);
+                    if(!visible)continue;
+                    JSONObject e=mark.events.get(n);
+                    String clock=e.optString("start");
+                    clock=clock.length()>=5?clock.substring(0,5):"";
+                    boolean common=e.optBoolean("common");
+                    String title=e.optString("title",e.optString("kind"));
+                    String bar="▏";
+                    String text=bar+(wide?(common?"공통 ":"")+(clock.isEmpty()?"":clock+" · "):"")+title;
+                    SpannableStringBuilder styled=new SpannableStringBuilder(text);
+                    int color=common?0xff995815:DOTS.getOrDefault(e.optString("kind"),0xff367684);
+                    styled.setSpan(new ForegroundColorSpan(color),0,common?text.length():1,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    date.setTextViewText(titles[n],styled);
+                    date.setTextViewText(clocks[n],(common?"공통 ":"")+clock);
                 }
-                RemoteViews date = cell(context, label, today.equals(day) ? 0xff006b6d : 0xff173446);
-                if (today.equals(day)) date.setInt(R.id.cell, "setBackgroundColor", 0xffd8ede8);
-                date.setContentDescription(R.id.cell, day.toString() + (mark == null ? "" : " 일정 " + mark.count + "건") + " " + registration + (today.equals(day) ? " 오늘" : ""));
-                date.setOnClickPendingIntent(R.id.cell, dateLink(context, day, team, id));
+                if(total==0 && connected && !team && confirmed!=null){
+                    date.setViewVisibility(R.id.first_title,0);
+                    date.setTextViewText(R.id.first_title,emptyDays.contains(day.toString())?"일정 없음":"미등록");
+                    date.setTextColor(R.id.first_title,0xff657584);
+                }
+                date.setContentDescription(R.id.date_cell,day+" 일정 "+total+"건");
+                date.setOnClickPendingIntent(R.id.date_cell,dateLink(context,day,team,id));
                 line.addView(R.id.row, date);
             }
             view.addView(R.id.grid, line);

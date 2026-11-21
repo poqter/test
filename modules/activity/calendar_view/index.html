@@ -136,7 +136,12 @@ body dialog.calendar-panel[data-day-list]>.panel-content{display:flex;flex-direc
  .day-list-info,.day-list-info.day-list-with-owner{grid-template-columns:49px minmax(0,1fr);column-gap:6px}
  .day-list-row{gap:4px}
 }
-.chip.branch-common,.row.branch-common,.day-list-row.branch-common{border-left:4px solid #b15e12!important;background:#fff1dc!important;color:#713800!important;font-weight:700}
+.chip.branch-common,.row.branch-common{border-left:4px solid #b15e12!important;background:#fff1dc!important;color:#713800!important;font-weight:700}
+.day-list-row.branch-common{border-left:3px solid #ad621a;background:white;color:#183449;padding-left:9px}
+.day-list-row.branch-common .day-list-info{background:transparent;color:inherit}
+.day-list-row.branch-common .day-list-meta{color:#824509}
+dialog.widget-update-notice{position:fixed;inset:0;margin:auto;box-sizing:border-box;width:min(420px,calc(100vw - 32px));height:fit-content;max-height:calc(100dvh - 32px);padding:22px;border-radius:16px;color:#193648;background:white;overflow:auto}
+.widget-update-notice h2{margin:0 0 10px;font-size:20px}.widget-update-notice label{display:flex;align-items:center;gap:8px;min-height:44px}.widget-update-notice a,.widget-update-notice button{display:block;box-sizing:border-box;width:100%;padding:10px;text-align:center;border-radius:8px}.widget-update-notice a{background:#006e70;color:white;text-decoration:none;margin:6px 0}
 </style><header><div class="nav" id="nav"></div><div class="tools" id="tools"></div></header><div class="legend" aria-label="활동 종류별 색상"><span data-kind="TA">TA 고객 연락</span><span data-kind="AP">AP 초회 상담</span><span data-kind="PC">PC 프레젠테이션 / 클로징</span><span data-kind="CS">CS 고객 관리</span></div><div id="refreshing" class="refreshing" role="status" aria-live="polite"></div><div id="move-notice" role="status" hidden></div><div id="grid" class="grid"></div><section class="agenda" id="agenda"></section><script>
 const post=(type,data)=>parent.postMessage({isStreamlitMessage:true,type,...data},location.origin);
 const emit=(action,value)=>calendarAction(action,value);
