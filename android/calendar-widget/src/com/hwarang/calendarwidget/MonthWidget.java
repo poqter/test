@@ -141,8 +141,10 @@ public final class MonthWidget extends AppWidgetProvider {
         Map<String, DayMark> marks = summarize(cache.optJSONArray("rows"), data.prefs.getBoolean("includeDone", true));
         RemoteViews view = new RemoteViews(context.getPackageName(), R.layout.month_widget);
         view.setTextViewText(R.id.heading, month.getYear() + "년 " + month.getMonthValue() + "월");
-        view.setTextColor(R.id.mine, !team ? 0xff00716e : 0xff486174);
-        view.setTextColor(R.id.branch, team ? 0xff00716e : 0xff486174);
+        view.setInt(R.id.mine,"setBackgroundResource",team?R.drawable.tab_idle:R.drawable.tab_active);
+        view.setInt(R.id.branch,"setBackgroundResource",team?R.drawable.tab_active:R.drawable.tab_idle);
+        view.setTextColor(R.id.mine, !team ? 0xffffffff : 0xff486174);
+        view.setTextColor(R.id.branch, team ? 0xffffffff : 0xff486174);
         int[] actions = {R.id.prev, R.id.today, R.id.next, R.id.mine, R.id.branch, R.id.refresh};
         String[] names = {"prev", "today", "next", "mine", "branch", "refresh"};
         for (int i = 0; i < actions.length; i++) view.setOnClickPendingIntent(actions[i], action(context, names[i], id));
@@ -153,7 +155,7 @@ public final class MonthWidget extends AppWidgetProvider {
         view.removeAllViews(R.id.grid);
         view.removeAllViews(R.id.weekdays);
         for (char weekday : (sunday ? "일월화수목금토" : "월화수목금토일").toCharArray())
-            view.addView(R.id.weekdays, cell(context, String.valueOf(weekday), 0xff486174));
+            view.addView(R.id.weekdays, cell(context, String.valueOf(weekday), weekday=='일'?0xffad354a:weekday=='토'?0xff326a9c:0xff486174));
 
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
         Bundle sizes = manager.getAppWidgetOptions(id);
@@ -177,12 +179,14 @@ public final class MonthWidget extends AppWidgetProvider {
                 boolean wide=sizes.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH,300)>=535;
                 int height=sizes.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,270);
                 int dayHeight=(height-100)/weeks;
-                int limit=dayHeight>=(wide?43:76)?2:1;
+                int limit=dayHeight>=(wide?53:110)?2:1;
                 int total=mark==null?0:mark.events.size();
                 String number=String.valueOf(day.getDayOfMonth());
                 if(total>limit)number+=" +"+(total-limit);
                 date.setTextViewText(R.id.number,number);
+                date.setTextColor(R.id.number,day.getDayOfWeek()==java.time.DayOfWeek.SUNDAY?0xffad354a:day.getDayOfWeek()==java.time.DayOfWeek.SATURDAY?0xff326a9c:0xff183449);
                 if(today.equals(day)){
+                    date.setInt(R.id.date_cell,"setBackgroundColor",0xffe4f3f1);
                     date.setInt(R.id.number,"setBackgroundColor",0xff007577);
                     date.setTextColor(R.id.number,0xffffffff);
                 }
@@ -199,12 +203,13 @@ public final class MonthWidget extends AppWidgetProvider {
                     boolean common=e.optBoolean("common");
                     String title=e.optString("title",e.optString("kind"));
                     String bar="▏";
-                    String text=bar+(wide?(common?"공통 ":"")+(clock.isEmpty()?"":clock+" · "):"")+title;
+                    date.setInt(titles[n],"setMaxLines",wide?1:2);
+                    String text=bar+(wide?(clock.isEmpty()?"":clock+" · "):"")+title;
                     SpannableStringBuilder styled=new SpannableStringBuilder(text);
                     int color=common?0xff995815:DOTS.getOrDefault(e.optString("kind"),0xff367684);
-                    styled.setSpan(new ForegroundColorSpan(color),0,common?text.length():1,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    styled.setSpan(new ForegroundColorSpan(color),0,1,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                     date.setTextViewText(titles[n],styled);
-                    date.setTextViewText(clocks[n],(common?"공통 ":"")+clock);
+                    date.setTextViewText(clocks[n],clock);
                 }
                 if(total==0 && connected && !team && confirmed!=null){
                     date.setViewVisibility(R.id.first_title,0);
