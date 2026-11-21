@@ -12,7 +12,7 @@ from modules.shared.hwarang_auth import HwarangAuthError
 
 DAY=timedelta(days=1)
 from modules.activity.daily import COUNTS
-KINDS=["미분류","TA","AP","PC","CS","청약","교육","회의","휴무","기타"]
+KINDS=["미분류","TA","AP","PC","CS","상담","활동","휴무","기타"]
 TYPES={code:code for code in ("TA","AP","PC","CS")}
 
 def notify():

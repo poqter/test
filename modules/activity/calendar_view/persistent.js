@@ -126,12 +126,13 @@ async function loadPayload(first,last,team,member,cached=null,requestController=
   const rows=data.compact||member?data.rows:data.summary.map(r=>details.get(r.id)||r);
   const now=new Date(),kst=new Date(now.getTime()+9*3600000).toISOString(),today=kst.slice(0,10),clock=kst.slice(11,19);
   let events=rows.sort((a,b)=>(a.day+(a.start_time||'')+a.id).localeCompare(b.day+(b.start_time||'')+b.id)).map(r=>{
+   const displayKind=['제안','청약'].includes(r.kind)?'PC':r.kind;
    const owner=r.common?'지점 공통':branch[r.owner]||calendarBoot.members[r.owner]||'구성원',stamp=(r.start_time||(r.time_pending?'시간 미정':'종일')).slice(0,5);
    const overdue=r.status==='예정'&&(r.day<today||r.day===today&&r.start_time&&r.start_time<clock);
-   let label=r.kind==='휴무'?owner+' · 휴무':stamp+' · '+r.kind+' · '+owner+' · '+(overdue?'결과 미입력':r.status);
+   let label=r.kind==='휴무'?owner+' · 휴무':stamp+' · '+displayKind+' · '+owner+' · '+(overdue?'결과 미입력':r.status);
    if(r.companion)label+=' · 동행 '+(branch[r.companion]||'');if(r.help)label+=' · 지원 요청';
    const seconds=r.start_time?(new Date(r.day+'T'+r.start_time+'+09:00')-now)/1000:-1;
-   return {start:r.start_time,timePending:!!r.time_pending,place:r.place||'',status:r.status,revision:r.revision,id:r.id,day:r.day,kind:r.kind,member:r.owner,common:!!r.common,ownerName:owner,title:r.kind==='휴무'?'휴무':r.title||r.kind,allDay:!r.start_time,short:r.kind==='휴무'?(team?owner+' · 휴무':'휴무'):(r.title||r.kind)+(team?' · '+owner:''),label,done:r.kind!=='휴무'&&r.status==='완료',soon:r.day===today&&r.status==='예정'&&seconds>=0&&seconds<=1800,readable:data.compact?!!r.readable:details.has(r.id)};
+   return {start:r.start_time,timePending:!!r.time_pending,place:r.place||'',status:r.status,revision:r.revision,id:r.id,day:r.day,kind:displayKind,member:r.owner,common:!!r.common,ownerName:owner,title:r.kind==='휴무'?'휴무':r.title||r.kind,allDay:!r.start_time,short:r.kind==='휴무'?(team?owner+' · 휴무':'휴무'):(r.title||r.kind)+(team?' · '+owner:''),label,done:r.kind!=='휴무'&&r.status==='완료',soon:r.day===today&&r.status==='예정'&&seconds>=0&&seconds<=1800,readable:data.compact?!!r.readable:details.has(r.id)};
   });
   if(cached&&data.replaceFirst)events=[...cached.events.filter(e=>e.day<data.replaceFirst||e.day>data.replaceLast),...events];
   return {versions:data.versions,events,rangeStart:first,rangeEnd:last,syncUnit:data.unit,syncStamp:data.stamp,scopeLabel:member?calendarBoot.members[member]:team?(calendarBoot.viewLabel||'지점 일정'):'내 일정',roster:team||member?Object.fromEntries(Object.entries(branch).filter(([u])=>!member||u===member)):{}};
@@ -398,7 +399,7 @@ async function openEditor(row,kind,day){
  let status,paintLeave=()=>{};
  if(kind!=='result'){
   const title=field(form,'일정명','title',v.title);title.required=true;title.maxLength=200;
-  const pair=el('div','','pair');form.append(pair);field(pair,'날짜','day',v.day,'date').required=true;const activity=field(pair,'활동 종류','kind',v.kind,'text',calendarBoot.kinds);
+  const pair=el('div','','pair');form.append(pair);field(pair,'날짜','day',v.day,'date').required=true;const activity=field(pair,'활동 종류','kind',v.kind,'text',[...new Set([...calendarBoot.kinds,...(editing&&v.kind?[v.kind]:[])])]);
   const opts=el('div','','pair');form.append(opts);
   const allDay=field(opts,'종일','all_day',v.all_day??v.mode==='종일','checkbox'),times=el('div','','pair');if(calendarBoot.managed)field(opts,'지점 공통 일정','common',v.common,'checkbox');form.append(times);
   times.style.alignItems='start';
@@ -545,7 +546,7 @@ function paintDayList(){
   let pending=false;
   for(const item of group.items){
   if(item.timePending&&!pending&&!grouped){list.append(el('h4','시간 미정','day-list-group'));pending=true}
-  const line=el('div','','day-list-row');line.dataset.key=item.id;if(item.common){line.classList.add('branch-common');line.setAttribute('aria-label','지점 공통')}if(item.id===calendarSearchFocus?.id)line.classList.add('calendar-search-highlight');
+  const line=el('div','','day-list-row');line.dataset.key=item.id;line.dataset.kind=item.kind;if(item.common){line.classList.add('branch-common');line.setAttribute('aria-label','지점 공통')}if(item.id===calendarSearchFocus?.id)line.classList.add('calendar-search-highlight');
   const ownerColumn=!grouped&&calendarBoot.team&&!calendarBoot.member&&!!item.title;
   const info=button('',()=>openDetail(item.id),'day-list-info');
   if(ownerColumn)info.classList.add('day-list-with-owner');
@@ -580,7 +581,7 @@ function paintDayList(){
 
 async function offerAndroidWidgetUpdate() {
 
- const tag='widget-v0.2.8', seen='hwarang-widget-notice-reinstall-'+tag;
+ const tag='widget-v0.2.9', seen='hwarang-widget-notice-reinstall-'+tag;
  const suppressed=()=>{try{return localStorage.getItem(seen)==='1'}catch{return false}};
  try {
   if(suppressed()) return;
@@ -598,9 +599,9 @@ async function offerAndroidWidgetUpdate() {
   panel.className='widget-update-notice';panel.setAttribute('aria-labelledby','widget-update-title');heading.id='widget-update-title';
   const label=document.createElement('label'),checkbox=document.createElement('input');
   checkbox.type='checkbox';label.append(checkbox,document.createTextNode('이번 버전 공지 다시 보지 않기'));
-  heading.textContent='화랑 월간 달력 0.2.8 업데이트';
+  heading.textContent='화랑 월간 달력 0.2.9 업데이트';
   description.style.whiteSpace='pre-line';
-  description.textContent='홈 위젯의 각 일정 제목을 한 줄로 표시하고 글자 아래 여백을 조정했습니다. 긴 제목은 날짜를 눌러 전체 내용을 확인하세요.\n\n0.2.2 이상은 기존 앱 위에 업데이트하세요. 0.2.1 이하 시험판은 설정 → 애플리케이션에서 화랑 월간 달력을 삭제한 뒤 재설치하고 계정을 연결하세요.';
+  description.textContent='웹과 위젯의 활동 색상을 통일하고 상담·활동 유형을 추가했습니다. 홈 위젯의 지점 공통 일정은 건수로 모아 표시합니다.\n\n0.2.2 이상은 기존 앱 위에 업데이트하세요. 0.2.1 이하 시험판은 설정 → 애플리케이션에서 화랑 월간 달력을 삭제한 뒤 재설치하고 계정을 연결하세요.';
   const install=document.createElement('a'),close=document.createElement('button');
   install.href=url;install.target='_blank';install.rel='noopener';install.textContent='새 위젯 설치하기';
   close.textContent='닫기';close.onclick=()=>{if(checkbox.checked){try{localStorage.setItem(seen,'1')}catch{}}panel.close()};

@@ -26,10 +26,11 @@ import org.json.JSONObject;
 public final class MonthWidget extends AppWidgetProvider {
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
     private static final String PREFIX = "com.hwarang.calendarwidget.";
-    private static final Map<String, Integer> DOTS = new LinkedHashMap<>();
+    static final Map<String, Integer> DOTS = new LinkedHashMap<>();
     static {
-        DOTS.put("TA", 0xff137881); DOTS.put("AP", 0xff366fba); DOTS.put("PC", 0xffa04e88);
-        DOTS.put("CS", 0xff587832); DOTS.put("청약", 0xffaf5b23); DOTS.put("기타", 0xff64748b);
+        DOTS.put("TA", 0xff3272c4); DOTS.put("AP", 0xff27885d); DOTS.put("PC", 0xff8455b6);
+        DOTS.put("CS", 0xffbe701e); DOTS.put("청약", 0xff8455b6); DOTS.put("제안", 0xff8455b6);
+        DOTS.put("상담", 0xff795944); DOTS.put("활동", 0xff087e8b);
     }
 
     static YearMonth currentMonth() { return YearMonth.now(SEOUL); }
@@ -91,7 +92,7 @@ public final class MonthWidget extends AppWidgetProvider {
         int count;
         boolean personal;
         boolean leave;
-        boolean common;
+        int commonCount;
         final java.util.ArrayList<JSONObject> events=new java.util.ArrayList<>();
         final LinkedHashSet<String> kinds = new LinkedHashSet<>();
     }
@@ -106,9 +107,10 @@ public final class MonthWidget extends AppWidgetProvider {
             mark.personal |= event.optBoolean("personal");
             if (!includeDone && event.optBoolean("done")) continue;
 
-            mark.common |= event.optBoolean("common");
+            
             String kind = event.optString("kind");
             if ("휴무".equals(kind)) mark.leave = true;
+            else if(event.optBoolean("common")) mark.commonCount++;
             else { mark.events.add(event); mark.count++; mark.kinds.add(kind); }
         }
         return result;
@@ -179,12 +181,16 @@ public final class MonthWidget extends AppWidgetProvider {
                 int height=sizes.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,270);
                 int dayHeight=(height-100)/weeks;
                 boolean leave=mark!=null && mark.leave;
-                int total=mark==null?0:mark.events.size();
+                int individual=mark==null?0:mark.events.size();
+                int common=mark==null?0:mark.commonCount;
+                int total=individual+common;
                 float fontScale=context.getResources().getConfiguration().fontScale;
                 int available=dayHeight-3-(int)Math.ceil((15+(leave?14:0))*fontScale);
                 int textLine=(int)Math.ceil(17*fontScale)+1;
                 int limit=Math.min(2,Math.max(0,available/textLine));
-                if(total>limit)limit=Math.min(limit,Math.max(0,(available-(int)Math.ceil(12*fontScale))/textLine));
+                if(common>0)available-=(int)Math.ceil(14*fontScale);
+                limit=Math.min(limit,Math.max(0,available/textLine));
+                if(individual>limit)limit=Math.min(limit,Math.max(0,(available-(int)Math.ceil(12*fontScale))/textLine));
                 date.setTextViewText(R.id.number,String.valueOf(day.getDayOfMonth()));
                 date.setTextColor(R.id.number,day.getDayOfWeek()==java.time.DayOfWeek.SUNDAY?0xffad354a:day.getDayOfWeek()==java.time.DayOfWeek.SATURDAY?0xff326a9c:0xff183449);
                 if(today.equals(day)){
@@ -196,11 +202,11 @@ public final class MonthWidget extends AppWidgetProvider {
                 int[] titles={R.id.first_title,R.id.second_title};
                 int[] accents={R.id.first_accent,R.id.second_accent};
                 if(mark!=null)mark.events.sort(java.util.Comparator.comparing(e->e.optString("start")));
-                for(int n=0;n<Math.min(total,limit);n++){
+                for(int n=0;n<Math.min(individual,limit);n++){
                     JSONObject event=mark.events.get(n);
                     date.setViewVisibility(rows[n],android.view.View.VISIBLE);
                     date.setTextViewText(titles[n],event.optString("title",event.optString("kind")));
-                    int color=event.optBoolean("common")?0xff995815:DOTS.getOrDefault(event.optString("kind"),0xff367684);
+                    int color=DOTS.getOrDefault(event.optString("kind"),0xff687789);
                     date.setInt(accents[n],"setBackgroundColor",color);
                 }
                 if(leave || (total==0 && connected && !team && confirmed!=null)){
@@ -209,9 +215,13 @@ public final class MonthWidget extends AppWidgetProvider {
                     date.setTextViewText(R.id.day_state,leave?"휴무":confirmedEmpty?"일정 없음":"미등록");
                     date.setTextColor(R.id.day_state,leave || confirmedEmpty?0xff486174:0xff687984);
                 }
-                if(total>limit){
+                if(common>0){
+                    date.setViewVisibility(R.id.common_count,android.view.View.VISIBLE);
+                    date.setTextViewText(R.id.common_count,"공통 "+common+"건");
+                }
+                if(individual>limit){
                     date.setViewVisibility(R.id.total_link,android.view.View.VISIBLE);
-                    date.setTextViewText(R.id.total_link,"전체 "+total+"건 ›");
+                    date.setTextViewText(R.id.total_link,(common>0?"일정 "+individual:"전체 "+total)+"건 ›");
                 }
                 date.setContentDescription(R.id.date_cell,day+" 일정 "+total+"건"+(leave?" 휴무":""));
                 date.setOnClickPendingIntent(R.id.date_cell,dateLink(context,day,team,id));
