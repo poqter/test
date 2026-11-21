@@ -141,11 +141,27 @@ public final class DayActivity extends Activity {
             Button dateButton=button("날짜  "+eventDay[0],()->{});
             dateButton.setOnClickListener(v->{if(!busy)pick(eventDay[0],chosen->{eventDay[0]=chosen;dateButton.setText("날짜  "+chosen);});});
         }
-        java.util.List<String> options=new java.util.ArrayList<>(java.util.Arrays.asList("미분류","TA","AP","PC","CS","상담","활동","기타","휴무"));
+        java.util.List<String> kindOptions=new java.util.ArrayList<>(java.util.Arrays.asList("미분류","TA","AP","PC","CS","상담","활동","기타","휴무"));
         String previous=text(row,"kind");
-        if(!previous.isEmpty()&&!options.contains(previous))options.add(previous);
-        String[] kinds=options.toArray(new String[0]);Spinner kind=new Spinner(this);kind.setContentDescription("활동 종류");kind.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,kinds));body.addView(kind);
+        if(!previous.isEmpty()&&!kindOptions.contains(previous))kindOptions.add(previous);
+        String[] kinds=kindOptions.toArray(new String[0]);
+        final boolean[] manualKind={row!=null};
+        Spinner kind=new Spinner(this){
+            @Override public boolean performClick(){manualKind[0]=true;return super.performClick();}
+        };kind.setContentDescription("활동 종류");kind.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,kinds));body.addView(kind);
         for(int i=0;i<kinds.length;i++)if(kinds[i].equals(text(row,"kind")))kind.setSelection(i);
+        title.addTextChangedListener(new android.text.TextWatcher(){
+            public void beforeTextChanged(CharSequence s,int start,int count,int after){}
+            public void onTextChanged(CharSequence s,int start,int before,int count){
+                if(manualKind[0])return;
+                java.util.regex.Matcher matches=java.util.regex.Pattern.compile("(?i)(?<![a-z0-9_])(TA|AP|PC|CS)(?![a-z0-9_])").matcher(s);
+                java.util.Set<String> found=new java.util.HashSet<>();
+                while(matches.find())found.add(matches.group().toUpperCase(java.util.Locale.ROOT));
+                String inferred=found.size()==1?found.iterator().next():"미분류";
+                kind.setSelection(kindOptions.indexOf(inferred));
+            }
+            public void afterTextChanged(android.text.Editable value){}
+        });
         EditText place=field("장소 · 선택",text(row,"place"),InputType.TYPE_CLASS_TEXT);
         LinearLayout options=new LinearLayout(this);body.addView(options);
         CheckBox common=new CheckBox(this);common.setText("지점 공통 일정");common.setChecked(row!=null&&row.optBoolean("common"));
