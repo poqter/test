@@ -44,7 +44,7 @@ final class WidgetData {
             conn.setReadTimeout(3500);
             conn.setRequestProperty("apikey", KEY);
             conn.setRequestProperty("X-Hwarang-Widget-Version", "0.2.4");
-            if (path.equals("/functions/v1/widget-login")) conn.setRequestProperty("Authorization","Bearer "+KEY);
+            
             if (token != null) conn.setRequestProperty("Authorization", "Bearer " + token);
             if (body != null) {
                 conn.setRequestMethod("POST");
@@ -221,6 +221,7 @@ final class WidgetData {
         lastDay = null;
         JSONObject result = call("sales_widget_month", new JSONObject().put("first_day", day)
                 .put("last_day", day).put("p_team", team));
+        prefs.edit().putBoolean("canCommon",result.optBoolean("can_common")).apply();
         String owner = prefs.getString("uid", "");
         JSONArray rows = result.getJSONArray("rows");
         if (!team && !owner.isEmpty()) {

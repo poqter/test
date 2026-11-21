@@ -43,7 +43,7 @@ for(const role of ['anon','authenticated','service_role'])for(const fn of ['sale
 
 await db.exec(`reset role;
 create function private.sales_enabled() returns boolean language sql as $$select auth.uid() is not null and coalesce(current_setting('test.enabled',true),'true')<>'false'$$;
-create function private.sales_scope() returns table(member uuid,unit uuid) language sql as $$select auth.uid(),'${unit}'::uuid where private.sales_enabled()$$;
+create function private.sales_scope() returns table(member uuid,unit uuid,managed boolean) language sql as $$select auth.uid(),'${unit}'::uuid,coalesce(current_setting('test.manager',true),'false')='true' where private.sales_enabled()$$;
 drop policy own on sales_empty_days;
 create policy empty_read on sales_empty_days for select to authenticated using(owner=auth.uid() and private.sales_enabled());
 create policy empty_add on sales_empty_days for insert to authenticated with check(owner=auth.uid() and private.sales_enabled() and day=current_date);
@@ -56,6 +56,9 @@ create function sales_calendar_compact(date,date,uuid,boolean,jsonb) returns jso
 await db.exec(fs.readFileSync('supabase/migrations/20261120053916_calendar_selected_empty_day_widget.sql','utf8'));
 await db.exec("create function public.sales_calendar_days(date,date) returns setof public.sales_events language sql security invoker as $$select * from public.sales_events where day between $1 and $2 and deleted_at is null$$");
 await db.exec(fs.readFileSync('supabase/migrations/20261121142000_calendar_empty_day_state.sql','utf8'));
+await db.exec(`set role authenticated;set request.jwt.claim.sub='${me}'`);
+await db.exec("reset role");
+for(const file of ["20261121175500_widget_common_schedule.sql","20261121175600_widget_authenticated_grants.sql"]) await db.exec(fs.readFileSync("supabase/migrations/"+file,"utf8"));
 await db.exec(`set role authenticated;set request.jwt.claim.sub='${me}'`);
 const setEmpty=async(day,confirmed=true)=>(await db.query('select sales_empty_day_set($1,$2) value',[day,confirmed])).rows[0].value;
 const save=async(id,revision,data,overlap=false)=>(await db.query('select sales_widget_save($1,$2,$3,$4) value',[id,revision,data,overlap])).rows[0].value;
@@ -76,6 +79,14 @@ const second='55555555-5555-4555-8555-555555555555';const overlap={...row,start_
 await assert.rejects(()=>save('66666666-6666-4666-8666-666666666666',null,{...row,start_time:'',end_time:'15:00',time_pending:true}),/시간/);
 const leave='77777777-7777-4777-8777-777777777777';await setEmpty('2027-01-18');await save(leave,null,{...row,day:'2027-01-18',kind:'휴무'});await assert.rejects(()=>setEmpty('2027-01-18'),/개인 일정 또는 휴무/);
 await setEmpty('2027-01-19');const month=(await db.query("select sales_widget_month('2027-01-01','2027-01-31',false) value")).rows[0].value;assert.deepEqual(month.empty_days,['2027-01-19']);
+const sharedId='99999999-9999-4999-8999-999999999999';
+const shared={...row,day:'2027-01-22',common:true};
+await assert.rejects(()=>save(sharedId,null,shared),e=>e.code==='42501');
+await db.exec("set test.manager='true'");
+await save(sharedId,null,shared);
+assert.equal((await db.query('select common from sales_events where id=$1',[sharedId])).rows[0].common,true);
+assert.equal((await db.query("select sales_widget_month('2027-01-22','2027-01-22',false) as m")).rows[0].m.can_common,true);
 await db.exec("set test.enabled='false'");await assert.rejects(()=>save(id,3,row),/권한/);await assert.rejects(()=>setEmpty('2027-01-20'),/권한/);
 await db.exec('reset role');for(const name of ['sales_widget_save(uuid,integer,jsonb,boolean)','sales_empty_day_set(date,boolean)','sales_widget_month(date,date,boolean)'])assert.equal((await db.query("select has_function_privilege('anon',$1,'execute') ok",[name])).rows[0].ok,false);
 await db.close();console.log('PASS widget selected dates, native create/edit, conflict/duplicate/ownership guards, field preservation, overlap, time validation, leave clearing, payload, disabled access and anon ACL');
+
