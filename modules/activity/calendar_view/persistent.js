@@ -581,7 +581,7 @@ function paintDayList(){
 
 async function offerAndroidWidgetUpdate() {
 
- const tag='widget-v0.2.9', seen='hwarang-widget-notice-reinstall-'+tag;
+ const tag='widget-v0.2.10', seen='hwarang-widget-notice-reinstall-'+tag;
  const suppressed=()=>{try{return localStorage.getItem(seen)==='1'}catch{return false}};
  try {
   if(suppressed()) return;
@@ -599,9 +599,9 @@ async function offerAndroidWidgetUpdate() {
   panel.className='widget-update-notice';panel.setAttribute('aria-labelledby','widget-update-title');heading.id='widget-update-title';
   const label=document.createElement('label'),checkbox=document.createElement('input');
   checkbox.type='checkbox';label.append(checkbox,document.createTextNode('이번 버전 공지 다시 보지 않기'));
-  heading.textContent='화랑 월간 달력 0.2.9 업데이트';
+  heading.textContent='화랑 월간 달력 0.2.10 업데이트';
   description.style.whiteSpace='pre-line';
-  description.textContent='웹과 위젯의 활동 색상을 통일하고 상담·활동 유형을 추가했습니다. 홈 위젯의 지점 공통 일정은 건수로 모아 표시합니다.\n\n0.2.2 이상은 기존 앱 위에 업데이트하세요. 0.2.1 이하 시험판은 설정 → 애플리케이션에서 화랑 월간 달력을 삭제한 뒤 재설치하고 계정을 연결하세요.';
+  description.textContent='위젯의 휴무·미등록·일정 없음 문구를 가운데 정렬했습니다. 앞으로 색상과 지원하는 표시 설정은 재설치 없이 갱신됩니다.\n\n0.2.2 이상은 기존 앱 위에 업데이트하세요. 0.2.1 이하 시험판은 설정 → 애플리케이션에서 화랑 월간 달력을 삭제한 뒤 재설치하고 계정을 연결하세요.';
   const install=document.createElement('a'),close=document.createElement('button');
   install.href=url;install.target='_blank';install.rel='noopener';install.textContent='새 위젯 설치하기';
   close.textContent='닫기';close.onclick=()=>{if(checkbox.checked){try{localStorage.setItem(seen,'1')}catch{}}panel.close()};

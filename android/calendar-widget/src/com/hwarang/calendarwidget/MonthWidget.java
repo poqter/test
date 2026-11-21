@@ -133,6 +133,7 @@ public final class MonthWidget extends AppWidgetProvider {
 
     private static void paint(Context context, int id) {
         WidgetData data = new WidgetData(context);
+        WidgetStyle style = WidgetStyle.read(context);
         YearMonth month = shown(data);
         boolean connected = data.prefs.contains("session"), team = data.prefs.getBoolean("team", false);
         boolean sunday = data.prefs.getBoolean("sunday", false);
@@ -145,8 +146,10 @@ public final class MonthWidget extends AppWidgetProvider {
         view.setTextViewText(R.id.heading, month.getYear() + "년 " + month.getMonthValue() + "월");
         view.setInt(R.id.mine,"setBackgroundResource",team?R.drawable.tab_idle:R.drawable.tab_active);
         view.setInt(R.id.branch,"setBackgroundResource",team?R.drawable.tab_active:R.drawable.tab_idle);
-        view.setTextColor(R.id.mine, !team ? 0xffffffff : 0xff486174);
-        view.setTextColor(R.id.branch, team ? 0xffffffff : 0xff486174);
+        int selectedText=style.color("tabSelectedText",0xffffffff), idleText=style.color("tabIdleText",0xff486174);
+        view.setTextViewText(R.id.web,style.webLabel());
+        view.setTextColor(R.id.mine, !team ? selectedText : idleText);
+        view.setTextColor(R.id.branch, team ? selectedText : idleText);
         int[] actions = {R.id.prev, R.id.today, R.id.next, R.id.mine, R.id.branch, R.id.refresh};
         String[] names = {"prev", "today", "next", "mine", "branch", "refresh"};
         for (int i = 0; i < actions.length; i++) view.setOnClickPendingIntent(actions[i], action(context, names[i], id));
@@ -157,7 +160,7 @@ public final class MonthWidget extends AppWidgetProvider {
         view.removeAllViews(R.id.grid);
         view.removeAllViews(R.id.weekdays);
         for (char weekday : (sunday ? "일월화수목금토" : "월화수목금토일").toCharArray())
-            view.addView(R.id.weekdays, cell(context, String.valueOf(weekday), weekday=='일'?0xffad354a:weekday=='토'?0xff326a9c:0xff486174));
+            view.addView(R.id.weekdays, cell(context, String.valueOf(weekday), weekday=='일'?style.color("sunday",0xffad354a):weekday=='토'?style.color("saturday",0xff326a9c):0xff486174));
 
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
         Bundle sizes = manager.getAppWidgetOptions(id);
@@ -168,6 +171,14 @@ public final class MonthWidget extends AppWidgetProvider {
         LocalDate first = month.atDay(1);
         int offset = (first.getDayOfWeek().getValue() - (sunday ? 0 : 1) + 7) % 7;
         int weeks = (offset + month.lengthOfMonth() + 6) / 7;
+        int titleSp = style.size("titleSp",11,9,15);
+        int bottom = style.size("titleBottomDp",1,0,4);
+        int stateSp = style.size("stateSp",10,9,14);
+        int commonSp = style.size("commonSp",9,8,13);
+        int commonPad = style.size("commonPaddingDp",0,0,3);
+        int stateId = style.centered() ? R.id.day_state : R.id.day_state_left;
+        float density = context.getResources().getDisplayMetrics().density;
+        int sp = android.util.TypedValue.COMPLEX_UNIT_SP;
         for (int week = 0; week < weeks; week++) {
             RemoteViews line = row(context);
             for (int col = 0; col < 7; col++) {
@@ -178,6 +189,7 @@ public final class MonthWidget extends AppWidgetProvider {
                 }
                 DayMark mark = marks.get(day.toString());
                 RemoteViews date=new RemoteViews(context.getPackageName(),R.layout.widget_date);
+                date.setInt(R.id.week_divider,"setBackgroundColor",style.color("weekDivider",0xffdfe7ea));
                 int height=sizes.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,270);
                 int dayHeight=(height-100)/weeks;
                 boolean leave=mark!=null && mark.leave;
@@ -185,17 +197,17 @@ public final class MonthWidget extends AppWidgetProvider {
                 int common=mark==null?0:mark.commonCount;
                 int total=individual+common;
                 float fontScale=context.getResources().getConfiguration().fontScale;
-                int available=dayHeight-3-(int)Math.ceil((15+(leave?14:0))*fontScale);
-                int textLine=(int)Math.ceil(17*fontScale)+1;
-                int limit=Math.min(2,Math.max(0,available/textLine));
-                if(common>0)available-=(int)Math.ceil(14*fontScale);
+                int available=dayHeight-3-(int)Math.ceil((15+(leave?stateSp+4:0))*fontScale);
+                int textLine=(int)Math.ceil((titleSp+6)*fontScale)+bottom;
+                int limit=Math.min(style.size("maxTitles",2,1,2),Math.max(0,available/textLine));
+                if(common>0)available-=(int)Math.ceil((commonSp+5)*fontScale)+2*commonPad;
                 limit=Math.min(limit,Math.max(0,available/textLine));
                 if(individual>limit)limit=Math.min(limit,Math.max(0,(available-(int)Math.ceil(12*fontScale))/textLine));
                 date.setTextViewText(R.id.number,String.valueOf(day.getDayOfMonth()));
-                date.setTextColor(R.id.number,day.getDayOfWeek()==java.time.DayOfWeek.SUNDAY?0xffad354a:day.getDayOfWeek()==java.time.DayOfWeek.SATURDAY?0xff326a9c:0xff183449);
+                date.setTextColor(R.id.number,day.getDayOfWeek()==java.time.DayOfWeek.SUNDAY?style.color("sunday",0xffad354a):day.getDayOfWeek()==java.time.DayOfWeek.SATURDAY?style.color("saturday",0xff326a9c):0xff183449);
                 if(today.equals(day)){
-                    date.setInt(R.id.date_cell,"setBackgroundColor",0xffe4f3f1);
-                    date.setInt(R.id.number,"setBackgroundColor",0xff007577);
+                    date.setInt(R.id.date_cell,"setBackgroundColor",style.color("todayFill",0xffe4f3f1));
+                    date.setInt(R.id.number,"setBackgroundColor",style.color("todayBadge",0xff007577));
                     date.setTextColor(R.id.number,0xffffffff);
                 }
                 int[] rows={R.id.first_row,R.id.second_row};
@@ -205,19 +217,27 @@ public final class MonthWidget extends AppWidgetProvider {
                 for(int n=0;n<Math.min(individual,limit);n++){
                     JSONObject event=mark.events.get(n);
                     date.setViewVisibility(rows[n],android.view.View.VISIBLE);
-                    date.setTextViewText(titles[n],event.optString("title",event.optString("kind")));
-                    int color=DOTS.getOrDefault(event.optString("kind"),0xff687789);
+                    date.setTextViewText(titles[n],style.styled(event.optString("title",event.optString("kind")),"titleBold",true));
+                    date.setTextViewTextSize(titles[n],sp,titleSp);
+                    date.setViewPadding(titles[n],0,0,0,Math.round(bottom*density));
+                    int color=style.accent(event.optString("kind"));
+                    date.setViewPadding(accents[n],Math.round(style.size("accentWidthDp",2,1,4)*density),0,0,0);
                     date.setInt(accents[n],"setBackgroundColor",color);
                 }
                 if(leave || (total==0 && connected && !team && confirmed!=null)){
                     boolean confirmedEmpty=emptyDays.contains(day.toString());
-                    date.setViewVisibility(R.id.day_state,android.view.View.VISIBLE);
-                    date.setTextViewText(R.id.day_state,leave?"휴무":confirmedEmpty?"일정 없음":"미등록");
-                    date.setTextColor(R.id.day_state,leave || confirmedEmpty?0xff486174:0xff687984);
+                    date.setTextViewTextSize(stateId,sp,stateSp);
+                    date.setViewVisibility(stateId,android.view.View.VISIBLE);
+                    date.setTextViewText(stateId,leave?"휴무":confirmedEmpty?"일정 없음":"미등록");
+                    date.setTextColor(stateId,leave || confirmedEmpty?style.color("stateColor",0xff486174):style.color("unregisteredColor",0xff687984));
                 }
                 if(common>0){
                     date.setViewVisibility(R.id.common_count,android.view.View.VISIBLE);
-                    date.setTextViewText(R.id.common_count,"공통 "+common+"건");
+                    date.setTextViewText(R.id.common_count,style.styled("공통 "+common+"건","commonBold",false));
+                    date.setTextColor(R.id.common_count,style.accent("common"));
+                    date.setTextViewTextSize(R.id.common_count,sp,commonSp);
+                    int pad=Math.round(density*commonPad);
+                    date.setViewPadding(R.id.common_count,0,pad,0,pad);
                 }
                 if(individual>limit){
                     date.setViewVisibility(R.id.total_link,android.view.View.VISIBLE);

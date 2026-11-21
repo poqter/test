@@ -30,6 +30,7 @@ public final class WidgetRefresh extends JobService {
                 status = "갱신 지연 · 다시 시도해 주세요";
             } finally {
                 data.prefs.edit().putString("state", status).apply();
+                WidgetStyle.refresh(this);
                 MonthWidget.paintAll(this);
                 jobFinished(params, false);
             }
