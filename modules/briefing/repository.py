@@ -754,6 +754,14 @@ class BriefingRepository:
         return None
 
     def bundle_for_date(self, profile_code: str, briefing_date: date | str, *, include_draft: bool = False) -> dict[str, Any] | None:
+        parts = self._edition_parts(profile_code, briefing_date, include_draft)
+        return self.bundle_from_parts(*parts) if parts else None
+
+    def publication_bundle(self, code, day, *, include_draft=True):
+        parts = self._edition_parts(code, day, include_draft)
+        return dict(zip(('briefing', 'revision', 'snapshot'), parts)) if parts else None
+
+    def _edition_parts(self, profile_code, briefing_date, include_draft):
         briefing = self._first(self._request(
             "GET",
             "/rest/v1/hwarang_briefings",
@@ -776,7 +784,7 @@ class BriefingRepository:
         if not revision:
             return None
         snapshot = self._snapshot_for_revision(str(revision["id"]))
-        return self.bundle_from_parts(briefing, revision, snapshot) if snapshot else None
+        return (briefing, revision, snapshot) if snapshot else None
 
     def bundle_from_parts(self, briefing: dict[str, Any], revision: dict[str, Any], snapshot: dict[str, Any]) -> dict[str, Any]:
         snapshot_id = str(snapshot["id"])
