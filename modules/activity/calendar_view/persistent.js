@@ -579,7 +579,7 @@ function paintDayList(){
 
 async function offerAndroidWidgetUpdate() {
  if (!/Android/i.test(navigator.userAgent)) return;
- const tag='widget-v0.2.2', seen='hwarang-widget-notice-'+tag;
+ const tag='widget-v0.2.2', seen='hwarang-widget-notice-reinstall-'+tag;
  try {
   if(localStorage.getItem(seen) || Date.now()-Number(localStorage.getItem(seen+'-checked'))<86400000) return;
   localStorage.setItem(seen+'-checked',String(Date.now()));
@@ -590,8 +590,9 @@ async function offerAndroidWidgetUpdate() {
   if(release.draft || release.prerelease || !release.assets.some(a=>a.browser_download_url===url)) return;
   if(document.querySelector('dialog[open]')) return;
   const panel=document.createElement('dialog'),heading=document.createElement('h2'),description=document.createElement('p');
-  heading.textContent='안드로이드 위젯 업데이트';
-  description.textContent='화랑 월간 달력 0.2.2를 설치해 주세요. 기존 시험 버전과 서명이 다르다는 메시지가 표시되면 기존 앱을 삭제한 후 설치하고 계정을 다시 연결해 주세요.';
+  heading.textContent='기존 위젯 앱 삭제 후 0.2.2 재설치';
+  description.style.whiteSpace='pre-line';
+  description.textContent='이전 버전을 사용하는 분은 아래 순서로 설치해 주세요.\n\n1. 휴대전화 설정 → 애플리케이션 → 화랑 월간 달력 → 삭제를 누르세요. 홈 화면의 위젯만 제거하면 앱은 그대로 남습니다.\n2. 이 공지에서 ‘새 위젯 설치하기’를 눌러 설치하세요.\n3. 앱을 열어 계정을 다시 연결하고 홈 화면에 위젯을 추가하세요.\n\n처음 설치하는 분은 2번부터 진행하세요. 이미 0.2.2를 설치한 분은 공지를 닫으셔도 됩니다.';
   const install=document.createElement('a'),close=document.createElement('button');
   install.href=url;install.target='_blank';install.rel='noopener';install.textContent='새 위젯 설치하기';
   close.textContent='닫기';close.onclick=()=>panel.close();
