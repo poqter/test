@@ -33,7 +33,12 @@ def test_failed_save_and_date_move_keep_input_then_retry():
     assert at.session_state['sales_report_active_일일']=='2026-11-06'
     assert text(at,'주요 성과 · 진행사항').value=='보존할 내용'
     assert not at.session_state['fixture_writes']
+    requests = at.session_state['fixture_reads'].count(('POST','rpc/sales_save_report'))
     at.session_state['fixture_conflict']=False
+    at.run()
+    assert at.session_state['fixture_reads'].count(('POST','rpc/sales_save_report')) == requests
+    assert not at.session_state['fixture_writes']
+    button(at,'다시 저장').click().run()
     at.run()
     assert not at.exception
     assert at.session_state['fixture_reports'][0]['data']['note']=='보존할 내용'
