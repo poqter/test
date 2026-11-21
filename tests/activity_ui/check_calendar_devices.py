@@ -62,7 +62,11 @@ try:
    activate(cal.get_by_role('button',name='저장하지 않고 닫기',exact=True))
    expect(cal.locator('dialog[open]')).to_have_count(0)
    cal.locator('.view-settings > summary').click();cal.get_by_label('주말 표시',exact=True).uncheck();expect(cal.locator('.view-settings')).to_have_attribute('open','')
-   page.reload();expect(cal.get_by_role('button',name='월간',exact=True)).to_have_attribute('aria-pressed','true');cal.locator('.view-settings > summary').click();expect(cal.get_by_label('주말 표시',exact=True)).not_to_be_checked()
+   page.reload()
+   if 'Android' not in ua:
+    expect(notice).to_be_visible()
+    notice.get_by_role('button',name='닫기',exact=True).click()
+   expect(cal.get_by_role('button',name='월간',exact=True)).to_have_attribute('aria-pressed','true');cal.locator('.view-settings > summary').click();expect(cal.get_by_label('주말 표시',exact=True)).not_to_be_checked()
    c.close()
   b.close()
  print('PASS simulated phone/tablet/desktop touch, rotation, constrained viewport, draft/reopen and preferences')
