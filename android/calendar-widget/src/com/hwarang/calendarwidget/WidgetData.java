@@ -43,7 +43,7 @@ final class WidgetData {
             conn.setConnectTimeout(3500);
             conn.setReadTimeout(3500);
             conn.setRequestProperty("apikey", KEY);
-            conn.setRequestProperty("X-Hwarang-Widget-Version", "0.2.6");
+            conn.setRequestProperty("X-Hwarang-Widget-Version", "0.2.7");
             
             if (token != null) conn.setRequestProperty("Authorization", "Bearer " + token);
             if (body != null) {

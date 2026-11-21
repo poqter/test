@@ -105,11 +105,11 @@ public final class MonthWidget extends AppWidgetProvider {
             DayMark mark = result.computeIfAbsent(event.optString("day"), unused -> new DayMark());
             mark.personal |= event.optBoolean("personal");
             if (!includeDone && event.optBoolean("done")) continue;
-            mark.events.add(event);
+
             mark.common |= event.optBoolean("common");
             String kind = event.optString("kind");
             if ("휴무".equals(kind)) mark.leave = true;
-            else { mark.count++; mark.kinds.add(kind); }
+            else { mark.events.add(event); mark.count++; mark.kinds.add(kind); }
         }
         return result;
     }
@@ -176,47 +176,46 @@ public final class MonthWidget extends AppWidgetProvider {
                 }
                 DayMark mark = marks.get(day.toString());
                 RemoteViews date=new RemoteViews(context.getPackageName(),R.layout.widget_date);
-                boolean wide=sizes.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH,300)>=535;
                 int height=sizes.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,270);
                 int dayHeight=(height-100)/weeks;
-                int limit=dayHeight>=(wide?53:110)?2:1;
+                boolean leave=mark!=null && mark.leave;
                 int total=mark==null?0:mark.events.size();
-                String number=String.valueOf(day.getDayOfMonth());
-                if(total>limit)number+=" +"+(total-limit);
-                date.setTextViewText(R.id.number,number);
+                int available=dayHeight-18-(leave?13:0);
+                float fontScale=context.getResources().getConfiguration().fontScale;
+                int textLine=(int)Math.ceil(14*fontScale);
+                int limit=Math.min(2,Math.max(0,available/textLine));
+                if(total>limit)limit=Math.min(limit,Math.max(0,(available-(int)Math.ceil(12*fontScale))/textLine));
+                int titleLines=available-(total>limit?(int)Math.ceil(12*fontScale):0)>=2*textLine*Math.min(total,limit)?2:1;
+                date.setTextViewText(R.id.number,String.valueOf(day.getDayOfMonth()));
                 date.setTextColor(R.id.number,day.getDayOfWeek()==java.time.DayOfWeek.SUNDAY?0xffad354a:day.getDayOfWeek()==java.time.DayOfWeek.SATURDAY?0xff326a9c:0xff183449);
                 if(today.equals(day)){
                     date.setInt(R.id.date_cell,"setBackgroundColor",0xffe4f3f1);
                     date.setInt(R.id.number,"setBackgroundColor",0xff007577);
                     date.setTextColor(R.id.number,0xffffffff);
                 }
-                int[] clocks={R.id.first_time,R.id.second_time},titles={R.id.first_title,R.id.second_title};
+                int[] rows={R.id.first_row,R.id.second_row};
+                int[] titles={R.id.first_title,R.id.second_title};
+                int[] accents={R.id.first_accent,R.id.second_accent};
                 if(mark!=null)mark.events.sort(java.util.Comparator.comparing(e->e.optString("start")));
-                for(int n=0;n<2;n++){
-                    boolean visible=n<total && n<limit;
-                    date.setViewVisibility(clocks[n],visible && !wide && dayHeight>=40?0:8);
-                    date.setViewVisibility(titles[n],visible?0:8);
-                    if(!visible)continue;
-                    JSONObject e=mark.events.get(n);
-                    String clock=e.optString("start");
-                    clock=clock.length()>=5?clock.substring(0,5):"";
-                    boolean common=e.optBoolean("common");
-                    String title=e.optString("title",e.optString("kind"));
-                    String bar="▏";
-                    date.setInt(titles[n],"setMaxLines",wide?1:2);
-                    String text=bar+(wide?(clock.isEmpty()?"":clock+" · "):"")+title;
-                    SpannableStringBuilder styled=new SpannableStringBuilder(text);
-                    int color=common?0xff995815:DOTS.getOrDefault(e.optString("kind"),0xff367684);
-                    styled.setSpan(new ForegroundColorSpan(color),0,1,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-                    date.setTextViewText(titles[n],styled);
-                    date.setTextViewText(clocks[n],clock);
+                for(int n=0;n<Math.min(total,limit);n++){
+                    JSONObject event=mark.events.get(n);
+                    date.setViewVisibility(rows[n],android.view.View.VISIBLE);
+                    date.setInt(titles[n],"setMaxLines",titleLines);
+                    date.setTextViewText(titles[n],event.optString("title",event.optString("kind")));
+                    int color=event.optBoolean("common")?0xff995815:DOTS.getOrDefault(event.optString("kind"),0xff367684);
+                    date.setInt(accents[n],"setBackgroundColor",color);
                 }
-                if(total==0 && connected && !team && confirmed!=null){
-                    date.setViewVisibility(R.id.first_title,0);
-                    date.setTextViewText(R.id.first_title,emptyDays.contains(day.toString())?"일정 없음":"미등록");
-                    date.setTextColor(R.id.first_title,0xff657584);
+                if(leave || (total==0 && connected && !team && confirmed!=null)){
+                    boolean confirmedEmpty=emptyDays.contains(day.toString());
+                    date.setViewVisibility(R.id.day_state,android.view.View.VISIBLE);
+                    date.setTextViewText(R.id.day_state,leave?"휴무":confirmedEmpty?"일정 없음":"미등록");
+                    date.setTextColor(R.id.day_state,leave || confirmedEmpty?0xff486174:0xff687984);
                 }
-                date.setContentDescription(R.id.date_cell,day+" 일정 "+total+"건");
+                if(total>limit){
+                    date.setViewVisibility(R.id.total_link,android.view.View.VISIBLE);
+                    date.setTextViewText(R.id.total_link,"전체 "+total+"건 ›");
+                }
+                date.setContentDescription(R.id.date_cell,day+" 일정 "+total+"건"+(leave?" 휴무":""));
                 date.setOnClickPendingIntent(R.id.date_cell,dateLink(context,day,team,id));
                 line.addView(R.id.row, date);
             }

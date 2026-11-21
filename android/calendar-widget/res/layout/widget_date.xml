@@ -1,8 +1,15 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/date_cell" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:orientation="vertical" android:paddingHorizontal="2dp" android:paddingTop="2dp" android:clipChildren="true">
 <TextView android:layout_width="match_parent" android:layout_height="1dp" android:background="#dfe7ea"/>
 <TextView android:textStyle="bold" android:layout_gravity="center_horizontal" android:id="@+id/number" android:layout_width="wrap_content" android:layout_height="wrap_content" android:singleLine="true" android:ellipsize="end" android:includeFontPadding="false" android:textSize="12sp" android:textColor="#183449"/>
-<TextView android:id="@+id/first_time" android:layout_width="match_parent" android:layout_height="wrap_content" android:singleLine="true" android:ellipsize="end" android:includeFontPadding="false" android:textSize="10sp" android:textColor="#183449"/>
-<TextView android:id="@+id/first_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:textStyle="bold" android:maxLines="2" android:ellipsize="end" android:includeFontPadding="false" android:textSize="11sp" android:textColor="#183449"/>
-<TextView android:id="@+id/second_time" android:layout_width="match_parent" android:layout_height="wrap_content" android:singleLine="true" android:ellipsize="end" android:includeFontPadding="false" android:textSize="10sp" android:textColor="#183449"/>
-<TextView android:id="@+id/second_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:textStyle="bold" android:maxLines="2" android:ellipsize="end" android:includeFontPadding="false" android:textSize="11sp" android:textColor="#183449"/>
+<TextView android:id="@+id/day_state" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="10sp" android:singleLine="true" android:includeFontPadding="false" android:visibility="gone"/>
+<LinearLayout android:id="@+id/first_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:visibility="gone">
+    <TextView android:id="@+id/first_accent" android:layout_width="2dp" android:layout_height="match_parent" android:layout_marginEnd="2dp"/>
+    <TextView android:id="@+id/first_title" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:includeFontPadding="false" android:maxLines="2" android:ellipsize="end" android:textColor="#183449" android:textStyle="bold" android:textSize="11sp"/>
+</LinearLayout>
+<LinearLayout android:id="@+id/second_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:visibility="gone">
+    <TextView android:id="@+id/second_accent" android:layout_width="2dp" android:layout_height="match_parent" android:layout_marginEnd="2dp"/>
+    <TextView android:id="@+id/second_title" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:includeFontPadding="false" android:maxLines="2" android:ellipsize="end" android:textColor="#183449" android:textStyle="bold" android:textSize="11sp"/>
+</LinearLayout>
+<TextView android:layout_width="1dp" android:layout_height="0dp" android:layout_weight="1"/>
+<TextView android:id="@+id/total_link" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false" android:textColor="#006e70" android:textSize="9sp" android:visibility="gone"/>
 </LinearLayout>
