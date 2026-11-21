@@ -219,13 +219,22 @@ class HwarangAuthService:
             params={
                 "select": (
                     "id,login_id,auth_email,display_name,role,is_active,position_code,"
-                    "organization_unit_id"
+                    "organization_unit_id,position:positions!position_code(display_name),"
+                    "org:organization_units!organization_unit_id(name,code)"
                 ),
                 "id": f"eq.{uid}",
                 "limit": "1",
             },
         )
-        return rows[0] if isinstance(rows, list) and rows else None
+        if not rows:return None
+        row = dict(rows[0])
+        if 'position' in row:
+            row['position_name'] = (row.pop('position') or {}).get('display_name')
+        if 'org' in row:
+            org = row.pop('org') or {}
+            row['organization_name'] = org.get('name')
+            row['organization_code'] = org.get('code')
+        return row
 
     @staticmethod
     def _public_profile(profile: dict[str, Any]) -> dict[str, Any]:
@@ -238,7 +247,7 @@ class HwarangAuthService:
         result = self._public_profile(profile)
         position_code = profile.get("position_code")
         org_id = profile.get("organization_unit_id")
-        if position_code:
+        if position_code and "position_name" not in profile:
             rows = self._request(
                 "GET",
                 "/rest/v1/positions",
@@ -246,7 +255,7 @@ class HwarangAuthService:
                 params={"select": "display_name", "code": f"eq.{position_code}", "limit": "1"},
             )
             result["position_name"] = rows[0]["display_name"] if rows else None
-        if org_id:
+        if org_id and "organization_name" not in profile:
             rows = self._request(
                 "GET",
                 "/rest/v1/organization_units",
