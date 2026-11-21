@@ -133,6 +133,11 @@ public final class DayActivity extends Activity {
         if(row==null){normal.setText("일정 입력");empty.setText("이 날 내 일정 없음");modes.addView(normal);modes.addView(empty);normal.setChecked(true);body.addView(modes);empty.setEnabled(!hasPersonal);}
         int firstField=body.getChildCount();String id=row==null?UUID.randomUUID().toString():row.optString("id");
         EditText title=field("일정명",text(row,"title"),InputType.TYPE_CLASS_TEXT);title.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(200)});
+        final String[] eventDay={row==null?day:row.optString("day",day)};
+        if(row!=null){
+            Button dateButton=button("날짜  "+eventDay[0],()->{});
+            dateButton.setOnClickListener(v->{if(!busy)pick(eventDay[0],chosen->{eventDay[0]=chosen;dateButton.setText("날짜  "+chosen);});});
+        }
         String[] kinds={"미분류","TA","AP","PC","CS","청약","교육","회의","휴무","기타"};Spinner kind=new Spinner(this);kind.setContentDescription("활동 종류");kind.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,kinds));body.addView(kind);
         for(int i=0;i<kinds.length;i++)if(kinds[i].equals(text(row,"kind")))kind.setSelection(i);
         EditText place=field("장소 · 선택",text(row,"place"),InputType.TYPE_CLASS_TEXT);
@@ -163,7 +168,7 @@ public final class DayActivity extends Activity {
             }
             String k=kind.getSelectedItem().toString();boolean leave="휴무".equals(k);String s=all.isChecked()||leave?"":Clock.parse(start.getText().toString()),e=all.isChecked()||leave?"":Clock.parse(end.getText().toString());
             String name=leave?"휴무":title.getText().toString().trim();if(name.isEmpty())throw new IllegalArgumentException("일정명을 입력해 주세요.");if(!e.isEmpty()&&(s.isEmpty()||e.compareTo(s)<=0))throw new IllegalArgumentException("종료 시간은 시작 시간보다 늦어야 합니다.");
-            JSONObject payload=new JSONObject().put("day",row==null?day:row.optString("day",day)).put("title",name).put("kind",k).put("start_time",s).put("end_time",e).put("time_pending",!all.isChecked()&&!leave&&s.isEmpty()).put("place",place.getText().toString()).put("note",note.getText().toString());
+            JSONObject payload=new JSONObject().put("day",eventDay[0]).put("title",name).put("kind",k).put("start_time",s).put("end_time",e).put("time_pending",!all.isChecked()&&!leave&&s.isEmpty()).put("place",place.getText().toString()).put("note",note.getText().toString());
             if(data.prefs.getBoolean("canCommon",false))payload.put("common",common.isChecked());
             save(new JSONObject().put("p_id",id).put("p_revision",row==null?JSONObject.NULL:row.getInt("revision")).put("p_data",payload).put("p_overlap",false),save);
         }catch(Exception ex){status.setText(ex.getMessage());}});
