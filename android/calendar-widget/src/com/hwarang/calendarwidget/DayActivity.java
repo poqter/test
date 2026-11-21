@@ -149,10 +149,32 @@ public final class DayActivity extends Activity {
         EditText[] clocks=new EditText[2];int ci=0;
         for(String key:new String[]{"start_time","end_time"}){
             LinearLayout col=new LinearLayout(this);col.setOrientation(1);times.addView(col,new LinearLayout.LayoutParams(0,-2,1));
-            col.addView(label(ci==0?"시작 시간":"종료 시간",13));EditText clock=new EditText(this);clock.setSingleLine();clock.setInputType(InputType.TYPE_CLASS_NUMBER);clock.setText(time(row,key));col.addView(clock);clocks[ci++]=clock;
+            col.addView(label(ci==0?"시작 시간":"종료 시간",13));EditText clock=new EditText(this);clock.setSingleLine();clock.setKeyListener(android.text.method.DigitsKeyListener.getInstance("0123456789:"));clock.setRawInputType(InputType.TYPE_CLASS_NUMBER);clock.setText(time(row,key));col.addView(clock);clocks[ci++]=clock;
         }
         EditText start=clocks[0],end=clocks[1];
-        for(EditText input:new EditText[]{start,end}){input.setHint("예: 930 또는 1430");input.setOnFocusChangeListener((v,focus)->{if(!focus)try{input.setText(Clock.parse(input.getText().toString()));}catch(Exception ex){input.setError(ex.getMessage());}});}
+        for(EditText input:new EditText[]{start,end}){input.setHint("--:--");
+            input.addTextChangedListener(new android.text.TextWatcher(){
+                boolean editing, deleting;
+                public void beforeTextChanged(CharSequence s,int start,int count,int after){ deleting=count>after; }
+                public void onTextChanged(CharSequence s,int start,int before,int count){}
+                public void afterTextChanged(android.text.Editable value){
+                    if(editing)return;
+                    String raw=value.toString();
+                    int cursor=Math.max(0,input.getSelectionStart());
+                    int digitsBefore=raw.substring(0,cursor).replace(":","").length();
+                    String formatted=Clock.edit(raw,deleting);
+                    if(raw.equals(formatted))return;
+                    editing=true;
+                    value.replace(0,value.length(),formatted);
+                    int position=0;
+                    while(position<formatted.length() && digitsBefore>0)
+                        if(formatted.charAt(position++)!=':')digitsBefore--;
+                    if(!deleting && position<formatted.length() && formatted.charAt(position)==':')position++;
+                    input.setSelection(position);
+                    editing=false;
+                }
+            });
+            input.setOnFocusChangeListener((v,focus)->{if(!focus)try{input.setText(Clock.parse(input.getText().toString()));}catch(Exception ex){input.setError(ex.getMessage());}});}
         all.setOnCheckedChangeListener((v,checked)->times.setVisibility(checked?8:0));times.setVisibility(all.isChecked()?8:0);
         EditText note=field("메모 · 선택",text(row,"note"),InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_MULTI_LINE);
         if(row!=null&&!text(row,"series_id").isEmpty())status.setText("이번 회차만 수정합니다.");

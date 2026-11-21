@@ -580,7 +580,7 @@ function paintDayList(){
 
 async function offerAndroidWidgetUpdate() {
 
- const tag='widget-v0.2.5', seen='hwarang-widget-notice-reinstall-'+tag;
+ const tag='widget-v0.2.6', seen='hwarang-widget-notice-reinstall-'+tag;
  const suppressed=()=>{try{return localStorage.getItem(seen)==='1'}catch{return false}};
  try {
   if(suppressed()) return;
@@ -598,9 +598,9 @@ async function offerAndroidWidgetUpdate() {
   panel.className='widget-update-notice';panel.setAttribute('aria-labelledby','widget-update-title');heading.id='widget-update-title';
   const label=document.createElement('label'),checkbox=document.createElement('input');
   checkbox.type='checkbox';label.append(checkbox,document.createTextNode('이번 버전 공지 다시 보지 않기'));
-  heading.textContent='화랑 월간 달력 0.2.5 업데이트';
+  heading.textContent='화랑 월간 달력 0.2.6 업데이트';
   description.style.whiteSpace='pre-line';
-  description.textContent='날짜 칸 안에서 시간과 제목을 확인하고, 위젯에서 웹 캘린더를 바로 열 수 있습니다. 날짜를 누르면 홈 화면 위에 일정 목록이 열립니다.\n\n0.2.2 이상은 기존 앱 위에 업데이트하세요. 0.2.1 이하 시험판은 설정 → 애플리케이션에서 화랑 월간 달력을 삭제한 뒤 재설치하고 계정을 연결하세요.';
+  description.textContent='월간 위젯에서 주말 색상과 일정 제목을 확인하세요. 내 일정·지점 일정 버튼을 구분했고 시작·종료 시간에는 콜론이 자동으로 입력됩니다.\n\n0.2.2 이상은 기존 앱 위에 업데이트하세요. 0.2.1 이하 시험판은 설정 → 애플리케이션에서 화랑 월간 달력을 삭제한 뒤 재설치하고 계정을 연결하세요.';
   const install=document.createElement('a'),close=document.createElement('button');
   install.href=url;install.target='_blank';install.rel='noopener';install.textContent='새 위젯 설치하기';
   close.textContent='닫기';close.onclick=()=>panel.close();

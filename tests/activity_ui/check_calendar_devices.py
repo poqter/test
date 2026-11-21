@@ -27,7 +27,7 @@ try:
     notice.get_by_role('button',name='닫기',exact=True).click()
     page.reload()
     expect(cal.get_by_role('button',name='월간',exact=True)).to_be_visible()
-    assert cal.locator('body').evaluate("() => localStorage.getItem('hwarang-widget-notice-reinstall-widget-v0.2.5')")=='1'
+    assert cal.locator('body').evaluate("() => localStorage.getItem('hwarang-widget-notice-reinstall-widget-v0.2.6')")=='1'
     expect(notice).to_have_count(0)
    expect(cal.get_by_role('button',name='월간',exact=True)).to_have_attribute('aria-pressed','true')
    page.evaluate("""() => {const badge=document.createElement('a');badge.className='_viewerBadge_probe';badge.textContent='Streamlit';badge.href='https://streamlit.io/cloud';document.body.append(badge);const avatar=document.createElement('div');avatar.className='_profilePreview_probe';avatar.innerHTML='<a><img data-testid="appCreatorAvatar"></a>';document.body.append(avatar)}""")
