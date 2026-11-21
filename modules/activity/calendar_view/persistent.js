@@ -126,12 +126,13 @@ async function loadPayload(first,last,team,member,cached=null,requestController=
   const rows=data.compact||member?data.rows:data.summary.map(r=>details.get(r.id)||r);
   const now=new Date(),kst=new Date(now.getTime()+9*3600000).toISOString(),today=kst.slice(0,10),clock=kst.slice(11,19);
   let events=rows.sort((a,b)=>(a.day+(a.start_time||'')+a.id).localeCompare(b.day+(b.start_time||'')+b.id)).map(r=>{
+   const displayKind=['제안','청약'].includes(r.kind)?'PC':r.kind;
    const owner=r.common?'지점 공통':branch[r.owner]||calendarBoot.members[r.owner]||'구성원',stamp=(r.start_time||(r.time_pending?'시간 미정':'종일')).slice(0,5);
    const overdue=r.status==='예정'&&(r.day<today||r.day===today&&r.start_time&&r.start_time<clock);
-   let label=r.kind==='휴무'?owner+' · 휴무':stamp+' · '+r.kind+' · '+owner+' · '+(overdue?'결과 미입력':r.status);
+   let label=r.kind==='휴무'?owner+' · 휴무':stamp+' · '+displayKind+' · '+owner+' · '+(overdue?'결과 미입력':r.status);
    if(r.companion)label+=' · 동행 '+(branch[r.companion]||'');if(r.help)label+=' · 지원 요청';
    const seconds=r.start_time?(new Date(r.day+'T'+r.start_time+'+09:00')-now)/1000:-1;
-   return {start:r.start_time,timePending:!!r.time_pending,place:r.place||'',status:r.status,revision:r.revision,id:r.id,day:r.day,kind:r.kind,member:r.owner,common:!!r.common,ownerName:owner,title:r.kind==='휴무'?'휴무':r.title||r.kind,allDay:!r.start_time,short:r.kind==='휴무'?(team?owner+' · 휴무':'휴무'):(r.title||r.kind)+(team?' · '+owner:''),label,done:r.kind!=='휴무'&&r.status==='완료',soon:r.day===today&&r.status==='예정'&&seconds>=0&&seconds<=1800,readable:data.compact?!!r.readable:details.has(r.id)};
+   return {start:r.start_time,timePending:!!r.time_pending,place:r.place||'',status:r.status,revision:r.revision,id:r.id,day:r.day,kind:displayKind,member:r.owner,common:!!r.common,ownerName:owner,title:r.kind==='휴무'?'휴무':r.title||r.kind,allDay:!r.start_time,short:r.kind==='휴무'?(team?owner+' · 휴무':'휴무'):(r.title||r.kind)+(team?' · '+owner:''),label,done:r.kind!=='휴무'&&r.status==='완료',soon:r.day===today&&r.status==='예정'&&seconds>=0&&seconds<=1800,readable:data.compact?!!r.readable:details.has(r.id)};
   });
   if(cached&&data.replaceFirst)events=[...cached.events.filter(e=>e.day<data.replaceFirst||e.day>data.replaceLast),...events];
   return {versions:data.versions,events,rangeStart:first,rangeEnd:last,syncUnit:data.unit,syncStamp:data.stamp,scopeLabel:member?calendarBoot.members[member]:team?(calendarBoot.viewLabel||'지점 일정'):'내 일정',roster:team||member?Object.fromEntries(Object.entries(branch).filter(([u])=>!member||u===member)):{}};
