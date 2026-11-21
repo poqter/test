@@ -576,3 +576,27 @@ function paintDayList(){
  const footer=el('div','','editor-actions day-list-footer');footer.append(button('＋ 일정 등록',()=>openEditor(null,'new',day),'primary'));fresh.append(footer);
  syncChildren(body,fresh);body.querySelector('.day-list-scroll').scrollTop=scroll;
 }
+
+async function offerAndroidWidgetUpdate() {
+ if (!/Android/i.test(navigator.userAgent)) return;
+ const tag='widget-v0.2.2', seen='hwarang-widget-notice-'+tag;
+ try {
+  if(localStorage.getItem(seen) || Date.now()-Number(localStorage.getItem(seen+'-checked'))<86400000) return;
+  localStorage.setItem(seen+'-checked',String(Date.now()));
+  const response=await fetch('https://api.github.com/repos/poqter/test/releases/tags/'+tag,{credentials:'omit'});
+  if(!response.ok) return;
+  const release=await response.json();
+  const url='https://github.com/poqter/test/releases/download/'+tag+'/hwarang-month-widget.apk';
+  if(release.draft || release.prerelease || !release.assets.some(a=>a.browser_download_url===url)) return;
+  if(document.querySelector('dialog[open]')) return;
+  const panel=document.createElement('dialog'),heading=document.createElement('h2'),description=document.createElement('p');
+  heading.textContent='안드로이드 위젯 업데이트';
+  description.textContent='화랑 월간 달력 0.2.2를 설치해 주세요. 기존 시험 버전과 서명이 다르다는 메시지가 표시되면 기존 앱을 삭제한 후 설치하고 계정을 다시 연결해 주세요.';
+  const install=document.createElement('a'),close=document.createElement('button');
+  install.href=url;install.target='_blank';install.rel='noopener';install.textContent='새 위젯 설치하기';
+  close.textContent='닫기';close.onclick=()=>panel.close();
+  panel.addEventListener('close',()=>{localStorage.setItem(seen,'1');panel.remove()},{once:true});
+  panel.append(heading,description,install,close);document.body.append(panel);panel.showModal();
+ } catch { /* An unavailable release must not interrupt the calendar. */ }
+}
+if(typeof window!=='undefined' && typeof navigator!=='undefined') void offerAndroidWidgetUpdate();
