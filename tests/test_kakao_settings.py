@@ -6,7 +6,7 @@ from modules.activity.kakao_settings import connection_url
 from modules.shared.hwarang_auth import HwarangAuthError
 
 
-def app(status=None, flag=True, admin_rows=None, history=None, regions=None, catalog_error=False, test_status=None):
+def app(status=None, flag=True, admin_rows=None, history=None, regions=None, catalog_error=False, test_status=None, open_test=False):
     if regions is None: regions=[{'region_key':'seoul-songpa','display_name':'서울특별시 송파구'}]
     status = status or {'connection_status':'connected','enabled':False,'time':'08:00','days':[1,2,3,4,5],'send_empty':True,'weather_region_key':'seoul-songpa'}
     return AppTest.from_string(f'''
@@ -33,7 +33,13 @@ def call(method,path,**kwargs):
 with patch('modules.activity.kakao_settings.enabled',return_value={flag}), patch('modules.activity.kakao_settings.client') as c:
     c.return_value[0]._request.side_effect=call
     c.return_value=(c.return_value[0], 'test')
-    render_panel()
+    original_expander = st.expander
+    def expander(label, **kwargs):
+        if label == '시험 발송' and {open_test!r}:
+            kwargs['expanded'] = True
+        return original_expander(label, **kwargs)
+    with patch.object(st, 'expander', expander):
+        render_panel()
 ''').run()
 
 
@@ -306,7 +312,7 @@ def test_weather_not_added_to_admin_personal_data_display():
 
 
 def test_repeat_test_uses_authenticated_id_only_and_keeps_id_after_unknown_response():
-    at=app()
+    at=app(open_test=True)
     service=Mock()
     service._request.side_effect=HwarangAuthError('unknown response with private detail')
     with patch('modules.activity.kakao_settings.client',return_value=(service,'test')):
@@ -325,7 +331,7 @@ def test_repeat_test_uses_authenticated_id_only_and_keeps_id_after_unknown_respo
 
 @pytest.mark.parametrize('state',['queued','processing','uncertain'])
 def test_repeat_test_pending_or_uncertain_disables_new_send(state):
-    at=app(test_status={'id':'request','status':state})
+    at=app(test_status={'id':'request','status':state}, open_test=True)
     assert not at.exception
     assert at.button(key='kakao_test_send').disabled
     assert not any(c[0].endswith('kakao_request_test') for c in at.session_state['calls'])
@@ -333,7 +339,7 @@ def test_repeat_test_pending_or_uncertain_disables_new_send(state):
 
 def test_repeat_test_disabled_until_region_and_dispatch_ready():
     for status in [{'connection_status':'connected','dispatch_ready':False,'weather_region_key':'seoul-songpa'}, {'connection_status':'connected','dispatch_ready':True}]:
-        at=app(status)
+        at=app(status, open_test=True)
         assert not at.exception
         assert at.button(key='kakao_test_send').disabled
 
@@ -393,3 +399,9 @@ render_member_briefing(service,'self-token')
     assert not at.exception
     assert at.code[0].value=='합성FP 1건'
     assert not any('request_test' in c[0] or 'send' in c[0] for c in at.session_state['member_calls'])
+
+
+def test_closed_test_panel_skips_status_read():
+    at = app()
+    assert not at.exception
+    assert not any(path.endswith('kakao_my_test_status') for path, _ in at.session_state['calls'])
