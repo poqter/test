@@ -72,11 +72,20 @@ def test_old_briefing_is_not_automatically_called_failed():
     assert result[0]['result']=='확인 필요'
 
 
-def test_ui_review_and_request_scopes():
+def test_ui_review_and_request_scopes(monkeypatch):
     from pathlib import Path
     from streamlit.testing.v1 import AppTest
     app=AppTest.from_file(str(Path(__file__).with_name('operations_harness.py'))).run()
     assert not app.exception
+    assert not any(s.label == '점검 상태' for s in app.selectbox)
+    import streamlit as st
+    original_expander = st.expander
+    def open_review(label, **kwargs):
+        if label == '점검 기록 · 상태와 메모':
+            kwargs['expanded'] = True
+        return original_expander(label, **kwargs)
+    monkeypatch.setattr(st, 'expander', open_review)
+    app = AppTest.from_file(str(Path(__file__).with_name('operations_harness.py'))).run()
     assert '운영 반영·배포를 진행하지' in next(x.value for x in app.text_area if x.label=='요청문 미리보기')
     next(s for s in app.selectbox if s.label=='요청 범위').set_value(o.SCOPES[2]).run()
     assert not app.exception
