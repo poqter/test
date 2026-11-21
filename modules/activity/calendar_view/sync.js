@@ -35,8 +35,8 @@ function configureRealtime(a){
  for(const unit of units)channel.on('postgres_changes',{event:'*',schema:'public',table:'sales_calendar_signals',filter:'unit=eq.'+unit},()=>{
   signalPending=true;if(signalTimer)return;signalTimer=setTimeout(()=>{signalTimer=null;if(client===realtimeClient)checkSync()},500);
  });
- channel.on('postgres_changes',{event:'*',schema:'public',table:'sales_activity_signals',filter:'owner=eq.'+session.uid},payload=>{
-  if(payload.new?.topic==='scope'){if(typeof resetCalendarSearch==='function')resetCalendarSearch();calendarCache.clear();calendarBoot.supportRecipients=null;calendarAction('reauth')}
+ channel.on('postgres_changes',{event:'*',schema:'public',table:'sales_activity_signals',filter:'topic=eq.scope'},payload=>{
+  if(payload.new?.topic==='scope'&&payload.new.owner===session.uid){if(typeof resetCalendarSearch==='function')resetCalendarSearch();calendarCache.clear();calendarBoot.supportRecipients=null;calendarAction('reauth')}
  }).subscribe(status=>{
   if(client!==realtimeClient)return;
   realtimeReady=status==='SUBSCRIBED';scheduleSync();

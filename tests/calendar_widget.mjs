@@ -54,12 +54,18 @@ create trigger version before update on sales_events for each row execute functi
 create function sales_companion_busy_times(date,date,uuid) returns table(id uuid,day date,start_time time,end_time time) language sql as $$select id,day,start_time,end_time from public.sales_events where owner=$3 and day between $1 and $2$$;
 create function sales_calendar_compact(date,date,uuid,boolean,jsonb) returns jsonb language sql as $$select jsonb_build_object('rows',coalesce(jsonb_agg(to_jsonb(e)),'[]'::jsonb)) from public.sales_events e where day between $1 and $2$$;`);
 await db.exec(fs.readFileSync('supabase/migrations/20261120053916_calendar_selected_empty_day_widget.sql','utf8'));
+await db.exec("create function public.sales_calendar_days(date,date) returns setof public.sales_events language sql security invoker as $$select * from public.sales_events where day between $1 and $2 and deleted_at is null$$");
+await db.exec(fs.readFileSync('supabase/migrations/20261121142000_calendar_empty_day_state.sql','utf8'));
 await db.exec(`set role authenticated;set request.jwt.claim.sub='${me}'`);
 const setEmpty=async(day,confirmed=true)=>(await db.query('select sales_empty_day_set($1,$2) value',[day,confirmed])).rows[0].value;
 const save=async(id,revision,data,overlap=false)=>(await db.query('select sales_widget_save($1,$2,$3,$4) value',[id,revision,data,overlap])).rows[0].value;
+const webState=async(day,confirmed)=>(await db.query('select sales_empty_day_update_state($1,$2) as state',[day,confirmed])).rows[0].state;
+assert.deepEqual(await webState('2027-01-15',true),{day:'2027-01-15',confirmed:true,has_events:false});
+assert.deepEqual(await webState('2027-01-15',false),{day:'2027-01-15',confirmed:false,has_events:false});
 const row={day:'2027-01-17',title:'고객 상담',kind:'AP',start_time:'09:30',end_time:'',time_pending:false,place:'',note:''};
 await setEmpty(row.day);await setEmpty('2026-01-17');assert.equal((await setEmpty('2026-01-17',false)).confirmed,false);
 id='44444444-4444-4444-8444-444444444444';let r=await save(id,null,row);assert.equal(r.id,id);assert.equal(await count(me,row.day),0);
+assert.equal((await webState(row.day,false)).has_events,true);
 await assert.rejects(()=>setEmpty(row.day),/개인 일정 또는 휴무/);await assert.rejects(()=>save(id,null,row),/변경되었습니다/);
 await db.query("update sales_events set help='보존',result='보존',companion=$1 where id=$2",[other,id]);
 r=await save(id,2,{...row,place:'새 장소',start_time:'14:30',end_time:'15:00'});assert.equal(r.revision,3);

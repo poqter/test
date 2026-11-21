@@ -43,11 +43,12 @@ public final class DayActivity extends Activity {
         });
     }
     private void refreshWidget(){WidgetData.io.execute(()->{try{data.refreshVisible();}catch(Exception ex){data.prefs.edit().putString("state","갱신 지연 · 새로고침해 주세요").apply();}MonthWidget.paintAll(this);});}
-    private void load(){
+    private void load(){ load(false); }
+    private void load(boolean force){
         screen(day+(team?" · 지점 일정":" · 내 일정"));
-        button("날짜 선택",()->pick(day,d->{day=d;load();}));button("새 일정 등록",()->editor(null));button("다시 불러오기",this::load);button("닫기",this::finish);
+        button("날짜 선택",()->pick(day,d->{day=d;load();}));button("새 일정 등록",()->editor(null));button("다시 불러오기",()->load(true));button("닫기",this::finish);
         final String selected=day;
-        task(()->data.day(selected,team),payload->{
+        task(()->data.day(selected,team,force),payload->{
             JSONArray rows=payload.getJSONArray("rows"),empty=payload.getJSONArray("empty_days");boolean personal=false,confirmed=false;
             for(int i=0;i<empty.length();i++)if(selected.equals(empty.optString(i)))confirmed=true;
             for(int i=0;i<rows.length();i++){
@@ -58,7 +59,7 @@ public final class DayActivity extends Activity {
             }
             status.setText(personal?"제목을 누르면 상세 내용을 확인할 수 있습니다.":confirmed?"내 일정 없음 등록됨":"내 일정 미등록");
             final boolean was=confirmed;
-            if(!personal)button(was?"일정 없음 등록 취소":"이 날짜 일정 없음 등록",()->task(()->{data.setEmpty(selected,!was);return new JSONObject();},v->{refreshWidget();load();},true));
+            if(!personal)button(was?"일정 없음 등록 취소":"이 날짜 일정 없음 등록",()->task(()->{data.setEmpty(selected,!was);return new JSONObject();},v->{refreshWidget();load(true);},true));
         },false);
     }
     private interface DateResult{void set(String value);}
@@ -93,7 +94,7 @@ public final class DayActivity extends Activity {
     private void save(JSONObject args,Button button){
         task(()->data.call("sales_widget_save",args),result->{
             if(result.optBoolean("overlap")){new AlertDialog.Builder(this).setMessage("기존 일정과 시간이 겹칩니다. 저장할까요?").setNegativeButton("계속 작성",null).setPositiveButton("저장",(d,w)->{try{args.put("p_overlap",true);save(args,button);}catch(Exception ex){status.setText("입력을 확인해 주세요.");}}).show();return;}
-            if(!args.getString("p_id").equals(result.optString("id")))throw new IllegalStateException();button.setEnabled(false);editing=false;day=result.getString("day");refreshWidget();load();
+            if(!args.getString("p_id").equals(result.optString("id")))throw new IllegalStateException();button.setEnabled(false);editing=false;day=result.getString("day");refreshWidget();load(true);
         },true);
     }
     private void back(){if(busy)return;if(editing)new AlertDialog.Builder(this).setMessage("저장하지 않고 목록으로 돌아갈까요?").setNegativeButton("계속 작성",null).setPositiveButton("돌아가기",(d,w)->load()).show();else finish();}
