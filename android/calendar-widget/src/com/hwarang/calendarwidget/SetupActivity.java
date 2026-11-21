@@ -16,6 +16,60 @@ public final class SetupActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         show("");
+        checkRelease();
+    }
+
+    private void checkRelease() {
+        android.content.SharedPreferences prefs = getSharedPreferences("release-check", MODE_PRIVATE);
+        long now = System.currentTimeMillis();
+        if (now - prefs.getLong("checked", 0) < 86400000L) return;
+        prefs.edit().putLong("checked", now).apply();
+        WidgetData.io.execute(() -> {
+            java.net.HttpURLConnection conn = null;
+            try {
+                conn = (java.net.HttpURLConnection) new java.net.URL(
+                    "https://api.github.com/repos/poqter/test/releases?per_page=50").openConnection();
+                conn.setConnectTimeout(4000);
+                conn.setReadTimeout(4000);
+                String current = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+                try (java.io.InputStream stream = conn.getInputStream();
+                     java.util.Scanner reader = new java.util.Scanner(stream, "UTF-8").useDelimiter("\\\\A")) {
+                    org.json.JSONArray releases = new org.json.JSONArray(reader.next());
+                    for (int i = 0; i < releases.length(); i++) {
+                        org.json.JSONObject r = releases.getJSONObject(i);
+                        String tag = r.optString("tag_name");
+                        if (r.optBoolean("draft") || r.optBoolean("prerelease") ||
+                            !tag.matches("widget-v[0-9]+[.][0-9]+[.][0-9]+")) continue;
+                        String version = tag.substring(8);
+                        if (!newer(version, current)) continue;
+                        String url = "https://github.com/poqter/test/releases/download/" + tag + "/hwarang-month-widget.apk";
+                        org.json.JSONArray assets = r.getJSONArray("assets");
+                        for (int j = 0; j < assets.length(); j++) {
+                            if (!url.equals(assets.getJSONObject(j).optString("browser_download_url"))) continue;
+                            runOnUiThread(() -> {
+                                if (!isFinishing() && !isDestroyed()) new android.app.AlertDialog.Builder(this)
+                                    .setTitle("위젯 업데이트 " + version)
+                                    .setMessage("새 버전을 내려받고 Android 설치 화면에서 업데이트해 주세요.")
+                                    .setNegativeButton("나중에", null)
+                                    .setPositiveButton("업데이트", (dialog, which) -> startActivity(new android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))).show();
+                            });
+                            return;
+                        }
+                    }
+                }
+            } catch (Exception ignored) { /* Calendar access remains available offline. */ }
+            finally { if (conn != null) conn.disconnect(); }
+        });
+    }
+
+    private static boolean newer(String candidate, String installed) {
+        String[] a = candidate.split("[.]"), b = installed.split("[.]");
+        for (int i = 0; i < 3; i++) {
+            int comparison = Integer.compare(Integer.parseInt(a[i]), Integer.parseInt(b[i]));
+            if (comparison != 0) return comparison > 0;
+        }
+        return false;
     }
 
     private void show(String message) {
