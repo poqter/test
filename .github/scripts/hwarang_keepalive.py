@@ -126,7 +126,8 @@ def main() -> int:
     errors: list[str] = []
 
     try:
-        ping_supabase()
+        if os.getenv("SUPABASE_KEEPALIVE_ENABLED", "").lower() == "true":
+            ping_supabase()
     except Exception as exc:  # noqa: BLE001
         errors.append(f"Supabase: {type(exc).__name__}: {exc}")
 

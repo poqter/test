@@ -160,7 +160,8 @@ def _request_test():
 
 
 def render_test_panel(service, token, status, weather_ready):
-    with st.expander('시험 발송'):
+    with st.expander('시험 발송', key='kakao_test_panel', on_change='rerun') as panel:
+        if not panel.open:return
         st.caption('현재 저장된 설정으로 정기 브리핑과 동일하게 보냅니다. 구성원 브리핑 대상자는 구성원 일정 → 내 일정·날씨 순서로 받습니다.')
         st.caption('긴 내용은 메시지당 200자 이내로 나누며, 미등록 명단은 이름 단위로 나눕니다. 정기 발송 시간은 바뀌지 않습니다.')
         try:
@@ -191,7 +192,9 @@ def render_test_panel(service, token, status, weather_ready):
 
 
 def render_member_briefing(service, token):
-    state = rpc(service, token, 'kakao_member_briefing_status')
+    preview_requested = bool(st.session_state.get('kakao_member_preview'))
+    state = (service._request('POST', '/functions/v1/hwarang-kakao/member-preview', access_token=token, json={})
+             if preview_requested else rpc(service, token, 'kakao_member_briefing_status'))
     if not isinstance(state, dict) or not state.get('eligible'):
         return
     members = (state.get('branch') or {}).get('members') or []
@@ -207,7 +210,7 @@ def render_member_briefing(service, token):
         else:
             st.caption('집계 대상 ' + str(len(members)) + '명 · ' + ' · '.join(m['name'] for m in members))
             if st.button('오늘 구성원 메시지 미리보기', key='kakao_member_preview'):
-                preview = service._request('POST', '/functions/v1/hwarang-kakao/member-preview', access_token=token, json={})
+                preview = state
                 if not preview.get('enabled'):
                     st.caption('구성원 수신이 꺼져 있습니다. 아래는 수신을 켰을 때의 내용입니다.')
                 for i, body in enumerate(preview.get('parts') or [], 1):

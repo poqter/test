@@ -130,7 +130,7 @@ def tasks_view(db,today):
 
 @st.fragment
 def alerts(db):
-    db._reads.clear();st.subheader('알림·피드백')
+    st.subheader('알림·피드백')
     rows=db.request('GET','sales_notices',{'order':'created_at.desc','limit':'50'})
     if not rows:st.info('알림이 없습니다.')
     for row in rows:
@@ -139,7 +139,8 @@ def alerts(db):
             st.caption(datetime.fromisoformat(row['created_at'].replace('Z','+00:00')).astimezone(center.KST).strftime('%m.%d %H:%M'))
             if row.get('report'):
                 if st.button('요청 기록 보기',key='mobile_notice_'+row['id']):
-                    db.request('PATCH','sales_notices',{'id':'eq.'+row['id']},{'seen':True})
+                    if not row['seen']:
+                        db.request('PATCH','sales_notices',{'id':'eq.'+row['id']},{'seen':True})
                     st.session_state['support_notice_report']=row['report']
                 if st.session_state.get('support_notice_report')==row['report']:
                     records=db.request('GET','sales_reports',{'id':'eq.'+row['report'],'submitted':'eq.true','limit':'1'})
@@ -151,7 +152,8 @@ def alerts(db):
                         st.write(record['data'].get('note') or '')
                     else:st.caption('현재 조회 가능한 제출 기록이 없습니다.')
             elif row.get('event') and st.button('해당 일정 보기',key='mobile_notice_'+row['id']):
-                db.request('PATCH','sales_notices',{'id':'eq.'+row['id']},{'seen':True})
+                if not row['seen']:
+                    db.request('PATCH','sales_notices',{'id':'eq.'+row['id']},{'seen':True})
                 ux.navigate({'type':'event','id':row['event']})
     st.caption('최근 알림 최대 50개')
     with st.expander('기록에 남긴 최근 피드백',key='mobile_report_feedback',on_change='rerun') as panel:
@@ -170,6 +172,8 @@ def alerts(db):
 
 @st.dialog('알림·피드백', width='large', dismissible=True, on_dismiss='rerun')
 def alerts_dialog(db):
+    # Start fresh when opened. Interactions inside the fragment reuse these reads.
+    db._reads.clear()
     alerts(db)
     if st.button('닫기', key='mobile_alerts_close', use_container_width=True):
         st.rerun()
