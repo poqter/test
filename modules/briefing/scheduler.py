@@ -105,11 +105,12 @@ def publish_ready(repo, day, codes, *, now=None):
         return []
     results=[]
     profiles={r['profile_code']:r for r in repo.profiles()}
-    policy=repo.operating_policy()
+    policy=None
+    load_bundle=getattr(repo,'publication_bundle',repo.bundle_for_date)
     for code in codes:
         if profiles.get(code,{}).get('is_enabled') is False:
             results.append({'profile':code,'status':'disabled'});continue
-        bundle=repo.bundle_for_date(code,day,include_draft=True)
+        bundle=load_bundle(code,day,include_draft=True)
         if not bundle:results.append({'profile':code,'status':'no_snapshot'});continue
         revision=bundle['revision']; qa=bundle['snapshot'].get('qa_payload') or {}
         publish_at=datetime.combine(day,PUBLICATION_TIME,KST)
@@ -128,6 +129,7 @@ def publish_ready(repo, day, codes, *, now=None):
         if revision.get('validation_status')!='ok' or revision.get('coverage_status')!='healthy' or not qa.get('internal_body_ready'):
             results.append({'profile':code,'status':'quality_hold'});continue
         profile=profiles.get(code) or {}
+        if policy is None:policy=repo.operating_policy()
         if not policy.get('automatic_publication_enabled'):
             results.append({'profile':code,'status':'organization_approval_required'});continue
         # Organization approval authorizes the next quality-approved edition.
