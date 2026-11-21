@@ -171,7 +171,8 @@ def _detail(auth,actor,original):
                             ('기대 결과',item['expected']),('최소 변경안',item['minimum'])]:
             st.write('**'+label+'**  '+value)
         st.caption('실제 사용자 재현·오류 원문·원인 파일·운영 반영 여부는 근거가 없으면 미확인으로 전달됩니다.')
-    with st.expander('점검 기록 · 상태와 메모'):
+    with st.expander('점검 기록 · 상태와 메모',key='ops_review_panel',on_change='rerun') as panel:
+        if not panel.open:return
         try:_review(auth,actor,item)
         except Exception:st.error('점검 기록을 조회하지 못했습니다. 저장 입력을 열지 않습니다.')
 
