@@ -130,7 +130,7 @@ def tasks_view(db,today):
 
 @st.fragment
 def alerts(db):
-    db._reads.clear();st.subheader('알림·피드백')
+    st.subheader('알림·피드백')
     rows=db.request('GET','sales_notices',{'order':'created_at.desc','limit':'50'})
     if not rows:st.info('알림이 없습니다.')
     for row in rows:
@@ -172,6 +172,8 @@ def alerts(db):
 
 @st.dialog('알림·피드백', width='large', dismissible=True, on_dismiss='rerun')
 def alerts_dialog(db):
+    # Start fresh when opened. Interactions inside the fragment reuse these reads.
+    db._reads.clear()
     alerts(db)
     if st.button('닫기', key='mobile_alerts_close', use_container_width=True):
         st.rerun()
