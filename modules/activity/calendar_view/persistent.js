@@ -603,8 +603,8 @@ async function offerAndroidWidgetUpdate() {
   description.textContent='홈 위젯에는 일정 제목만 표시합니다. 일정이 더 있으면 칸 아래에 전체 건수가 표시되며, 날짜를 누르면 시간과 개인·공통 일정 수를 확인할 수 있습니다.\n\n0.2.2 이상은 기존 앱 위에 업데이트하세요. 0.2.1 이하 시험판은 설정 → 애플리케이션에서 화랑 월간 달력을 삭제한 뒤 재설치하고 계정을 연결하세요.';
   const install=document.createElement('a'),close=document.createElement('button');
   install.href=url;install.target='_blank';install.rel='noopener';install.textContent='새 위젯 설치하기';
-  close.textContent='닫기';close.onclick=()=>panel.close();
-  panel.addEventListener('close',()=>{if(checkbox.checked){try{localStorage.setItem(seen,'1')}catch{}}panel.remove()},{once:true});
+  close.textContent='닫기';close.onclick=()=>{if(checkbox.checked){try{localStorage.setItem(seen,'1')}catch{}}panel.close()};
+  panel.addEventListener('close',()=>panel.remove(),{once:true});
   panel.append(heading,description,label,install,close);document.body.append(panel);panel.showModal();
  } catch { /* An unavailable release must not interrupt the calendar. */ }
 }
