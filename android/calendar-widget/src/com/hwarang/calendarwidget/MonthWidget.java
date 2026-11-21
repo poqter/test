@@ -91,6 +91,7 @@ public final class MonthWidget extends AppWidgetProvider {
         int count;
         boolean personal;
         boolean leave;
+        boolean common;
         final LinkedHashSet<String> kinds = new LinkedHashSet<>();
     }
 
@@ -103,6 +104,7 @@ public final class MonthWidget extends AppWidgetProvider {
             DayMark mark = result.computeIfAbsent(event.optString("day"), unused -> new DayMark());
             mark.personal |= event.optBoolean("personal");
             if (!includeDone && event.optBoolean("done")) continue;
+            mark.common |= event.optBoolean("common");
             String kind = event.optString("kind");
             if ("휴무".equals(kind)) mark.leave = true;
             else { mark.count++; mark.kinds.add(kind); }
@@ -175,24 +177,20 @@ public final class MonthWidget extends AppWidgetProvider {
                 DayMark mark = marks.get(day.toString());
                 SpannableStringBuilder label = new SpannableStringBuilder(String.valueOf(day.getDayOfMonth()));
                 if (mark != null) {
-                    if (mark.count>0) label.append("\n").append(String.valueOf(mark.count));
-                    if (mark.leave) label.append(compact ? " 휴" : " 휴무");
-                    if (!compact && !mark.kinds.isEmpty()) {
+                    if (mark.count>0 || mark.leave) {
+                        int start=label.length();
+                        label.append(" ●");
+                        int color=mark.common?0xff914d0b:mark.leave?0xff53657d:DOTS.getOrDefault(mark.kinds.iterator().next(),0xff167b7b);
+                        label.setSpan(new ForegroundColorSpan(color),start,label.length(),Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                         label.append("\n");
-                        int count = 0;
-                        for (String kind : mark.kinds) {
-                            if (count++ == 3) break;
-                            int start = label.length();
-                            label.append("● ");
-                            label.setSpan(new ForegroundColorSpan(DOTS.getOrDefault(kind, 0xff64748b)),
-                                start, label.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-                        }
+                        if(mark.count>0) label.append(mark.common?"공통 포함 ": "").append(String.valueOf(mark.count)).append("건");
+                        if(mark.leave) label.append(mark.count>0?" · 휴":"휴무");
                     }
                 }
                 String registration="";
                 if (connected && !team && confirmed!=null && (mark==null || !mark.personal)) {
                     registration=emptyDays.contains(day.toString())?"일정 없음":"미등록";
-                    label.append("\n").append(registration);
+                    if (mark==null || (mark.count==0 && !mark.leave)) label.append("\n").append(registration);
                 }
                 RemoteViews date = cell(context, label, today.equals(day) ? 0xff006b6d : 0xff173446);
                 if (today.equals(day)) date.setInt(R.id.cell, "setBackgroundColor", 0xffd8ede8);

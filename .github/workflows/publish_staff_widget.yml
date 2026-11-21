@@ -14,10 +14,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify staff APK signature and identity
         run: |
-          apk=android/staff-releases/0.2.2/hwarang-month-widget.apk
+          apk=android/staff-releases/0.2.3/hwarang-month-widget.apk
           tools="$ANDROID_HOME/build-tools/35.0.0"
           "$tools/apksigner" verify --print-certs "$apk" | grep -Fxi 'Signer #1 certificate SHA-256 digest: 924513f70eb3c2ac5e535c12cd7af8fdc29a27f39642ebff2d9be9d777978569'
-          "$tools/aapt" dump badging "$apk" | grep -F "package: name='com.hwarang.calendarwidget' versionCode='4' versionName='0.2.2'"
+          "$tools/aapt" dump permissions "$apk" | grep -Fx "uses-permission: name='android.permission.ACCESS_NETWORK_STATE'"
+          "$tools/aapt" dump badging "$apk" | grep -F "package: name='com.hwarang.calendarwidget' versionCode='5' versionName='0.2.3'"
   publish:
     if: github.event_name == 'push'
     needs: verify
@@ -29,10 +30,10 @@ jobs:
       - env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          apk=android/staff-releases/0.2.2/hwarang-month-widget.apk
-          if gh release view widget-v0.2.2 >/dev/null 2>&1; then
-            gh release download widget-v0.2.2 -p hwarang-month-widget.apk -D "$RUNNER_TEMP"
+          apk=android/staff-releases/0.2.3/hwarang-month-widget.apk
+          if gh release view widget-v0.2.3 >/dev/null 2>&1; then
+            gh release download widget-v0.2.3 -p hwarang-month-widget.apk -D "$RUNNER_TEMP"
             cmp "$apk" "$RUNNER_TEMP/hwarang-month-widget.apk"
           else
-            gh release create widget-v0.2.2 "$apk" --target "$GITHUB_SHA" --title '화랑 월간 달력 0.2.2' --notes '기존 시험판의 서명이 다른 경우 한 번 재설치한 뒤 계정을 다시 연결해 주세요.' --latest=false
+            gh release create widget-v0.2.3 "$apk" --target "$GITHUB_SHA" --title '화랑 월간 달력 0.2.3' --notes '기존 시험판의 서명이 다른 경우 한 번 재설치한 뒤 계정을 다시 연결해 주세요.' --latest=false
           fi

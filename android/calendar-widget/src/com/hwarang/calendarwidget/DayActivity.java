@@ -21,11 +21,16 @@ public final class DayActivity extends Activity {
         super.onCreate(state);data=new WidgetData(this);account=data.prefs.getString("uid","");
         day=getIntent().getStringExtra("day");if(day==null)day=LocalDate.now(ZoneId.of("Asia/Seoul")).toString();
         try{LocalDate.parse(day);}catch(Exception ex){finish();return;}
+        android.view.Window window=getWindow();
+        int width=getResources().getDisplayMetrics().widthPixels;
+        int limit=Math.round(440*getResources().getDisplayMetrics().density);
+        window.setLayout(Math.min(limit,(int)(width*.92)),android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+        window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         team=getIntent().getBooleanExtra("team",false);load();
     }
     private void screen(String title){
         generation++;editing=false;ScrollView scroll=new ScrollView(this);body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);
-        int pad=(int)(20*getResources().getDisplayMetrics().density);body.setPadding(pad,pad*2,pad,pad);scroll.addView(body);setContentView(scroll);
+        int pad=(int)(20*getResources().getDisplayMetrics().density);body.setPadding(pad,pad,pad,pad);scroll.addView(body);setContentView(scroll);
         TextView h=new TextView(this);h.setText(title);h.setTextSize(22);body.addView(h);status=new TextView(this);status.setTextSize(15);body.addView(status);
     }
     private Button button(String label,Runnable action){Button b=new Button(this);b.setText(label);body.addView(b);b.setOnClickListener(v->{if(!busy)action.run();});return b;}
@@ -46,7 +51,14 @@ public final class DayActivity extends Activity {
     private void load(){ load(false); }
     private void load(boolean force){
         screen(day+(team?" · 지점 일정":" · 내 일정"));
-        button("날짜 선택",()->pick(day,d->{day=d;load();}));button("새 일정 등록",()->editor(null));button("다시 불러오기",()->load(true));button("닫기",this::finish);
+        LinearLayout actions=new LinearLayout(this);body.addView(actions);
+        for(String label:new String[]{"날짜 선택","등록","새로고침","닫기"}){
+            Button b=new Button(this,null,android.R.attr.borderlessButtonStyle);b.setText(label);b.setTextSize(13);b.setMinWidth(0);b.setMinimumWidth(0);b.setPadding(0,0,0,0);
+            actions.addView(b,new LinearLayout.LayoutParams(0,-2,1));
+            b.setOnClickListener(v->{if(busy && !"닫기".equals(label))return;
+                switch(label){case "날짜 선택":pick(day,d->{day=d;load();});break;case "등록":editor(null);break;case "새로고침":load(true);break;default:finish();}
+            });
+        }
         final String selected=day;
         task(()->data.day(selected,team,force),payload->{
             JSONArray rows=payload.getJSONArray("rows"),empty=payload.getJSONArray("empty_days");boolean personal=false,confirmed=false;
