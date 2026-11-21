@@ -99,7 +99,7 @@ public final class DayActivity extends Activity {
                 line.setMinimumHeight(dp(62));line.setPadding(0,dp(6),0,dp(6));body.addView(line);
                 String clock=row.isNull("start_time")?(row.optBoolean("time_pending")?"시간 미정":"종일"):time(row,"start_time");
                 line.addView(label(clock,14),new LinearLayout.LayoutParams(dp(62),-2));
-                android.view.View accent=new android.view.View(this);accent.setBackgroundColor(shared?0xffaf621b:0xff008180);
+                android.view.View accent=new android.view.View(this);accent.setBackgroundColor(shared?0xff9d2455:MonthWidget.DOTS.getOrDefault(row.optString("kind"),0xff687789));
                 line.addView(accent,new LinearLayout.LayoutParams(dp(3),dp(34)));
                 LinearLayout words=new LinearLayout(this);words.setOrientation(1);words.setPadding(dp(10),0,0,0);
                 line.addView(words,new LinearLayout.LayoutParams(0,-2,1));
@@ -141,7 +141,10 @@ public final class DayActivity extends Activity {
             Button dateButton=button("날짜  "+eventDay[0],()->{});
             dateButton.setOnClickListener(v->{if(!busy)pick(eventDay[0],chosen->{eventDay[0]=chosen;dateButton.setText("날짜  "+chosen);});});
         }
-        String[] kinds={"미분류","TA","AP","PC","CS","청약","교육","회의","휴무","기타"};Spinner kind=new Spinner(this);kind.setContentDescription("활동 종류");kind.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,kinds));body.addView(kind);
+        java.util.List<String> options=new java.util.ArrayList<>(java.util.Arrays.asList("미분류","TA","AP","PC","CS","상담","활동","기타","휴무"));
+        String previous=text(row,"kind");
+        if(!previous.isEmpty()&&!options.contains(previous))options.add(previous);
+        String[] kinds=options.toArray(new String[0]);Spinner kind=new Spinner(this);kind.setContentDescription("활동 종류");kind.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,kinds));body.addView(kind);
         for(int i=0;i<kinds.length;i++)if(kinds[i].equals(text(row,"kind")))kind.setSelection(i);
         EditText place=field("장소 · 선택",text(row,"place"),InputType.TYPE_CLASS_TEXT);
         LinearLayout options=new LinearLayout(this);body.addView(options);

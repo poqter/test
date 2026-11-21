@@ -11,5 +11,6 @@
     <TextView android:id="@+id/second_title" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:includeFontPadding="true" android:singleLine="true" android:paddingBottom="1dp" android:ellipsize="end" android:textColor="#183449" android:textStyle="bold" android:textSize="11sp"/>
 </LinearLayout>
 <TextView android:layout_width="1dp" android:layout_height="0dp" android:layout_weight="1"/>
+<TextView android:id="@+id/common_count" android:layout_width="match_parent" android:layout_height="wrap_content" android:singleLine="true" android:ellipsize="end" android:textColor="#9D2455" android:textSize="9sp" android:visibility="gone"/>
 <TextView android:id="@+id/total_link" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:ellipsize="end" android:includeFontPadding="false" android:textColor="#006e70" android:textSize="9sp" android:visibility="gone"/>
 </LinearLayout>

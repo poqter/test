@@ -43,7 +43,7 @@ final class WidgetData {
             conn.setConnectTimeout(3500);
             conn.setReadTimeout(3500);
             conn.setRequestProperty("apikey", KEY);
-            conn.setRequestProperty("X-Hwarang-Widget-Version", "0.2.8");
+            conn.setRequestProperty("X-Hwarang-Widget-Version", "0.2.9");
             
             if (token != null) conn.setRequestProperty("Authorization", "Bearer " + token);
             if (body != null) {
@@ -256,7 +256,7 @@ final class WidgetData {
             JSONObject event = events.getJSONObject(i);
             if ("취소".equals(event.optString("status")) || "연기".equals(event.optString("status"))) continue;
             String kind = event.optString("kind");
-            if (!java.util.Arrays.asList("TA", "AP", "PC", "CS", "청약", "휴무").contains(kind)) kind = "기타";
+            if (!java.util.Arrays.asList("TA", "AP", "PC", "CS", "청약", "제안", "활동", "상담", "휴무").contains(kind)) kind = "기타";
             safe.put(new JSONObject().put("day", event.getString("day")).put("kind", kind)
                 .put("title",event.isNull("title") ? kind : event.optString("title", kind)).put("start",event.isNull("start_time")?"":event.optString("start_time")).put("common",event.optBoolean("common")).put("done", "완료".equals(event.optString("status")))
                 .put("personal", !event.optBoolean("common") && (session.getString("uid").equals(event.optString("owner")) || session.getString("uid").equals(event.optString("companion")))));
