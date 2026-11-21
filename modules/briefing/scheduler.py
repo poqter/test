@@ -193,7 +193,8 @@ def catch_up(repo, now=None):
             generation[group] = {'status': 'disabled'}
             continue
         try:
-            existing = [repo.bundle_for_date(c, day, include_draft=True) for c in codes]
+            load_bundle = getattr(repo, 'publication_bundle', repo.bundle_for_date)
+            existing = [load_bundle(c, day, include_draft=True) for c in codes]
             if all(existing):
                 generation[group] = {'status': 'reused', 'reason': 'stored_editions'}
                 continue
