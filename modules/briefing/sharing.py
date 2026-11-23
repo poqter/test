@@ -2,11 +2,11 @@
 from hashlib import sha256
 import json
 from urllib.parse import urlencode
-from .public_body import customer_body, public_html, public_pdf, preview_png
+from .public_body import customer_body, public_html
 
 
-def share_url(base, token, asset=None):
-    return base+'?'+urlencode({'token':token,**({'asset':asset} if asset else {})})
+def share_url(base, token):
+    return base+'?'+urlencode({'token':token})
 
 
 def build_packet(snapshot, briefing, revision, sender, base, token):
@@ -17,14 +17,8 @@ def build_packet(snapshot, briefing, revision, sender, base, token):
         'corrected_at':revision.get('generated_at') if revision.get('revision_type')=='correction' else None}}
     version=sha256(json.dumps(packet,ensure_ascii=False,sort_keys=True).encode()).hexdigest()[:24]
     packet['asset_version']=version
-    packet['rendered_html']=public_html(packet,canonical_url=share_url(base,token),
-        image_url=share_url(base,token,'preview'),pdf_url=share_url(base,token,'pdf'))
+    packet['rendered_html']=public_html(packet,canonical_url=share_url(base,token))
     return packet
-
-
-def packet_assets(packet):
-    return {'preview.png':('image/png',preview_png(packet)),
-            'briefing.pdf':('application/pdf',public_pdf(packet))}
 
 
 PROFILE_ORDER = ('MARKET', 'NEWS', 'INSURANCE')
@@ -69,8 +63,7 @@ def combine_bodies(bundles, selected_codes=None):
 def render_packet(packet, base, token):
     version = sha256(json.dumps(packet, ensure_ascii=False, sort_keys=True).encode()).hexdigest()[:24]
     packet['asset_version'] = version
-    packet['rendered_html'] = public_html(packet, canonical_url=share_url(base, token),
-        image_url=share_url(base, token, 'preview'), pdf_url=share_url(base, token, 'pdf'))
+    packet['rendered_html'] = public_html(packet, canonical_url=share_url(base, token))
     return packet
 
 
@@ -78,7 +71,7 @@ def build_combined_packet(bundles, sender, base, token, *, selected_codes=None, 
     body=combine_bodies(bundles, selected_codes)
     if weather is not None:
         body["weather_forecast"]=weather
-    return render_packet({'schema': 'hwarang-share-v3', 'body': body, 'reader_version':'20261026-share-preview',
+    return render_packet({'schema': 'hwarang-share-v3', 'body': body, 'reader_version':'20261124-html',
         'selected_profiles':list(selected_codes or [b['briefing']['profile_code'] for b in bundles]),
         'requested_date':requested_date or max(str(b['briefing']['briefing_date']) for b in bundles),
         'briefing_date': max(str(b['briefing']['briefing_date']) for b in bundles),

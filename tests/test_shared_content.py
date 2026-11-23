@@ -10,19 +10,19 @@ def packet(sender='설계사',weather=None,codes=('NEWS','MARKET')):
 def test_people_share_content_but_not_identity():
     a=split_packet(packet('A'),'https://example.org');b=split_packet(packet('B'),'https://example.org')
     assert a['content_id']==b['content_id']
-    assert a['preview_id']!=b['preview_id'] and a['reuse_key']!=b['reuse_key']
+    assert a['reuse_key']!=b['reuse_key']
     assert 'sender' not in a['content']['packet']
     assert all(marker in a['content']['html_template'] for marker in (IDENTITY,TOKEN,WEATHER))
 
-def test_regions_share_body_and_personal_preview_but_have_different_links():
+def test_regions_share_body_but_have_different_links():
     a=split_packet(packet(weather={'status':'unavailable','region_code':'서울'}),'https://example.org')
     b=split_packet(packet(weather={'status':'unavailable','region_code':'부산'}),'https://example.org')
-    assert a['content_id']==b['content_id'] and a['preview_id']==b['preview_id']
+    assert a['content_id']==b['content_id']
     assert a['weather_id']!=b['weather_id'] and a['reuse_key']!=b['reuse_key']
 
-def test_scope_changes_reuse_preview_only():
+def test_scope_changes_change_content():
     a=split_packet(packet(codes=('NEWS',)),'https://example.org');b=split_packet(packet(codes=('MARKET',)),'https://example.org')
-    assert a['preview_id']==b['preview_id'] and a['content_id']!=b['content_id']
+    assert a['content_id']!=b['content_id']
 
 def test_weather_timestamp_changes_do_not_create_duplicates():
     p=packet(weather={'status':'ok','region_code':'서울','low':10,'issued_at':'old'})
@@ -40,8 +40,3 @@ def test_shared_lookup_returns_saved_packet_without_upload():
     repo._request=Mock(side_effect=request);repo.public_share=Mock(return_value=saved)
     assert repo.create_combined_share('2026-10-09',['NEWS'],'user')==('a'*43,saved)
     repo._upload_shared_preview.assert_not_called()
-
-def test_preview_existing_object_is_not_rendered_or_uploaded():
-    repo=BriefingRepository('https://example.org','test');repo.http=Mock();repo.http.head.return_value.status_code=200
-    repo._upload_shared_preview('a'*64,{})
-    repo.http.post.assert_not_called()

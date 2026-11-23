@@ -100,7 +100,7 @@ button:focus-visible,a:focus-visible{outline:3px solid #2d6ad5;outline-offset:3p
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 """
 
-def public_html(packet,*,canonical_url='',image_url='',pdf_url=''):
+def public_html(packet,*,canonical_url=''):
     e=lambda v:html.escape(str(v or ''),quote=True)
     body=packet.get('body') or {};sender=packet.get('sender') or {}
     identity=' '.join(str(sender.get(k) or '') for k in ('name','position')).strip()
@@ -115,7 +115,6 @@ def public_html(packet,*,canonical_url='',image_url='',pdf_url=''):
     og=f'<title>{e(title)}</title><meta property="og:title" content="{e(title)}"><meta property="og:type" content="article">'
     og+=f'<meta property="og:description" content="{e(description)}"><meta name="description" content="{e(description)}">'
     if canonical_url:og+=f'<meta property="og:url" content="{e(canonical_url)}">'
-    if image_url:og+=f'<meta property="og:image" content="{e(image_url)}">'
     sections=body.get('sections') or [{'profile_code':body.get('profile_code') or 'NEWS','profile_label':body.get('profile_label') or '브리핑','briefing_date':packet.get('briefing_date')}]
     from .weather import weather_html
     header_weather = weather_html(body['weather_forecast']) if body.get('weather_forecast') else ''
@@ -261,18 +260,3 @@ def _cached_pdf(serialized):
         canvas.setFont('HwarangBriefing',8);canvas.setFillColor(muted);canvas.drawString(38,25,('화랑 WORKSPACE · '+identity)[:70]);canvas.drawRightString(556,25,str(doc.page))
     SimpleDocTemplate(output,pagesize=A4,rightMargin=38,leftMargin=38,topMargin=46,bottomMargin=45).build(story,onFirstPage=decoration,onLaterPages=decoration)
     return output.getvalue()
-
-def preview_png(packet):
-    from io import BytesIO
-    from pathlib import Path
-    from PIL import Image,ImageDraw,ImageFont
-    font=Path(__file__).resolve().parents[2]/'assets/fonts/NanumGothic-Regular.ttf';image=Image.new('RGB',(1200,630),'#f0f5f8');draw=ImageDraw.Draw(image)
-    draw.rounded_rectangle((44,42,1156,588),radius=30,fill='white',outline='#d8e3eb',width=2);draw.rounded_rectangle((84,80,91,548),radius=3,fill='#165e70')
-    def put(text,at,size,color='#183346',max_width=980):
-        face=ImageFont.truetype(str(font),size)
-        while draw.textlength(text,font=face)>max_width and size>20:size-=1;face=ImageFont.truetype(str(font),size)
-        draw.text(at,text,font=face,fill=color)
-    body=packet.get('body') or {};sender=packet.get('sender') or {}
-    put(str(packet.get('requested_date') or packet.get('briefing_date') or ''),(128,132),34,'#435a6d');put('오늘의 브리핑',(128,230),72)
-    put(' '.join(str(sender.get(k) or '') for k in ('name','position')).strip(),(128,382),38)
-    put('화랑 WORKSPACE',(880,518),20,'#435a6d',220);out=BytesIO();image.save(out,format='PNG');return out.getvalue()
