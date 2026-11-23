@@ -151,7 +151,7 @@ def render(db,today,fixed_day=None):
                         st.button('이 집계 초안 반영',key=key+'import',on_click=apply)
                 contract_editor(db,day)
                 if old:
-                    history=st.expander('기존 제출 내용 · 수정 이력 · 피드백',key=key+'history_panel',on_change='rerun')
+                    history=st.expander('기존 제출 내용 · 수정 이력',key=key+'history_panel',on_change='rerun')
                     if history.open:
                         with history:report_detail(db,old)
         if right is not None:

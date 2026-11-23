@@ -298,7 +298,7 @@ def render(db,today,period,fixed_day=None):
                         else:ux.refresh()
                     elif 'retry_submit' in d:ux.refresh()
             if old:
-                with st.expander('제출 이력·피드백',key=key+'history',on_change='rerun') as panel:
+                with st.expander('제출 이력',key=key+'history',on_change='rerun') as panel:
                     if panel.open:
                         from modules.activity.center import report_detail
                         report_detail(db,d.get('old') or old)

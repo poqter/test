@@ -27,8 +27,8 @@ test('wrong-day and invalid weather fail closed',()=>{
 test('intentional blank lines improve sections and event spacing',()=>{
  const weather={status:'ok',day:'2026-11-17',region_name:'서울특별시',low:11,high:16,morning:'맑음',afternoon:'흐림',issued_day:'2026-11-17',issued_time:'02:00'};
  const text=briefing('2026-11-17',[{id:'a',start_time:'09:00',title:'상담'},{id:'b',start_time:'11:00',title:'방문'}],false,weather).join('\n');
- assert.ok(text.includes('일정\n\n09:00 상담\n\n11:00 방문\n\n🌤'));
- assert.ok(text.includes('서울특별시 날씨\n\n오전'));assert.ok(text.includes('최고 16℃'));assert.ok(!text.includes('시도 대표'));assert.ok(!text.includes('기상청'));assert.ok(!text.includes('02:00'));
+ assert.ok(text.includes('일정\n\n09:00 상담\n11:00 방문\n\n🌤'));
+ assert.ok(text.includes('서울특별시 날씨\n오전'));assert.ok(text.includes('최고 16℃'));assert.ok(!text.includes('시도 대표'));assert.ok(!text.includes('기상청'));assert.ok(!text.includes('02:00'));
 });
 test('blank boundaries never create empty or oversized parts',()=>{
  for(const lines of [['','','가','','','나','',''],['가'.repeat(198),'','나'],['😀'.repeat(100),'','🌤'],['','']]){
@@ -36,4 +36,13 @@ test('blank boundaries never create empty or oversized parts',()=>{
   assert.equal(parts.join('').replaceAll('\n',''),lines.join(''));
  }
  assert.deepEqual(splitLines(['가','','','나']),['가\n\n나']);
+});
+
+test('common events keep the personal calendar state visible',()=>{
+ const shared={id:'s',common:true,title:'지점 회의',start_time:'09:00'};
+ for(const [personal,confirmed,label] of [[[],true,'내 일정 없음'],[[],false,'내 일정 미등록'],[[{id:'v',kind:'휴무',title:'휴무'}],false,'오늘은 휴무입니다']]){
+  const text=briefing('2026-11-24',[shared,...personal],confirmed).join('\n');
+  assert.ok(text.includes(label+'\n\n🏢 지점 공통일정\n09:00 지점 회의'));
+ }
+ assert.ok(!briefing('2026-11-24',[]).join('').includes('지점 공통일정'));
 });

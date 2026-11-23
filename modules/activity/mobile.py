@@ -90,109 +90,6 @@ def pending_navigation():
     if st.session_state.get('mobile_pending'):navigation_dialog()
 
 
-def overdue(row,today):
-    if row['status']!='예정':return False
-    if row['day']<str(today):return True
-    stamp=row.get('end_time') or row.get('start_time')
-    return row['day']==str(today) and bool(stamp and stamp<datetime.now(center.KST).strftime('%H:%M:%S'))
-
-
-def work_data(db,today):
-    events=db.request('GET','sales_events',{'owner':'eq.'+db.uid,'day':'lte.'+str(today),'status':'eq.예정','order':'day.desc'})
-    todays=db.period('sales_events',today,today,owner='eq.'+db.uid,order='start_time.asc.nullsfirst')
-    tasks=db.request('GET','sales_followups',{'owner':'eq.'+db.uid,'scheduled':'is.null','order':'due.asc'})
-    return todays,[r for r in events if overdue(r,today)],tasks
-
-
-@st.fragment
-def tasks_view(db,today):
-    db._reads.clear();ux.feedback()
-    st.subheader('후속 할 일')
-    tasks=db.request('GET','sales_followups',{'owner':'eq.'+db.uid,'scheduled':'is.null','order':'due.asc'})
-    if not tasks:st.info('남아 있는 후속 할 일이 없습니다. 일정 상세의 ‘다음 활동 추가’에서 할 일을 등록할 수 있습니다.')
-    for task in tasks:
-        with st.container(border=True):
-            st.markdown('**'+task['title']+'**')
-            st.caption(task['due']+(' · 기한 지남' if task['due']<str(today) else ' · 오늘' if task['due']==str(today) else ''))
-            if st.button('연결된 일정 보기',key='task_source_'+task['id']):ux.navigate({'type':'event','id':task['source']})
-            with st.expander('일정으로 전환',key='task_panel_'+task['id'],on_change='rerun'):
-                with st.form('mobile_task_'+task['id']):
-                    target=st.date_input('일정 날짜',max(today,date.fromisoformat(task['due'])))
-                    kind=st.selectbox('활동 종류',center.KINDS)
-                    if st.form_submit_button('일정으로 등록',type='primary'):
-                        try:
-                            event_id=db.request('POST','rpc/schedule_sales_followup',body={'task':task['id'],'schedule_day':str(target),'activity':kind})
-                            st.session_state['sales_dialog_notice']='일정으로 전환했습니다.'
-                            if isinstance(event_id,str):ux.navigate({'type':'event','id':event_id})
-                            ux.refresh()
-                        except HwarangAuthError as exc:st.error(str(exc))
-
-
-@st.fragment
-def alerts(db):
-    st.subheader('알림·피드백')
-    rows=db.request('GET','sales_notices',{'order':'created_at.desc','limit':'50'})
-    if not rows:st.info('알림이 없습니다.')
-    for row in rows:
-        with st.container(border=True):
-            st.write(('● ' if not row['seen'] else '')+row['message'])
-            st.caption(datetime.fromisoformat(row['created_at'].replace('Z','+00:00')).astimezone(center.KST).strftime('%m.%d %H:%M'))
-            if row.get('report'):
-                if st.button('요청 기록 보기',key='mobile_notice_'+row['id']):
-                    if not row['seen']:
-                        db.request('PATCH','sales_notices',{'id':'eq.'+row['id']},{'seen':True})
-                    st.session_state['support_notice_report']=row['report']
-                if st.session_state.get('support_notice_report')==row['report']:
-                    records=db.request('GET','sales_reports',{'id':'eq.'+row['report'],'submitted':'eq.true','limit':'1'})
-                    if records:
-                        from modules.activity.manager_ui import counts
-                        record=records[0];st.caption(record['day']+' · '+record['period'])
-                        counts(record['data'].get('counts',{}))
-                        st.write(record['data'].get('help') or '지원 요청 내용 없음')
-                        st.write(record['data'].get('note') or '')
-                    else:st.caption('현재 조회 가능한 제출 기록이 없습니다.')
-            elif row.get('event') and st.button('해당 일정 보기',key='mobile_notice_'+row['id']):
-                if not row['seen']:
-                    db.request('PATCH','sales_notices',{'id':'eq.'+row['id']},{'seen':True})
-                ux.navigate({'type':'event','id':row['event']})
-    st.caption('최근 알림 최대 50개')
-    with st.expander('기록에 남긴 최근 피드백',key='mobile_report_feedback',on_change='rerun') as panel:
-        if panel.open:
-            reviews=db.request('GET','sales_reviews',{'report':'not.is.null','order':'created_at.desc','limit':'30','select':'id,message,created_at,report,sales_reports(owner,day,period)'})
-            for item in reviews:
-                report=item.get('sales_reports') or {}
-                if report.get('owner')!=db.uid:continue
-                st.write(item['message'])
-                st.caption(report.get('day','')+' · '+report.get('period',''))
-                if st.button('기록 보기',key='mobile_review_'+item['id']):
-                    period=report['period']
-                    st.session_state['sales_day_'+period]=date.fromisoformat(report['day'])
-                    choose('활동 기록' if period=='일일' else '주간 기록');st.rerun()
-
-
-@st.dialog('알림·피드백', width='large', dismissible=True, on_dismiss='rerun')
-def alerts_dialog(db):
-    # Start fresh when opened. Interactions inside the fragment reuse these reads.
-    db._reads.clear()
-    alerts(db)
-    if st.button('닫기', key='mobile_alerts_close', use_container_width=True):
-        st.rerun()
-
-
-@st.fragment
-def alert_button(db):
-    # Keep the trigger in the header's normal layout; only this fragment reruns
-    # when opening notifications, rather than rebuilding the entire page.
-    label = getattr(db, '_alert_button_label', None)
-    if label is None or not st.session_state.get('mobile_alerts'):
-        unread=db.request('GET','sales_notices',{'seen':'eq.false','select':'id','limit':'50'})
-        label='알림'+(' '+str(len(unread))+('+' if len(unread)==50 else '') if unread else '')
-        db._alert_button_label = label
-    with st.container(key='mobile_alert_trigger'):
-        if st.button(label,icon=':material/notifications:',key='mobile_alerts',width='stretch'):
-            alerts_dialog(db)
-
-
 def accept_widget_date(params, state):
     """Apply only navigation hints, after the normal calendar login gate."""
     raw_day = params.get('widget_day')
@@ -269,19 +166,18 @@ def run(logout):
         # Preserve navigation widgets when another menu temporarily unmounts them.
         for key in ('sales_calendar_member','sales_calendar_team','sales_day_일일','sales_day_주간','sales_overview_day','sales_overview_period','sales_overview_unit','sales_member_search','sales_member_status','mobile_work_mode','mobile_work_tab'):
             if key in st.session_state:st.session_state[key]=st.session_state[key]
-        st.session_state['mobile_back_stack']=[p for p in st.session_state.get('mobile_back_stack',[]) if p!='오늘의 업무']
+        st.session_state['mobile_back_stack']=[p for p in st.session_state.get('mobile_back_stack',[]) if p not in ('오늘의 업무','알림·피드백','후속 할 일')]
         page=st.session_state.get('mobile_page','캘린더')
-        allowed=[*menus(db),'주간 기록','알림·피드백']
+        allowed=[*menus(db),'주간 기록']
         if page not in allowed:page='캘린더';st.session_state['mobile_page']=page
         if page in ('활동 기록','주간 기록'):st.session_state['mobile_report_page']=page
         with st.sidebar:menu_items(db,logout,'side')
         with st.container(key='mobile_header'):
-            a,b,c=st.columns([1,3,1])
+            a,b=st.columns([1,4])
             with a.container(key='mobile_menu_toggle'):
                 with st.popover('☰',key='mobile_drawer_'+page+str(bool(st.session_state.get('mobile_pending')))):
                     st.html('<span class="mobile-drawer"></span>');menu_items(db,logout,'drawer')
             b.subheader('화랑 캘린더')
-            with c:alert_button(db)
         st.html('<span class="mobile-navigation-state" data-page="'+page+'" data-depth="'+str(len(st.session_state.get('mobile_back_stack',[])))+'"></span>')
         st.button('이전 메뉴',key='mobile_history_back',on_click=previous_page)
         st.html('<style>.st-key-mobile_history_back{display:none!important}.mobile-navigation-state{display:none}</style>')
@@ -291,7 +187,6 @@ def run(logout):
                 st.html("""<button class="mobile-new-event" aria-label="일정 등록" title="일정 등록">＋</button><style>.mobile-new-event{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));width:52px;height:52px;border:0;border-radius:50%;background:#155461;color:white;font-size:28px;z-index:40;box-shadow:0 3px 12px #1234;cursor:pointer}</style><script>document.querySelector('.mobile-new-event').onclick=()=>document.querySelectorAll('iframe').forEach(f=>f.contentWindow.postMessage({type:'hwarang.activity.new'},location.origin));</script>""",unsafe_allow_javascript=True)
                 center.calendar(db,today)
             elif page=='구성원 현황':center.overview(db,today)
-            elif page=='알림·피드백':alerts(db)
             else:
                 tab_key='mobile_record_tab'
                 st.session_state[tab_key]='주간 요약' if page=='주간 기록' else '일일 기록'

@@ -4,7 +4,7 @@
   "briefing_code_sha256": {
     "__init__.py": "66c4884dd2d46a2e672f3dc686c8c53e1cbfc0ff7af3a3ee7917ef0b6e90ad47",
     "api_errors.py": "20ca68aa829159e97f59d18b429b36fb588dfde1ae3d78f35ef5d5d6b108b7dd",
-    "briefing_center.py": "144a5e06f173dccf57aeb07c5e18c2719ad4c5e9303e2aa5ef506b3df1ab7cd3",
+    "briefing_center.py": "4f56083953670767434066389559ea02558f9a9e4e50a30a2a515cc7f7b29709",
     "business_calendar.py": "d65fbee6e2102e2d4cd60c11979b3cfba4255971d8c0e4d291f41112731b8dd9",
     "checkpoints.py": "0dab7e7c2cf62f597c33f3c5658a3cad5c1053760fa26c97cafbf2297dc1fd3c",
     "clustering.py": "4a34591a00905fbd299d1f7c1bcfeaa5b3fd87380c43b3a50269cdbb155f356a",

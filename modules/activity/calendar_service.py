@@ -308,12 +308,6 @@ def command(db,op,a):
         if row['revision']!=int(a['revision']):raise HwarangAuthError('다른 화면에서 변경했습니다. 최신 기록을 확인해 주세요.')
         db.request('POST','rpc/sales_delete_event',body={'p_id':row['id'],'p_revision':row['revision'],'p_future':bool(a.get('future'))})
         return {'ok':True}
-    if op=='task':
-        row=event(db,a['id'],own=True);title=str(a.get('title','')).strip()
-        if not title or len(title)>200:raise ValueError('할 일을 200자 이내로 입력해 주세요.')
-        body={'id':identity(a['seed']),'source':row['id'],'due':str(date.fromisoformat(a['due'])),'title':title}
-        db.request('POST','sales_followups',body=body,prefer='resolution=ignore-duplicates')
-        return {'ok':True}
     if op=='review':
         row=event(db,a['id'])
         if not db.me['managed'] or not db.members.get(row['owner'],{}).get('managed'):raise HwarangAuthError('피드백 작성 권한이 없습니다.')

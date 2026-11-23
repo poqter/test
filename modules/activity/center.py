@@ -49,8 +49,6 @@ class Records:
                 self._reads[key]=value
             seed('POST','rpc/sales_calendar_days',None,entry['summary'],{'first_day':day,'last_day':day})
             seed('GET','sales_empty_days',{'day':'eq.'+day,'select':'owner'},entry['empty_days'])
-            seed('GET','sales_notices',{'seen':'eq.false','order':'created_at.desc','limit':'20','select':'id,message,sales_events(day,kind)'},entry['notices'][:20])
-            seed('GET','sales_notices',{'seen':'eq.false','select':'id','limit':'50'},[{'id':n['id']} for n in entry['notices']])
         # The context RPC already authorizes and returns these collections.
         # Reuse only inside this Records instance; writes clear _reads as before.
         for table, value in (("sales_members", context["members"]), ("sales_branch_members", context["branch"])):
@@ -253,18 +251,6 @@ def calendar_extras(db,today):
         return db.request("POST","rpc/sales_calendar_days",body={"first_day":str(a),"last_day":str(b)})
     summary=calendar_rows(today,today)
     with st.container():
-        notices=db.request("GET","sales_notices",{"seen":"eq.false","order":"created_at.desc","limit":"20","select":"id,message,sales_events(day,kind)"})
-        if notices:
-            with st.expander("일정 알림",expanded=True,key="sales_notice_panel",on_change="rerun"):
-                st.caption(f"새 알림 {len(notices)}건")
-                for notice in notices:
-                    event=notice.get("sales_events") or {}
-                    st.write(f'{event.get("day","")} · {event.get("kind","")} · {notice["message"]}')
-                if st.button("표시된 알림 확인"):
-                    ids=",".join(n["id"] for n in notices)
-                    db.request("PATCH","sales_notices",{"id":"in.("+ids+")"},{"seen":True})
-                    ux.refresh()
-    with st.container():
         todays=summary if fetch_start<=today<=fetch_end else calendar_rows(today,today)
         todays=[r for r in todays if r["day"]==str(today) and not r["common"]]
         confirmations={r["owner"] for r in db.request("GET","sales_empty_days",{"day":"eq."+str(today),"select":"owner"})}
@@ -303,7 +289,7 @@ def reports(db,today,period):
     return render(db,today,period)
 
 def report_detail(db,row,show_content=True):
-    with st.expander("제출 내용 · 확인 및 피드백",expanded=True):
+    with st.expander("제출 내용 · 수정 이력",expanded=True):
         if row["data"].get("no_activity"):st.caption("활동 없는 날로 제출한 기록입니다.")
         if show_content:
             from modules.activity.redesign import count_grid
@@ -314,7 +300,6 @@ def report_detail(db,row,show_content=True):
         for prior in history:
             st.caption("수정 전 · "+prior["changed_at"][:16])
             st.write(prior["data"]["counts"],prior["data"].get("note",""),prior["data"].get("plan",""),prior["data"].get("help",""))
-        review(db,row,"report")
 
 @st.fragment
 def overview(db,today):

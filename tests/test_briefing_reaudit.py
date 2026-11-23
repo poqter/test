@@ -90,8 +90,8 @@ from unittest.mock import Mock
 st.session_state['login_profile']={'role':'super_admin'}
 body={'schema':'hwarang-public-v2','profile_code':'NEWS','profile_label':'종합뉴스 브리핑','issues':[{'title':'가상 뉴스','summary':'가상 요약','sources':[{'title':'가상 기사','source_name':'가상 발행사','url':'https://www.mois.go.kr/article/1','published_at':'2026-10-08T03:00:00+00:00'}]}]}
 bundle={'briefing':{'id':'brief','briefing_date':'2026-10-09'},'revision':{'id':'rev','publication_status':'draft','validation_status':'ok','coverage_status':'healthy'},'snapshot':{'id':'snap','external_content_payload':body,'content_payload':{'as_of':'2026-10-08T22:30:00+00:00'},'qa_payload':{'public_body_ready':True}}}
-_render_profile_detail(Mock(),'NEWS',bundle,True)
+_render_profile_detail(Mock(),'NEWS',bundle)
 '''
     at=AppTest.from_string(script).run()
     assert not at.exception
-    assert next(b for b in at.button if b.label=='이 브리핑 게시하기').disabled
+    assert not any(b.label=='이 브리핑 게시하기' for b in at.button)

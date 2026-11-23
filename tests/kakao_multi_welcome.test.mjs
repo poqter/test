@@ -84,7 +84,7 @@ test('welcome disabled or malformed request cannot touch ledger',async()=>{
 });
 
 test('welcome first-day confirmation includes empty schedule plus weather despite normal send_empty=false',async()=>{
- const r=await fixture({empty:true});assert.equal(r.result.accepted,true);assert.ok(r.sends.join('\n').includes('아직 등록된 일정이 없습니다.'));assert.ok(r.sends.join('\n').includes('날씨'));
+ const r=await fixture({empty:true});assert.equal(r.result.accepted,true);assert.ok(r.sends.join('\n').includes('👤 내 일정 미등록'));assert.ok(r.sends.join('\n').includes('날씨'));
 });
 
 test('branch welcome uses ordered messages and distinct buttons',async()=>{

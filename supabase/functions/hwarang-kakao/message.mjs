@@ -14,15 +14,24 @@ export function splitLines(lines, max=200) {
 export function briefing(day, events, emptyConfirmed=false, weather=undefined) {
   if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!Array.isArray(events))throw Error('Invalid data');
   const sorted=[...events].sort((a,b)=>(a.time_pending?'99:99':a.start_time||'99:99').localeCompare(b.time_pending?'99:99':b.start_time||'99:99')||String(a.id).localeCompare(String(b.id)));
-  const lines=[`🗓 ${Number(day.slice(5,7))}월 ${Number(day.slice(8,10))}일 일정`,''];
-  for(const e of sorted){
+  const lines=[`🗓 ${Number(day.slice(5,7))}월 ${Number(day.slice(8,10))}일 내 일정`, ''];
+  function format(e) {
     if(typeof e.title!=='string')throw Error('Invalid title');
     const time=e.start_time&&!e.time_pending?e.start_time.slice(0,5)+(e.end_time?'~'+e.end_time.slice(0,5):''):'시간 미정';
     const status=e.status&&e.status!=='예정'?` [${e.status}]`:'';
-    lines.push(`${time} ${e.title}${e.place?' · '+e.place:''}${status}`,'');
+    return `${time} ${e.title}${e.place?' · '+e.place:''}${status}`;
   }
-  if(!sorted.length)lines.push(emptyConfirmed?'등록된 일정이 없습니다.':'아직 등록된 일정이 없습니다.','');
-  if(weather!==undefined)lines.push(...weatherLines(day,weather));
+  const personal=sorted.filter(e=>!e.common);
+  const common=sorted.filter(e=>e.common);
+  const leave=e=>e.kind==='휴무' && !['취소','연기'].includes(e.status);
+  if (personal.some(leave)) lines.push('🌿 오늘은 휴무입니다');
+  for(const event of personal.filter(e=>!leave(e))) lines.push(format(event));
+  if(!personal.length)lines.push(emptyConfirmed?'👤 내 일정 없음':'👤 내 일정 미등록');
+  if(common.length) {
+    lines.push('', '🏢 지점 공통일정\n'+format(common[0]));
+    for(const event of common.slice(1)) lines.push(format(event));
+  }
+  if(weather!==undefined)lines.push('', ...weatherLines(day,weather));
   return splitLines(lines);
 }
 
@@ -80,7 +89,7 @@ export function weatherLines(day, weather) {
     if(!validCondition(weather.morning)||!validCondition(weather.afternoon)||(!weather.morning&&!weather.afternoon))return unavailable();
     const temperatures=weather.low!==null&&weather.high!==null?`최저 ${weather.low}℃ · 최고 ${weather.high}℃`:weather.high!==null?`최고 ${weather.high}℃`:weather.low!==null?`최저 ${weather.low}℃`:'기온 미확인';
     const periods=[weather.morning?'오전 '+weather.morning:'',weather.afternoon?'오후 '+weather.afternoon:''].filter(Boolean).join(' · ');
-    return [heading,'',periods,temperatures];
+    return [heading,periods,temperatures];
   }
   if(!numeric(weather.rain_probability,0,100))return unavailable();
   const conditions=new Set(['맑음','구름 많음','흐림','비','비 또는 눈','눈','소나기']);

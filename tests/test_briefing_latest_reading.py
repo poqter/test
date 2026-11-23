@@ -16,7 +16,7 @@ def test_today_keeps_latest_published_per_profile(monkeypatch):
     monkeypatch.setattr(center.st, 'tabs', lambda *a, **k: [nullcontext() for _ in codes])
     monkeypatch.setattr(center.st, 'info', notices.append)
     monkeypatch.setattr(reading_state, 'install_reading_state', lambda: None)
-    monkeypatch.setattr(center, '_render_profile_detail', lambda repo, code, bundle, manage: shown.append((code, bundle)))
+    monkeypatch.setattr(center, '_render_profile_detail', lambda repo, code, bundle: shown.append((code, bundle)))
     repo = SimpleNamespace(_snapshot_for_revision=lambda rid: {'id': rid},
                            bundle_from_parts=lambda b, r, s: {'briefing': b, 'revision': r, 'snapshot': s})
     center._render_today(repo, False)
