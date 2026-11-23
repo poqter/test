@@ -13,12 +13,12 @@ render(db,date(2026,11,6))
 def test_feedback_draft_survives_employee_navigation_and_explicit_check():
     at=app(REVIEW)
     assert not at.exception
-    text(at,'피드백 · 선택').input('다음 주 상담 확인').run()
+    assert not any(t.label.startswith('피드백') for t in at.text_area)
     assert not at.session_state['fixture_writes']
     button(at,'테스트 작성자 · 미제출').click().run()
     assert not any(b.label.startswith('확인 완료') for b in at.button)
     button(at,'테스트 구성원 · 검토 대기').click().run()
-    assert text(at,'피드백 · 선택').value=='다음 주 상담 확인'
+    assert not any(t.label.startswith('피드백') for t in at.text_area)
     button(at,'확인 완료').click().run()
     assert not at.exception
     assert len(at.session_state['fixture_checks'])==1
@@ -61,15 +61,15 @@ class Failing(FakeRecords):
   return super().request(method,table,params,body,prefer)
 db=Failing()''')
     at=app(code)
-    text(at,'피드백 · 선택').input('재시도할 피드백').run()
+    assert not any(t.label.startswith('피드백') for t in at.text_area)
     button(at,'확인 완료').click().run()
     assert not at.exception and at.error
-    assert text(at,'피드백 · 선택').value=='재시도할 피드백'
+    assert not any(t.label.startswith('피드백') for t in at.text_area)
     assert len(at.session_state['fixture_reviews'])==0
     assert not at.session_state['fixture_checks']
     button(at,'확인 완료').click().run()
     assert not at.exception
-    assert len(at.session_state['fixture_reviews'])==1
+    assert len(at.session_state['fixture_reviews'])==0
     assert len(at.session_state['fixture_checks'])==1
 
 

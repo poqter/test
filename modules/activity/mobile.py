@@ -137,10 +137,6 @@ def run(logout):
     .st-key-mobile_header [data-testid="stColumn"],.st-key-mobile_work_counts [data-testid="stColumn"]{min-width:0!important;flex:1 1 0!important;width:0!important}
     .st-key-mobile_header [data-testid="stColumn"]:nth-child(2){flex:2 1 0!important}
     .st-key-mobile_work_counts button p,.st-key-mobile_header button p{font-size:12px!important}
-    .st-key-mobile_alert_trigger{min-height:48px!important;min-width:92px!important}
-    .st-key-mobile_alert_trigger button{min-height:48px!important;border:1px solid #d5dfed!important;border-radius:12px!important;background:#fff!important;padding:8px 12px!important}
-    .st-key-mobile_header .st-key-mobile_alert_trigger button p{font-size:15px!important;font-weight:650!important;white-space:nowrap}
-    .st-key-mobile_alert_trigger [data-testid="stIconMaterial"]{font-size:24px!important}
     @media(min-width:701px){.st-key-mobile_menu_toggle{display:none}}
     @media(max-width:700px){[data-testid="stSidebar"]{display:none!important}
     [data-testid="stPopoverBody"]:has(.mobile-drawer){position:fixed!important;inset:0 auto 0 0!important;width:min(84vw,320px)!important;max-height:100dvh!important;overflow:auto;border-radius:0!important;padding-top:env(safe-area-inset-top,12px)}

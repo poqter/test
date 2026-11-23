@@ -71,7 +71,7 @@ render(db,date(2026,11,6))
     assert not at.exception and not at.session_state['fixture_writes']
     button(at,'확인 완료').click().run()
     assert not at.exception and len(at.session_state['fixture_checks'])==1
-    assert button(at,'피드백 저장')
+    assert not any(b.label=='피드백 저장' for b in at.button)
     row=at.session_state['fixture_reports'][0];row['revision']+=1
     at.run()
     assert not button(at,'확인 완료').disabled
