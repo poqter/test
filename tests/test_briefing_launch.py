@@ -3,7 +3,6 @@ import json
 from copy import deepcopy
 from datetime import date,datetime,timedelta,timezone
 from unittest.mock import Mock
-from io import BytesIO
 from pathlib import Path
 import pytest
 from launch_fixtures import AS_OF,observations,content,packet
@@ -309,20 +308,6 @@ def test_unknown_usage_stops_before_next_profile(monkeypatch):
         rt.generate_and_store_briefings(repository=repo,profile_codes=('NEWS','INSURANCE'),as_of=AS_OF,checkpoint=saved,save_checkpoint=lambda state:None)
     assert len(calls)==1 and saved['charge_uncertain'] and repo.log_api_usage.call_count==1
     repo.create_snapshot.assert_not_called()
-
-@pytest.mark.parametrize('code,count',[('NEWS',10),('MARKET',8)])
-def test_pdf_keeps_each_article_and_original_link_on_same_page(code,count):
-    from modules.briefing.public_body import public_pdf
-    from pypdf import PdfReader
-    reader=PdfReader(BytesIO(public_pdf(packet(code,count))))
-    seen=[]
-    for page in reader.pages:
-        text=page.extract_text() or ''
-        urls=[str(a.get_object().get('/A',{}).get('/URI','')) for a in page.get('/Annots',[])]
-        for i in range(count):
-            if f'검수용 가상 소식 {i+1} ·' in text:
-                seen.append(i);assert any(url.endswith('/article/'+str(i)) for url in urls)
-    assert sorted(seen)==list(range(count)) and '검수용 이름 팀장' in reader.pages[0].extract_text()
 
 @pytest.mark.parametrize('key,bearer',[('sb_secret_synthetic',False),('synthetic-legacy-jwt',True)])
 def test_server_key_headers_follow_supabase_key_type(key,bearer):

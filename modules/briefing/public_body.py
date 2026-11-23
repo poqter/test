@@ -1,9 +1,8 @@
 """Allowlisted customer/staff projections and portable readers. No AI calls."""
 from __future__ import annotations
-import html,json
+import html
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from functools import lru_cache
 from .normalize import is_safe_url
 
 METRIC_FIELDS=('code','label','value','unit','change','change_percent','observed_at','previous_observed_at','source_name','source_url','observation_kind','reference_definition','as_of_precision')
@@ -89,8 +88,9 @@ READER_CSS += CARD_CSS + """
 @media(max-width:600px){.wrap.reader-modern{padding:0 16px 20px}.reader-modern header{margin:0 -16px 14px;padding:22px 16px 0}.reader-modern .reader-footer{margin:20px -16px -20px;padding:20px 16px}}
 """
 
-# Web reader only: PDF typography and document generation below remain unchanged.
+
 READER_CSS += """
+.reader-byline{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 @font-face{font-family:'HW LINE Seed';src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_11-01@1.0/LINESeedKR-Bd.woff2') format('woff2');font-weight:100 900;font-display:block}
 body,button,.button{font-family:'HW LINE Seed','Malgun Gothic',sans-serif;font-weight:700;text-shadow:none;font-synthesis:none}
 .wrap{border-radius:18px}.panel,.metric{border-radius:12px}.value,.temps{font-variant-numeric:tabular-nums}
@@ -118,7 +118,7 @@ def public_html(packet,*,canonical_url=''):
     sections=body.get('sections') or [{'profile_code':body.get('profile_code') or 'NEWS','profile_label':body.get('profile_label') or '브리핑','briefing_date':packet.get('briefing_date')}]
     from .weather import weather_html
     header_weather = weather_html(body['weather_forecast']) if body.get('weather_forecast') else ''
-    parts=[f'<div class="wrap reader-modern"><header><div class="reader-heading"><div class="reader-heading-copy"><span class="brand">HWARANG WORKSPACE</span><h1>오늘의 브리핑</h1><p class="meta">{e(identity)} · {e(packet.get('requested_date') or packet.get('briefing_date'))}</p></div><div class="reader-heading-weather">{header_weather}</div></div><div class="controls"><button id="font" aria-pressed="false">큰 글자로 읽기</button></div></header>']
+    parts=[f'<div class="wrap reader-modern"><header><div class="reader-heading"><div class="reader-heading-copy"><span class="brand">HWARANG WORKSPACE</span><h1>오늘의 브리핑</h1><div class="reader-byline"><p class="meta">{e(identity)} · {e(packet.get('requested_date') or packet.get('briefing_date'))}</p><div class="controls"><button id="font" aria-pressed="false">큰 글자로 읽기</button></div></div></div><div class="reader-heading-weather">{header_weather}</div></div></header>']
     edition=packet.get('edition') or {}
     if edition.get('corrected_at'):
         parts.append('<p class="meta">정정 '+e(display_date(edition['corrected_at']))+' · '+e(edition.get('number'))+'판</p>')
@@ -184,79 +184,3 @@ def public_html(packet,*,canonical_url=''):
     document.querySelectorAll('[data-stale-date]').forEach(p=>p.hidden=p.dataset.staleDate>=today);
     </script>'''
     return '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">'+og+'<link rel="preload" href="https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_11-01@1.0/LINESeedKR-Bd.woff2" as="font" type="font/woff2" crossorigin><style>'+READER_CSS+'</style></head><body>'+''.join(parts)+script+'</body></html>'
-
-def public_pdf(packet):return _cached_pdf(json.dumps(packet,ensure_ascii=False,sort_keys=True))
-
-@lru_cache(maxsize=32)
-def _cached_pdf(serialized):
-    from io import BytesIO
-    from pathlib import Path
-    from reportlab.pdfbase import pdfmetrics
-    from reportlab.pdfbase.ttfonts import TTFont
-    from reportlab.lib.styles import ParagraphStyle
-    from reportlab.platypus import SimpleDocTemplate,Paragraph,Spacer,Table,TableStyle,KeepTogether
-    from reportlab.lib import colors
-    from reportlab.lib.pagesizes import A4
-    packet=json.loads(serialized);body=packet.get('body') or {};sender=packet.get('sender') or {};edition=packet.get('edition') or {}
-    font=Path(__file__).resolve().parents[2]/'assets/fonts/NanumGothic-Regular.ttf'
-    if 'HwarangBriefing' not in pdfmetrics.getRegisteredFontNames():pdfmetrics.registerFont(TTFont('HwarangBriefing',str(font)))
-    ink=colors.HexColor('#183346');muted=colors.HexColor('#435a6d');brand=colors.HexColor('#165e70')
-    base=ParagraphStyle('body',fontName='HwarangBriefing',fontSize=11.5,leading=19,textColor=ink,spaceAfter=8)
-    heading=ParagraphStyle('heading',parent=base,fontSize=15,leading=23,spaceBefore=14,spaceAfter=8,keepWithNext=True)
-    meta=ParagraphStyle('meta',parent=base,fontSize=9,leading=14,textColor=muted)
-    metric_style=ParagraphStyle('metric',parent=meta,fontSize=10,leading=19)
-    title=ParagraphStyle('title',parent=base,fontSize=24,leading=34,spaceAfter=10)
-    e=lambda v:html.escape(str(v or ''),quote=True);identity=' '.join(str(sender.get(k) or '') for k in ('name','position')).strip()
-    story=[Paragraph(e(body.get('profile_label') or '오늘의 브리핑'),title),Paragraph(e(packet.get('briefing_date'))+' · '+e(identity),base),Paragraph('수집 기준 '+e(display_date(body.get('as_of'))),meta)]
-    if edition.get('corrected_at'):story.append(Paragraph('정정 '+e(display_date(edition['corrected_at']))+' · '+e(edition.get('number'))+'판',meta))
-    items=body.get('market_metrics') or []
-    if items:
-        story.append(Paragraph('시장 지표',heading));cells=[]
-        for m in items:cells.append(Paragraph(e(m['label'])+f'<br/><font size="16">{m["value"]:,.2f} {e(m["unit"])}</font><br/>'+e(metric_change(m))+'<br/>'+e(metric_date(m))+'<br/>'+e(m.get('reference_definition') or m.get('observation_kind'))+f'<br/><a href="{e(m["source_url"])}" color="#155e8b">{e(m["source_name"])}</a>',metric_style))
-        rows=[cells[i:i+2]+([''] if len(cells[i:i+2])==1 else []) for i in range(0,len(cells),2)]
-        table=Table(rows,colWidths=[253.5,253.5],hAlign='LEFT');table.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP'),('BACKGROUND',(0,0),(-1,-1),colors.HexColor('#f1f5f8')),('BOX',(0,0),(-1,-1),0.6,colors.HexColor('#d8e3eb')),('INNERGRID',(0,0),(-1,-1),0.5,colors.HexColor('#d8e3eb')),('LEFTPADDING',(0,0),(-1,-1),12),('RIGHTPADDING',(0,0),(-1,-1),12),('TOPPADDING',(0,0),(-1,-1),12),('BOTTOMPADDING',(0,0),(-1,-1),12)]))
-        story.extend([table,Spacer(1,12)])
-    if body.get('market_flow'):
-        story.append(Paragraph('오늘의 경제·금융 흐름',heading))
-        for text in body['market_flow']:story.append(Paragraph(e(text),base))
-    last_section = None
-    for i,row in enumerate(body.get('issues') or [],1):
-        if row.get('section_label') and row['section_label'] != last_section:
-            last_section = row['section_label']
-            section_day = next((s.get('briefing_date') for s in body.get('sections', []) if s.get('profile_label') == last_section), None)
-            story.append(Paragraph(e(last_section)+((' · '+e(section_day)) if section_day else ''), heading))
-        article=[Paragraph('오늘의 소식',heading)] if i==1 else []
-        if row.get('important_update'):
-            label = '주말 긴급 공지' if row.get('weekend_urgent') else '중요 발표 추가'
-            article.append(Paragraph(label+' · '+e(display_date(row.get('added_at'))),meta))
-        if row.get('representative'):article.append(Paragraph('핵심 이슈 · '+e(row.get('category')),meta))
-        article.append(Paragraph(f'{i:02d} · '+e(row['title']),heading));article.append(Paragraph(e(row.get('summary')),base))
-        if row.get('weekend_urgent'):
-            for field in ('why_important', 'impact_summary'):
-                if row.get(field): article.append(Paragraph(e(row[field]),base))
-        for src in row.get('sources') or []:article.append(Paragraph(f'<a href="{e(src["url"])}" color="#155e8b">{e(src["source_name"])} · 원문 읽기</a> · {e(display_date(src["published_at"]))}',meta))
-        article.append(Spacer(1,5))
-        card=Table([[article]],colWidths=[507],hAlign='LEFT')
-        card.setStyle(TableStyle([('LEFTPADDING',(0,0),(-1,-1),0),('RIGHTPADDING',(0,0),(-1,-1),0),('TOPPADDING',(0,0),(-1,-1),0),('BOTTOMPADDING',(0,0),(-1,-1),0)]))
-        _,height=card.wrap(507,10000)
-        story.append(card) if height < 650 else story.extend(article)
-    research=body.get('research') or {}
-    if research.get('reports'):
-        story.append(Paragraph('공개 리서치에서 확인한 견해',heading))
-        for group in research.get('viewpoints') or []:
-            story.append(Paragraph(e(group.get('theme'))+' · '+e(group.get('timeframe')),heading))
-            for v in group.get('views') or []:story.append(Paragraph(e(v.get('firm'))+' · '+e(v.get('summary'))+'<br/>'+e(v.get('conditions')),base))
-        for r in research['reports']:story.append(Paragraph(f'<a href="{e(r["url"])}" color="#155e8b">{e(r["firm"])} · {e(r["title"])}</a>',meta))
-    if body.get('schema') == 'hwarang-staff-export-v1':
-        story.append(Paragraph('상담 준비 · 직원 내부용 / 고객 공유 금지', heading))
-        for row in body.get('consultations') or []:
-            story.append(Paragraph(e(row['title']), heading))
-            story.append(Paragraph('상담 상태: '+e(row['state']), meta))
-            for field in row['fields']:
-                story.append(Paragraph(e(field['label'])+' · '+e(field['text']), base))
-    output=BytesIO()
-    def decoration(canvas,doc):
-        canvas.setTitle(str(body.get('profile_label') or '오늘의 브리핑'));canvas.setAuthor(identity);canvas.setStrokeColor(brand);canvas.setLineWidth(2);canvas.line(38,812,556,812)
-        canvas.setFont('HwarangBriefing',8);canvas.setFillColor(muted);canvas.drawString(38,25,('화랑 WORKSPACE · '+identity)[:70]);canvas.drawRightString(556,25,str(doc.page))
-    SimpleDocTemplate(output,pagesize=A4,rightMargin=38,leftMargin=38,topMargin=46,bottomMargin=45).build(story,onFirstPage=decoration,onLaterPages=decoration)
-    return output.getvalue()

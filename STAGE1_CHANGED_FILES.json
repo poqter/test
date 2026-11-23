@@ -4,7 +4,7 @@
   "briefing_code_sha256": {
     "__init__.py": "66c4884dd2d46a2e672f3dc686c8c53e1cbfc0ff7af3a3ee7917ef0b6e90ad47",
     "api_errors.py": "20ca68aa829159e97f59d18b429b36fb588dfde1ae3d78f35ef5d5d6b108b7dd",
-    "briefing_center.py": "7110d5a44f1997169aebe89b8fa245753ad57e67b8c11e08ac65d44896bf2968",
+    "briefing_center.py": "144a5e06f173dccf57aeb07c5e18c2719ad4c5e9303e2aa5ef506b3df1ab7cd3",
     "business_calendar.py": "d65fbee6e2102e2d4cd60c11979b3cfba4255971d8c0e4d291f41112731b8dd9",
     "checkpoints.py": "0dab7e7c2cf62f597c33f3c5658a3cad5c1053760fa26c97cafbf2297dc1fd3c",
     "clustering.py": "4a34591a00905fbd299d1f7c1bcfeaa5b3fd87380c43b3a50269cdbb155f356a",
@@ -33,7 +33,7 @@
     "preflight.py": "d13d780bb60e8f1726230a01d87ae535bf5c02bda9f2545fd373ede6b06d4273",
     "presentation.py": "a36937c5687a64f129e3700d3a5172c694331d251d7b3b463b7092a48f569b85",
     "profile_rules.py": "dd99470840284ba981cc5041437792e2a3ffb4e805ba3efeedc1748d68d6ccbc",
-    "public_body.py": "ef789c08b693d13c050b751847568ee305233f565d6b7f63020d7bca9696a3f9",
+    "public_body.py": "af75f794e2020d16a6a41dbc136553c991168835e3d662fdae771d701cb623d4",
     "publication.py": "6e63b14564a533383e519a888cdb86320487ca93304d8eee878f3ddbb92f80b2",
     "publication_schedule.py": "89653e22dd495c7f63b188cd39ee3185b2f53a7bde1e8a431ed55e65e28821ee",
     "reading_state.py": "a7011ece952cd87ad8e92aba07eb900d1c7c41a80f44db916f8c8363c76f8b94",
@@ -44,7 +44,7 @@
     "shared_content.py": "1262bc707dbe8faf6f465cef0d4a1819582b022883607d6cc89dfcc3f1143173",
     "sharing.py": "aca5d377b4dee6673fbe1b474c59a0f867e41cd19718e7bd57c695b21e5b84b5",
     "source_policy.py": "1f6ceb13850c23f951fffb4323bacc49a58101a808692bafd2488a6c78fe7745",
-    "staff_exports.py": "d7044d7dab64080f2d6663ee0cad9c4dc333cfffed76e46927d6d77f867ef19d",
+    "staff_exports.py": "a73609000832e1e4e2be4bbcc0c30565653c7a57c33d1fbeff50801e12ee7976",
     "tool_policy.py": "0762fb107425b9aacf9cec571f1f9e67044b17abad40d075f7cc5185e4460383",
     "weather.py": "bf7833e6f3e5803c1a35b179fd154ea83bf63a4d9ae57e45f89c616d40300959",
     "weather_detail.py": "d1458b22544bc7ebb815811c9c0dcabdce76209bce586bd9bd4d1aa474ef1aed"
@@ -477,7 +477,7 @@
     "expired_grace_days": 7,
     "old_links": "original expiry retained",
     "content": "immutable common HTML body and separate weather",
-    "pdf": "staff download on demand",
+    "pdf": "removed",
     "corrections": "existing shares unchanged"
   }
 }

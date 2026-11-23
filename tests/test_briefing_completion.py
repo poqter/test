@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 import pytest
 from modules.briefing.execution_policy import checkpoint_identity, retry_guidance, budget_notice, request_plan
 from modules.briefing.costs import usage_summary
-from modules.briefing.staff_exports import staff_packet, team_summary, staff_pdf
+from modules.briefing.staff_exports import staff_packet, team_summary
 from modules.briefing.public_body import customer_body
 
 def bundle():
@@ -19,7 +19,6 @@ def test_internal_export_never_leaks_customer():
     assert 'INTERNAL_SENTINEL' not in str(customer_body(packet['body']))
     assert packet['edition']['number']==2
     assert '직원 내부용' in team_summary(item)
-    assert staff_pdf(item,{'name':'테스트','position':'팀장'}).startswith(b'%PDF')
 
 def test_costs_do_not_double_count_estimate_and_actual():
     s=usage_summary([{'actual_cost_usd':.2,'estimated_cost_usd':.3,'metadata':{'execution_purpose':'validation'}},

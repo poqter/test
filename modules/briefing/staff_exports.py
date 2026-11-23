@@ -1,6 +1,5 @@
 """Internal exports from saved editions only. Never passed to customer DTOs."""
-from copy import deepcopy
-from .public_body import staff_body, public_pdf
+from .public_body import staff_body
 
 FIELDS = (("recommended_expression", "상담 표현"), ("check_first", "먼저 확인"),
           ("avoid_expression", "주의할 표현"), ("next_step", "다음 단계"))
@@ -37,6 +36,3 @@ def staff_packet(bundle, sender):
             "sender": {key: str(sender.get(key) or "") for key in ("name", "position")},
             "edition": {"number": revision.get("revision_no"), "corrected_at": revision.get("generated_at") if revision.get("revision_type") == "correction" else None},
             "body": body}
-
-def staff_pdf(bundle, sender):
-    return public_pdf(staff_packet(bundle, sender))

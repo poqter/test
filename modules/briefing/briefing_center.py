@@ -176,24 +176,22 @@ def _combined_sharing(repo, selected_day=None, *, use_cache=False):
             codes = []
             for code in PROFILE_ORDER:
                 label = '보험업계' if code == 'INSURANCE' else PROFILE_LABELS[code]
-                chosen = st.checkbox(label, value=code in ('MARKET', 'NEWS'), disabled=False,
+                choice, published = st.columns([2, 1])
+                chosen = choice.checkbox(label, value=code in ('MARKET', 'NEWS'), disabled=False,
                                      key='share_scope_v2_'+uid+'_'+day+'_'+code)
                 if chosen: codes.append(code)
                 if code in reasons_by_code: st.caption(reasons_by_code[code])
-                elif code in bundles: st.caption(str(bundles[code]['briefing']['briefing_date'])+' 브리핑')
+                elif code in bundles: published.caption(str(bundles[code]['briefing']['briefing_date'])[5:].replace('-', '.')+' 게시')
             st.caption('보험업계 선택 시 게시된 기사 전체를 공유합니다. 직원용 상담 문구와 운영 정보는 제외됩니다.')
             if not approved: st.info('최고관리자가 운영 관리에서 고객 공유를 허용하면 사용할 수 있습니다.')
-            preview = st.toggle('고객 화면 미리보기', key='share_preview_'+uid+'_'+day, disabled=not codes)
-    from .weather import REGIONS, DEFAULT_REGION, checked_region, region_name, get_weather
-    weather_region=None
-    if codes:
-        options=[r['code'] for r in REGIONS]
-        preferred=checked_region(st.session_state.get('hw_weather_region',DEFAULT_REGION))
-        weather_region=st.selectbox('공유할 날씨 지역 · 시·도',options,index=options.index(preferred),
-            format_func=region_name,key='share_weather_'+uid+'_'+day)
-        st.caption('시·도 대표 지점 기준입니다. 선택한 날짜의 예보를 공유 링크에 함께 저장합니다.')
-    st.caption('공유 범위 · '+' / '.join(PROFILE_LABELS[c] for c in codes)+
-        (' · 날씨 '+region_name(weather_region) if weather_region else ''))
+            from .weather import REGIONS, DEFAULT_REGION, checked_region, region_name, get_weather
+            weather_region=None
+            if codes:
+                options=[r['code'] for r in REGIONS]
+                preferred=checked_region(st.session_state.get('hw_weather_region',DEFAULT_REGION))
+                weather_region=st.selectbox('날씨 지역',options,index=options.index(preferred),
+                    format_func=region_name,key='share_weather_'+uid+'_'+day)
+                st.caption('시·도 대표 지점 기준입니다. 선택한 날짜의 예보를 공유 링크에 함께 저장합니다.')
     key = 'combined_share_'+str(weather_region or 'none')+'_'+day+'_'+uid+'_'+'_'.join(codes)
     with right:
         with st.container(border=True):
@@ -212,18 +210,20 @@ def _combined_sharing(repo, selected_day=None, *, use_cache=False):
                 packet = shared['packet']; sender = packet['sender']
                 st.caption('아래 문구의 복사 버튼으로 링크까지 복사한 뒤 카카오톡·문자에 붙여넣으세요.')
                 st.code(f"{sender['name']} {sender['position']}이 전하는 오늘의 브리핑\n{day} · 소식 {len(packet['body']['issues'])}개\n{url}", language=None)
-                st.link_button('고객 화면 열기', url, use_container_width=True)
-                if st.button('이 공유 링크 취소', key=key+'_revoke'):
+                open_col, cancel_col = st.columns(2)
+                open_col.link_button('고객 화면 열기', url, use_container_width=True)
+                if cancel_col.button('이 공유 링크 취소', key=key+'_revoke'):
                     try:
                         repo.revoke_share(shared['token'],uid)
                         st.session_state.pop(key,None);st.rerun()
                     except BriefingRepositoryError as exc: st.error(str(exc))
             else:
                 st.info('영역을 선택하고 링크를 만들면 발신자 이름·직책이 포함된 문구가 표시됩니다.')
-    if preview and codes and any(c in bundles for c in codes):
+    if codes and any(c in bundles for c in codes):
         from .sharing import combine_bodies
-        with st.container(border=True):
-            st.subheader('고객에게 보이는 본문')
+        with st.expander('고객에게 보일 본문 확인', key='share_preview_'+uid+'_'+day, on_change='rerun') as panel:
+            if not panel.open:
+                return
             try:
                 sender = repo.staff_sender(uid)
                 st.caption(day+' · '+sender['name']+' '+sender['position'])
