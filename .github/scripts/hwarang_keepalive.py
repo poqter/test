@@ -22,7 +22,7 @@ APP_TARGETS = (
     AppTarget("WORKSPACE", os.getenv("WORKSPACE_URL", "https://hwarang-workspace.streamlit.app"), ".hw-auth-copy h1"),
     AppTarget("CALCULATOR", os.getenv("CALCULATOR_URL", "https://hwarang-calculator.streamlit.app"), ".calc-gate h1"),
     AppTarget("ACADEMY", os.getenv("ACADEMY_URL", "https://hwarang-academy.streamlit.app")),
-    AppTarget("CALENDAR", os.getenv("CALENDAR_URL", "https://hwarang-calendar.streamlit.app")),
+    AppTarget("CALENDAR", os.getenv("CALENDAR_URL", "https://hwarang-calendar.streamlit.app"), '.hw-auth-copy h1, [data-testid="stForm"] button:has-text("캘린더 로그인")'),
 )
 
 
