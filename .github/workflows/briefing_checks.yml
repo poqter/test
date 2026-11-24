@@ -84,7 +84,6 @@ jobs:
       - name: Install CBT and learning DB dependencies
         if: ${{ !cancelled() && steps.select.outputs.academy == 'true' }}
         id: exam_deps
-        if: ${{ !cancelled() }}
         run: npm ci --ignore-scripts --prefix tests/exams
       - name: CBT database and cancellation regression
         if: ${{ !cancelled() && steps.select.outputs.academy == 'true' }}
@@ -97,7 +96,6 @@ jobs:
       - name: Install synthetic DB dependencies
         if: ${{ !cancelled() && (steps.select.outputs.academy == 'true' || steps.select.outputs.activity == 'true') }}
         id: synthetic_db
-        if: ${{ !cancelled() }}
         run: npm ci --ignore-scripts --prefix tests/studio_db
       - name: Academy learning authorization and persistence regression
         if: ${{ !cancelled() && steps.select.outputs.academy == 'true' }}
