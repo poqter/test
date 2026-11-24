@@ -200,7 +200,7 @@ def render_customer_brief(p):
         S,
     )
     def radar_reference(label, key):
-        if key == "질병종수술":
+        if key in ("질병종수술", "상해종수술"):
             return 2000  # amounts are in 만원
         if raw:
             return amount(raw.get("references", {}).get(label, "-"))
