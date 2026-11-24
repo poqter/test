@@ -99,6 +99,9 @@ def extract_kb_pdf(content, password=None):
                            monthly=int(premium_match[1].replace(',', '')) if premium_match else 0,
                            premium_missing=premium_match is None, fully_paid="납입완료" in premium_text,
                            pages=[page_no], rows=[], continuation_total=int(continuation[2]) if continuation else 1)
+            parties = region(100, 135, 400, 155).split("/", 1)
+            if len(parties) == 2:
+                current["holder"], current["insured"] = (part.strip() for part in parties)
             if continuation and int(continuation[1]) > 1:
                 if not contracts or any(norm(contracts[-1][k]) != norm(current[k]) for k in ('company','product','start','end')):
                     raise ValueError(f"{page_no}쪽의 앞 계약 페이지가 없습니다.")
@@ -254,5 +257,5 @@ def convert_kb(raw, calculation_month):
 def parse_kb_pdf(content, calculation_month):
     from modules.shared.runtime_cache import cached, digest_bytes
     import copy
-    raw=cached('parse:analyzer:kb', 'kb-report-v2:'+digest_bytes(content),lambda:extract_kb_pdf(content))
+    raw=cached('parse:analyzer:kb', 'kb-report-v3:'+digest_bytes(content),lambda:extract_kb_pdf(content))
     return convert_kb(copy.deepcopy(raw),calculation_month)

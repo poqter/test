@@ -564,11 +564,7 @@ def build_analysis_file(
     return build_analysis_from_data(data, selected_labels)
 
 
-def build_analysis_from_data(data: dict, selected_labels: list[str] | None = None) -> tuple[bytes, str, str]:
-    """Shared exporter; legacy XLSX route and reviewed PDF route use one layout."""
-    from modules.consultation.analyzer_state import sort_contracts
-    if data.get("source_type") != "kb_pdf":
-        data = sort_contracts(data)
+def selected_coverage_rows(data, selected_labels=None):
     available = {item["label"]: item for item in data["coverages"]}
 
     if selected_labels is None:
@@ -587,6 +583,16 @@ def build_analysis_from_data(data: dict, selected_labels: list[str] | None = Non
     death_position = next((i for i, item in enumerate(selected)
                            if item['label'] == '질병사망'), 0)
     selected.insert(death_position, general_death)
+
+    return selected
+
+
+def build_analysis_from_data(data: dict, selected_labels: list[str] | None = None) -> tuple[bytes, str, str]:
+    """Shared exporter; legacy XLSX route and reviewed PDF route use one layout."""
+    from modules.consultation.analyzer_state import sort_contracts
+    if data.get("source_type") != "kb_pdf":
+        data = sort_contracts(data)
+    selected = selected_coverage_rows(data, selected_labels)
 
     workbook = Workbook()
     workbook.remove(workbook.active)

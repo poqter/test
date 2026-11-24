@@ -338,6 +338,7 @@ def _parse_source_file_uncached(main_bytes: bytes) -> dict:
                     "display": DISPLAY_NAMES.get(label, str(raw_label).strip()),
                     "reference": _to_number(coverage_ws.cell(row, 3).value),
                     "group": _group_for(label),
+                    "brief_unknown": any(coverage_ws.cell(row, col).value in ("확인 필요","미제공") for col in contract_columns) or (all(coverage_ws.cell(row, col).value is None for col in contract_columns)),
                     "values": values,
                 }
             )
@@ -382,6 +383,6 @@ def parse_source_file(main_bytes: bytes):
     """Parse the current upload once per session; callers receive a private copy."""
     import copy
     from modules.shared.runtime_cache import cached, digest_bytes
-    parsed = cached("parse:analyzer:source", "coverage-v4:" + digest_bytes(main_bytes),
+    parsed = cached("parse:analyzer:source", "coverage-v5:" + digest_bytes(main_bytes),
                     lambda: _parse_source_file_uncached(main_bytes))
     return copy.deepcopy(parsed)

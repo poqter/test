@@ -5,7 +5,7 @@ from modules.consultation.coverage_signature import build_signature
 from modules.consultation.coverage_visual_brief import brief_pdf
 
 
-def render_reports(parsed, signature):
+def render_reports(parsed, signature, selected_labels):
     profile = st.session_state.get("login_profile") or {}
     token = (signature, profile.get("display_name"), profile.get("position_name"))
     if st.session_state.get("analyzer_reports_token") != token:
@@ -15,7 +15,7 @@ def render_reports(parsed, signature):
     builders = {"고객용 보장 브리핑": lambda: brief_pdf(parsed)}
     if "kb" in parsed:
         builders = {
-            "화랑 보장분석": lambda: build_signature(parsed["kb"], profile),
+            "화랑 보장분석": lambda: build_signature(parsed, profile, selected_labels),
             **builders,
         }
     for title, build in builders.items():

@@ -11,6 +11,8 @@ DEFAULT_KOREAN_FONT = "HwarangGothicEmbedded"
 CUSTOMER_BODY_FONT = "HwarangMyeongjoEmbedded"
 CUSTOMER_HEADING_FONT = DEFAULT_KOREAN_FONT
 _FONT_FILES = {
+    "CoverageSans": "NotoSansKR-Regular.ttf",
+    "CoverageSansBold": "NotoSansKR-Bold.ttf",
     DEFAULT_KOREAN_FONT: "NanumGothic-Regular.ttf",
     CUSTOMER_BODY_FONT: "NanumMyeongjo-Regular.ttf",
 }
@@ -26,6 +28,10 @@ def _register(name: str) -> str:
 def korean_pdf_font() -> str:
     """Return the embedded Gothic font used by existing shared exports."""
     return _register(DEFAULT_KOREAN_FONT)
+
+
+def coverage_fonts() -> tuple[str, str]:
+    return _register("CoverageSans"), _register("CoverageSansBold")
 
 
 def customer_pdf_fonts() -> tuple[str, str]:

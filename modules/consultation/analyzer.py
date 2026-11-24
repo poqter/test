@@ -334,7 +334,7 @@ def run() -> None:
             )
 
             from modules.consultation.coverage_downloads import render_reports
-            render_reports(parsed, signature)
+            render_reports(parsed, signature, selected_labels)
 
         elif not error or error.get("signature") != signature:
             st.info("원본 파일을 업로드하면 결과를 확인할 수 있습니다." if not uploaded_main else "출력할 보장항목을 확인하고 보장 분석을 시작하세요.")
