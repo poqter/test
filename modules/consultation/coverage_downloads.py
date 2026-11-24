@@ -23,10 +23,19 @@ border:1px solid #cdd3db;border-radius:8px;text-decoration:none!important;backgr
 .hw-coverage-download:hover,.hw-coverage-download:focus-visible{border-color:#506482}
 </style>
 <a class="hw-coverage-download" id="$id" data-name="$name" download="$initial"
-href="data:application/pdf;base64,$payload">$title PDF 다운로드</a>
+href="#">$title PDF 다운로드</a>
 <script>
 (() => {
     const link = document.getElementById("$id");
+    const bytes = Uint8Array.from(atob("$payload"), c => c.charCodeAt(0));
+    link.href = URL.createObjectURL(new Blob([bytes], {type:"application/pdf"}));
+    const cleanup = new MutationObserver(() => {
+        if (!link.isConnected) {
+            URL.revokeObjectURL(link.href);
+            cleanup.disconnect();
+        }
+    });
+    cleanup.observe(document.body, {childList:true, subtree:true});
     const dateFormat = new Intl.DateTimeFormat("en-CA", {
         timeZone:"Asia/Seoul", year:"numeric", month:"2-digit", day:"2-digit"
     });
