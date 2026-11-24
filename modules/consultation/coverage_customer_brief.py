@@ -199,11 +199,18 @@ def render_customer_brief(p):
         f,
         S,
     )
+    def radar_reference(label, key):
+        if key == "질병종수술":
+            return 2000  # amounts are in 만원
+        if raw:
+            return amount(raw.get("references", {}).get(label, "-"))
+        return workbook.get(key, {}).get("reference") or 0
+
     entries = [
         (
             label,
             val(label) if label in m else val(key),
-            (amount(raw.get("references", {}).get(label, "-")) if raw else (workbook.get(key, {}).get("reference") or 0)),
+            radar_reference(label, key),
         )
         for label, key in AXES
     ]
