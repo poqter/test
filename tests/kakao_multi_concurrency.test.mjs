@@ -4,19 +4,30 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import {makeWorker} from '../supabase/functions/hwarang-kakao/worker.mjs';
 import {seal} from '../supabase/functions/hwarang-kakao/crypto.mjs';
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-export async function model({implementation=makeWorker,owners=20,parts=5,sendMs=1,uncertain=null,storageLost=null,revoked=null,atomic=false,claimStorageFail=null,rotateRejected=null,onSend=null}={}){
+export async function model({implementation=makeWorker,owners=20,parts=5,sendMs=1,synchronizeFirstWave=false,uncertain=null,storageLost=null,revoked=null,atomic=false,claimStorageFail=null,rotateRejected=null,onSend=null}={}){
  const env={SUPABASE_URL:'https://offline.invalid',SUPABASE_SERVICE_ROLE_KEY:'synthetic',KAKAO_MULTI_ENABLED:'true',KAKAO_MULTI_TOKEN_KEY:'x'.repeat(32),KAKAO_REST_API_KEY:'synthetic-client',KAKAO_CLIENT_SECRET:'synthetic-secret'};
  const jobs=[],attempts=[],rpcCalls=[],active=new Set();let peak=0,inFlight=0,ticks=0,units=0;
  for(let n=0;n<owners;n++){
   const owner='owner'+n,cipher=await seal({access_token:owner,refresh_token:'synthetic',expires_at:Date.now()+(owner===rotateRejected?10000:3600000),refresh_expires_at:Date.now()+86400000},env.KAKAO_MULTI_TOKEN_KEY,owner,1);
   for(let part=1;part<=parts;part++)jobs.push({id:owner+'-'+part,owner_id:owner,part,body:owner+' part '+part,status:'reserved',encrypted_tokens:cipher});
  }
+ let releaseFirstWave;
+ const firstWave = new Promise(resolve => { releaseFirstWave = resolve; });
  const claim=id=>{const j=jobs.find(j=>j.id===id);if(!j||j.status!=='reserved'||jobs.some(x=>x.owner_id===j.owner_id&&(x.status==='sending'||(x.part<j.part&&x.status!=='accepted'))))return {claimed:false};j.status='sending';return {...j,job_id:j.id,claim_token:'claim-'+j.id,generation:1};};
  const fetcher=async(url,init)=>{
   if(url==='https://kapi.kakao.com/v2/api/talk/memo/default/send'){
    const text=JSON.parse(new URLSearchParams(init.body).get('template_object')).text,j=jobs.find(j=>j.body===text);
    assert.ok(j);assert.equal(j.status,'sending');assert.equal(init.headers.Authorization,'Bearer '+j.owner_id);
    assert.ok(!active.has(j.owner_id),'Only one sending part per owner');active.add(j.owner_id);inFlight++;peak=Math.max(peak,inFlight);attempts.push(j.id);
+   // Hold the first sends until all three owners have entered. A bounded
+   // fallback lets the peak assertion report an undersized worker pool.
+   if (synchronizeFirstWave && attempts.length <= 3) {
+    const timeout = setTimeout(releaseFirstWave, 2000);
+    try {
+     if (inFlight === 3) releaseFirstWave();
+     await firstWave;
+    } finally { clearTimeout(timeout); }
+   }
    try{if(onSend)onSend();await pause(sendMs);if(j.id===uncertain)throw Error('Response lost');return Response.json({result_code:0});}finally{active.delete(j.owner_id);inFlight--;}
   }
   if(url==='https://kauth.kakao.com/oauth/token')return Response.json({access_token:'rotated',expires_in:3600});
@@ -47,7 +58,7 @@ export async function model({implementation=makeWorker,owners=20,parts=5,sendMs=
  return {jobs,attempts,rpcCalls,tick,verify,stats:()=>({peak,ticks,units})};
 }
 for(const sendMs of [1,15])test(`bounded owner pool drains 20 x 5 parts at simulated provider delay ${sendMs}ms`,async()=>{
- const m=await model({sendMs});for(let n=0;n<10&&m.jobs.some(j=>j.status==='reserved');n++)assert.equal((await m.tick()).status,200);
+ const m=await model({sendMs,synchronizeFirstWave:true});for(let n=0;n<10&&m.jobs.some(j=>j.status==='reserved');n++)assert.equal((await m.tick()).status,200);
  m.verify();assert.equal(m.attempts.length,100);assert.ok(m.jobs.every(j=>j.status==='accepted'));assert.equal(m.stats().peak,3);
 });
 test('uncertain part closes only that owner stale queue and preserves other owners',async()=>{
@@ -60,7 +71,7 @@ test('a revoked owner is never sent; other owners keep their own tokens',async()
  const m=await model({owners:3,revoked:'owner0-1'});await m.tick();m.verify();assert.ok(m.attempts.every(id=>!id.startsWith('owner0-')));assert.equal(m.attempts.length,10);
 });
 test('lost completion response stops this tick owner tail without retrying accepted part',async()=>{
- const m=await model({owners:3,storageLost:'owner0-2'});await m.tick();m.verify();assert.deepEqual(m.attempts.filter(id=>id.startsWith('owner0-')),['owner0-1','owner0-2']);assert.equal(m.stats().peak,3);
+ const m=await model({owners:3,synchronizeFirstWave:true,storageLost:'owner0-2'});await m.tick();m.verify();assert.deepEqual(m.attempts.filter(id=>id.startsWith('owner0-')),['owner0-1','owner0-2']);assert.equal(m.stats().peak,3);
 });
 test('combined begin RPC replaces enter+claim only when DB advertises support',async()=>{
  const m=await model({owners:3,atomic:true});await m.tick();m.verify();assert.equal(m.attempts.length,15);assert.equal(m.rpcCalls.filter(([n])=>n==='kakao_service_begin_job').length,15);assert.equal(m.rpcCalls.filter(([n])=>n==='kakao_service_claim').length,0);assert.equal(m.rpcCalls.filter(([n])=>n==='kakao_service_tick_enter').length,1);
