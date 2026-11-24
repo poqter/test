@@ -82,8 +82,19 @@ def build_signature(raw, profile):
             style,
         )
 
+    def record_section(flowable):
+        entry = getattr(flowable, "outline", None)
+        if entry:
+            key, title = entry
+            doc.canv.bookmarkPage(key)
+            doc.canv.addOutlineEntry(title, key)
+
+    doc.afterFlowable = record_section
+
     def heading(text):
-        story.extend([para(text, 21), Spacer(1, 12)])
+        title = para(text, 21)
+        title.outline = (f"section{len(story)}", text)
+        story.extend([title, Spacer(1, 12)])
 
     def table(headers, rows, widths, size=9, repeat_title=None):
         data = [
@@ -278,6 +289,10 @@ def build_signature(raw, profile):
                 f'<a name="contract{i}"/>계약별 상세 내역',
                 ParagraphStyle("detail", fontName=font, fontSize=19, leading=27),
             )
+        )
+        story[-1].outline = (
+            f"detail{i}",
+            f"{c['company']} · {c['product']} · {c['start']}",
         )
         title = f"{c['company']}  ·  계약 {i + 1:02}   {c['product']}\n가입 {c['start']}     만기 {c['maturity']}     월 보험료 "
         title += "미제공" if c["premium_missing"] else f"{c['monthly']:,}원"
