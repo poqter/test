@@ -237,14 +237,22 @@ def render_customer_brief(p):
             return amount(raw.get("references", {}).get(label, "-"))
         return workbook.get(key, {}).get("reference") or 0
 
-    entries = [
-        (
-            label,
-            val(label) if label in m else val(key),
-            radar_reference(label, key),
-        )
-        for label, key in AXES
-    ]
+    surgery_parts = []
+    entries = []
+    for label, key in AXES:
+        value = val(label) if label in m else val(key)
+        reference = radar_reference(label, key)
+        if key in ("질병수술", "상해수술", "질병종수술", "상해종수술"):
+            if not surgery_parts:
+                surgery_position = len(entries)
+            surgery_parts.append((value, reference))
+        else:
+            entries.append((label, value, reference))
+    if all(value is not None for value, _ in surgery_parts):
+        surgery_total = sum(value for value, _ in surgery_parts)
+        reference_total = (sum(ref for _, ref in surgery_parts)
+                           if all(ref > 0 for _, ref in surgery_parts) else 0)
+        entries.insert(surgery_position, ("수술비 합계", surgery_total, reference_total))
     entries = [r for r in entries if r[1] is not None]
     comparable = [row for row in entries if row[2] > 0]
     if len(comparable) >= 3:
