@@ -3,7 +3,7 @@ name: HWARANG Keep Alive
 on:
   # Every three hours at :17 KST, starting at 00:17.
   schedule:
-    - cron: "17 */3 * * *"
+    - cron: "17 0,3,6,9,12,15,18,21 * * *"
   workflow_dispatch:
 
 permissions:
