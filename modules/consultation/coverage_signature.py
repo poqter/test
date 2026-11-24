@@ -24,6 +24,22 @@ IVORY = "#F3EBDD"
 LINE = "#E3E6EA"
 
 
+def ribbon(canvas, x, y, width, height):
+    """Layer sweeping brand ribbons inside a bounded illustration area."""
+    canvas.saveState()
+    canvas.translate(x, y)
+    canvas.scale(width, height)
+    for offset, shade in [(0.34, "#344360"), (0.21, "#526079"), (0.12, GOLD), (0.10, "#283650")]:
+        path = canvas.beginPath()
+        path.moveTo(0, 0)
+        path.curveTo(0.38, offset, 0.58, 0.0, 1, 0.65 + offset)
+        path.lineTo(1, 0)
+        path.close()
+        canvas.setFillColor(colors.HexColor(shade))
+        canvas.drawPath(path, fill=1, stroke=0)
+    canvas.restoreState()
+
+
 def money(value):
     return f"{value:,.6f}".rstrip("0").rstrip(".")
 
@@ -145,15 +161,7 @@ def build_signature(raw, profile):
         canvas.saveState()
         canvas.setFillColor(colors.HexColor(NAVY))
         canvas.rect(0, 240, 596, 610, fill=1, stroke=0)
-        canvas.setStrokeColor(colors.HexColor("#39465B"))
-        for i in range(16):
-            x = 320 + i * 5
-            path = canvas.beginPath()
-            path.moveTo(x, 842)
-            path.lineTo(x, 450 + i * 3)
-            path.lineTo(x + 150, 550 + i * 3)
-            path.lineTo(x + 150, 842)
-            canvas.drawPath(path)
+        ribbon(canvas, 0, 240, A4[0], 260)
         canvas.setFillColor(colors.white)
         canvas.setFont(font, 18)
         canvas.drawString(40, 786, "HWARANG")
@@ -183,6 +191,7 @@ def build_signature(raw, profile):
         canvas.setFont(font, 9)
         canvas.setFillColor(colors.HexColor(NAVY))
         canvas.drawString(29, 811, "HWARANG")
+        ribbon(canvas, 88, 811, 38, 9)
         canvas.drawRightString(565, 811, "화랑 보장분석   /   " + raw["source_date"])
         canvas.drawRightString(565, 20, str(document.page))
 

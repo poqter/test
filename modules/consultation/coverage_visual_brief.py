@@ -17,7 +17,7 @@ from reportlab.platypus import (
 
 from modules.shared.report_fonts import korean_pdf_font
 from modules.consultation.analyzer_pdf import amount
-from modules.consultation.coverage_signature import GOLD, IVORY, LINE, NAVY, money
+from modules.consultation.coverage_signature import GOLD, IVORY, LINE, NAVY, money, ribbon
 
 AXES = [
     ("상해사망", "재해(상해)사망"),
@@ -265,6 +265,7 @@ def brief_pdf(parsed):
         canvas.setFillColor(colors.HexColor(NAVY))
         canvas.setFont(font, 12)
         canvas.drawString(35, h - 36, "HWARANG")
+        ribbon(canvas, 108, h - 36, 45, 12)
         canvas.setFont(font, 10)
         canvas.drawRightString(w - 35, h - 36, f"보장 브리핑   /   {document.page:02}")
         canvas.setStrokeColor(colors.HexColor(NAVY))
