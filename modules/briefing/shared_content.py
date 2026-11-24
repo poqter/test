@@ -21,11 +21,10 @@ def split_packet(packet,base):
     common['reader_version']='20261027-line-seed'
     if any(marker in json.dumps(common,ensure_ascii=False) for marker in (IDENTITY,TOKEN,WEATHER)):
         raise ValueError('Reserved rendering marker in content')
-    template=public_html({**common,'sender':{'name':IDENTITY,'position':''}},canonical_url=share_url(base,TOKEN),image_url=share_url(base,TOKEN,'preview'))
+    template=public_html({**common,'sender':{'name':IDENTITY,'position':''}},canonical_url=share_url(base,TOKEN))
     template=template.replace('<div class="reader-heading-weather"></div>','<div class="reader-heading-weather">'+WEATHER+'</div>')
     content={'packet':common,'html_template':template}
     weather_record={'payload':visible,'rendered_html':weather_html(visible) if visible else ''}
-    preview_id=digest({'sender':packet['sender'],'date':packet['requested_date'],'design':'preview-20261026'})
     content_id,weather_id=digest(content),digest(weather_record)
     key=digest({'content':content_id,'weather':weather_id,'sender':packet['sender']})
-    return {'content_id':content_id,'content':content,'weather_id':weather_id,'weather':weather_record,'preview_id':preview_id,'reuse_key':key,'sender':packet['sender']}
+    return {'content_id':content_id,'content':content,'weather_id':weather_id,'weather':weather_record,'reuse_key':key,'sender':packet['sender']}

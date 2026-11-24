@@ -176,24 +176,22 @@ def _combined_sharing(repo, selected_day=None, *, use_cache=False):
             codes = []
             for code in PROFILE_ORDER:
                 label = '보험업계' if code == 'INSURANCE' else PROFILE_LABELS[code]
-                chosen = st.checkbox(label, value=code in ('MARKET', 'NEWS'), disabled=False,
+                choice, published = st.columns([2, 1])
+                chosen = choice.checkbox(label, value=code in ('MARKET', 'NEWS'), disabled=False,
                                      key='share_scope_v2_'+uid+'_'+day+'_'+code)
                 if chosen: codes.append(code)
                 if code in reasons_by_code: st.caption(reasons_by_code[code])
-                elif code in bundles: st.caption(str(bundles[code]['briefing']['briefing_date'])+' 브리핑')
+                elif code in bundles: published.caption(str(bundles[code]['briefing']['briefing_date'])[5:].replace('-', '.')+' 게시')
             st.caption('보험업계 선택 시 게시된 기사 전체를 공유합니다. 직원용 상담 문구와 운영 정보는 제외됩니다.')
             if not approved: st.info('최고관리자가 운영 관리에서 고객 공유를 허용하면 사용할 수 있습니다.')
-            preview = st.toggle('고객 화면 미리보기', key='share_preview_'+uid+'_'+day, disabled=not codes)
-    from .weather import REGIONS, DEFAULT_REGION, checked_region, region_name, get_weather
-    weather_region=None
-    if codes:
-        options=[r['code'] for r in REGIONS]
-        preferred=checked_region(st.session_state.get('hw_weather_region',DEFAULT_REGION))
-        weather_region=st.selectbox('공유할 날씨 지역 · 시·도',options,index=options.index(preferred),
-            format_func=region_name,key='share_weather_'+uid+'_'+day)
-        st.caption('시·도 대표 지점 기준입니다. 선택한 날짜의 예보를 공유 링크에 함께 저장합니다.')
-    st.caption('공유 범위 · '+' / '.join(PROFILE_LABELS[c] for c in codes)+
-        (' · 날씨 '+region_name(weather_region) if weather_region else ''))
+            from .weather import REGIONS, DEFAULT_REGION, checked_region, region_name, get_weather
+            weather_region=None
+            if codes:
+                options=[r['code'] for r in REGIONS]
+                preferred=checked_region(st.session_state.get('hw_weather_region',DEFAULT_REGION))
+                weather_region=st.selectbox('날씨 지역',options,index=options.index(preferred),
+                    format_func=region_name,key='share_weather_'+uid+'_'+day)
+                st.caption('시·도 대표 지점 기준입니다. 선택한 날짜의 예보를 공유 링크에 함께 저장합니다.')
     key = 'combined_share_'+str(weather_region or 'none')+'_'+day+'_'+uid+'_'+'_'.join(codes)
     with right:
         with st.container(border=True):
@@ -212,18 +210,20 @@ def _combined_sharing(repo, selected_day=None, *, use_cache=False):
                 packet = shared['packet']; sender = packet['sender']
                 st.caption('아래 문구의 복사 버튼으로 링크까지 복사한 뒤 카카오톡·문자에 붙여넣으세요.')
                 st.code(f"{sender['name']} {sender['position']}이 전하는 오늘의 브리핑\n{day} · 소식 {len(packet['body']['issues'])}개\n{url}", language=None)
-                st.link_button('고객 화면 열기', url, use_container_width=True)
-                if st.button('이 공유 링크 취소', key=key+'_revoke'):
+                open_col, cancel_col = st.columns(2)
+                open_col.link_button('고객 화면 열기', url, use_container_width=True)
+                if cancel_col.button('이 공유 링크 취소', key=key+'_revoke'):
                     try:
                         repo.revoke_share(shared['token'],uid)
                         st.session_state.pop(key,None);st.rerun()
                     except BriefingRepositoryError as exc: st.error(str(exc))
             else:
                 st.info('영역을 선택하고 링크를 만들면 발신자 이름·직책이 포함된 문구가 표시됩니다.')
-    if preview and codes and any(c in bundles for c in codes):
+    if codes and any(c in bundles for c in codes):
         from .sharing import combine_bodies
-        with st.container(border=True):
-            st.subheader('고객에게 보이는 본문')
+        with st.expander('고객에게 보일 본문 확인', key='share_preview_'+uid+'_'+day, on_change='rerun') as panel:
+            if not panel.open:
+                return
             try:
                 sender = repo.staff_sender(uid)
                 st.caption(day+' · '+sender['name']+' '+sender['position'])
@@ -296,7 +296,7 @@ def _publish_actions(repo, bundle):
         st.caption('직원 화면에 게시된 브리핑입니다.')
 
 
-def _render_profile_detail(repo, code, bundle, can_manage):
+def _render_profile_detail(repo, code, bundle):
     revision, briefing, snapshot = bundle['revision'], bundle['briefing'], bundle['snapshot']
     content = snapshot.get('content_payload') or {}
     day = str(briefing.get('briefing_date') or '')
@@ -309,37 +309,10 @@ def _render_profile_detail(repo, code, bundle, can_manage):
         st.caption(f"주요 뉴스 {sum(r.get('reading_group') != 'more' for r in body.get('issues', []))}건")
     with c2:
         large = st.toggle('큰 글자로 읽기', key='large_'+revision['id'])
-    if can_manage:
-        _publish_actions(repo, bundle)
     if st.button('고객에게 공유', key='share_from_'+revision['id'], type='primary'):
         _share_dialog(repo, day if st.session_state.get('hw_briefing_page') == '지난 브리핑' else datetime.now(KST).date())
     render_body(body, large=large)
-    if can_manage:
-        with st.expander('고객에게 보이는 본문 미리보기'):
-            preview = customer_body(content)
-            st.caption(f"고객용 기사 {len(preview['issues'])}개 · 현재 화면은 직원 미리보기이며 외부 공개가 아닙니다.")
-            render_body(preview, large=large)
     _internal_actions(bundle)
-    if can_manage:
-        from .operations_ui import render_correction, render_important_update
-        render_correction(repo, bundle)
-        render_important_update(repo, bundle)
-        with st.expander('기사 수와 저장 상태 확인'):
-            st.write(' · '.join(f'{label} {value}개' for label, value in selection_summary(snapshot).items()))
-            qa = snapshot.get('qa_payload') or {}
-            counts = qa.get('selection_diagnostics') or {}
-            if counts.get('analysis_missing'):
-                st.caption(f"모델 응답에서 빠진 사건 {counts['analysis_missing']}개는 요약 기사에 넣지 않았습니다.")
-            st.caption('기사 수는 실제 날짜·출처·내용이 확인된 사건 기준입니다. 같은 사건의 여러 출처를 별도 기사로 세지 않습니다.')
-            st.download_button('상세 진단 저장', json.dumps({'build':build_info(),'qa':qa}, ensure_ascii=False, indent=2), file_name='hwarang_briefing_diagnostics.json', key='diag_'+snapshot['id'])
-        if published:
-            with st.expander('게시 관리'):
-                if st.button('공개 중단·공유 링크 차단', key='hide_'+revision['id']):
-                    repo.hide_revision(briefing['id'], revision['id'], _actor())
-                    _clear_read_caches()
-                    st.rerun()
-
-
 def _render_generate_panel(repo):
     if not _can_manage():
         return
@@ -421,7 +394,7 @@ def _render_today(repo, can_manage):
             if not snapshot:
                 st.warning('저장된 본문을 불러오지 못했습니다.')
                 continue
-            _render_profile_detail(repo, selected, repo.bundle_from_parts(item['briefing'], item['revision'], snapshot), False)
+            _render_profile_detail(repo, selected, repo.bundle_from_parts(item['briefing'], item['revision'], snapshot))
 
 
 def _render_history(repo, can_manage):
@@ -430,7 +403,7 @@ def _render_history(repo, can_manage):
     day = st.date_input('읽을 날짜', value=now, min_value=now-timedelta(days=29), max_value=now)
     bundle = repo.bundle_for_date(code, day, include_draft=False)
     if bundle:
-        _render_profile_detail(repo, code, bundle, False)
+        _render_profile_detail(repo, code, bundle)
     else:
         st.info('선택한 날짜에 저장된 브리핑이 없습니다.' if can_manage else '선택한 날짜에 게시된 브리핑이 없습니다.')
 

@@ -9,31 +9,25 @@ let calls=[];
 const deps={env,fetcher:async(u,o)=>{calls.push([u,o]);return new Response(JSON.stringify(packet),{headers:{'Content-Type':'application/json'}});}};
 let r=await handle(new Request(url),deps);assert.equal(r.status,200);let html=await r.text();assert.ok(html.includes('og:title')&&html.includes('등록 이름 팀장'));assert.ok(!html.includes(key));assert.equal(calls.length,1);assert.ok(calls[0][0].endsWith('hwarang_read_public_briefing'));
 assert.equal(r.headers.get('Cache-Control'),'private, no-store, max-age=0');
-for(const suffix of ['','&asset=pdf','&asset=preview']){
+for(const suffix of ['']){
   calls=[];r=await handle(new Request(url+suffix),{env,fetcher:async(u,o)=>{calls.push(u);return new Response('null');}});
   assert.equal(r.status,410);assert.equal(calls.length,1);assert.ok(!(await r.text()).includes('등록 이름'));
 }
-for(const [asset,mime] of [['preview','image/png'],['pdf','application/pdf']]){
- calls=[];r=await handle(new Request(url+'&asset='+asset),{env,fetcher:async(u,o)=>{calls.push([u,o]);return u.includes('/rpc/')?new Response(JSON.stringify(packet)):new Response(new Uint8Array([1,2,3]),{headers:{'Content-Type':mime}});}});
- assert.equal(r.status,200);assert.equal(r.headers.get('Content-Type'),mime);assert.equal(calls.length,2);assert.ok(calls[1][0].includes('/'+token+'/'+packet.asset_version+'/'));assert.equal(calls[1][1].headers.Authorization,'Bearer '+key);
+for(const asset of ['preview','pdf']) {
+ for(const method of ['GET','HEAD']) {
+  calls=[];r=await handle(new Request(url+'&asset='+asset,{method}),deps);
+  assert.equal(r.status,404);assert.equal(calls.length,0);
+ }
 }
 r=await handle(new Request(url+'&asset=evil'),deps);assert.equal(r.status,404);
 r=await handle(new Request(url,{method:'POST'}),deps);assert.equal(r.status,405);
 r=await handle(new Request(url),{env,fetcher:async()=>new Response('secret error',{status:403})});assert.equal(r.status,503);assert.ok(!(await r.text()).includes('secret error'));
 r=await handle(new Request(url),{env,fetcher:async()=>{throw new Error('secret');}});assert.equal(r.status,503);
-r=await handle(new Request(url+'&asset=pdf'),{env,fetcher:async u=>u.includes('/rpc/')?new Response(JSON.stringify(packet)):new Response('wrong type',{headers:{'Content-Type':'text/html'}})});assert.equal(r.status,503);
 r=await handle(new Request('https://example.org/?health=1'),{env,fetcher:async()=>{throw new Error('Health called DB');}});assert.equal(r.status,200);assert.equal((await r.json()).schema,'hwarang-share-v3');
 r=await handle(new Request(url,{method:'HEAD'}),deps);assert.equal(r.status,200);assert.equal(await r.text(),'');
 r=await handle(new Request('https://example.org/?health=1'),{env:()=>undefined,fetcher:async()=>{throw new Error('Health called DB');}});assert.equal(r.status,503);
 calls=[];r=await handle(new Request(url),{env:n=>n==='SUPABASE_SERVICE_ROLE_KEY'?'sb_secret_synthetic':env(n),fetcher:async(u,o)=>{calls.push(o);return new Response(JSON.stringify(packet));}});assert.equal(r.status,200);assert.equal(calls[0].headers.apikey,'sb_secret_synthetic');assert.ok(!('Authorization' in calls[0].headers));
 console.log('Customer HTTP: '+assertions+' assertions passed (HTML, OG, anonymous reads, assets, live closure, no secrets).');
-// Shared image paths use the same live token gate; arbitrary paths are rejected.
-const shared={...packet,storage_version:4,preview_path:'shared/'+'b'.repeat(64)+'/preview.png'};
-calls=[];
-r=await handle(new Request(url+'&asset=preview'),{env,fetcher:async(u,o)=>{calls.push(u);return u.includes('/rpc/')?new Response(JSON.stringify(shared)):new Response(new Uint8Array([1]),{headers:{'Content-Type':'image/png'}});}});
-assert.equal(r.status,200);assert.ok(calls[1].endsWith(shared.preview_path));
-r=await handle(new Request(url+'&asset=preview'),{env,fetcher:async()=>new Response(JSON.stringify({...shared,preview_path:'../other/secret'}))});assert.equal(r.status,503);
-r=await handle(new Request(url+'&asset=pdf'),{env,fetcher:async()=>new Response(JSON.stringify(shared))});assert.equal(r.status,404);
 // Render-time badges follow Korea's viewing day; saved prose stays immutable.
 const {applyReaderDesign}=await import('../public_reader/worker.js');
 const original='<html><head></head><body><p class="meta" data-edition-date="2026-10-26">2026-10-26 브리핑</p><p class="meta" data-edition-date="2026-10-27">2026-10-27 브리핑</p><p class="edition-delay" data-stale-date="2026-10-26" hidden>오늘 브리핑 미제공</p><article><h2>저장된 제목</h2><p>공유 당시 기사와 요약 54.4%</p></article></body></html>';

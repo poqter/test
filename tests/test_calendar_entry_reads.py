@@ -29,11 +29,9 @@ with patch.object(center.SupabaseConfig,'from_mapping',return_value=None), patch
     assert len(calls)==1
     db.request('POST','rpc/sales_calendar_days',body={'first_day':'2026-11-10','last_day':'2026-11-10'})
     db.request('GET','sales_empty_days',{'day':'eq.2026-11-10','select':'owner'})
-    db.request('GET','sales_notices',{'seen':'eq.false','order':'created_at.desc','limit':'20','select':'id,message,sales_events(day,kind)'})
-    assert db.request('GET','sales_notices',{'seen':'eq.false','select':'id','limit':'50'})==[{'id':'n'}]
     assert len(calls)==1
-    db.request('PATCH','sales_notices',{'id':'eq.n'},body={'seen':True})
-    db.request('GET','sales_notices',{'seen':'eq.false','select':'id','limit':'50'})
+    db.request('POST','sales_empty_days',body={'day':'2026-11-10'})
+    db.request('GET','sales_empty_days',{'day':'eq.2026-11-10','select':'owner'})
     assert len(calls)==3
 ''').run()
     assert not app.exception

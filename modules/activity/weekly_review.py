@@ -62,33 +62,21 @@ def render(db,today):
                 if data.get('note'):st.write(data['note'])
                 if data.get('help'):st.write('지원 요청 · '+data['help'])
         if rows:
-            draft=f'period_feedback_{db.uid}_{selected}_{start}_{end}'
-            widget='widget_'+draft
-            if widget not in st.session_state:st.session_state[widget]=st.session_state.get(draft,'')
-            st.text_area('피드백 · 선택',key=widget,height=90,on_change=lambda:st.session_state.update({draft:st.session_state[widget]}))
             pending=[u for u in visible if u!=selected and states[u] in ('검토 대기','재검토 필요')]
             with st.container(key='review_actions',horizontal=True):
                 skip=st.button('다음 직원',key='review_skip',disabled=visible.index(selected)==len(visible)-1)
-                save=st.button('피드백 저장' if states[selected]=='확인 완료' else '확인 완료 · 다음 직원' if pending else '확인 완료',key='review_commit',type='primary')
+                save=states[selected]!='확인 완료' and st.button('확인 완료 · 다음 직원' if pending else '확인 완료',key='review_commit',type='primary')
             if skip:st.session_state['manager_selected']=visible[visible.index(selected)+1];ux.refresh()
             if save:
                 try:
-                    message=st.session_state.get(draft,'').strip()
-                    if states[selected]=='확인 완료' and not message:st.warning('피드백을 입력해 주세요.');return
-                    token=draft+'_send';saved=st.session_state.get(token)
-                    if not saved or saved['message']!=message:
-                        saved={'id':str(uuid4()),'message':message};st.session_state[token]=saved
-                    db.request('POST','rpc/sales_check_daily_period',body={'p_owner':selected,'p_first':str(start),'p_last':str(end),'p_versions':{r['id']:r['revision'] for r in rows},'p_message':message,'p_request':saved['id']})
-                    st.session_state.pop(draft,None);st.session_state.pop(widget,None);st.session_state.pop(token,None)
+                    db.request('POST','rpc/sales_check_daily_period',body={'p_owner':selected,'p_first':str(start),'p_last':str(end),'p_versions':{r['id']:r['revision'] for r in rows},'p_message':'','p_request':str(uuid4())})
                     if pending:st.session_state['manager_selected']=pending[0]
                     ux.refresh()
                 except HwarangAuthError as exc:st.error('저장하지 못했습니다. 입력 내용은 유지됩니다. '+str(exc))
         else:st.info('제출된 일일 기록이 없습니다. 일정은 아래에서 확인할 수 있습니다.')
-        with st.expander('일일 기록·일정·피드백',key='review_daily_'+selected,on_change='rerun') as panel:
+        with st.expander('일일 기록·일정',key='review_daily_'+selected,on_change='rerun') as panel:
             if panel.open:
                 ui.daily_reference(db,selected,start,end,today,'review_daily_'+selected,records=reports)
-                for row in rows:
-                    for comment in db.request('GET','sales_reviews',{'report':'eq.'+row['id'],'deleted_at':'is.null','order':'created_at.desc'}):st.write(comment['message'])
         with st.expander('청약·계약 실적',key='review_contract_'+selected,on_change='rerun') as panel:
             if panel.open:
                 contracts=db.period('sales_contracts',start,end,owner='eq.'+selected)

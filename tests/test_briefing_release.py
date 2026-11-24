@@ -91,7 +91,7 @@ def test_create_combined_validates_saved_sections_and_uses_atomic_registration()
     registration=repo._request.call_args
     assert registration.args[1].endswith('hwarang_register_shared_link')
     assert registration.kwargs['json']['p_revisions']==['rev-MARKET','rev-NEWS']
-    assert repo._upload_shared_preview.call_count==1
+    repo._upload_shared_preview.assert_not_called()
     repo._upload_share_assets.assert_not_called()
 
 

@@ -9,7 +9,7 @@ from modules.shared.account_security import password_validation_error, request_r
 from modules.shared.hwarang_auth import HwarangAuthService, HwarangAuthError, SupabaseConfig
 from modules.briefing.normalize import classify_freshness
 from modules.briefing.market_metrics import collect_metrics, validated_metrics, METRICS
-from modules.briefing.public_body import customer_body, public_html, public_pdf
+from modules.briefing.public_body import customer_body, public_html
 from modules.briefing.diagnostics import build_info
 
 ACCOUNT_SCRIPT = '''
@@ -197,7 +197,6 @@ def test_customer_body_excludes_internal_actions_and_names_sender():
     assert 'INTERNAL_ONLY' not in str(body)
     rendered=public_html({'briefing_date':'2026-10-09','sender':{'name':'테스트 사용자','position':'팀장'},'body':body})
     assert 'og:title' in rendered and '테스트 사용자 팀장' in rendered
-    assert public_pdf({'briefing_date':'2026-10-09','sender':{'name':'테스트 사용자','position':'팀장'},'body':body}).startswith(b'%PDF')
 
 def test_original_briefing_release_hashes_match():
     assert build_info()['code_matches_release']

@@ -3,7 +3,6 @@ import json
 from copy import deepcopy
 from datetime import date,datetime,timedelta,timezone
 from unittest.mock import Mock
-from io import BytesIO
 from pathlib import Path
 import pytest
 from launch_fixtures import AS_OF,observations,content,packet
@@ -82,7 +81,7 @@ def test_customer_insurance_keeps_news_but_excludes_internal_counsel():
 
 def test_reader_escapes_names_article_text_and_has_first_response_og():
     p=packet();p['sender']['name']='<script>leak()</script>';p['body']['issues'][0]['summary']='<img onerror="leak()">'
-    html=public_html(p,canonical_url='https://example.org/',image_url='https://example.org/image',pdf_url='https://example.org/pdf')
+    html=public_html(p,canonical_url='https://example.org/')
     assert '<script>leak()' not in html and '<img onerror=' not in html
     assert 'property="og:title"' in html and '&lt;script&gt;leak()&lt;/script&gt; 팀장' in html
     assert html.count('원문 ↗')==10 and '큰 글자로 읽기' in html and 'PDF 저장' not in html
@@ -161,7 +160,7 @@ def test_share_uses_server_registered_name_and_private_assets():
     repo._request=request;token,p=repo.create_share('r','u',{'sender':{'name':'위조','position':'대표'}})
     assert p['sender']=={'name':'등록 이름','position':'팀장'} and '위조' not in p['rendered_html']
     assert saved['token']==token and len(p['asset_version'])==24
-    repo._upload_share_assets.assert_called_once()
+    repo._upload_share_assets.assert_not_called()
 
 def test_rss_defaults_survive_legacy_official_only_config(monkeypatch):
     from modules.briefing.direct_sources import load_direct_source_specs_from_env
@@ -309,20 +308,6 @@ def test_unknown_usage_stops_before_next_profile(monkeypatch):
         rt.generate_and_store_briefings(repository=repo,profile_codes=('NEWS','INSURANCE'),as_of=AS_OF,checkpoint=saved,save_checkpoint=lambda state:None)
     assert len(calls)==1 and saved['charge_uncertain'] and repo.log_api_usage.call_count==1
     repo.create_snapshot.assert_not_called()
-
-@pytest.mark.parametrize('code,count',[('NEWS',10),('MARKET',8)])
-def test_pdf_keeps_each_article_and_original_link_on_same_page(code,count):
-    from modules.briefing.public_body import public_pdf
-    from pypdf import PdfReader
-    reader=PdfReader(BytesIO(public_pdf(packet(code,count))))
-    seen=[]
-    for page in reader.pages:
-        text=page.extract_text() or ''
-        urls=[str(a.get_object().get('/A',{}).get('/URI','')) for a in page.get('/Annots',[])]
-        for i in range(count):
-            if f'검수용 가상 소식 {i+1} ·' in text:
-                seen.append(i);assert any(url.endswith('/article/'+str(i)) for url in urls)
-    assert sorted(seen)==list(range(count)) and '검수용 이름 팀장' in reader.pages[0].extract_text()
 
 @pytest.mark.parametrize('key,bearer',[('sb_secret_synthetic',False),('synthetic-legacy-jwt',True)])
 def test_server_key_headers_follow_supabase_key_type(key,bearer):

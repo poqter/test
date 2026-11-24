@@ -31,7 +31,7 @@ def test_revision_conflict_does_not_overwrite(db):
 
 def test_cannot_write_another_person(db):
  st.session_state['fixture_events'][0]['owner']=OTHER
- for op,args in [('save',dict(payload(),id=EVENT,revision=1)),('delete',{'id':EVENT,'revision':1}),('task',{'id':EVENT,'seed':'44444444-4444-4444-8444-444444444444','title':'x','due':'2026-11-09'})]:
+ for op,args in [('save',dict(payload(),id=EVENT,revision=1)),('delete',{'id':EVENT,'revision':1})]:
   with pytest.raises(HwarangAuthError):command(db,op,args)
 
 def test_scope_is_validated_on_server(db):
@@ -66,8 +66,8 @@ def test_feedback_permission_and_revision(db):
 
 def test_follow_task_and_contract_fields(db):
  seed='44444444-4444-4444-8444-444444444444'
- command(db,'task',{'id':EVENT,'seed':seed,'title':'후속 확인','due':'2026-11-09'})
- assert st.session_state['fixture_writes'][-1]['source']==EVENT
+ with pytest.raises(ValueError,match='지원하지 않는 요청'):
+  command(db,'task',{'id':EVENT,'seed':seed,'title':'후속 확인','due':'2026-11-09'})
  v={'day':'2026-11-06','insurer':'테스트 보험사','category':'인보험','payment':'월납','amount':120000,'status':'성립','effective':'2026-11-09','product':'테스트 상품','note':'검증'}
  command(db,'contract',{'event':EVENT,'seed':seed,'data':v})
  saved=st.session_state['fixture_writes'][-1]

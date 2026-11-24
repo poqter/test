@@ -48,11 +48,14 @@ def test_employee_navigation_and_reading_do_not_query_sharing_or_manage(repo):
 def test_share_preview_requires_no_link_creation_or_api(repo):
     a=app();next(r for r in a.radio if r.key=='hw_briefing_page').set_value('고객에게 공유').run()
     assert not a.exception
-    next(t for t in a.toggle if t.label=='고객 화면 미리보기').set_value(True).run()
+    panel=next(t for t in a.expander if t.label=='고객에게 보일 본문 확인')
+    repo.staff_sender.assert_not_called()
+    states=a._tree.get_widget_states()
+    states.widgets.add(id=panel.proto.id,bool_value=True)
+    a._run(states)
     assert not a.exception
     repo.staff_sender.assert_called_once_with('test-user')
     repo.create_combined_share.assert_not_called();repo.reserve_request.assert_not_called()
-    assert any('고객에게 보이는 본문' in t.value for t in a.subheader)
 
 def test_manager_has_one_navigation_and_separate_operations(repo):
     a=app('super_admin');assert not a.exception

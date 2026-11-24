@@ -341,16 +341,6 @@ class BriefingRepository:
             return response.status_code==200 and data.get('schema')=='hwarang-share-v3' and data.get('configured') is True
         except (requests.RequestException,ValueError,BriefingRepositoryError):return False
 
-    def _upload_share_assets(self, token, packet):
-        from .sharing import packet_assets
-        for filename,(mime,data) in packet_assets(packet).items():
-            if len(data)>4000000:raise BriefingRepositoryError('공유 파일이 허용 크기를 초과했습니다.')
-            try:
-                result=self.http.post(self.url+'/storage/v1/object/briefing-share-assets/'+token+'/'+packet['asset_version']+'/'+filename,
-                    data=data,headers={**self.server_headers(),'Content-Type':mime,'x-upsert':'true'},timeout=20)
-            except requests.RequestException as exc:raise BriefingRepositoryError('공유 파일을 저장하지 못했습니다. 다시 확인해 주세요.') from exc
-            if not 200<=result.status_code<300:raise BriefingRepositoryError('공유 파일 저장 설정을 확인해 주세요.')
-
     def create_share(self, revision_id, sender_user_id, public_packet=None):
         import secrets
         from .sharing import build_packet
@@ -380,7 +370,6 @@ class BriefingRepository:
         body=packet['body']
         if not body_quality_ready(body):
             raise BriefingRepositoryError('고객 본문의 출처와 내용을 확인할 수 없습니다.')
-        self._upload_share_assets(token,packet)
         if existing:self._request('PATCH','/rest/v1/hwarang_briefing_public_shares',params={'token':'eq.'+token},json={'public_packet':packet})
         else:self._request('POST','/rest/v1/hwarang_briefing_public_shares',json={'token':token,'revision_id':revision_id,'sender_user_id':sender_user_id,'public_packet':packet})
         return token,packet
@@ -481,32 +470,12 @@ class BriefingRepository:
             'p_sender': sender_user_id, 'p_packet': packet})
         if legacy:
             return legacy['token'], legacy['public_packet']
-        self._request('POST', '/rest/v1/rpc/hwarang_prepare_preview', json={'p_id': parts['preview_id']})
-        self._upload_shared_preview(parts['preview_id'], packet)
         token = self._request('POST', '/rest/v1/rpc/hwarang_register_shared_link', json={
             'p_token': token, 'p_sender': sender_user_id, 'p_revisions': revisions,
             'p_packet': packet, 'p_parts': parts})
         if not isinstance(token, str):
             raise BriefingRepositoryError('공유 링크 저장 결과를 확인하지 못했습니다. 다시 시도해 주세요.')
         return token, self.public_share(token)
-
-    def _upload_shared_preview(self, preview_id, packet):
-        from .public_body import preview_png
-        path = '/storage/v1/object/briefing-share-assets/shared/'+preview_id+'/preview.png'
-        try:
-            exists = self.http.head(self.url+path, headers=self.server_headers(), timeout=15)
-            if exists.status_code == 200:
-                return
-            if exists.status_code not in (400, 404):
-                raise BriefingRepositoryError('미리보기 저장 상태를 확인하지 못했습니다.')
-            response = self.http.post(self.url+path, data=preview_png(packet),
-                headers={**self.server_headers(),'Content-Type':'image/png','x-upsert':'false'}, timeout=20)
-            if response.status_code == 409:
-                return
-            if not 200 <= response.status_code < 300:
-                raise BriefingRepositoryError('공유 미리보기를 저장하지 못했습니다.')
-        except requests.RequestException as exc:
-            raise BriefingRepositoryError('공유 미리보기 연결을 확인해 주세요.') from exc
 
     def retention_status(self):
         return self._first(self._request('GET','/rest/v1/hwarang_share_retention_status',

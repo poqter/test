@@ -19,6 +19,8 @@ try:
    page.route('https://api.github.com/repos/poqter/test/releases/tags/*', lambda route: route.fulfill(json={'assets':[{'browser_download_url':'https://github.com/poqter/test/releases/download/'+route.request.url.rsplit('/',1)[1]+'/hwarang-month-widget.apk'}]}))
    page.goto('http://127.0.0.1:8504');cal=page.frame_locator('iframe[title="modules.activity.center.sales_calendar_view"]')
    notice=cal.get_by_role('dialog').filter(has_text='새 위젯 설치하기')
+   if 'Android' not in ua:
+    notice.get_by_role('checkbox',name='이번 버전 공지 다시 보지 않기').check()
    notice.get_by_role('button',name='닫기',exact=True).click()
    if 'Android' in ua:
     page.reload()
@@ -63,9 +65,8 @@ try:
    expect(cal.locator('dialog[open]')).to_have_count(0)
    cal.locator('.view-settings > summary').click();cal.get_by_label('주말 표시',exact=True).uncheck();expect(cal.locator('.view-settings')).to_have_attribute('open','')
    page.reload()
-   if 'Android' not in ua:
-    expect(notice).to_be_visible()
-    notice.get_by_role('button',name='닫기',exact=True).click()
+   expect(cal.get_by_role('button',name='월간',exact=True)).to_be_visible()
+   expect(notice).to_have_count(0)
    expect(cal.get_by_role('button',name='월간',exact=True)).to_have_attribute('aria-pressed','true');cal.locator('.view-settings > summary').click();expect(cal.get_by_label('주말 표시',exact=True)).not_to_be_checked()
    c.close()
   b.close()

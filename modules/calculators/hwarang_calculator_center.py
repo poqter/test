@@ -24,7 +24,7 @@ assert len(ITEMS) == 88
 assert sum(GROUP_COUNTS.values()) == 88
 
 def run(*, isolated=False, fixed_name=None):
-    from modules.calculators.drafts import activate, capture
+    from modules.calculators.drafts import activate
     from modules.calculators.valuation_transfer import apply_pending
     isolated = bool(isolated)
     st.session_state['hwcalc_isolated_single'] = isolated
@@ -37,19 +37,10 @@ def run(*, isolated=False, fixed_name=None):
     else:
         pending = st.session_state.get('hwcalc_valuation_transfer')
         selected = pending[0] if pending else st.session_state.get('hwcalc_open')
-    if selected:
-        activate(selected)
-    else:
-        # Catalog navigation ends the widget lifetime, not the durable draft.
-        from modules.calculators.drafts import ACTIVE_KEY
-        st.session_state.pop(ACTIVE_KEY, None)
+    activate(selected)
     if not isolated:
         apply_pending()
-    try:
-        return _render(isolated=isolated, fixed_name=fixed_name)
-    finally:
-        if selected:
-            capture(selected)
+    return _render(isolated=isolated, fixed_name=fixed_name)
 
 
 def _render(*, isolated=False, fixed_name=None):

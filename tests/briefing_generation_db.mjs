@@ -16,7 +16,7 @@ export async function verifyBriefingGeneration(db, admin, member) {
     for (const name of [
         '16_Briefing_Engine_V1_6_Action_Intelligence_FINAL.sql', '20_Briefing_Daily_Operation.sql',
         '21_Briefing_Launch_Readiness.sql', '22_Briefing_Article_Release.sql',
-        '20261026061737_briefing_share_lifecycle.sql', '20261026064021_briefing_shared_content.sql',
+        '20261026061737_briefing_share_lifecycle.sql', '20261026064021_briefing_shared_content.sql', '20261124010000_customer_briefing_html_only.sql',
     ]) await db.exec(sql(name));
 
     // Both possible cutover values must survive. Run the OFF upgrade on a separate copy.
@@ -85,10 +85,9 @@ export async function verifyBriefingGeneration(db, admin, member) {
     assert.equal(await stoppedPage.text(),originalHtml);
     const sharedWhileStopped = randomUUID();
     const parts = {
-        content_id:'1'.repeat(64), weather_id:'2'.repeat(64), preview_id:'3'.repeat(64), reuse_key:'4'.repeat(64),
+        content_id:'1'.repeat(64), weather_id:'2'.repeat(64), reuse_key:'4'.repeat(64),
         content:{packet,html_template:'<p>__HW_IDENTITY_9e21__</p>'}, weather:{payload:{},rendered_html:''},
     };
-    await db.query('select public.hwarang_prepare_preview($1)',[parts.preview_id]);
     const registered = await db.query('select public.hwarang_register_shared_link($1,$2,$3,$4,$5) as token',
         [sharedWhileStopped,member,[revision],{...packet,sender:{name:'검증',position:'FP'}},parts]);
     assert.equal(registered.rows[0].token,sharedWhileStopped);

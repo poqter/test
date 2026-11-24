@@ -1,13 +1,5 @@
-"""Calculator-local input checkpoints, separate from transient widget lifetimes.
-
-Only scalar/structured input state is saved. Uploads, output bytes, auth keys,
-URLs and button events are never part of these drafts. Nothing is persisted
-outside the current Streamlit session or sent to another tab.
-"""
+"""Clear calculator inputs when the selected calculator changes."""
 from __future__ import annotations
-import copy
-from datetime import date, datetime
-from decimal import Decimal
 
 INPUT_PREFIXES = ("cov_", "finance_", "pp_", "gift_", "wo_", "retirement_", "estate_", "a_", "_ws_a_", "ux_table_", "hw.table_base.", "hw.table_snapshot.", "hw.money_policy.", "hw.quick_money_migrated.")
 EXCLUDED = ("_result", "_download", "_export", "_calculate", "_example", "_clear", "_help", "_review", "_customer", "_advisor", "_transfer", "_explain", "_pdf", "_excel", "_apply", "_submit")
@@ -32,50 +24,12 @@ def _is_input(key, value):
             and not isinstance(value, (bytes, bytearray, memoryview)))
 
 
-def capture(name, *, state=None):
-    state = _state(state)
-    if not name:
-        return
-    from modules.shared.runtime_cache import estimate_bytes
-    fields = {k: copy.deepcopy(v) for k, v in list(state.items()) if _is_input(k, v)}
-    # Canonical money is input, but contains keys for multiple pages. Small map.
-    fields["hw.money_values"] = copy.deepcopy(state.get("hw.money_values", {}))
-    snapshot = state.get("hw.table_snapshot." + name)
-    if snapshot is not None:
-        # Re-open an editor with its edited DataFrame as the new base. Never
-        # write a saved edit-delta into the data_editor widget's Session State.
-        fields["hw.table_base." + name] = copy.deepcopy(snapshot)
-    if estimate_bytes(fields) > 4 * 1024 * 1024:
-        return  # Never retain megabytes of unrelated intermediate data as a draft.
-    drafts = state.setdefault(DRAFT_KEY, {})
-    # Insertion order doubles as an LRU; keep the active calculator and cap
-    # all checkpoint copies together, not only each individual checkpoint.
-    drafts.pop(name, None)
-    drafts[name] = fields
-    while len(drafts) > 1 and estimate_bytes(drafts) > 16 * 1024 * 1024:
-        drafts.pop(next(iter(drafts)))
-
-
 def activate(name, *, state=None):
     state = _state(state)
-    old = state.get(ACTIVE_KEY)
-    if old == name:
-        if "ux_table_reset_mode_" + name in state:
-            return  # An explicit clear/example callback owns this rerun.
-        for key, value in state.get(DRAFT_KEY, {}).get(name, {}).items():
-            if key not in state:
-                state[key] = copy.deepcopy(value)
-        snapshot = state.get("hw.table_snapshot." + name)
-        if snapshot is not None and not any(key in state for key in EDITOR_KEYS):
-            state["hw.table_base." + name] = copy.deepcopy(snapshot)
+    state.pop(DRAFT_KEY, None)
+    if state.get(ACTIVE_KEY) == name:
         return
-    # The latest render already checkpointed the prior calculator.
     for key, value in list(state.items()):
-        if _is_input(key, value):
+        if _is_input(key, value) or key in EDITOR_KEYS or key == "hw.money_values":
             state.pop(key, None)
-    state.pop("hw.money_values", None)
-    for key in EDITOR_KEYS:
-        state.pop(key, None)
-    for key, value in state.get(DRAFT_KEY, {}).get(name, {}).items():
-        state[key] = copy.deepcopy(value)
     state[ACTIVE_KEY] = name
