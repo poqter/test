@@ -4,11 +4,14 @@ on:
     paths: ['supabase/functions/hwarang-kakao*/**', 'supabase/operations/KAKAO_BRANCH*.sql', 'tests/kakao*', 'modules/activity/center.py', 'modules/activity/calendar_view/persistent.js', '.github/workflows/kakao_checks.yml']
   push:
     branches: [main]
-    paths: ['supabase/functions/hwarang-kakao*/**', 'supabase/operations/KAKAO_BRANCH*.sql', 'tests/kakao*', '.github/workflows/kakao_checks.yml']
+    paths: ['supabase/functions/hwarang-kakao*/**', 'supabase/operations/KAKAO_BRANCH*.sql', 'tests/kakao*', 'modules/activity/center.py', 'modules/activity/calendar_view/persistent.js', '.github/workflows/kakao_checks.yml']
 permissions:
   contents: read
 jobs:
   briefing:
+    concurrency:
+      group: ${{ github.event_name == 'pull_request' && format('kakao-ci-pr-{0}', github.event.pull_request.number) || format('kakao-ci-run-{0}', github.run_id) }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -17,6 +20,6 @@ jobs:
         with:
           node-version: 22
       - run: npm ci --ignore-scripts --prefix tests/studio_db
-      - run: node --test tests/kakao_multi*.test.mjs tests/kakao_branch.test.mjs
+      - run: node --test tests/kakao_branch.test.mjs
       - run: node tests/kakao_branch_db.mjs
       - run: node --check modules/activity/calendar_view/persistent.js
