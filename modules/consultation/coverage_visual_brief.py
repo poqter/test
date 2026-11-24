@@ -36,7 +36,7 @@ AXES = [
 ]
 
 
-def radar(entries, font, amounts=None):
+def radar(entries, font, amounts=None, surgery_caption=()):
     drawing = Drawing(510, 476)
     cx, cy, r = 255, 237, 151
 
@@ -126,6 +126,11 @@ def radar(entries, font, amounts=None):
                 fillColor=outline,
             )
         )
+        if original_label == "수술비 합계":
+            for index, line in enumerate(surgery_caption):
+                drawing.add(String(x, y - 25 - index * 10, line, fontName=font,
+                                   fontSize=7.5, textAnchor="middle",
+                                   fillColor=colors.HexColor("#526375")))
     return drawing
 
 
