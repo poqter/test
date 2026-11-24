@@ -51,7 +51,7 @@ def main():
             print(f"{name}={'true' if name in groups else 'false'}", file=out)
         print(f"any={'true' if groups else 'false'}", file=out)
         print(f"node={'true' if groups & {'academy', 'activity', 'kakao', 'reader'} else 'false'}", file=out)
-        print(f"browser={'true' if groups & {'operations', 'activity', 'pdf', 'academy', 'keepalive'} else 'false'}", file=out)
+        print(f"browser={'true' if groups else 'false'}", file=out)
     print("Selected groups:", ", ".join(sorted(groups)) or "documentation only")
 
 if __name__ == "__main__":
