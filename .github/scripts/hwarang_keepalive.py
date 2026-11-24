@@ -1,13 +1,12 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 import os
 import sys
 import time
 from dataclasses import dataclass
 
-import requests
 from playwright.sync_api import Error as PlaywrightError
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
 
 
@@ -31,30 +30,7 @@ def scheduled_targets():
     return tuple(target for target in APP_TARGETS if target.name != "ACADEMY" or academy_enabled)
 
 
-def ping_supabase() -> None:
-    """Create a very small Data API read so an active Free project records activity."""
-    base_url = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
-    secret_key = os.environ.get("SUPABASE_SECRET_KEY", "").strip()
-
-    if not base_url or not secret_key:
-        raise RuntimeError(
-            "GitHub Secrets SUPABASE_URL / SUPABASE_SECRET_KEY가 설정되지 않았습니다."
-        )
-
-    response = requests.get(
-        f"{base_url}/rest/v1/profiles",
-        params={"select": "id", "limit": "1"},
-        headers={
-            "apikey": secret_key,
-            "Accept": "application/json",
-        },
-        timeout=30,
-    )
-    response.raise_for_status()
-    print(f"[OK] Supabase ping: HTTP {response.status_code}")
-
-
-def wait_for_entry(page, target: AppTarget) -> None:
+def wait_for_entry(page, target: AppTarget, observation=None) -> bool:
     deadline = time.monotonic() + 120
     wake_requested = False
     last_state = "waiting for the app entry"
@@ -63,9 +39,11 @@ def wait_for_entry(page, target: AppTarget) -> None:
             for frame in page.frames:
                 if frame.locator(target.entry_selector).first.is_visible():
                     print(f"[READY] {target.name}: entry visible; wake_requested={wake_requested}", flush=True)
-                    return
+                    return wake_requested
                 wake = frame.get_by_role("button", name="Yes, get this app back up!", exact=True)
                 if not wake_requested and wake.is_visible():
+                    if observation is not None:
+                        observation["sleep"] = True
                     wake.click(timeout=5000)
                     wake_requested = True
                     last_state = "wake requested"
@@ -88,48 +66,66 @@ def visit_streamlit_apps() -> None:
             locale="ko-KR",
         )
 
-        failures: list[str] = []
         try:
-            for target in scheduled_targets():
-                page = context.new_page()
-                try:
-                    print(f"[VISIT] {target.name}: {target.url}")
-                    response = page.goto(
-                        target.url,
-                        wait_until="domcontentloaded",
-                        timeout=90_000,
-                    )
-                    if response is None or response.status >= 400:
-                        raise RuntimeError(f"Navigation failed: HTTP {response.status if response else 'n/a'}")
-                    if target.entry_selector:
-                        wait_for_entry(page, target)
-                    else:
-                        page.wait_for_timeout(15_000)
-                        print(f"[VISITED] {target.name}: HTTP {response.status}, title={page.title()!r}")
-                except PlaywrightTimeoutError as exc:
-                    failures.append(f"{target.name}: browser timeout ({exc})")
-                except Exception as exc:  # noqa: BLE001 - workflow should report all targets
-                    failures.append(f"{target.name}: {type(exc).__name__}: {exc}")
-                finally:
-                    page.close()
-                    # Small gap between apps to avoid burst-loading all Community Cloud apps.
-                    time.sleep(2)
+            return check_targets(context, scheduled_targets())
         finally:
             context.close()
             browser.close()
 
-        if failures:
-            raise RuntimeError("Streamlit visit failure(s): " + " | ".join(failures))
+
+def now_kst():
+    return datetime.now(timezone(timedelta(hours=9))).isoformat(timespec="seconds")
+
+
+def check_targets(context, targets):
+    rows = {}
+    for attempt in (1, 2):
+        for target in targets:
+            row = rows.setdefault(target.name, {"result": "FAILED", "sleep": False,
+                                                "start": None, "entry": "—", "seconds": 0.0})
+            if row["result"] != "FAILED":
+                continue
+            started = time.monotonic()
+            row["start"] = row["start"] or now_kst()
+            row["attempt"] = attempt
+            try:
+                page = context.new_page()
+                try:
+                    response = page.goto(target.url, wait_until="domcontentloaded", timeout=40_000)
+                    if response is None or response.status >= 400:
+                        raise RuntimeError("Navigation failed")
+                    if not target.entry_selector:
+                        raise RuntimeError("Missing entry selector")
+                    wait_for_entry(page, target, row)
+                    row["entry"] = now_kst()
+                    row["result"] = "RETRY_SUCCESS" if attempt == 2 else (
+                        "RECOVERED" if row["sleep"] else "READY"
+                    )
+                finally:
+                    page.close()
+            except Exception as exc:
+                print(f"[ERROR] {target.name} attempt={attempt} {type(exc).__name__}: {exc}", flush=True)
+            finally:
+                row["seconds"] += time.monotonic() - started
+    lines = ["| App | Start (KST) | Entry (KST) | Active seconds | Sleep observed | Retried | Result |",
+             "|---|---|---|---:|---|---|---|"]
+    for name, row in rows.items():
+        lines.append(f"| {name} | {row['start']} | {row['entry']} | {row['seconds']:.1f} | "
+                     f"{row['sleep']} | {row['attempt'] == 2} | {row['result']} |")
+    for name in ("ACADEMY", "SUPABASE"):
+        if name not in rows:
+            lines.append(f"| {name} | — | — | — | — | — | SKIPPED |")
+    report = "\n".join(lines)
+    print(report, flush=True)
+    if summary := os.getenv("GITHUB_STEP_SUMMARY"):
+        with open(summary, "a", encoding="utf-8") as stream:
+            print(report, file=stream)
+    if any(row["result"] == "FAILED" for row in rows.values()):
+        raise RuntimeError("Streamlit entry verification failed")
 
 
 def main() -> int:
     errors: list[str] = []
-
-    try:
-        if os.getenv("SUPABASE_KEEPALIVE_ENABLED", "").lower() == "true":
-            ping_supabase()
-    except Exception as exc:  # noqa: BLE001
-        errors.append(f"Supabase: {type(exc).__name__}: {exc}")
 
     try:
         visit_streamlit_apps()
