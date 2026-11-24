@@ -15,7 +15,7 @@ from reportlab.platypus import (
     PageBreak,
     Spacer,
 )
-from modules.shared.report_fonts import korean_pdf_font
+from modules.shared.report_fonts import customer_pdf_fonts
 from modules.consultation.analyzer_pdf import amount, norm
 
 NAVY = "#17233C"
@@ -53,23 +53,23 @@ def components(contract, name, source):
 
 def build_signature(raw, profile):
     contracts = raw["contracts"]
-    font = korean_pdf_font()
+    body_font, font = customer_pdf_fonts()
     out = BytesIO()
     doc = SimpleDocTemplate(
         out,
         pagesize=A4,
-        leftMargin=29,
-        rightMargin=29,
+        leftMargin=21,
+        rightMargin=21,
         topMargin=49,
         bottomMargin=37,
         title="화랑 보장분석",
     )
     story = []
 
-    def para(text, size=9, color=NAVY):
+    def para(text, size=9, color=NAVY, face=None):
         style = ParagraphStyle(
             "cell",
-            fontName=font,
+            fontName=face or font,
             fontSize=size,
             leading=size * 1.45,
             textColor=colors.HexColor(color),
@@ -96,7 +96,7 @@ def build_signature(raw, profile):
         title.outline = (f"section{len(story)}", text)
         story.extend([title, Spacer(1, 12)])
 
-    def table(headers, rows, widths, size=9, repeat_title=None):
+    def table(headers, rows, widths, size=10.5, repeat_title=None):
         data = [
             [
                 para(s, size, "#FFFFFF") if not isinstance(s, Paragraph) else s
@@ -105,7 +105,7 @@ def build_signature(raw, profile):
         ]
         data.extend(
             [
-                [v if isinstance(v, Paragraph) else para(v, size) for v in row]
+                [v if isinstance(v, Paragraph) else para(v, size, face=body_font if col == 0 or (headers[0] == "보험사" and col == 1) else font) for col, v in enumerate(row)]
                 for row in rows
             ]
         )
@@ -119,7 +119,7 @@ def build_signature(raw, profile):
             style.extend(
                 [("SPAN", (0, 0), (-1, 0)), ("BACKGROUND", (0, 0), (-1, 1), NAVY)]
             )
-        grid = Table(data, colWidths=widths, repeatRows=repeat, hAlign="LEFT")
+        grid = Table(data, colWidths=[w * (doc.width - 12) / sum(widths) for w in widths], repeatRows=repeat, hAlign="LEFT")
         grid.setStyle(
             TableStyle(
                 style
@@ -204,8 +204,8 @@ def build_signature(raw, profile):
         badge = ParagraphStyle(
             "company",
             fontName=font,
-            fontSize=9,
-            leading=13,
+            fontSize=10,
+            leading=14,
             backColor=colors.HexColor(IVORY),
             borderPadding=2,
         )
@@ -238,7 +238,7 @@ def build_signature(raw, profile):
                 Paragraph(
                     f'<link href="#contract{i}" color="white">{text}</link>',
                     ParagraphStyle(
-                        "link", fontName=font, fontSize=8, leading=10, wordWrap="CJK"
+                        "link", fontName=font, fontSize=9, leading=12, wordWrap="CJK"
                     ),
                 )
             )
@@ -281,7 +281,7 @@ def build_signature(raw, profile):
             )
         story.append(PageBreak())
         heading("상품별 보장 비교")
-        table(headers, rows, [114, 73] + [344 / len(subset)] * len(subset), 7.7)
+        table(headers, rows, [114, 73] + [344 / len(subset)] * len(subset), 8.8)
     for i, c in enumerate(contracts):
         story.append(PageBreak())
         story.append(
@@ -300,7 +300,7 @@ def build_signature(raw, profile):
             ["회사 담보명", "담보 분류", "가입금액"],
             [[r["raw"], r["standard"], money(r["value"]) + "만원"] for r in c["rows"]],
             [310, 145, 76],
-            9,
+            10.5,
             title,
         )
     if raw["history"]:
@@ -310,7 +310,7 @@ def build_signature(raw, profile):
             ["상태", "보험사", "상품명", "가입일", "주기", "납입", "만기", "보험료"],
             raw["history"],
             [32, 52, 192, 68, 39, 38, 41, 69],
-            8,
+            9,
         )
     doc.build(story, onFirstPage=cover, onLaterPages=footer)
     return out.getvalue()
