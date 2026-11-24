@@ -183,7 +183,7 @@ def brief_pdf(parsed):
         values = r["values"]
         if not any(isinstance(v, (int, float)) and v > 0 for v in values):
             continue
-        if kb and "암" in label:
+        if parsed.get("details") and "암" in label:
             continue
         known_value = (
             "확인 필요"

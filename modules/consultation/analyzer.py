@@ -320,7 +320,7 @@ def run() -> None:
             col1.metric("고객명", result["customer_name"])
             col2.metric("분석 모드", result["mode"])
             col3.metric("보장항목", f"{result['coverage_count']}개")
-            unclassified = sum(not row['targets'] for row in parsed.get('details', []))
+            unclassified = sum(not row['targets'] for row in parsed.get('details', [])) if is_pdf else 0
             if unclassified:
                 st.caption(f'자동 분류하지 못한 보장 {unclassified}건이 있습니다')
             st.download_button(

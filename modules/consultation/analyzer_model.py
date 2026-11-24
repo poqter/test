@@ -342,10 +342,35 @@ def _parse_source_file_uncached(main_bytes: bytes) -> dict:
                 }
             )
 
+        details = []
+        by_label = {row["label"]: row for row in coverages}
+        for sheet in workbook.worksheets:
+            match = re.match(r"^(\d+)-", sheet.title)
+            if not match or sheet.cell(9, 3).value != "담보명":
+                continue
+            index = int(match[1])
+            if index >= len(contracts) or sheet.cell(3, 3).value != contracts[index]["product"]:
+                continue
+            maxima = {}
+            standard = ""
+            for row in sheet.iter_rows(min_row=10, max_col=4, values_only=True):
+                _, group, name, value = row
+                if group:
+                    standard = _normalize_label(group)
+                if not name or not standard or not isinstance(value, (int, float)):
+                    continue
+                details.append(dict(contract=index, standard=standard, raw=str(name), value=value))
+                if standard in ("질병종수술", "상해종수술"):
+                    maxima[standard] = max(maxima.get(standard, 0), value)
+            for label, maximum in maxima.items():
+                if label in by_label:
+                    by_label[label]["values"][index] = maximum
+
         if not coverages:
             raise ValueError("원본 파일에서 보장항목을 찾을 수 없습니다.")
 
         return {
+            "details": details,
             "customer_name": customer_name,
             "age": age,
             "contracts": contracts,
@@ -357,6 +382,6 @@ def parse_source_file(main_bytes: bytes):
     """Parse the current upload once per session; callers receive a private copy."""
     import copy
     from modules.shared.runtime_cache import cached, digest_bytes
-    parsed = cached("parse:analyzer:source", "coverage-v3:" + digest_bytes(main_bytes),
+    parsed = cached("parse:analyzer:source", "coverage-v4:" + digest_bytes(main_bytes),
                     lambda: _parse_source_file_uncached(main_bytes))
     return copy.deepcopy(parsed)

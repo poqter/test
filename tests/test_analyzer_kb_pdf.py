@@ -114,3 +114,26 @@ def test_bundled_workbook_has_automatic_selection():
     assert {'일반암', '질병입원'} <= {
         item['label'] for item in data['coverages'] if item['label'] in DEFAULT_COVERAGES
     }
+
+
+def test_surgery_maxima_preserve_two_identical_contracts():
+    raw = fixture()
+    contract = raw['contracts'][0]
+    contract['rows'] = [
+        dict(number=i, kind='정액', raw=f'질병수술 {i}종', standard='질병종수술', value=v, page=7)
+        for i, v in enumerate([10, 30, 50, 500, 1000], 1)
+    ]
+    raw['contracts'].append(copy.deepcopy(contract))
+    result = convert_kb(raw, '2026-01')
+    row = next(r for r in result['coverages'] if r['label'] == '질병종수술')
+    assert row['values'] == [1000, 1000]
+    assert len(result['details']) == 10
+
+
+def test_indemnity_components_require_all_three_and_matching_total():
+    from modules.consultation.coverage_signature import components
+    rows = [dict(standard='비급여'+kind, kind='실손', value=value)
+            for kind,value in [('도수',350),('주사',250),('MRI',300)]]
+    assert components({'rows': rows}, '3대비급여실손', '900만') == [350,250,300]
+    assert components({'rows': rows}, '3대비급여실손', '800만') is None
+    assert components({'rows': rows[:2]}, '3대비급여실손', '600만') is None
