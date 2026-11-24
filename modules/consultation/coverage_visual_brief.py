@@ -115,6 +115,12 @@ def radar(entries, font, amounts=None, surgery_caption=()):
                 fillColor=outline,
             )
         )
+        if original_label == "수술비":
+            for index, line in enumerate(surgery_caption):
+                drawing.add(String(x, y - 9 - index * 11, line, fontName=font,
+                                   fontSize=8.5, textAnchor="middle",
+                                   fillColor=colors.HexColor("#526375")))
+            continue
         drawing.add(
             String(
                 x,
@@ -126,11 +132,6 @@ def radar(entries, font, amounts=None, surgery_caption=()):
                 fillColor=outline,
             )
         )
-        if original_label == "수술비 합계":
-            for index, line in enumerate(surgery_caption):
-                drawing.add(String(x, y - 25 - index * 10, line, fontName=font,
-                                   fontSize=7.5, textAnchor="middle",
-                                   fillColor=colors.HexColor("#526375")))
     return drawing
 
 

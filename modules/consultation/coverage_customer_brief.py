@@ -259,7 +259,7 @@ def render_customer_brief(p):
         surgery_total = sum(value for value, _ in surgery_parts)
         reference_total = (sum(ref for _, ref in surgery_parts)
                            if all(ref > 0 for _, ref in surgery_parts) else 0)
-        entries.insert(surgery_position, ("수술비 합계", surgery_total, reference_total))
+        entries.insert(surgery_position, ("수술비", surgery_total, reference_total))
     entries = [r for r in entries if r[1] is not None]
     comparable = [row for row in entries if row[2] > 0]
     if len(comparable) >= 3:
@@ -279,13 +279,20 @@ def render_customer_brief(p):
                     name = "종수술비 · 질병"
                 x = 36 + (index % 2) * 266
                 y = 688 + (index // 2) * 25
+                if label == "수술비":
+                    for n, line in enumerate(surgery_caption):
+                        tx(x, y + 10 * n, line, 8.5, f, S)
+                    continue
                 tx(x, y, name, 10)
                 tx(x + 250, y, shown, 11, b, right=True)
     else:
-        rows(185, [(k, fmt(v)) for k, v, r in entries])
-        if surgery_caption:
-            for index, line in enumerate(surgery_caption):
-                tx(46, 198 + len(entries) * 31 + index * 12, line, 9, f, S)
+        items = []
+        for label, value, _ in entries:
+            if label == "수술비":
+                items.extend((line, "") for line in surgery_caption)
+            else:
+                items.append((label, fmt(value)))
+        rows(185, items)
     c.showPage()
     start("암 진단과 치료")
     section(125, "내 암 진단비")
