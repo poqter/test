@@ -1,5 +1,5 @@
 # Direct runtime dependencies only.
-# Streamlit runtime refresh 2026-11-19: load the WORKSPACE CBT registry with the production file watcher disabled.
+# Streamlit runtime refresh: load the coverage report generators with the production file watcher disabled.
 # Exact deployment versions are managed in constraints.txt to keep one source of truth.
 -c constraints.txt
 streamlit

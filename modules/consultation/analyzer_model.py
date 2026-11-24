@@ -314,6 +314,7 @@ def _parse_source_file_uncached(main_bytes: bytes) -> dict:
                     "payment_count": coverage_ws.cell(5, col).value or "",
                     "payment_cycle": coverage_ws.cell(6, col).value or "",
                     "monthly": _to_number(coverage_ws.cell(7, col).value),
+                    "premium_missing": coverage_ws.cell(7, col).value in (None, "", "-", "확인 필요", "보험료미제공"),
                     "total": _to_number(contracts_ws.cell(contract_row, 10).value),
                     "paid": _to_number(contracts_ws.cell(contract_row, 11).value),
                     "remaining": _to_number(contracts_ws.cell(contract_row, 12).value),
@@ -335,6 +336,7 @@ def _parse_source_file_uncached(main_bytes: bytes) -> dict:
                 {
                     "label": label,
                     "display": DISPLAY_NAMES.get(label, str(raw_label).strip()),
+                    "reference": _to_number(coverage_ws.cell(row, 3).value),
                     "group": _group_for(label),
                     "values": values,
                 }

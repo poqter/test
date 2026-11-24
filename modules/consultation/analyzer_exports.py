@@ -567,7 +567,8 @@ def build_analysis_file(
 def build_analysis_from_data(data: dict, selected_labels: list[str] | None = None) -> tuple[bytes, str, str]:
     """Shared exporter; legacy XLSX route and reviewed PDF route use one layout."""
     from modules.consultation.analyzer_state import sort_contracts
-    data = sort_contracts(data)
+    if data.get("source_type") != "kb_pdf":
+        data = sort_contracts(data)
     available = {item["label"]: item for item in data["coverages"]}
 
     if selected_labels is None:
@@ -590,15 +591,20 @@ def build_analysis_from_data(data: dict, selected_labels: list[str] | None = Non
     workbook = Workbook()
     workbook.remove(workbook.active)
     all_contract_indices = list(range(len(data["contracts"])))
-    _populate_analysis_sheet(
-        workbook,
-        "보장 분석",
-        data,
-        selected,
-        all_contract_indices,
-        contracts_per_page=len(data["contracts"]),
-        page_count=1,
-    )
+    if not all_contract_indices:
+        sheet = workbook.create_sheet("보장 분석")
+        sheet.append(["고객명", "조회 기준일", "현재 계약 수"])
+        sheet.append([data["customer_name"], data.get("source_date", ""), 0])
+    else:
+        _populate_analysis_sheet(
+            workbook,
+            "보장 분석",
+            data,
+            selected,
+            all_contract_indices,
+            contracts_per_page=len(data["contracts"]),
+            page_count=1,
+        )
     _populate_proposal_sheet(workbook, data, selected)
     ws = workbook['보장 분석']
     for col, contract in enumerate(data['contracts'], 4):
