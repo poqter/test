@@ -100,11 +100,11 @@ def generate_group(repo, day, group, retry=False, actor=None, allow_partial_mark
         raise
 
 
-def publish_ready(repo, day, codes, *, now=None):
+def publish_ready(repo, day, codes, *, now=None, observed_profiles=None):
     if not is_regular_day(day):
         return []
     results=[]
-    profiles={r['profile_code']:r for r in repo.profiles()}
+    profiles=observed_profiles if observed_profiles is not None else {r['profile_code']:r for r in repo.profiles()}
     policy=None
     for code in codes:
         if profiles.get(code,{}).get('is_enabled') is False:
@@ -118,6 +118,12 @@ def publish_ready(repo, day, codes, *, now=None):
             results.append({'profile':code,'status':'already_published'});continue
         if revision.get('publication_status')=='hidden':
             results.append({'profile':code,'status':'hidden'});continue
+        # The initial read is sufficient for an already-published observation only.
+        # Before any possible publication, preserve fresh administrator settings.
+        if observed_profiles is not None:
+            profiles={r['profile_code']:r for r in repo.profiles()}
+            if profiles.get(code,{}).get('is_enabled') is False:
+                results.append({'profile':code,'status':'disabled'});continue
         from .public_body import customer_body
         body=bundle['snapshot'].get('external_content_payload') or {}
         content=bundle['snapshot'].get('content_payload') or {}
@@ -163,17 +169,17 @@ def catch_up(repo, now=None):
                 and clock() >= datetime.combine(day, PUBLICATION_TIME, KST)]
     from .diagnostics import failure_diagnostic
 
-    def publish_independently():
+    def publish_independently(observed_profiles=None):
         outcomes = []
         for code in due_profiles():
             try:
-                outcomes.extend(publish_ready(repo, day, (code,), now=now))
+                outcomes.extend(publish_ready(repo, day, (code,), now=now, observed_profiles=observed_profiles))
             except Exception as exc:
                 outcomes.append({'profile': code, 'status': 'failed', 'diagnostic': failure_diagnostic(exc)})
         return outcomes
 
     # Publish saved editions first: a slow/failed MARKET cannot hold NEWS hostage.
-    initial = publish_independently()
+    initial = publish_independently(profiles)
     finished = bool(initial) and all(row['status'] == 'already_published' for row in initial)
     generation = {}
     local=clock().astimezone(KST)
