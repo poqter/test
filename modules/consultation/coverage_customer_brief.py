@@ -1,4 +1,6 @@
 from io import BytesIO
+import re
+import unicodedata
 from modules.consultation.coverage_visual_brief import (
     AXES,
     radar,
@@ -12,6 +14,26 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import simpleSplit
 from modules.consultation.coverage_signature import INSURERS
 from pathlib import Path
+
+
+def surgery_tier_rows(details):
+    groups = {}
+    for row in details:
+        category = row.get("standard", "")
+        if category not in ("질병종수술", "상해종수술"):
+            continue
+        name = unicodedata.normalize("NFKC", row["raw"])
+        # A plan range such as 1~5종 does not identify the tier of this amount.
+        name = re.sub(r"[1-9]\d*\s*종?\s*(?:[~∼～–—-]|부터|내지)\s*(?:제\s*)?[1-9]\d*\s*종", "", name)
+        tiers = set(re.findall(r"(?<!\d)([1-5])\s*종(?!류)", name))
+        if len(tiers) != 1 or not isinstance(row.get("value"), (float, int)):
+            continue
+        tier = int(tiers.pop())
+        contracts = groups.setdefault(category, {}).setdefault(tier, {})
+        contract = row["contract"]
+        contracts[contract] = max(contracts.get(contract, 0), row["value"])
+    return [(category[:2] + " · 종별 확인분", {tier: sum(values.values()) for tier, values in groups[category].items()})
+            for category in ("질병종수술", "상해종수술") if category in groups]
 
 
 def render_customer_brief(p):
@@ -90,10 +112,25 @@ def render_customer_brief(p):
 
     def rows(y, items, step=31):
         for k, v in items:
+            if isinstance(v, dict):
+                draw_tiers(y, k, v)
+                y += step
+                continue
             tx(46, y, k, 11)
             tx(W - 45, y, v, 12, b, right=True)
             rule(y + 10)
             y += step
+
+    tier_rows = surgery_tier_rows(p.get("details", []))
+
+    def draw_tiers(y, label, amounts):
+        tx(46, y, label, 10, b)
+        for tier in range(1, 6):
+            right = 175 + (tier - 1) * 90
+            tx(right, y - 11, f"{tier}종", 8, f, S, right=True)
+            value = amounts.get(tier)
+            tx(right, y + 2, fmt(value) if value is not None else "—", 10, b, right=True)
+        rule(y + 10)
 
     def bars(y, items, peak):
         for k, v in items:
@@ -321,7 +358,7 @@ def render_customer_brief(p):
             )
         ),
     )
-    add("수술 보장", cover_rows(("수술",)))
+    add("수술 보장", cover_rows(("수술",)) + tier_rows)
     daily = cover_rows(("입원", "간호간병", "치매·장기요양", "통원·응급"))
     if daily and val("질병입원일당") == 0:
         daily.insert(0, ("질병 입원일당", "0원"))
@@ -391,9 +428,11 @@ def render_customer_brief(p):
             ],
             36,
         )
-        tx(36, 339, "하루 기준으로 보는 입원과 돌봄", 14, b)
+        rows(306, tier_rows, 30)
+        offset = 30 if len(tier_rows) == 2 else 0
+        tx(36, 339 + offset, "하루 기준으로 보는 입원과 돌봄", 14, b)
         tiles(
-            361,
+            361 + offset,
             [
                 pair("질병입원일당"),
                 ("암 입원일당", fmt(val("암입원"))),
