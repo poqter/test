@@ -1,9 +1,9 @@
 name: HWARANG Keep Alive
 
 on:
-  # KST 00:17 / 06:17 / 12:17 / 18:17 (UTC 15:17 / 21:17 / 03:17 / 09:17)
+  # Every three hours at :17 KST, starting at 00:17.
   schedule:
-    - cron: "17 3,9,15,21 * * *"
+    - cron: "17 0,3,6,9,12,15,18,21 * * *"
   workflow_dispatch:
 
 permissions:
@@ -11,7 +11,7 @@ permissions:
 
 concurrency:
   group: hwarang-keep-alive
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   keep-alive:
@@ -19,17 +19,12 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright/python:v1.55.0@sha256:640d578aae63cfb632461d1b0aecb01414e4e020864ac3dd45a868dc0eff3078
       options: --init --ipc=host
-    timeout-minutes: 12
+    timeout-minutes: 19
 
     env:
       WORKSPACE_URL: https://hwarang-workspace.streamlit.app
       CALCULATOR_URL: https://hwarang-calculator.streamlit.app
-      ACADEMY_KEEPALIVE_ENABLED: ${{ vars.ACADEMY_KEEPALIVE_ENABLED || 'false' }}
-      ACADEMY_URL: https://hwarang-academy.streamlit.app
       CALENDAR_URL: https://hwarang-calendar.streamlit.app
-      SUPABASE_KEEPALIVE_ENABLED: ${{ vars.SUPABASE_KEEPALIVE_ENABLED || 'false' }}
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
 
     steps:
       - name: Check out repository
@@ -37,7 +32,7 @@ jobs:
 
       - name: Install keep-alive dependencies
         run: |
-          python3 -m pip install --target "$RUNNER_TEMP/keepalive-deps" "requests==2.34.2" "playwright==1.55.0"
+          python3 -m pip install --target "$RUNNER_TEMP/keepalive-deps" "playwright==1.55.0"
 
       - name: Wake HWARANG services
         run: PYTHONPATH="$RUNNER_TEMP/keepalive-deps" python3 .github/scripts/hwarang_keepalive.py

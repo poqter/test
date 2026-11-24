@@ -43,3 +43,23 @@ class KeepAliveTests(unittest.TestCase):
                     with self.assertRaisesRegex(RuntimeError, "entry not visible"):
                         keepalive["wait_for_entry"](self.page, self.target)
                 self.assertEqual(wake.click.call_count, int(sleeping))
+
+    def test_retry_only_failed_target_and_report_final_status(self):
+        targets = keepalive["scheduled_targets"]()
+        for final_failure in (False, True):
+            context = Mock()
+            page = context.new_page.return_value
+            statuses = [200, 503, 200, 503 if final_failure else 200]
+            page.goto.side_effect = [Mock(status=status) for status in statuses]
+            check = keepalive["check_targets"]
+            with patch.dict(check.__globals__, wait_for_entry=Mock()), patch("builtins.print") as output:
+                if final_failure:
+                    with self.assertRaises(RuntimeError):
+                        check(context, targets)
+                else:
+                    check(context, targets)
+                report = output.call_args_list[-1].args[0]
+            self.assertEqual([call.args[0] for call in page.goto.call_args_list],
+                             [target.url for target in targets] + [targets[1].url])
+            self.assertIn("FAILED" if final_failure else "RETRY_SUCCESS", report)
+            self.assertEqual(report.count("SKIPPED"), 2)
