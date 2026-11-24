@@ -178,6 +178,37 @@ def render_customer_brief(p):
     def pair(k):
         return (k, fmt(val(k)))
 
+    box(0, 0, W, H, "#FEFDF9")
+    box(0, 0, 16, H, N)
+    tx(54, 65, "HWARANG", 14, b)
+    ribbon(c, 141, H - 65, 36, 9)
+    box(54, 91, W - 102, 0.8, "#C6BDAA")
+    customer_lines = simpleSplit(p["customer_name"] + "님을 위한", f, 20, W - 104)
+    for index, line in enumerate(customer_lines):
+        tx(54, 225 - 24 * (len(customer_lines) - 1 - index), line, 20, f, G)
+    tx(49, 317, "보장", 68, b)
+    tx(49, 395, "브리핑", 68, b)
+
+    for x, top, color in (
+        (323, 447, "#E7E5DD"), (360, 404, "#C1CBD2"), (397, 361, "#8395A5"),
+        (434, 318, "#425770"), (471, 275, N),
+    ):
+        leaf = c.beginPath()
+        leaf.moveTo(x, H - 744)
+        leaf.lineTo(x, H - top)
+        leaf.lineTo(W - 48, H - top + 28)
+        leaf.lineTo(W - 48, H - 744)
+        leaf.close()
+        c.setFillColor(color)
+        c.drawPath(leaf, fill=1, stroke=0)
+    if p.get("source_date"):
+        box(54, 665, 31, 3, G)
+        tx(54, 698, "조회 기준일", 10, f, S)
+        tx(54, 726, p["source_date"], 17, b)
+    tx(50, 808, "고객용 보장 브리핑   /   01", 9, f, S)
+    tx(W - 50, 808, "화랑 WORKSPACE", 9, b, S, True)
+    c.showPage()
+
     start(p["customer_name"] + "님의 보장 현황")
     if not cs:
         tx(36, 150, "조회된 유지 계약 0건", 16, b)
