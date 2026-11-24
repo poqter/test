@@ -242,6 +242,9 @@ def render(auth,actor):
             st.dataframe([{'영역':i['area'],'항목':i['title'],'검사·게시 결과':i['result'],'사용자 영향':i['impact'],'변화':i['change'],'원인':i['classification']} for i in issues],hide_index=True,use_container_width=True)
             st.info('일정·일일 기록·지원 요청·모바일·홈 설치·ACADEMY의 세부 결과는 해당 실행의 단계별 근거에서 확인합니다. 실제 기기 설치 및 사용자 저장·삭제는 별도 확인이 필요합니다.')
         with tabs[2]:
+            with st.expander('자동화 실행 기록'):
+                for label, workflow in (('브리핑 생성·복구', 'hwarang_daily_briefing'), ('앱 절전 방지', 'hwarang_keepalive'), ('카카오 검사', 'kakao_checks'), ('기능별 회귀 검사', 'briefing_checks')):
+                    st.link_button(label, f'https://github.com/poqter/test/actions/workflows/{workflow}.yml')
             if briefing:
                 st.markdown('**브리핑 자동 작업**')
                 st.dataframe(briefing['runs'],hide_index=True,use_container_width=True)
