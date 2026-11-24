@@ -219,7 +219,22 @@ def test_published_watchdog_checks_each_edition_once(generate):
     repo = Repo()
     repo.saved = {code: edition(code, 'published') for code in ('NEWS', 'INSURANCE', 'MARKET')}
     repo.bundle_for_date = Mock(wraps=repo.bundle_for_date)
+    repo.profiles = Mock(wraps=repo.profiles)
     result = s.catch_up(repo, at('08:35:00'))
     assert result['status'] == 'published'
     assert repo.bundle_for_date.call_count == 3
+    assert repo.profiles.call_count == 1
+    generate.assert_not_called()
+
+
+def test_initial_observation_refreshes_profile_before_publication(generate):
+    repo = Repo()
+    repo.saved = {code: edition(code) for code in ('NEWS', 'INSURANCE', 'MARKET')}
+    original = repo.profiles()
+    changed = [dict(p, run_mode='manual') if p['profile_code'] == 'NEWS' else p for p in original]
+    repo.profiles = Mock(side_effect=[original] + [changed] * 20)
+    result = s.catch_up(repo, at('09:29:00'))
+    assert result['status'] == 'incomplete'
+    assert 'NEWS' not in repo.publications
+    assert set(repo.publications) == {'MARKET', 'INSURANCE'}
     generate.assert_not_called()
