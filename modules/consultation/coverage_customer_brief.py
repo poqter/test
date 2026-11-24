@@ -16,8 +16,9 @@ from modules.consultation.coverage_signature import INSURERS
 from pathlib import Path
 
 
-def surgery_tier_rows(details):
+def surgery_tier_breakdown(details, coverages):
     groups = {}
+    ungraded = {}
     for row in details:
         category = row.get("standard", "")
         if category not in ("질병종수술", "상해종수술"):
@@ -26,14 +27,29 @@ def surgery_tier_rows(details):
         # A plan range such as 1~5종 does not identify the tier of this amount.
         name = re.sub(r"[1-9]\d*\s*종?\s*(?:[~∼～–—-]|부터|내지)\s*(?:제\s*)?[1-9]\d*\s*종", "", name)
         tiers = set(re.findall(r"(?<!\d)([1-5])\s*종(?!류)", name))
-        if len(tiers) != 1 or not isinstance(row.get("value"), (float, int)):
+        if not isinstance(row.get("value"), (float, int)):
+            continue
+        if len(tiers) != 1:
+            amounts = ungraded.setdefault(category, {})
+            contract = row["contract"]
+            amounts[contract] = max(amounts.get(contract, 0), row["value"])
             continue
         tier = int(tiers.pop())
         contracts = groups.setdefault(category, {}).setdefault(tier, {})
         contract = row["contract"]
         contracts[contract] = max(contracts.get(contract, 0), row["value"])
+    for category in ("질병종수술", "상해종수술"):
+        identified = groups.get(category, {})
+        for contract, value in enumerate(coverages.get(category, {}).get("values", [])):
+            if not isinstance(value, (int, float)) or value <= 0:
+                continue
+            known_max = max((values.get(contract, 0) for values in identified.values()), default=0)
+            if value > known_max:
+                amounts = ungraded.setdefault(category, {})
+                amounts[contract] = max(amounts.get(contract, 0), value)
+    maximums = {category: sum(values.values()) for category, values in ungraded.items() if any(values.values())}
     return [(category[:2] + " · 종별 확인분", {tier: sum(values.values()) for tier, values in groups[category].items()})
-            for category in ("질병종수술", "상해종수술") if category in groups]
+            for category in ("질병종수술", "상해종수술") if category in groups], maximums
 
 
 def render_customer_brief(p):
@@ -121,8 +137,6 @@ def render_customer_brief(p):
             rule(y + 10)
             y += step
 
-    tier_rows = surgery_tier_rows(p.get("details", []))
-
     def draw_tiers(y, label, amounts):
         tx(46, y, label, 10, b)
         for tier in range(1, 6):
@@ -154,6 +168,12 @@ def render_customer_brief(p):
             if r
             else f"{e}억원"
         )
+
+    tier_rows, ungraded = surgery_tier_breakdown(p.get("details", []), workbook)
+    if ungraded:
+        maximums = "  /  ".join(k[:2] + " " + fmt(v) for k, v in ungraded.items())
+        tier_rows.append(("* 종별 미제공 · 계약별 최대금액", maximums))
+
 
     def pair(k):
         return (k, fmt(val(k)))
@@ -429,7 +449,7 @@ def render_customer_brief(p):
             36,
         )
         rows(306, tier_rows, 30)
-        offset = 30 if len(tier_rows) == 2 else 0
+        offset = 30 * max(0, len(tier_rows) - 1)
         tx(36, 339 + offset, "하루 기준으로 보는 입원과 돌봄", 14, b)
         tiles(
             361 + offset,
