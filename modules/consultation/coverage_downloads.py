@@ -1,9 +1,7 @@
 """Session-scoped PDF outputs, invalidated by source or staff changes."""
 
-import base64
-import html
+from datetime import timedelta
 import re
-from string import Template
 
 import streamlit as st
 from modules.shared.local_time import now_kst
@@ -12,46 +10,26 @@ from modules.consultation.coverage_visual_brief import brief_pdf
 
 
 def _pdf_download(title, customer_name, data):
-    # The browser supplies the date at click time, even across midnight in an open tab.
     customer = re.sub(r'[\\/:*?"<>|]+', "_", str(customer_name or "").strip()) or "OOO"
-    filename = customer + "_" + title.removeprefix("고객용 ")
-    element_id = "hw-coverage-download-" + ("brief" if title.startswith("고객용") else "analysis")
-    page = Template("""
-<style>
-.hw-coverage-download{display:block;text-align:center;padding:8px;color:#17233c!important;
-border:1px solid #cdd3db;border-radius:8px;text-decoration:none!important;background:white}
-.hw-coverage-download:hover,.hw-coverage-download:focus-visible{border-color:#506482}
-</style>
-<a class="hw-coverage-download" id="$id" data-name="$name" download="$initial"
-href="#">$title PDF 다운로드</a>
-<script>
-(() => {
-    const link = document.getElementById("$id");
-    const bytes = Uint8Array.from(atob("$payload"), c => c.charCodeAt(0));
-    link.href = URL.createObjectURL(new Blob([bytes], {type:"application/pdf"}));
-    const cleanup = new MutationObserver(() => {
-        if (!link.isConnected) {
-            URL.revokeObjectURL(link.href);
-            cleanup.disconnect();
-        }
-    });
-    cleanup.observe(document.body, {childList:true, subtree:true});
-    const dateFormat = new Intl.DateTimeFormat("en-CA", {
-        timeZone:"Asia/Seoul", year:"numeric", month:"2-digit", day:"2-digit"
-    });
-    link.onclick = () => {
-        const parts = Object.fromEntries(dateFormat.formatToParts(new Date()).map(p => [p.type,p.value]));
-        link.download = link.dataset.name + "_" + parts.year + parts.month + parts.day + ".pdf";
-    };
-})();
-</script>""")
-    initial = f"{filename}_{now_kst():%Y%m%d}.pdf"
-    st.html(page.substitute(id=element_id, name=html.escape(filename, quote=True),
-                            initial=html.escape(initial, quote=True), title=html.escape(title),
-                            payload=base64.b64encode(data).decode("ascii")), unsafe_allow_javascript=True)
+    filename = f"{customer}_{title.removeprefix('고객용 ')}_{now_kst():%Y%m%d}.pdf"
+    st.download_button(title + " PDF 다운로드", data=data, file_name=filename,
+                       mime="application/pdf", on_click="ignore", use_container_width=True)
 
 
 def render_reports(parsed, signature, selected_labels):
+    now = now_kst()
+    midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+
+    @st.fragment(run_every=midnight - now)
+    def dated_downloads():
+        if now_kst().date() != now.date():
+            st.rerun()
+        _render_reports(parsed, signature, selected_labels)
+
+    dated_downloads()
+
+
+def _render_reports(parsed, signature, selected_labels):
     profile = st.session_state.get("login_profile") or {}
     token = (signature, profile.get("display_name"), profile.get("position_name"))
     if st.session_state.get("analyzer_reports_token") != token:
