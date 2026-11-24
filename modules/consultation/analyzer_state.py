@@ -31,7 +31,8 @@ def reset_for_upload(state, content):
     if state.get('analyzer_active_upload') != token:
         for key in list(state):
             if key.startswith(('kb_', 'analyzer_v2_cov_')) or key in (
-                'analyzer_v2_result','analyzer_v2_error','analyzer_kb_unlock','analyzer_kb_password'):
+                'analyzer_v2_result','analyzer_v2_error','analyzer_kb_unlock','analyzer_kb_password',
+                'analyzer_report_files','analyzer_reports_token'):
                 state.pop(key, None)
         state['analyzer_active_upload'] = token
 

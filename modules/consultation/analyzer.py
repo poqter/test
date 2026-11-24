@@ -165,7 +165,7 @@ def run() -> None:
             with st.expander('예시 파일 · 업로드 안내'):
                 from modules.consultation.analyzer_sample import sample_workbook
                 st.download_button('익명 예시 XLSX 내려받기', sample_workbook(), on_click="ignore", file_name='HWARANG_analyzer_sample.xlsx', mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-                st.caption('XLSX는 계약사항 / 상품별보장내용 시트를 사용합니다. KB PDF는 인식 내용 확인 및 수정이 가능합니다.')
+                st.caption('XLSX는 계약사항 / 상품별보장내용 시트를 사용합니다. KB 전체 보장분석 PDF도 바로 업로드할 수 있습니다.')
             uploaded_main = guarded_upload(
                 "전체 보장내용이 포함된 컨설팅보장분석.xlsx 또는 KB 보장분석 PDF를 업로드하세요",
                 type=["xlsx", "pdf"],
@@ -181,7 +181,6 @@ def run() -> None:
         is_pdf = bool(uploaded_main and uploaded_main.name.lower().endswith('.pdf'))
         from modules.consultation.analyzer_pdf_password import prepare_pdf_input
         pdf_state = prepare_pdf_input(main_bytes if is_pdf else b'')
-        pdf_reviewed = not is_pdf
         calculation_month = None
         if is_pdf:
             from modules.shared.local_time import now_kst
@@ -231,25 +230,14 @@ def run() -> None:
         result_area = st.container(key="analyzer_page_results")
         selected_labels: list[str] = []
         if parsed:
-            parsed = sort_contracts(parsed)
-            if is_pdf:
-                from modules.consultation.analyzer_pdf_ui import render_pdf_review
-                token = hashlib.sha256(main_bytes + calculation_month.encode()).hexdigest()[:16]
-                with st.expander("PDF 인식 내용 확인 및 수정", expanded=False):
-                    parsed, pdf_reviewed = render_pdf_review(parsed, token, basic_only=mode == "간편모드")
-            with st.expander('인식된 계약과 고객정보 확인', expanded=False):
-                st.write(f"고객: {parsed['customer_name']} · 보험나이: {parsed['age']} · 계약 {len(parsed['contracts'])}개")
-                st.dataframe([{'보험사': c['company'], '상품': c['product'], '월보험료': c['monthly'], '보장기간': c['coverage_period']} for c in parsed['contracts']], hide_index=True, use_container_width=True)
-                if any(not c['company'] or not c['product'] or c['monthly'] == 0 for c in parsed['contracts']):
-                    st.info('회사·상품명이 비어 있거나 보험료가 0인 계약이 있습니다. 완납 여부와 원본을 확인하세요.')
+            if not is_pdf:
+                parsed = sort_contracts(parsed)
             available_labels = [item["label"] for item in parsed["coverages"]]
             default_labels = [label for label in available_labels if label in set(DEFAULT_COVERAGES)]
 
             if mode == "간편모드":
                 selected_labels = default_labels
                 st.info(f"기본 보장 {len(selected_labels)}개가 자동으로 적용됩니다.")
-                with st.expander("자동 정리에 포함되는 보장 보기"):
-                    st.write([DISPLAY_NAMES.get(label, label) for label in selected_labels])
             else:
                 st.markdown("#### 출력할 보장항목")
                 st.caption("구분별 카드에서 필요한 보장항목을 바로 체크하거나 해제하세요.")
@@ -261,11 +249,7 @@ def run() -> None:
         elif not uploaded_main:
             st.caption("원본 파일을 업로드하면 선택 가능한 전체 보장항목이 표시됩니다.")
 
-        if parsed:
-            with st.expander('원본 보장 → 출력 포함 여부 대조'):
-                st.dataframe([{'원본 항목': item['label'], '분류': item['group'], '출력': '포함' if item['label'] in selected_labels else '미포함 · 직접 선택 가능'} for item in parsed['coverages']], hide_index=True, use_container_width=True)
-                st.caption('미포함은 보장 없음이 아닙니다. 항목 직접 선택에서 추가할 수 있습니다.')
-        ready = bool(parsed) and bool(selected_labels) and parse_error is None and pdf_reviewed
+        ready = bool(parsed) and bool(selected_labels) and parse_error is None
         signature = make_input_signature(main_bytes, mode, selected_labels) if ready else None
 
         if signature and is_pdf:
@@ -336,6 +320,9 @@ def run() -> None:
             col1.metric("고객명", result["customer_name"])
             col2.metric("분석 모드", result["mode"])
             col3.metric("보장항목", f"{result['coverage_count']}개")
+            unclassified = sum(not row['targets'] for row in parsed.get('details', [])) if is_pdf else 0
+            if unclassified:
+                st.caption(f'자동 분류하지 못한 보장 {unclassified}건이 있습니다')
             st.download_button(
                 "결과 엑셀 다운로드", on_click="ignore",
                 data=result["bytes"],
@@ -346,9 +333,8 @@ def run() -> None:
                 key="analyzer_v2_download",
             )
 
-            if not is_pdf:
-                from modules.consultation.coverage_customer_briefing import render_briefing
-                render_briefing(parsed)
+            from modules.consultation.coverage_downloads import render_reports
+            render_reports(parsed, signature)
 
         elif not error or error.get("signature") != signature:
             st.info("원본 파일을 업로드하면 결과를 확인할 수 있습니다." if not uploaded_main else "출력할 보장항목을 확인하고 보장 분석을 시작하세요.")
@@ -357,7 +343,7 @@ def run() -> None:
         "사용 방법 및 출력 기준",
         "전체 보장분석 엑셀을 고객 상담용 보장표로 자동 정리합니다.",
         [
-            ("원본 업로드", "컨설팅보장분석.xlsx 또는 KB 전체 보장분석 PDF를 등록합니다. PDF는 바로 출력할 수 있으며, 확인 영역에서 인식 내용을 수정할 수 있습니다."),
+            ("원본 업로드", "컨설팅보장분석.xlsx 또는 KB 전체 보장분석 PDF를 등록합니다. PDF는 바로 출력할 수 있으며, 결과 엑셀에서 수정할 수 있습니다."),
             ("분석 방식 선택", "간편모드는 기본 보장을 적용하고, 개인모드는 출력 항목을 직접 선택합니다."),
             ("결과 확인", "생성된 상담용 보장표를 확인하고 엑셀로 내려받습니다."),
         ],

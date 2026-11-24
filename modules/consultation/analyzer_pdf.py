@@ -39,6 +39,10 @@ def extract_kb_pdf(content, password=None):
     contracts = []
     customer = age = source_date = None
     expected_count = None
+    matrix = {}
+    history = []
+    references = {}
+    from modules.consultation.kb_tables import comparison, historic_contracts, comparison_targets
     with pdfplumber.open(BytesIO(content), password=password) as document:
         if len(document.pages) > 100:
             raise ValueError("KB PDF는 100쪽 이하만 지원합니다.")
@@ -58,12 +62,18 @@ def extract_kb_pdf(content, password=None):
                 if source_date and timestamp[0] != source_date:
                     raise ValueError("조회일이 다른 페이지가 섞여 있습니다.")
                 source_date = timestamp[0]
-            if "전체 계약리스트" in header and expected_count is None:
+            if "전체 보장현황" in header and expected_count is None:
                 # KB count is the first large number in the top summary band.
                 band = page.crop((0, 65, page.width, 140)).extract_words()
                 nums = [w for w in band if re.fullmatch(r"\d+", w['text'])]
                 if nums:
-                    expected_count = int(sorted(nums, key=lambda w: w['x0'])[0]['text'])
+                    expected_count = int(sorted(nums, key=lambda w: (round(w['top']/5), w['x0']))[0]['text'])
+            if "전체 담보 진단 현황" in header:
+                references.update(comparison_targets(page))
+            if "상품별 가입현황" in header:
+                comparison(page, matrix)
+            if "실효/해지계약현황" in header:
+                history.extend(historic_contracts(page))
             if "상품별 가입담보상세" not in header:
                 page.close()
                 continue
@@ -116,13 +126,13 @@ def extract_kb_pdf(content, password=None):
                 current['rows'].append(dict(number=number, kind=kind, raw=raw, standard=standard,
                                             value=amount(money), page=page_no))
             page.close()
-    if not customer or not age or not source_date or not contracts:
+    if not customer or not age or not source_date or (not contracts and expected_count != 0):
         raise ValueError("KB 텍스트 PDF의 고객정보/상세담보를 찾지 못했습니다. 스캔본·요약본은 기존 엑셀을 이용하세요.")
     if expected_count is None or expected_count != len(contracts):
         raise ValueError(f"전체 계약 수({expected_count})와 상세 계약 수({len(contracts)})가 다릅니다. 전체 PDF를 업로드하세요.")
     if any(len(c['pages']) != c['continuation_total'] for c in contracts):
         raise ValueError("상세담보 연속 페이지가 누락되었습니다.")
-    return dict(customer_name=customer, age=age, source_date=source_date, contracts=contracts)
+    return dict(customer_name=customer, age=age, source_date=source_date, contracts=contracts, matrix=matrix, history=history, references=references)
 
 
 DIRECT = {
@@ -224,22 +234,25 @@ def convert_kb(raw, calculation_month):
         for row in c['rows']:
             targets, reason=classify(row)
             for label,value in targets:
-                sums[label]+=value
+                if label in ("상해종수술", "질병종수술"):
+                    sums[label] = max(sums[label], value)
+                else:
+                    sums[label] += value
                 if reason and reason.startswith('확인 필요:'):
                     pending.add(label)
             details.append(dict(contract=index,**row,targets=[t[0] for t in targets],reason=reason or '직접 분류'))
-            if reason or any(label in ('질병종수술','상해종수술','치아보존치료비') for label,_ in targets):
+            if reason or any(label in ('치아보존치료비',) for label,_ in targets):
                 issues.append(dict(contract=index,label=', '.join(t[0] for t in targets) or row['standard'],
                     reason=reason or '서로 다른 지급조건의 담보 합계: 개별 금액 확인',page=row['page']))
         for label in labels:
             values[label].append('확인 필요' if label in pending else round(sums[label],6))
     return dict(customer_name=raw['customer_name'],age=raw['age'],contracts=contracts,
         coverages=[dict(label=k,display=DISPLAY_NAMES[k],group=_group_for(k),values=values[k]) for k in labels],
-        source_date=raw['source_date'],calculation_month=calculation_month,details=details,issues=issues,source_type='kb_pdf')
+        source_date=raw['source_date'],calculation_month=calculation_month,details=details,issues=issues,source_type='kb_pdf', kb=raw)
 
 
 def parse_kb_pdf(content, calculation_month):
     from modules.shared.runtime_cache import cached, digest_bytes
     import copy
-    raw=cached('parse:analyzer:kb', 'kb-v1:'+digest_bytes(content),lambda:extract_kb_pdf(content))
+    raw=cached('parse:analyzer:kb', 'kb-report-v2:'+digest_bytes(content),lambda:extract_kb_pdf(content))
     return convert_kb(copy.deepcopy(raw),calculation_month)

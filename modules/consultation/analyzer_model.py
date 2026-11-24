@@ -314,6 +314,7 @@ def _parse_source_file_uncached(main_bytes: bytes) -> dict:
                     "payment_count": coverage_ws.cell(5, col).value or "",
                     "payment_cycle": coverage_ws.cell(6, col).value or "",
                     "monthly": _to_number(coverage_ws.cell(7, col).value),
+                    "premium_missing": coverage_ws.cell(7, col).value in (None, "", "-", "확인 필요", "보험료미제공"),
                     "total": _to_number(contracts_ws.cell(contract_row, 10).value),
                     "paid": _to_number(contracts_ws.cell(contract_row, 11).value),
                     "remaining": _to_number(contracts_ws.cell(contract_row, 12).value),
@@ -335,15 +336,41 @@ def _parse_source_file_uncached(main_bytes: bytes) -> dict:
                 {
                     "label": label,
                     "display": DISPLAY_NAMES.get(label, str(raw_label).strip()),
+                    "reference": _to_number(coverage_ws.cell(row, 3).value),
                     "group": _group_for(label),
                     "values": values,
                 }
             )
 
+        details = []
+        by_label = {row["label"]: row for row in coverages}
+        for sheet in workbook.worksheets:
+            match = re.match(r"^(\d+)-", sheet.title)
+            if not match or sheet.cell(9, 3).value != "담보명":
+                continue
+            index = int(match[1])
+            if index >= len(contracts) or sheet.cell(3, 3).value != contracts[index]["product"]:
+                continue
+            maxima = {}
+            standard = ""
+            for row in sheet.iter_rows(min_row=10, max_col=4, values_only=True):
+                _, group, name, value = row
+                if group:
+                    standard = _normalize_label(group)
+                if not name or not standard or not isinstance(value, (int, float)):
+                    continue
+                details.append(dict(contract=index, standard=standard, raw=str(name), value=value))
+                if standard in ("질병종수술", "상해종수술"):
+                    maxima[standard] = max(maxima.get(standard, 0), value)
+            for label, maximum in maxima.items():
+                if label in by_label:
+                    by_label[label]["values"][index] = maximum
+
         if not coverages:
             raise ValueError("원본 파일에서 보장항목을 찾을 수 없습니다.")
 
         return {
+            "details": details,
             "customer_name": customer_name,
             "age": age,
             "contracts": contracts,
@@ -355,6 +382,6 @@ def parse_source_file(main_bytes: bytes):
     """Parse the current upload once per session; callers receive a private copy."""
     import copy
     from modules.shared.runtime_cache import cached, digest_bytes
-    parsed = cached("parse:analyzer:source", "coverage-v3:" + digest_bytes(main_bytes),
+    parsed = cached("parse:analyzer:source", "coverage-v4:" + digest_bytes(main_bytes),
                     lambda: _parse_source_file_uncached(main_bytes))
     return copy.deepcopy(parsed)
