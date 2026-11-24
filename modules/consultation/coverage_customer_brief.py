@@ -208,13 +208,26 @@ def render_customer_brief(p):
         for label, key in AXES
     ]
     entries = [r for r in entries if r[1] is not None]
-    if sum(r[2] > 0 for r in entries) >= 3:
+    comparable = [row for row in entries if row[2] > 0]
+    if len(comparable) >= 3:
         care_parts = [(key, val(key)) for key in ("간병인지원입원일-질병","질병간호간병통합입원일당")]
         care_parts = [v for _,v in care_parts if v is not None]
         shown_axis = {}
         if len(care_parts)==2 and any(care_parts) and sum(care_parts)==val("간병인/간호간병질병일당"):
             shown_axis["간병인/간호간병질병일당"] = ("간병인 / 통합 · 질병", " / ".join(fmt(v) for v in care_parts))
-        renderPDF.draw(radar(entries, b, shown_axis), c, (W - 510) / 2, H - 635)
+        renderPDF.draw(radar(comparable, b, shown_axis), c, (W - 510) / 2, H - 635)
+        amount_only = [row for row in entries if row[2] <= 0]
+        if amount_only:
+            rule(643)
+            tx(36, 663, "비교 기준이 없는 보장", 10, b, S)
+            for index, (label, value, _) in enumerate(amount_only):
+                name, shown = shown_axis.get(label, (label, fmt(value)))
+                if label == "질병종수술":
+                    name = "종수술비 · 질병"
+                x = 36 + (index % 2) * 266
+                y = 688 + (index // 2) * 25
+                tx(x, y, name, 10)
+                tx(x + 250, y, shown, 11, b, right=True)
     else:
         rows(185, [(k, fmt(v)) for k, v, r in entries])
     c.showPage()
