@@ -37,8 +37,7 @@ jobs:
 
       - name: Install keep-alive dependencies
         run: |
-          python3 -m venv "$RUNNER_TEMP/keepalive-venv"
-          "$RUNNER_TEMP/keepalive-venv/bin/python" -m pip install "requests==2.34.2" "playwright==1.55.0"
+          python3 -m pip install --target "$RUNNER_TEMP/keepalive-deps" "requests==2.34.2" "playwright==1.55.0"
 
       - name: Wake HWARANG services
-        run: '"$RUNNER_TEMP/keepalive-venv/bin/python" .github/scripts/hwarang_keepalive.py'
+        run: PYTHONPATH="$RUNNER_TEMP/keepalive-deps" python3 .github/scripts/hwarang_keepalive.py
