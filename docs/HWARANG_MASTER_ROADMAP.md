@@ -26,7 +26,7 @@
 | 영역 | 반영 및 확인 근거 |
 |---|---|
 | AUTO-01·02 | 운영 Cron 7개, Edge 7개, public 활성 사용자 트리거 60개. 트리거 함수 본문에서 직접 HTTP 호출 패턴 0개. 공개 리더 Worker는 공유 요청 시 Supabase 읽기 RPC를 사용한다. 청구 절감액 및 외부 서비스 전체 호출량은 미확정. |
-| AUTO-03·04 | #72 기존 운영 검증 인계. #73 main 통합·카카오 검사 성공. |
+| AUTO-03·04 | #72 기존 운영 검증 인계. #73 main 통합·카카오 검사 성공. #81에서 컨테이너 내 Git 작업 디렉터리 인식 문제를 수정했다. 변경 파일 조회 실패 때 전체 검사가 실행되는 보호는 유지하며, 1ms 타이머에 의존한 카카오 동시성 검사는 합성 응답의 첫 세 요청을 동기화했다. [통합 검사](https://github.com/poqter/test/actions/runs/45393273888) 및 [카카오 검사](https://github.com/poqter/test/actions/runs/45393273890) 성공. 이 문서만 바뀐 PR #80과 병합 후 실행에서 선택 결과를 확인한다. |
 | AUTO-05 | #74 Python 1,014개 통과, main [브리핑 운영 점검](https://github.com/poqter/test/actions/runs/45386026087)에서 배포 해시 정상. 공개 완료 시 프로필 조회 4→1회는 격리 검증값. #77 평일 Cron 주 90회, 주말 36회 제외. #79 운영 적용 후 시간외 호출 결과 outside_window 및 일반 사용자 실행권한 차단 확인. 격리 검증에서 수집 슬롯 변경, 최신 판 스냅샷 누락, 발행 직전·직후, 수동 probe를 구분했다. 첫 영업일 실측 대기. |
 | AUTO-06 | #75 병합 후 실제 실행에서 Python 캐시 ENOENT 발생. #78 수정 후 [main 운영 실행](https://github.com/poqter/test/actions/runs/45389935435) 63초, WORKSPACE·계산기·캘린더 모두 READY. 6시간 예약 유지. 종전 390초는 실행 1회의 비교값. |
 | AUTO-07 | 24시간 정시 3회·보완 3회 Cron 성공. 다중 발송 accepted 9건, 동일 batch/owner/generation/part의 중복 accepted 그룹 0개. 실제 수신 확인과 구분한다. 최초·시험 발송은 격리 회귀로 확인. |
