@@ -9,13 +9,13 @@ from html import escape
 
 RESULT_CSS = '''<style>
 .st-key-surgery_search_box input::placeholder{color:#9aa5b4!important;font-weight:400!important;opacity:1!important}
-.hw-surgery-results{color:#213149;background:#fff}
-.hw-surgery-row{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;padding:12px 8px;border-bottom:1px solid #edf0f4}
+.hw-surgery-results{color:#213149;background:#edf0f4;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,34rem),1fr));column-gap:1px}
+.hw-surgery-row{min-width:0;background:#fff;display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;padding:8px 12px;border-bottom:1px solid #edf0f4}
 .hw-surgery-name{font-size:16px;font-weight:500;line-height:1.75;overflow-wrap:anywhere;word-break:keep-all;min-width:0}
 .hw-surgery-grades{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 .hw-surgery-grade{display:flex;gap:6px;align-items:center}
 .hw-surgery-label{font-size:12px;color:#748095;white-space:nowrap}
-.hw-surgery-badge{font-size:14px;font-weight:600;border-radius:8px;min-width:52px;padding:7px 12px;text-align:center;background:#f0f2f5;color:#5d697a}
+.hw-surgery-badge{font-size:14px;font-weight:600;border-radius:8px;min-width:52px;padding:4px 9px;text-align:center;background:#f0f2f5;color:#5d697a}
 .hw-surgery-c2{background:#edf3ff;color:#426ba6}.hw-surgery-c3{background:#f1edfc;color:#7553a5}
 .hw-surgery-c4{background:#fff1e5;color:#9c570f}.hw-surgery-c5{background:#e5f4f1;color:#236b62}
 .hw-surgery-na{background:#fafbfc;border:1px solid #e2e6ed;color:#697586}
