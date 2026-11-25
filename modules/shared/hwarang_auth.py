@@ -975,15 +975,19 @@ class HwarangAuthService:
                 "연결 시간이 만료되었거나 이미 사용된 접근입니다. WORKSPACE에서 다시 열어 주세요."
             )
 
-        profile = self._profile_by_id(user_id)
+        context = self._workspace_context(user_id) if target_app == "workspace" else None
+        profile = context["profile"] if context is not None else self._profile_by_id(user_id)
         if not profile or not profile.get("is_active"):
             raise HwarangAuthError("사용할 수 없는 계정입니다.")
-        authorization = self.authorization_for_user(user_id)
+        authorization = (
+            {key: context[key] for key in ("app_access", "feature_permissions")}
+            if context is not None else self.authorization_for_user(user_id)
+        )
         if not authorization["app_access"].get(target_app, False):
             raise HwarangAuthError("이 계정은 해당 HWARANG 앱 이용 권한이 없습니다.")
 
         return {
-            "profile": self._enrich_profile(profile),
+            "profile": profile if context is not None else self._enrich_profile(profile),
             "launch_authenticated": True,
             "identity_checked_at": int(time.time()),
             "authenticated_at": time.time(),
