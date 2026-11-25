@@ -60,6 +60,7 @@ def cancer_treatment_rows(details):
     for index, row in enumerate(details):
         name = row["raw"].strip()
         compact = re.sub(r"\s+", "", name)
+        value = None if row.get("brief_amount_missing") else row.get("value")
         standard = re.sub(r"\s+", "", row.get("standard", ""))
         identity = (row.get("contract"), row.get("page"), row.get("number"))
         if None not in identity:
@@ -68,12 +69,11 @@ def cancer_treatment_rows(details):
             seen.add(identity)
         wallet = ("월렛" in compact or "월릿" in compact) and "고액치료" in compact
         if wallet and "입원일당" not in standard and "간병" not in standard:
-            amounts[(compact, index)] = [(name + " · 보장 범위 확인", row.get("value"))]
+            amounts[(compact, index)] = [(name + " · 보장 범위 확인", value)]
             continue
         if "암" not in compact + standard or not any(word in compact for word in
                 ("주요치료", "직접치료", "치료지원", "통합치료", "항암", "월렛", "월릿")):
             continue
-        value = row.get("value")
         contract = row.get("contract")
         if "통합암직접치료특약_" in compact:
             family, site = compact.split("_", 1)
@@ -345,7 +345,7 @@ def render_customer_brief(p):
     section(125, "내 암 진단비")
     tiles(161, [pair("일반암"), pair("유사암"), pair("고액암")])
     target = "고액(표적)항암치료비"
-    therapy = cancer_treatment_rows(p.get("details", []))
+    therapy = cancer_treatment_rows(p.get("details", []) + p.get("unpriced_details", []))
     if not therapy and val(target):
         therapy.append((target, val(target)))
     y = 245
