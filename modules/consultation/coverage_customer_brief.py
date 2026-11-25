@@ -485,25 +485,52 @@ def render_customer_brief(p):
         tiles(top + 8, costs, B)
         tx(40, top + 85, source, 9, f, S)
         c.linkURL(url, (36, H-top-90, 510, H-top-72))
-    recovery_y = case_y + 260
-    if recovery_y + 150 > 775:
+    care = []
+    for label, key in (("간병인 사용일당", "간병인지원입원일-질병"),
+                       ("간호·간병통합서비스", "질병간호간병통합입원일당")):
+        daily_amount = val(key)
+        if daily_amount is not None and daily_amount > 0:
+            care.append((label, daily_amount))
+
+    y = case_y + 260
+    block_height = 298 if care else 210
+    if y + block_height > 775:
         c.showPage()
         start("뇌·심장 진단과 치료 (계속)")
-        recovery_y = 125
-    section(recovery_y, "치료 후 입원과 돌봄", True)
-    tx(46, recovery_y+51, "중등도·중증 허혈성 뇌졸중 · 2020년 재활 입원 평균", 10)
-    tx(W-45, recovery_y+51, "22.2일", 12, b, right=True)
-    c.linkURL("https://doi.org/10.3346/jkms.2026.41.e113",
-              (36, H-recovery_y-57, W-36, H-recovery_y-37))
-    tx(46, recovery_y+77, "단독 관상동맥우회술 · 심평원 9차 평가 수술 후 평균 입원", 10)
-    tx(W-45, recovery_y+77, "13.2일", 12, b, right=True)
-    c.linkURL("https://www.hira.or.kr/cms/open/04/04/12/2024_12.pdf",
-              (36, H-recovery_y-83, W-36, H-recovery_y-63))
-    tx(46, recovery_y+101, "뇌졸중 장기 돌봄가족 중 높은 돌봄 부담 응답 · 발병 6년 시점", 10)
-    tx(W-45, recovery_y+101, "51.7%", 12, b, right=True)
-    c.linkURL("https://pmc.ncbi.nlm.nih.gov/articles/PMC11052313/",
-              (36, H-recovery_y-107, W-36, H-recovery_y-87))
-    tx(46, recovery_y+126, "간병인 이용일수는 별도 확인이 필요합니다.", 10, f, S)
+        y = 125
+    section(y, "장기 입원과 퇴원 후 돌봄", True)
+    y += 51
+    tx(40, y, "뇌경색 중증도에 따른 재활 입원기간", 13, b)
+    tx(W-40, y, "중앙값  ·  국내 12개 병원, 2018", 9, f, S, True)
+    for i, (severity, days) in enumerate((("경증", 13), ("중등도", 65), ("중증", 191))):
+        baseline = y + 24 + i * 20
+        width = days * 1.87
+        tx(45, baseline, severity, 10)
+        box(94, baseline-7, width, 7, "#607C99")
+        tx(100+width, baseline, f"{days}일", 11, b)
+    c.linkURL("https://pmc.ncbi.nlm.nih.gov/articles/PMC6129701/",
+              (36, H-y-69, W-36, H-y+14))
+    y += 83
+    outcomes = (
+        ("뇌졸중 발병 5년 후", "24.4%", "독립적인 일상생활 동작에 제한",
+         "https://www.ii.re.kr/storage/board/basic/2025/07/08/BASIC_ATTACH_1751941269524.pdf"),
+        ("심부전 입원 환자", "4명 중 1명", "퇴원 후 1년 안에 재입원",
+         "https://www.kshf.or.kr/uploaded/board/kspatientdata/_bf50b04de21aab05c4959e9d45d5a38b1.pdf"),
+    )
+    for x, (label, number, description, url) in zip((36, 303), outcomes):
+        box(x, y, 256, 76, "#EEF3F7")
+        tx(x+12, y+17, label, 10)
+        tx(x+12, y+44, number, 20, b)
+        tx(x+12, y+65, description, 10)
+        c.linkURL(url, (x, H-y-76, x+256, H-y))
+    if care:
+        y += 91
+        box(36, y, W-72, 73, T)
+        tx(48, y+19, "내 질병 입원 중 돌봄 보장", 12, b)
+        for x, (label, daily_amount) in zip((48, 305), care):
+            tx(x, y+42, label, 10)
+            tx(x+235, y+42, "하루 " + fmt(daily_amount), 12, b, right=True)
+        tx(48, y+63, "각 서비스 이용 조건에 따라 적용되는 입원 담보입니다.", 9, f, S)
     c.showPage()
     groups = []
 
