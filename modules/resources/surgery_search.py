@@ -9,7 +9,7 @@ from html import escape
 
 RESULT_CSS = '''<style>
 .st-key-surgery_search_box input::placeholder{color:#9aa5b4!important;font-weight:400!important;opacity:1!important}
-.hw-surgery-results{color:#213149;background:transparent;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,34rem),1fr));column-gap:24px}
+.hw-surgery-results{container-type:inline-size;color:#213149;background:transparent;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,34rem),1fr));column-gap:24px}
 .hw-surgery-row{min-width:0;background:#fff;display:flex;flex-wrap:wrap;gap:8px 24px;align-items:center;padding:11px 16px;border-bottom:1px solid #edf0f4}
 .hw-surgery-name{font-size:16px;font-weight:500;line-height:1.75;overflow-wrap:anywhere;word-break:keep-all;min-width:0}
 .hw-surgery-grades{display:grid;grid-template-columns:1fr 1fr;gap:18px}
@@ -19,6 +19,7 @@ RESULT_CSS = '''<style>
 .hw-surgery-c2{background:#edf3ff;color:#426ba6}.hw-surgery-c3{background:#f1edfc;color:#7553a5}
 .hw-surgery-c4{background:#fff1e5;color:#9c570f}.hw-surgery-c5{background:#e5f4f1;color:#236b62}
 .hw-surgery-na{background:#fafbfc;border:1px solid #e2e6ed;color:#697586}
+@container (min-width:calc(68rem + 24px)){.hw-surgery-row{display:grid;grid-template-columns:minmax(0,1fr) max-content}.hw-surgery-grades{justify-self:end}}
 @media(max-width:600px){.hw-surgery-row{flex-direction:column;align-items:flex-start;gap:6px;padding:10px 8px}.hw-surgery-grades{display:flex;flex-wrap:wrap;gap:20px}.hw-surgery-grade{flex-direction:row;gap:8px}.hw-surgery-badge{min-width:44px;padding:5px 9px}.hw-surgery-name{font-size:15px}}
 </style>'''
 
