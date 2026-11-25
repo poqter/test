@@ -26,16 +26,41 @@ function render(){const y=cursor.getFullYear(),m=cursor.getMonth(),first=new Dat
 async function load(){if(!session)return;const seq=++requestNo,y=cursor.getFullYear(),m=cursor.getMonth(),a=dstr(new Date(y,m,1)),b=dstr(new Date(y,m+1,0));
  try{const [summary,own]=await Promise.all([api('rpc/sales_calendar_days','POST',{first_day:a,last_day:b}),api('sales_events?deleted_at=is.null&owner=eq.'+session.uid+'&day=gte.'+a+'&day=lte.'+b)]);if(seq!==requestNo)return;let byId=new Map(own.map(r=>[r.id,r]));rows=summary.map(r=>byId.get(r.id)||r).sort((a,b)=>(a.start_time||'').localeCompare(b.start_time||''));render();await statusToday();$('msg').textContent=''}catch(e){$('msg').textContent=e.message}}
 function remember(){if(!draft||!session)return;draft.values=Object.fromEntries(new FormData($('form')));localStorage.setItem(draftKey(),JSON.stringify(draft));$('restore').hidden=false}
+const clockOffer=button('',()=>{
+ const match=compactClock();if(!match)return;
+ f.start.value=match[1]+':'+match[2];f.title.value=match[3];f.timing.value='시간 지정';
+ $('times').hidden=false;remember();refreshClockOffer();
+});
+clockOffer.type='button';f.title.after(clockOffer);
+function compactClock(){
+ return draft&&!draft.revision&&f.kind.value!=='휴무'&&f.timing.value==='시간 미정'&&/^([01]\d|2[0-3])([0-5]\d)[ \t]+([^\s~～∼–—-].*)$/.exec(f.title.value.trim());
+}
+function refreshClockOffer(){const m=compactClock();clockOffer.hidden=!m;if(m)clockOffer.textContent=m[1]+':'+m[2]+' 적용'}
+$('form').addEventListener('change',refreshClockOffer);
+$('form').addEventListener('input',refreshClockOffer);
 function openForm(day,row,restore=false){if(!session)return;let old=localStorage.getItem(draftKey());if(!restore&&old&& !confirm('작성 중인 내용이 있습니다. 새로 작성할까요?'))return;
  draft=restore?JSON.parse(old):{id:row?.id||crypto.randomUUID(),revision:row?.revision,series:row?.series_id,manual:!!row,values:{day,title:row?.title||'',kind:row?.kind||'미분류',timing:row?.start_time?'시간 지정':row&&!row.time_pending?'종일':'시간 미정',start:row?.start_time?.slice(0,5)||'',end:row?.end_time?.slice(0,5)||'',companion:row?.companion||'',place:row?.place||'',note:row?.note||'',status:row?.status||'예정'}};
  for(const [k,v] of Object.entries(draft.values))if(f[k])f[k].value=v;
- $('deleteEvent').hidden=!draft.revision;$('times').hidden=f.timing.value!=='시간 지정';$('heading').textContent=draft.revision?'내 일정 수정':'내 일정에 등록';$('error').textContent='';$('sheet').showModal();f.title.focus()}
+ $('deleteEvent').hidden=!draft.revision;$('times').hidden=f.timing.value!=='시간 지정';$('heading').textContent=draft.revision?'내 일정 수정':'내 일정에 등록';$('error').textContent='';$('sheet').showModal();refreshClockOffer();f.title.focus()}
 $('form').oninput=()=>{if(!draft.manual){const matches=[...new Set((f.title.value.toUpperCase().match(/(?<![A-Z0-9])(TA|AP|PC|CS)(?![A-Z0-9])/g)||[]))];f.kind.value=matches.length===1?matches[0]:'미분류'}remember()};
 f.kind.oninput=e=>{e.stopPropagation();draft.manual=true;if(f.kind.value==='휴무'){f.timing.value='종일';if(!f.title.value.trim())f.title.value='휴무';$('times').hidden=true}remember()};
 f.timing.onchange=()=>$('times').hidden=f.timing.value!=='시간 지정';
 $('form').onsubmit=async e=>{e.preventDefault();remember();let timed=f.timing.value==='시간 지정';if(timed&&(!f.start.value||(f.end.value&&f.end.value<=f.start.value))){$('error').textContent='시작·종료 시간을 확인해 주세요.';return}
  const body={day:f.day.value,title:f.title.value.trim(),kind:f.kind.value,status:f.status.value,companion:f.companion.value||null,place:f.place.value,note:f.note.value,time_pending:f.timing.value==='시간 미정',start_time:timed?f.start.value:null,end_time:timed?(f.end.value||null):null};if(!body.title)return;
- $('save').disabled=true;$('save').textContent='저장 중';try{if(draft.revision){const saved=await api('sales_events?id=eq.'+draft.id+'&revision=eq.'+draft.revision,'PATCH',body);if(!saved.length)throw Error('다른 화면에서 먼저 변경했습니다. 최신 일정을 다시 열어 주세요.')}else await api('sales_events','POST',{...body,unit:session.unit,id:draft.id},'resolution=ignore-duplicates,return=minimal');
+ $('save').disabled=true;$('save').textContent='저장 중';try{if(draft.revision){const saved=await api('sales_events?id=eq.'+draft.id+'&revision=eq.'+draft.revision,'PATCH',body);if(!saved.length)throw Error('다른 화면에서 먼저 변경했습니다. 최신 일정을 다시 열어 주세요.')}else {
+ if(body.time_pending&&body.kind!=='휴무'){
+  const m=/^([01]?\d|2[0-3]):([0-5]\d)[ \t]+(.+)$/.exec(body.title);
+  const k=/^(?:(오전|오후)[ \t]*)?(\d{1,2})시(?:[ \t]*(반|\d{1,2}분))?[ \t]+(.+)$/.exec(body.title);
+  if(m||k){
+   let h=Number(m?m[1]:k[2]),min=m?Number(m[2]):k[3]==='반'?30:parseInt(k[3]||'0',10);
+   const name=(m?m[3]:k[4]).trim();
+   if(k&&k[1])h=h>=1&&h<=12?h%12+(k[1]==='오후'?12:0):24;
+   if(h<24&&min<60&&name&&!/^(?:까지|부터|쯤|경(?:에|\s|$)|정도|반(?:쯤|까지|부터|경|\s|$)|[0-9]+분|[~～∼–—-])/.test(name)){
+    body.start_time=String(h).padStart(2,'0')+':'+String(min).padStart(2,'0');body.time_pending=false;body.title=name;
+   }
+  }
+ }
+ await api('sales_events','POST',{...body,unit:session.unit,id:draft.id},'resolution=ignore-duplicates,return=minimal');}
  localStorage.removeItem(draftKey());$('restore').hidden=true;draft=null;$('sheet').close();cursor=new Date(body.day+'T12:00:00');await load()}catch(err){$('error').textContent=err.message}finally{$('save').disabled=false;$('save').textContent='저장'}};
 $('restore').onclick=()=>openForm(null,null,true);$('close').onclick=()=>$('sheet').close();$('hideList').onclick=()=>$('list').close();
 $('prev').onclick=()=>{cursor=new Date(cursor.getFullYear(),cursor.getMonth()-1,1);load()};$('next').onclick=()=>{cursor=new Date(cursor.getFullYear(),cursor.getMonth()+1,1);load()};$('now').onclick=()=>{cursor=today();load()};$('scope').onchange=render;

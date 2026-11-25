@@ -198,12 +198,38 @@ public final class DayActivity extends Activity {
             });
             input.setOnFocusChangeListener((v,focus)->{if(!focus)try{input.setText(Clock.parse(input.getText().toString()));}catch(Exception ex){input.setError(ex.getMessage());}});}
         all.setOnCheckedChangeListener((v,checked)->times.setVisibility(checked?8:0));times.setVisibility(all.isChecked()?8:0);
+        Button suggestion=new Button(this);
+        suggestion.setAllCaps(false);suggestion.setTextSize(13);body.addView(suggestion);
+        java.util.regex.Pattern compact=java.util.regex.Pattern.compile("^([01][0-9]|2[0-3])([0-5][0-9])[ \\t]+([^\\s~～∼–—-].*)$");
+        Runnable refreshSuggestion=()->{
+            java.util.regex.Matcher m=compact.matcher(title.getText().toString().trim());
+            boolean show=row==null&&!empty.isChecked()&&!all.isChecked()&&!"휴무".equals(kind.getSelectedItem())&&start.length()==0&&end.length()==0&&m.matches();
+            suggestion.setVisibility(show?0:8);
+            if(show)suggestion.setText(m.group(1)+":"+m.group(2)+" 적용");
+        };
+        android.text.TextWatcher watcher=new android.text.TextWatcher(){
+            public void beforeTextChanged(CharSequence s,int a,int c,int f){}
+            public void onTextChanged(CharSequence s,int a,int b,int c){}
+            public void afterTextChanged(android.text.Editable e){refreshSuggestion.run();}
+        };
+        for(EditText input:new EditText[]{title,start,end})input.addTextChangedListener(watcher);
+        kind.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){
+            public void onItemSelected(android.widget.AdapterView<?> p,android.view.View v,int pos,long id){refreshSuggestion.run();}
+            public void onNothingSelected(android.widget.AdapterView<?> p){refreshSuggestion.run();}
+        });
+        all.setOnCheckedChangeListener((v,checked)->{times.setVisibility(checked?8:0);refreshSuggestion.run();});
+        suggestion.setOnClickListener(v->{
+            java.util.regex.Matcher m=compact.matcher(title.getText().toString().trim());
+            if(m.matches()){start.setText(m.group(1)+":"+m.group(2));title.setText(m.group(3));}
+        });
+        refreshSuggestion.run();
         EditText note=field("메모 · 선택",text(row,"note"),InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_MULTI_LINE);
         if(row!=null&&!text(row,"series_id").isEmpty())status.setText("이번 회차만 수정합니다.");
         Button save=button(row==null?"일정 등록":"변경 저장",()->{});
         primary(save);
         modes.setOnCheckedChangeListener((g,checkedId)->{
             boolean hide=empty.isChecked();for(int i=firstField;i<body.indexOfChild(save);i++)body.getChildAt(i).setVisibility(hide?8:0);
+            refreshSuggestion.run();
             if(!hide && all.isChecked())times.setVisibility(8);
             save.setText(hide?(confirmedEmpty?"일정 없음 등록 취소":"이 날 내 일정 없음으로 등록"):"일정 등록");
         });

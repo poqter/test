@@ -51,7 +51,9 @@ jobs:
           retention-days: 30
 
   staff-release:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[publish-widget]'))
+    permissions:
+      contents: write
     needs: build
     runs-on: ubuntu-24.04
     steps:
@@ -77,7 +79,7 @@ jobs:
           tools="$ANDROID_HOME/build-tools/35.0.0"
           apk="$RUNNER_TEMP/widget-release/hwarang-month-widget.apk"
           "$tools/apksigner" verify --print-certs "$apk" | grep -Fxi 'Signer #1 certificate SHA-256 digest: 924513f70eb3c2ac5e535c12cd7af8fdc29a27f39642ebff2d9be9d777978569'
-          "$tools/aapt" dump badging "$apk" | grep -F "package: name='com.hwarang.calendarwidget' versionCode='12' versionName='0.2.10'"
+          "$tools/aapt" dump badging "$apk" | grep -F "package: name='com.hwarang.calendarwidget' versionCode='13' versionName='0.2.11'"
       - name: Retain verified staff build for publication review
         uses: actions/upload-artifact@v4
         with:
@@ -85,3 +87,11 @@ jobs:
           path: ${{ runner.temp }}/widget-release/hwarang-month-widget.apk
           if-no-files-found: error
           retention-days: 1
+      - name: Publish verified staff update
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          apk="$RUNNER_TEMP/widget-release/hwarang-month-widget.apk"
+          if ! gh release view widget-v0.2.11 >/dev/null 2>&1; then
+            gh release create widget-v0.2.11 "$apk" --target "$GITHUB_SHA" --title '화랑 월간 달력 0.2.11' --notes '일정 제목의 네 자리 시각 적용을 지원합니다.' --latest=false
+          fi

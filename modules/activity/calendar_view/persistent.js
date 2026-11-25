@@ -412,6 +412,13 @@ async function openEditor(row,kind,day){
   const validateEnd=()=>{const a=normalizeClock(start.value),b=normalizeClock(end.value);const msg=allDay.checked?'':end.value.trim()&&!start.value.trim()?'시작 시간을 먼저 입력해 주세요.':a&&b&&b<=a?'종료 시간은 시작 시간보다 늦어야 합니다.':'';end.setCustomValidity(msg);endError.textContent=msg};
   for(const input of [start,end]){input.inputMode='numeric';input.placeholder='--:--';input.maxLength=5;input.oninput=e=>{formatClockInput(input,e);input.setCustomValidity('');updateTime();validateEnd()};input.onblur=()=>{const t=normalizeClock(input.value);input.setCustomValidity(t===null?'시간을 확인해 주세요. 예: 930 또는 1430':'');if(t!==null)input.value=t;updateTime();if(t!==null)validateEnd();input.dispatchEvent(new Event('change',{bubbles:true}))};}
   allDay.onchange=()=>{updateTime();validateEnd()};updateTime();validateEnd();
+  if(kind==='new'){
+   const suggestion=el('button','','hint');suggestion.type='button';title.parentElement.after(suggestion);
+   const candidate=()=>!allDay.checked&&!start.value&&!end.value&&activity.value!=='휴무'&&/^([01]\d|2[0-3])([0-5]\d)[ \t]+([^\s~～∼–—-].*)$/.exec(title.value.trim());
+   const refresh=()=>{const m=candidate();suggestion.hidden=!m;if(m)suggestion.textContent=m[1]+':'+m[2]+' 적용'};
+   suggestion.onclick=()=>{const m=candidate();if(!m)return;start.value=m[1]+':'+m[2];title.value=m[3];updateTime();validateEnd();title.dispatchEvent(new Event('input',{bubbles:true}));refresh()};
+   form.addEventListener('input',refresh);form.addEventListener('change',refresh);refresh();
+  }
   const place=field(form,'장소 · 선택','place',v.place);
   const extra=section(form,'추가 정보 · 선택');extra.open=!!(v.note||v.companion||v.support||v.repeat||v.common);field(extra,'메모','note',v.note,'textarea');field(extra,'동행자','companion',v.companion,'text',[['','선택 안 함'],...Object.entries(calendarBoot.people).filter(([u])=>u!==calendarBoot.uid)]);
   title.autofocus=true;title.focus({preventScroll:true});
@@ -581,7 +588,7 @@ function paintDayList(){
 
 async function offerAndroidWidgetUpdate() {
 
- const tag='widget-v0.2.10', seen='hwarang-widget-notice-reinstall-'+tag;
+ const tag='widget-v0.2.11', seen='hwarang-widget-notice-reinstall-'+tag;
  const suppressed=()=>{try{return localStorage.getItem(seen)==='1'}catch{return false}};
  try {
   if(suppressed()) return;
@@ -599,9 +606,9 @@ async function offerAndroidWidgetUpdate() {
   panel.className='widget-update-notice';panel.setAttribute('aria-labelledby','widget-update-title');heading.id='widget-update-title';
   const label=document.createElement('label'),checkbox=document.createElement('input');
   checkbox.type='checkbox';label.append(checkbox,document.createTextNode('이번 버전 공지 다시 보지 않기'));
-  heading.textContent='화랑 월간 달력 0.2.10 업데이트';
+  heading.textContent='화랑 월간 달력 0.2.11 업데이트';
   description.style.whiteSpace='pre-line';
-  description.textContent='위젯의 휴무·미등록·일정 없음 문구를 가운데 정렬했습니다. 앞으로 색상과 지원하는 표시 설정은 재설치 없이 갱신됩니다.\n\n0.2.2 이상은 기존 앱 위에 업데이트하세요. 0.2.1 이하 시험판은 설정 → 애플리케이션에서 화랑 월간 달력을 삭제한 뒤 재설치하고 계정을 연결하세요.';
+  description.textContent='일정명 앞에 1430처럼 네 자리 시간을 쓰면 14:30 적용 버튼이 표시됩니다.\n\n0.2.2 이상은 기존 앱 위에 업데이트하세요. 0.2.1 이하 시험판은 설정 → 애플리케이션에서 화랑 월간 달력을 삭제한 뒤 재설치하고 계정을 연결하세요.';
   const install=document.createElement('a'),close=document.createElement('button');
   install.href=url;install.target='_blank';install.rel='noopener';install.textContent='새 위젯 설치하기';
   close.textContent='닫기';close.onclick=()=>{if(checkbox.checked){try{localStorage.setItem(seen,'1')}catch{}}panel.close()};
