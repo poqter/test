@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta, time
 from pathlib import Path
 from uuid import UUID, uuid5, NAMESPACE_URL
 import json
+from modules.activity.title_clock import apply_title_clock
 from modules.shared.hwarang_auth import HwarangAuthError
 from modules.activity.redesign import write_event, KST, KINDS
 
@@ -161,6 +162,9 @@ def save_event(db,a):
     common=bool(v.get('common'))
     if common and not db.me['managed'] and (not old or not old.get('common')):raise HwarangAuthError('공통 일정 권한을 확인해 주세요.')
     body=dict(day=str(day),title=title,kind=kind,start_time=start,end_time=end,time_pending=mode=='시간 미정',place=str(v.get('place','')),note=str(v.get('note','')),help=str(v.get('help','')) if v.get('support') else '',help_recipient=v.get('help_recipient') or None if v.get('support') else None,companion=companion,common=common,status=status,result=str(v.get('result','')) if old else '')
+    if not old and not parent:
+        apply_title_clock(body)
+        start = body["start_time"]
     if follow and 'follow_start' in v:
         follow_start=parse_clock(v['follow_start']) if str(v.get('follow_start','')).strip() else None
         follow_end=parse_clock(v['follow_end']) if str(v.get('follow_end','')).strip() else None

@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 KST=ZoneInfo("Asia/Seoul")
 import re
 import streamlit as st
+from modules.activity.title_clock import apply_title_clock
 from modules.activity import ux
 from modules.activity.contracts import contract_editor, performance, conversions
 from modules.shared.hwarang_auth import HwarangAuthError
@@ -173,6 +174,8 @@ def event_editor(db,day,event=None,parent=None,copy=None):
             ux.focus_field(d,next(iter(errors)))
             return key
         body=event_body(v)
+        if not event and not parent and not copy:
+            apply_title_clock(body)
         if event and v.get('follow'):
             body.update(follow_time_body(v))
         repeat=v["repeats"] if v["repeat"] and not event else 1
