@@ -127,7 +127,7 @@ def extract_kb_pdf(content, password=None):
                 if kind not in ('정액', '실손') or not raw or not standard:
                     raise ValueError(f"{page_no}쪽 {number}번 담보 열을 인식하지 못했습니다.")
                 current['rows'].append(dict(number=number, kind=kind, raw=raw, standard=standard,
-                                            value=amount(money), page=page_no))
+                                            value=amount(money), brief_amount_missing=norm(money) in ("", "-"), page=page_no))
             page.close()
     if not customer or not age or not source_date or (not contracts and expected_count != 0):
         raise ValueError("KB 텍스트 PDF의 고객정보/상세담보를 찾지 못했습니다. 스캔본·요약본은 기존 엑셀을 이용하세요.")
