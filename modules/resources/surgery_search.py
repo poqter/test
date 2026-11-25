@@ -9,8 +9,8 @@ from html import escape
 
 RESULT_CSS = '''<style>
 .st-key-surgery_search_box input::placeholder{color:#9aa5b4!important;font-weight:400!important;opacity:1!important}
-.hw-surgery-results{color:#213149;background:#edf0f4;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,34rem),1fr));column-gap:1px}
-.hw-surgery-row{min-width:0;background:#fff;display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;padding:8px 12px;border-bottom:1px solid #edf0f4}
+.hw-surgery-results{color:#213149;background:transparent;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,34rem),1fr));column-gap:24px}
+.hw-surgery-row{min-width:0;background:#fff;display:flex;flex-wrap:wrap;gap:8px 24px;align-items:center;padding:11px 16px;border-bottom:1px solid #edf0f4}
 .hw-surgery-name{font-size:16px;font-weight:500;line-height:1.75;overflow-wrap:anywhere;word-break:keep-all;min-width:0}
 .hw-surgery-grades{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 .hw-surgery-grade{display:flex;gap:6px;align-items:center}
