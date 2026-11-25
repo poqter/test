@@ -52,6 +52,53 @@ def surgery_tier_breakdown(details, coverages):
             for category in ("질병종수술", "상해종수술") if category in groups], maximums
 
 
+def cancer_treatment_rows(details):
+    """Use individual contract riders. Fold alternative cancer sites only within a rider."""
+    amounts = {}
+    sites = {}
+    seen = set()
+    for index, row in enumerate(details):
+        name = row["raw"].strip()
+        compact = re.sub(r"\s+", "", name)
+        standard = re.sub(r"\s+", "", row.get("standard", ""))
+        identity = (row.get("contract"), row.get("page"), row.get("number"))
+        if None not in identity:
+            if identity in seen:
+                continue
+            seen.add(identity)
+        wallet = ("월렛" in compact or "월릿" in compact) and "고액치료" in compact
+        if wallet and "입원일당" not in standard and "간병" not in standard:
+            amounts[(compact, index)] = [(name + " · 보장 범위 확인", row.get("value"))]
+            continue
+        if "암" not in compact + standard or not any(word in compact for word in
+                ("주요치료", "직접치료", "치료지원", "통합치료", "항암", "월렛", "월릿")):
+            continue
+        value = row.get("value")
+        contract = row.get("contract")
+        if "통합암직접치료특약_" in compact:
+            family, site = compact.split("_", 1)
+            site = re.split(r"[（(]", site)[0]
+            if site and not any(word in site for word in ("소액", "유사", "갑상선", "피부")):
+                group = (contract, family, value)
+                sites.setdefault(group, set()).add(site)
+                continue
+        # An exact, untruncated name with an explicit frequency can be grouped
+        # across contracts. Other rows retain the original amount and conditions.
+        explicit = re.search(r"연간?1회|최초1회|1일당|1회당", compact)
+        key = (compact, None if explicit and "..." not in name and value else index)
+        amounts.setdefault(key, []).append((name, value))
+    result = []
+    for entries in amounts.values():
+        name, value = entries[0]
+        if len(entries) > 1:
+            name += " · 가입금액 소계"
+            value = sum(item[1] for item in entries)
+        result.append((name, value))
+    for (_, family, value), members in sites.items():
+        result.append((family + " · 해당 암군별 (" + "·".join(sorted(members)) + ")", value))
+    return result
+
+
 def render_customer_brief(p):
     raw = p.get("kb", {})
     m = raw.get("matrix", {})
@@ -298,25 +345,35 @@ def render_customer_brief(p):
     section(125, "내 암 진단비")
     tiles(161, [pair("일반암"), pair("유사암"), pair("고액암")])
     target = "고액(표적)항암치료비"
-    section(245, "내 암 치료 담보")
-    rows(300, [("암수술비 가입금액 합계", fmt(val("암수술비"))), (("고액 항암치료 담보 합계" if raw else "표적항암약물허가치료비"), fmt(val(target)))], 28)
-    parts = [
-        ("표적항암약물·특정표적방사선", "표적항암약물"),
-        ("항암양성자방사선", "항암양성자"),
-        ("항암중입자방사선", "항암중입자"),
-    ]
-    shown = []
-    for label, word in parts:
-        vs = [q["value"] for q in p["details"] if word in q["raw"]]
-        if vs:
-            shown.append((label, fmt(sum(vs))))
-    matched = [q for q in p["details"] if any(word in q["raw"] for _,word in parts)]
-    source_total = val(target)
-    separate = shown and (not raw or any("고액항암치료비" not in q["standard"].replace(" ","") for q in matched) or source_total != sum(q["value"] for q in matched))
-    if separate:
-        tx(46, 359, "계약에서 확인된 치료 담보", 10, b)
-    rows(380 if separate else 360, shown, 21)
-    y = 384 + 21 * len(shown) + (20 if separate else 0)
+    therapy = cancer_treatment_rows(p.get("details", []))
+    if not therapy and val(target):
+        therapy.append((target, val(target)))
+    y = 245
+    if therapy:
+        section(y, "내 암 치료 보장")
+        y += 49
+        for name, value in therapy:
+            lines = [""]
+            for ch in name:
+                if c.stringWidth(lines[-1] + ch, f, 10) > 379:
+                    lines.append("")
+                lines[-1] += ch
+            if y + 14 * len(lines) > 765:
+                c.showPage()
+                start("암 진단과 치료 (계속)")
+                section(125, "내 암 치료 보장")
+                y = 174
+            for j, line in enumerate(lines):
+                tx(46, y + j * 14, line, 10)
+            tx(W-45, y, fmt(value) if value is not None else "미제공", 12, b, right=True)
+            y += len(lines) * 14
+            rule(y-3)
+            y += 12
+        y += 9
+    if y + 188 > 775:
+        c.showPage()
+        start("암 진단과 치료 (계속)")
+        y = 125
     section(y, "대표 고액 항암제 투약 비용 사례", True)
 
     def drug(x, y, w, name, cost, source, url):
@@ -421,6 +478,25 @@ def render_customer_brief(p):
         tiles(top + 8, costs, B)
         tx(40, top + 85, source, 9, f, S)
         c.linkURL(url, (36, H-top-90, 510, H-top-72))
+    recovery_y = case_y + 260
+    if recovery_y + 150 > 775:
+        c.showPage()
+        start("뇌·심장 진단과 치료 (계속)")
+        recovery_y = 125
+    section(recovery_y, "치료 후 입원과 돌봄", True)
+    tx(46, recovery_y+51, "중등도·중증 허혈성 뇌졸중 · 2020년 재활 입원 평균", 10)
+    tx(W-45, recovery_y+51, "22.2일", 12, b, right=True)
+    c.linkURL("https://doi.org/10.3346/jkms.2026.41.e113",
+              (36, H-recovery_y-57, W-36, H-recovery_y-37))
+    tx(46, recovery_y+77, "단독 관상동맥우회술 · 심평원 9차 평가 수술 후 평균 입원", 10)
+    tx(W-45, recovery_y+77, "13.2일", 12, b, right=True)
+    c.linkURL("https://www.hira.or.kr/cms/open/04/04/12/2024_12.pdf",
+              (36, H-recovery_y-83, W-36, H-recovery_y-63))
+    tx(46, recovery_y+101, "뇌졸중 장기 돌봄가족 중 높은 돌봄 부담 응답 · 발병 6년 시점", 10)
+    tx(W-45, recovery_y+101, "51.7%", 12, b, right=True)
+    c.linkURL("https://pmc.ncbi.nlm.nih.gov/articles/PMC11052313/",
+              (36, H-recovery_y-107, W-36, H-recovery_y-87))
+    tx(46, recovery_y+126, "간병인 이용일수는 별도 확인이 필요합니다.", 10, f, S)
     c.showPage()
     groups = []
 
