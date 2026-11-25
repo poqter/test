@@ -346,6 +346,13 @@ def render_customer_brief(p):
     tiles(161, [pair("일반암"), pair("유사암"), pair("고액암")])
     target = "고액(표적)항암치료비"
     therapy = cancer_treatment_rows(p.get("details", []) + p.get("unpriced_details", []))
+    if not therapy and not raw:
+        for row in p.get("coverages", []):
+            key = row["label"]
+            value = val(key)
+            if value == 0 and not row.get("brief_unknown"):
+                continue
+            therapy.extend(cancer_treatment_rows([{"raw": key, "value": value}]))
     if not therapy and val(target):
         therapy.append((target, val(target)))
     y = 245
