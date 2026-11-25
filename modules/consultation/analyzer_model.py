@@ -344,6 +344,7 @@ def _parse_source_file_uncached(main_bytes: bytes) -> dict:
             )
 
         details = []
+        unpriced_details = []
         by_label = {row["label"]: row for row in coverages}
         for sheet in workbook.worksheets:
             match = re.match(r"^(\d+)-", sheet.title)
@@ -358,6 +359,8 @@ def _parse_source_file_uncached(main_bytes: bytes) -> dict:
                 _, group, name, value = row
                 if group:
                     standard = _normalize_label(group)
+                if name and standard and not isinstance(value, (int, float)):
+                    unpriced_details.append(dict(contract=index, standard=standard, raw=str(name), value=None))
                 if not name or not standard or not isinstance(value, (int, float)):
                     continue
                 details.append(dict(contract=index, standard=standard, raw=str(name), value=value))
@@ -372,6 +375,7 @@ def _parse_source_file_uncached(main_bytes: bytes) -> dict:
 
         return {
             "details": details,
+            "unpriced_details": unpriced_details,
             "customer_name": customer_name,
             "age": age,
             "contracts": contracts,
