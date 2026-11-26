@@ -63,7 +63,7 @@ INSURERS = (
     ('롯데손해보험', 'lotte_insurance'),
     ('삼성화재', 'samsung_fire'),
     ('하나손해보험', 'hana_insurance'),
-    ('예별손해보험', None),
+    ('예별손해보험', 'yebyeol'),
     ('흥국화재', 'heungkuk_fire'),
     ('DB손해보험', 'db_insurance'),
     ('메리츠화재', 'meritz_fire'),
@@ -99,9 +99,20 @@ def components(contract, name, source):
     return parts if abs(sum(parts) - amount(source)) < 0.00001 else None
 
 
+CONTRACT_LOGOS = {
+    **dict(INSURERS),
+    "DB손보": "db_insurance", "KB손보": "kb_insurance", "KB라이프생명보험": "kb_life",
+    "하나손보": "hana_insurance", "신한라이프생명": "shinhan_life", "한화손보": "hanwha_general",
+    "NH농협생명": "nh_life", "롯데손보": "lotte_insurance", "메트라이프생명": "metlife",
+    "AIG손보": "aig_insurance", "라이나(에이스)손보": "lina_general", "라이나손해보험": "lina_general",
+    "AXA손보": "axa", "AXA손해보험": "axa", "AIA생명": "aia", "새마을금고중앙회": "mgcc",
+    "푸본현대생명": "fubon", "NH농협손보": "nh_nonlife", "NH농협손해보험": "nh_nonlife",
+    "우정사업본부": "epost", "예별손보(구MG손보)": "yebyeol", "처브라이프생명": "chubb_life",
+}
+
+
 def insurer(index, company):
-    name = {"DB손보": "DB손해보험", "KB손보": "KB손해보험", "KB라이프생명보험": "KB라이프생명"}.get(company, company)
-    key = dict(INSURERS).get(name)
+    key = CONTRACT_LOGOS.get(company)
     logo = Path(__file__).resolve().parents[2] / "assets" / "insurer_logos" / f"{key}.png"
     symbol = ""
     if key and logo.is_file():
