@@ -183,10 +183,11 @@ function applyMonthWeekStart(value){
  render(latest);
  if(calendarBoot&&before&&before!==iso(monthGridStart(latest.day,prefs.showWeekends)))reloadCalendar();
 }
-async function loadMonthWeekStart(session){
+async function loadMonthWeekStart(session,{renderLoading=true}={}){
  if(!session?.url||!session.token||weekStartLoad==='loading'||weekStartLoad==='ready')return;
  const owner=prefs;
- weekStartLoad='loading';weekStartMessage='계정 설정을 불러오는 중…';render(latest);
+ weekStartLoad='loading';weekStartMessage='계정 설정을 불러오는 중…';
+ if(renderLoading)render(latest);
  try{
   const value=await weekStartRequest(session,'GET');
   if(owner!==prefs)return;
