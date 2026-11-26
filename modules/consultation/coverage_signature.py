@@ -100,7 +100,7 @@ def components(contract, name, source):
 
 
 def insurer(index, company):
-    name = {"KB손보": "KB손해보험", "KB라이프생명보험": "KB라이프생명"}.get(company, company)
+    name = {"DB손보": "DB손해보험", "KB손보": "KB손해보험", "KB라이프생명보험": "KB라이프생명"}.get(company, company)
     key = dict(INSURERS).get(name)
     logo = Path(__file__).resolve().parents[2] / "assets" / "insurer_logos" / f"{key}.png"
     symbol = ""
