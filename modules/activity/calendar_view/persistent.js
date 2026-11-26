@@ -76,7 +76,9 @@ function receiveCalendar(a){
   const fresh=a.boot.ready!==false&&a.bootFresh&&!remembered&&first===a.boot.rangeStart&&last===a.boot.rangeEnd;
   calendarLoading=!fresh;
   if(fresh)calendarCache.set(rangeKey(first,last),a.boot);
-  render(latest);loadMonthWeekStart(latest.mobileSession);if(!fresh)reloadCalendar();setTimeout(()=>{frameViewport='';fitCalendar();calendarLayoutReady=true},150);
+  loadMonthWeekStart(latest.mobileSession,{renderLoading:false});
+  if(fresh)render(latest);else reloadCalendar();
+  setTimeout(()=>{frameViewport='';fitCalendar();calendarLayoutReady=true},150);
  }else{latest.mobileSession=a.mobileSession;latest.hideMobileApp=a.hideMobileApp;syncConfig=latest;configureRealtime(latest);if(hostEntering){calendarLoading=true;reloadCalendar();}}
  const r=a.reply,q=calendarFlight;
  if(r&&q&&r.nonce===q.nonce){clearTimeout(q.timer);document.querySelectorAll('[data-request]').forEach(n=>{if(n.dataset.request===q.nonce)n.remove()});calendarFlight=null;r.ok?q.resolve(r.result):q.reject(Error(r.error||'요청을 완료하지 못했습니다.'));sendNext()}
