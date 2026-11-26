@@ -432,4 +432,15 @@ addEventListener('message',e=>{
    refreshNonce=e.data.nonce;requestRefresh();
  }
 });
-</script><script src="widget-style.js"></script><script src="sync.js"></script><script src="persistent.js"></script><script src="search.js"></script><script src="host.js"></script><script>post('streamlit:componentReady',{apiVersion:1});</script></html>
+</script>
+<script defer src="widget-style.js"></script>
+<script defer src="sync.js"></script>
+<script defer src="persistent.js"></script>
+<script defer src="search.js"></script>
+<script defer src="host.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+ post('streamlit:componentReady', {apiVersion:1});
+}, {once:true});
+</script>
+</html>
