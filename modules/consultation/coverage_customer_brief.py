@@ -12,7 +12,7 @@ from reportlab.pdfgen.canvas import Canvas
 from reportlab.graphics import renderPDF
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import simpleSplit
-from modules.consultation.coverage_signature import INSURERS
+from modules.consultation.coverage_signature import CONTRACT_LOGOS
 from pathlib import Path
 
 
@@ -700,11 +700,7 @@ def render_customer_brief(p):
 
     def header(y, contract):
         company = contract["company"]
-        key = dict(INSURERS).get(
-            {"KB손보": "KB손해보험", "KB라이프생명보험": "KB라이프생명"}.get(
-                company, company
-            )
-        )
+        key = CONTRACT_LOGOS.get(company)
         lines = [""]
         for ch in contract["product"]:
             if c.stringWidth(lines[-1] + ch, b, 9.8) > 490:
