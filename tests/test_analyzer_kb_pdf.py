@@ -36,6 +36,28 @@ class TestKBPDF(unittest.TestCase):
     def test_zoster_eye_not_general(self):
         self.assertFalse(classify(dict(kind='정액',standard='특정질병진단',raw='대상포진눈병진단비',value=100))[0])
 
+    def test_confirmed_names_and_conditional_limits(self):
+        cases = [
+            ('특정암진단', '재진단암진단비', '이차암(재진단,계속암)', 1000),
+            ('특정암진단', '특정암진단비', None, None),
+            ('특정질병진단', '통풍진단특약', '통풍진단비', 1000),
+            ('특정질병진단', '대상포진진단특약', '대상포진진단비', 1000),
+            ('특정질병진단', '대상포진눈병진단특약', None, None),
+            ('고액항암치료비', '표적항암약물허가치료비', '표적항암약물허가치료비', 1000),
+            ('고액항암치료비', '표적항암약물특정표적방사선허가치료비', '표적항암약물허가치료비', '확인 필요'),
+            ('장기간병요양진단(1,2급)', '장기요양연금', '장기간병요양진단(1,2급)', '확인 필요'),
+            ('변호사선임비용', '자동차사고변호사선임비용(심급별)', '변호사선임비용', '확인 필요'),
+        ]
+        for standard, name, label, expected in cases:
+            with self.subTest(name=name):
+                raw = fixture()
+                raw['contracts'][0]['rows'][0].update(standard=standard, raw=name)
+                data = convert_kb(raw, '2026-01')
+                self.assertEqual(data['details'][0]['targets'], [label] if label else [])
+                if label:
+                    values = {item['label']: item['values'][0] for item in data['coverages']}
+                    self.assertEqual(values[label], expected)
+
     def test_month_count_and_bound(self):
         raw=fixture();data=convert_kb(raw,'2026-01')
         self.assertEqual(data['contracts'][0]['payment_count'],'2/240회')
