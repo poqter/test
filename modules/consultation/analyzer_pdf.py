@@ -169,9 +169,17 @@ def classify(row):
     standard = norm(row['standard']).replace('(유병자)', '')
     raw = norm(row['raw'])
     value = row['value']
+    if standard == '특정암진단' and re.match(r'^(?:신)?재진단암(?:진단비|담보)', raw):
+        return [('이차암(재진단,계속암)', value)], None
+    if standard == '고액항암치료비' and '표적항암약물특정표적방사선허가치료' in raw:
+        return [('표적항암약물허가치료비', value)], '확인 필요: 약물과 방사선의 세부 지급 한도 확인'
+    if standard == '변호사선임비용' and '자동차사고변호사선임비용' in raw:
+        return [('변호사선임비용', value)], '확인 필요: 심급별 지급 한도 확인'
+    if standard == '장기간병요양진단(1,2급)':
+        return [(standard, value)], '확인 필요: 장기요양 급여금과 연금 지급방식 확인'
     if standard == '특정질병진단':
         for key in ('통풍', '대상포진'):
-            if re.search(key+r'진단비',raw):
+            if re.search(key+r'진단(?:비|특약)',raw):
                 return [(key+'진단비',value)], None
     if standard == '치매진단' and raw == '중증치매':
         return [('중증치매',value)], '중증치매 담보: 일시금·분할 지급 여부 확인'
