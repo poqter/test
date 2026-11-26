@@ -390,7 +390,7 @@ def build_signature(parsed, profile, selected_labels=None):
         if index < len(contracts):
             story.append(Spacer(1, 23))
     from modules.consultation.coverage_overview import add_overview
-    add_overview(story, comparison, limits, heading, para, doc.width - 12)
+    add_overview(story, comparison, limits, heading, para, doc.width - 12, doc.height - 12)
     for i, c in enumerate(contracts):
         story.append(PageBreak())
         story.append(
