@@ -590,8 +590,7 @@ def selected_coverage_rows(data, selected_labels=None):
 def build_analysis_from_data(data: dict, selected_labels: list[str] | None = None) -> tuple[bytes, str, str]:
     """Shared exporter; legacy XLSX route and reviewed PDF route use one layout."""
     from modules.consultation.analyzer_state import sort_contracts
-    if data.get("source_type") != "kb_pdf":
-        data = sort_contracts(data)
+    data = sort_contracts(data)
     selected = selected_coverage_rows(data, selected_labels)
 
     workbook = Workbook()

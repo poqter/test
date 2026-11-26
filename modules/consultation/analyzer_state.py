@@ -10,9 +10,9 @@ def sort_contracts(data):
     def key(index):
         contract = result['contracts'][index]
         value = str(contract.get('start') or contract.get('coverage_period') or '')
-        match = re.match(r'\s*(\d{4})\D?(\d{2})\D?(\d{2})', value)
+        match = re.match(r'\s*(\d{4})\D?(\d{2})(?:\D?(\d{2}))?', value)
         try:
-            ordinal = date(*map(int, match.groups())).toordinal() if match else 0
+            ordinal = date(*map(int, match.groups("01"))).toordinal() if match else 0
         except ValueError:
             ordinal = 0
         return -ordinal
@@ -21,7 +21,9 @@ def sort_contracts(data):
     for item in result['coverages']:
         item['values'] = [item['values'][i] for i in order]
     mapping = {old:new for new,old in enumerate(order)}
-    for record in result.get('details', []):
+    if 'kb' in result:
+        result['kb']['contracts'] = [result['kb']['contracts'][i] for i in order]
+    for record in result.get('details', []) + result.get('issues', []):
         record['contract'] = mapping[record['contract']]
     return result
 

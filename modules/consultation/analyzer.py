@@ -64,6 +64,7 @@ def _render_personal_selector(
     available_labels: list[str],
     default_labels: list[str],
     file_key: str,
+    limits: dict,
 ) -> list[str]:
     """모든 보장항목을 구분별 카드에 펼쳐 보여주는 개인모드 선택기입니다."""
     prefix = f"analyzer_v2_cov_{file_key}_"
@@ -97,10 +98,14 @@ def _render_personal_selector(
             with st.container(border=True):
                 st.markdown(f"**{group}** · {selected_count}/{len(labels)}")
                 for label in labels:
-                    st.checkbox(
-                        DISPLAY_NAMES.get(label, label),
-                        key=f"{prefix}{label}",
-                    )
+                    left, right = st.columns([3, 2])
+                    left.checkbox(DISPLAY_NAMES.get(label, label), key=f"{prefix}{label}")
+                    if label != "일반사망":
+                        limits[label] = right.number_input(
+                            f"{DISPLAY_NAMES.get(label,label)} 기준금액 (만원)",
+                            min_value=0.0001, value=float(limits[label]) if limits.get(label) is not None else None, step=1.0,
+                            format="%.4f", key=f"{prefix}limit_{label}", placeholder="미설정",
+                        )
 
     selected = [label for label in available_labels if st.session_state[f"{prefix}{label}"]]
     st.caption(f"전체 {len(available_labels)}개 중 {len(selected)}개 선택")
@@ -233,7 +238,11 @@ def run() -> None:
             if not is_pdf:
                 parsed = sort_contracts(parsed)
             available_labels = [item["label"] for item in parsed["coverages"]]
-            default_labels = [label for label in available_labels if label in set(DEFAULT_COVERAGES)]
+            from modules.consultation.analyzer_preferences import preferences, save_preferences
+            saved, owner = preferences()
+            defaults = saved["selected"]
+            limits = dict(saved["limits"])
+            default_labels = [label for label in available_labels if label in defaults]
 
             if mode == "간편모드":
                 selected_labels = default_labels
@@ -244,8 +253,13 @@ def run() -> None:
                 selected_labels = _render_personal_selector(
                     available_labels,
                     default_labels,
-                    hashlib.sha256(main_bytes).hexdigest()[:10],
+                    owner + hashlib.sha256(main_bytes).hexdigest()[:10],
+                    limits,
                 )
+                if st.button("내 자동정리 기준으로 저장", disabled=not selected_labels or not owner):
+                    combined = [label for label in defaults if label not in available_labels] + selected_labels
+                    save_preferences(owner, combined, limits)
+            parsed = dict(parsed, comparison_limits=limits)
         elif not uploaded_main:
             st.caption("원본 파일을 업로드하면 선택 가능한 전체 보장항목이 표시됩니다.")
 

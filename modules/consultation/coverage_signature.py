@@ -112,6 +112,10 @@ def insurer(index, company):
 def build_signature(parsed, profile, selected_labels=None):
     from modules.consultation.analyzer_exports import selected_coverage_rows
 
+    from modules.consultation.analyzer_state import sort_contracts
+    from modules.consultation.analyzer_limits import DEFAULT_LIMITS
+    parsed = sort_contracts(parsed)
+    limits = parsed.get("comparison_limits", DEFAULT_LIMITS)
     raw = parsed["kb"]
     comparison = [row for row in selected_coverage_rows(parsed, selected_labels)
                   if row["label"] != "일반사망"]
@@ -243,19 +247,26 @@ def build_signature(parsed, profile, selected_labels=None):
 
     def cover(canvas, document):
         canvas.saveState()
-        canvas.setFillColor(colors.HexColor(NAVY))
+        canvas.setFillColor(colors.HexColor("#F9F6EF"))
         width, height = document.pagesize
         bleed = 3
         canvas.rect(-bleed, 240, width + 2 * bleed, height - 240 + bleed, fill=1, stroke=0)
-        ribbon(canvas, -bleed, 240, width + 2 * bleed, 260)
-        canvas.drawImage(str(assets / "hanwha_life_lab_dark.png"), 39, 770, 139, 39,
+        for index, shade in enumerate(("#DAE2E6", "#C6D2DA", GOLD, "#EAE4D8")):
+            path = canvas.beginPath()
+            path.moveTo(-bleed, 240)
+            path.curveTo(214, 290, 405, 255, width + bleed, 445 - index * 17)
+            path.lineTo(width + bleed, 240)
+            path.close()
+            canvas.setFillColor(colors.HexColor(shade))
+            canvas.drawPath(path, fill=1, stroke=0)
+        canvas.drawImage(str(assets / "hanwha_life_lab.png"), 39, 770, 139, 39,
                          preserveAspectRatio=True, mask="auto")
-        canvas.setFillColor(colors.HexColor(GOLD))
-        canvas.setFont(font, 24)
-        canvas.drawString(40, 585, raw["customer_name"] + " 님의")
-        canvas.setFillColor(colors.white)
-        canvas.setFont(font, 50)
-        canvas.drawString(40, 508, "보장분석")
+        canvas.setFillColor(colors.HexColor("#576577"))
+        canvas.setFont(font, 23)
+        canvas.drawString(40, 550, raw["customer_name"] + " 님의")
+        canvas.setFillColor(colors.HexColor(NAVY))
+        canvas.setFont(font, 52)
+        canvas.drawString(40, 475, "보장분석")
         canvas.setFillColor(colors.HexColor(NAVY))
         for x, label, value in [(40, "조회 기준일", raw["source_date"]), (212, "가입 계약", f"{len(contracts)}건")]:
             canvas.setFillColor(colors.HexColor("#F5F5F2"))
@@ -366,39 +377,8 @@ def build_signature(parsed, profile, selected_labels=None):
         story.append(card)
         if index < len(contracts):
             story.append(Spacer(1, 23))
-    groups = ceil(len(contracts) / 5)
-    for group in range(groups):
-        first = group * len(contracts) // groups
-        subset = contracts[first : (group + 1) * len(contracts) // groups]
-        headers = ["보장 항목 (만원)", "전체"]
-        for i, c in enumerate(subset, first):
-            text = (
-                escape(c["company"] + " · " + c["product"])
-                + "<br/>"
-                + escape(c["start"])
-            )
-            headers.append(
-                Paragraph(
-                    f'<link href="#contract{i}" color="white">{text}</link>',
-                    ParagraphStyle(
-                        "link", fontName=font, fontSize=10, leading=13, wordWrap="CJK"
-                    ),
-                )
-            )
-        rows = []
-        for item in comparison:
-            values = item["values"]
-            total = sum(v for v in values if isinstance(v, (int, float)))
-            cells = []
-            for value in values[first:first + len(subset)]:
-                if isinstance(value, str):
-                    cells.append(value)
-                else:
-                    cells.append(money(value) if value else "–")
-            rows.append([item["display"], money(total), *cells])
-        story.append(PageBreak())
-        heading("상품별 보장 비교")
-        table(headers, rows, [114, 73] + [344 / len(subset)] * len(subset), 10, column_rules=True)
+    from modules.consultation.coverage_overview import add_overview
+    add_overview(story, comparison, limits, heading, para, doc.width - 12)
     for i, c in enumerate(contracts):
         story.append(PageBreak())
         story.append(
@@ -431,5 +411,38 @@ def build_signature(parsed, profile, selected_labels=None):
             [32, 52, 192, 68, 39, 38, 41, 69],
             10,
         )
+    groups = ceil(len(contracts) / 5)
+    for group in range(groups):
+        first = group * len(contracts) // groups
+        subset = contracts[first : (group + 1) * len(contracts) // groups]
+        headers = ["보장 항목 (만원)", "전체"]
+        for i, c in enumerate(subset, first):
+            text = (
+                escape(c["company"] + " · " + c["product"])
+                + "<br/>"
+                + escape(c["start"])
+            )
+            headers.append(
+                Paragraph(
+                    f'<link href="#contract{i}" color="white">{text}</link>',
+                    ParagraphStyle(
+                        "link", fontName=font, fontSize=10, leading=13, wordWrap="CJK"
+                    ),
+                )
+            )
+        rows = []
+        for item in comparison:
+            values = item["values"]
+            total = money(sum(values)) if all(isinstance(v, (int, float)) for v in values) else "확인 필요"
+            cells = []
+            for value in values[first:first + len(subset)]:
+                if isinstance(value, str):
+                    cells.append(value)
+                else:
+                    cells.append(money(value) if value else "–")
+            rows.append([item["display"], total, *cells])
+        story.append(PageBreak())
+        heading("상품별 보장 비교")
+        table(headers, rows, [114, 73] + [344 / len(subset)] * len(subset), 10, column_rules=True)
     doc.build(story, onFirstPage=cover, onLaterPages=footer)
     return out.getvalue()
