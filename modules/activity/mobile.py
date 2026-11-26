@@ -146,18 +146,8 @@ def run(logout):
     from contextlib import nullcontext
     standalone = bool(st.session_state.get('_calendar_deployment'))
     with st.container(key='mobile_stage') if standalone else nullcontext():
-        shell_slot = None
-        if standalone:
-            from modules.activity.loading import calendar_shell
-            shell_slot = st.empty()
-            requested_page = st.session_state.get('mobile_page', '캘린더')
-            if st.session_state.get('_calendar_shell_page') != requested_page:
-                calendar_shell(requested_page, slot=shell_slot)
-        try:
-            db=center.Records();today=datetime.now(center.KST).date()
-        finally:
-            if shell_slot is not None: shell_slot.empty()
-        if standalone: st.session_state['_calendar_shell_page'] = requested_page
+        db = center.Records()
+        today = datetime.now(center.KST).date()
         st.session_state['sales_dialog_rendered']=False
         # Preserve navigation widgets when another menu temporarily unmounts them.
         for key in ('sales_calendar_member','sales_calendar_team','sales_day_일일','sales_day_주간','sales_overview_day','sales_overview_period','sales_overview_unit','sales_member_search','sales_member_status','mobile_work_mode','mobile_work_tab'):
@@ -167,12 +157,12 @@ def run(logout):
         allowed=[*menus(db),'주간 기록']
         if page not in allowed:page='캘린더';st.session_state['mobile_page']=page
         if page in ('활동 기록','주간 기록'):st.session_state['mobile_report_page']=page
-        with st.sidebar:menu_items(db,logout,'side')
         with st.container(key='mobile_header'):
             a,b=st.columns([1,4])
             with a.container(key='mobile_menu_toggle'):
                 with st.popover('☰',key='mobile_drawer_'+page+str(bool(st.session_state.get('mobile_pending')))):
-                    st.html('<span class="mobile-drawer"></span>');menu_items(db,logout,'drawer')
+                    st.html('<span class="mobile-drawer"></span>')
+                    drawer_menu = st.container()
             b.subheader('화랑 캘린더')
         st.html('<span class="mobile-navigation-state" data-page="'+page+'" data-depth="'+str(len(st.session_state.get('mobile_back_stack',[])))+'"></span>')
         st.button('이전 메뉴',key='mobile_history_back',on_click=previous_page)
@@ -190,6 +180,10 @@ def run(logout):
                 st.segmented_control('기록 구분',['일일 기록','주간 요약'],key=tab_key,required=True,on_change=select_record,label_visibility='collapsed')
                 center.reports(db,today,'주간' if page=='주간 기록' else '일일')
                 personal_performance(db,today)
+        with drawer_menu:
+            menu_items(db,logout,'drawer')
+        with st.sidebar:
+            menu_items(db,logout,'side')
         if st.session_state.get('sales_route') and not st.session_state.get('sales_dialog_rendered'):redesign.dialog(db)
 
 

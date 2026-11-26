@@ -106,7 +106,6 @@ def _set_authenticated(auth: HwarangAuthService, state: dict) -> None:
     reconcile_identity(st.session_state, st.session_state.get("hwarang_auth"), state)
     st.session_state.pop("calendar_view_scope", None)
     st.session_state.pop("calendar_view_label", None)
-    st.session_state.pop("_calendar_shell_page", None)
     profile = dict(state.get("profile") or {})
     st.session_state["hwarang_auth"] = state
     st.session_state["login_profile"] = profile
@@ -211,11 +210,7 @@ def submit_login(auth, login_id, password, remember, feedback):
             feedback.info("로그인 중…")
         identity = auth.sign_in(login_id, password)
         if feedback is not None:
-            if st.query_params.get("view") == "mobile-calendar":
-                from modules.activity.loading import calendar_shell
-                calendar_shell(slot=feedback)
-            else:
-                feedback.info("로그인 완료 · 화면을 준비하고 있습니다…")
+            feedback.info("로그인 완료 · 화면을 준비하고 있습니다…")
         if remember:
             from modules.activity.device import enroll
             enroll(auth, identity)
@@ -355,16 +350,9 @@ def render_task_content(active, permission_role, permitted):
 def main() -> None:
     initialize_state()
     from modules.activity.runtime_metrics import measure
-    entry_shell = None
-    if st.session_state.get('_calendar_deployment'):
-        from modules.activity.loading import calendar_shell
-        entry_shell = st.empty()
-        if not st.session_state.get('password_correct'):
-            calendar_shell(authenticating=True, slot=entry_shell)
     try:
         auth = auth_service()
     except HwarangAuthError as exc:
-        if entry_shell is not None: entry_shell.empty()
         st.error(str(exc))
         st.info("Streamlit Secrets에서 SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY / SUPABASE_SECRET_KEY를 확인해 주세요.")
         return
@@ -394,10 +382,9 @@ def main() -> None:
         with measure("device_restore"):
             device.synchronize(auth, _set_authenticated)
         if st.query_params.get("view") == "mobile-calendar" and st.session_state.get("device_check_pending"):
-            if entry_shell is None: st.caption("캘린더를 불러오는 중…")
+            st.caption("캘린더를 불러오는 중…")
             st.stop()
     except HwarangAuthError as exc:
-        if entry_shell is not None: entry_shell.empty()
         st.error(str(exc))
         st.stop()
     if st.session_state.get("calendar_launch_error"):
@@ -413,7 +400,6 @@ def main() -> None:
                 st.rerun()
         except HwarangAuthError as exc:
             if exc.code == "transport_error" or exc.status == 429 or (exc.status or 0) >= 500:
-                if entry_shell is not None: entry_shell.empty()
                 st.warning("계정 연결을 확인하지 못했습니다. 작성 내용은 보존되어 있습니다.")
                 if st.button("계정 연결 다시 확인", key="hw_auth_retry"):
                     st.rerun()
@@ -425,7 +411,6 @@ def main() -> None:
     # Keep the authentication screen at one stable delta path, including the
     # one-time password-change notice. Explicitly remove it before rendering
     # the workspace so interrupted reruns cannot leave a stale login container.
-    if entry_shell is not None: entry_shell.empty()
     login_slot = st.empty()
     if not (st.session_state.get("hwarang_auth") and st.session_state.get("password_correct")):
         with login_slot.container():
