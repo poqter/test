@@ -102,6 +102,7 @@ def components(contract, name, source):
 
 CONTRACT_LOGOS = {
     **dict(INSURERS),
+    "한화생명보험": "hanwha_life",
     "DB손보": "db_insurance", "KB손보": "kb_insurance", "KB라이프생명보험": "kb_life",
     "하나손보": "hana_insurance", "신한라이프생명": "shinhan_life", "한화손보": "hanwha_general",
     "NH농협생명": "nh_life", "롯데손보": "lotte_insurance", "메트라이프생명": "metlife",
