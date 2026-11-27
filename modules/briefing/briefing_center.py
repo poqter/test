@@ -123,7 +123,7 @@ def render_home_summary(navigate: Callable):
     with st.container(key='hw_home_briefing_compact'):
         info, action = st.columns([5, 1.5], gap='small', vertical_alignment='center')
         with info:
-            st.markdown('<div class="hw-home-briefing-info"><span class="hw-home-briefing-title">오늘의 브리핑</span>'
+            st.markdown('<div class="hw-home-briefing-info"><span class="hw-home-briefing-title">오늘의 뉴스 브리핑</span>'
                         '<span class="hw-home-briefing-meta">' + html.escape(summary) + '</span></div>', unsafe_allow_html=True)
         with action:
             if st.button('브리핑센터 열기 →', key='hw_home_briefing_open', use_container_width=True):
@@ -190,7 +190,7 @@ def _combined_sharing(repo, selected_day=None, *, use_cache=False):
                 options=[r['code'] for r in REGIONS]
                 preferred=checked_region(st.session_state.get('hw_weather_region',DEFAULT_REGION))
                 weather_region=st.selectbox('날씨 지역',options,index=options.index(preferred),
-                    format_func=region_name,key='share_weather_'+uid+'_'+day)
+                    filter_mode=None, format_func=region_name,key='share_weather_'+uid+'_'+day)
                 st.caption('시·도 대표 지점 기준입니다. 선택한 날짜의 예보를 공유 링크에 함께 저장합니다.')
     key = 'combined_share_'+str(weather_region or 'none')+'_'+day+'_'+uid+'_'+'_'.join(codes)
     with right:
@@ -209,7 +209,7 @@ def _combined_sharing(repo, selected_day=None, *, use_cache=False):
                 url = share_url(repo.public_base_url(), shared['token'])
                 packet = shared['packet']; sender = packet['sender']
                 st.caption('아래 문구의 복사 버튼으로 링크까지 복사한 뒤 카카오톡·문자에 붙여넣으세요.')
-                st.code(f"{sender['name']} {sender['position']}이 전하는 오늘의 브리핑\n{day} · 소식 {len(packet['body']['issues'])}개\n{url}", language=None)
+                st.code(f"{sender['name']} {sender['position']}이 전하는 오늘의 뉴스 브리핑\n{day} · 소식 {len(packet['body']['issues'])}개\n{url}", language=None)
                 open_col, cancel_col = st.columns(2)
                 open_col.link_button('고객 화면 열기', url, use_container_width=True)
                 if cancel_col.button('이 공유 링크 취소', key=key+'_revoke'):
@@ -400,7 +400,7 @@ def _render_today(repo, can_manage):
 def _render_history(repo, can_manage):
     code = st.radio('브리핑 영역', PROFILE_ORDER, format_func=lambda x:PROFILE_LABELS[x], horizontal=True, key='history_profile')
     now = datetime.now(KST).date()
-    day = st.date_input('읽을 날짜', value=now, min_value=now-timedelta(days=29), max_value=now)
+    day = st.date_input('읽을 날짜', value=now, min_value=now-timedelta(days=29), max_value=now, key="hw_briefing_history_day")
     bundle = repo.bundle_for_date(code, day, include_draft=False)
     if bundle:
         _render_profile_detail(repo, code, bundle)
@@ -459,7 +459,10 @@ def run():
             if st.session_state.get('hw_briefing_page') not in pages:
                 st.session_state['hw_briefing_page'] = pages[0]
             current = st.session_state['hw_briefing_page']
-            title = {'오늘 브리핑':'오늘의 브리핑','지난 브리핑':'지난 브리핑','고객에게 공유':'고객에게 공유','운영 관리':'운영 관리'}[current]
+            title = {'오늘 브리핑':'오늘의 뉴스 브리핑','지난 브리핑':'지난 브리핑','고객에게 공유':'고객에게 공유','운영 관리':'운영 관리'}[current]
+            if current == "지난 브리핑":
+                selected_day = st.session_state.get("hw_briefing_history_day") or datetime.now(KST).date()
+                title = f"{selected_day.month}월 {selected_day.day}일 뉴스 브리핑"
             from .weather_detail import detailed_html
             from .weather import REGIONS, DEFAULT_REGION, checked_region, region_name, get_weather
             options = [r['code'] for r in REGIONS]
@@ -475,7 +478,7 @@ def run():
                 _, region_control = st.columns([3, 1])
                 with region_control:
                     region = st.selectbox('날씨 지역 · 시·도', options, index=options.index(region),
-                                          format_func=region_name, key='hw_header_weather_region', label_visibility='collapsed')
+                                          filter_mode=None, format_func=region_name, key='hw_header_weather_region', label_visibility='collapsed')
                     st.session_state['hw_weather_region'] = region
 
             mode = st.radio('브리핑 메뉴', pages, horizontal=True, label_visibility='collapsed', key='hw_briefing_page')
