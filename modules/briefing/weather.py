@@ -32,6 +32,9 @@ def parse_forecast(document, region, day, *, now=None):
     block=next((b for b in blocks[1:] if re.search(r'data-date="'+re.escape(day)+'"',b[:250])),None)
     if block is None:raise ValueError('forecast_date_missing')
     issued=re.search(r'<dt>단기예보[^<]*</dt>\s*<dd>(\d{2})\.(\d{2})\.\([^)]*\)\s*(\d{2}):(\d{2})</dd>',document)
+    if not issued:
+        forecast_text = re.sub(r'<[^>]+>', ' ', document)
+        issued = re.search(r'(?<![가-힣])단기예보\s*\([^()]*\)\s*:\s*(\d{2})\.(\d{2})\.\([^)]*\)\s*(\d{2}):(\d{2})', forecast_text)
     if not issued:raise ValueError('forecast_issue_time_missing')
     month,dd,hh,mm=map(int,issued.groups())
     issued_at=now.replace(month=month,day=dd,hour=hh,minute=mm,second=0,microsecond=0)
