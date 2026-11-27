@@ -105,9 +105,11 @@ def public_html(packet,*,canonical_url=''):
     body=packet.get('body') or {};sender=packet.get('sender') or {}
     identity=' '.join(str(sender.get(k) or '') for k in ('name','position')).strip()
     date_text=str(packet.get('requested_date') or packet.get('briefing_date') or '')
-    try: short_date=datetime.fromisoformat(date_text).strftime('%m.%d')
-    except ValueError: short_date=''
-    title=(short_date+' 오늘의 브리핑').strip()
+    try:
+        edition_day = datetime.fromisoformat(date_text)
+        title = f"{edition_day.month}월 {edition_day.day}일 뉴스 브리핑"
+    except ValueError:
+        title = "뉴스 브리핑"
     labels={'MARKET':'경제·금융','NEWS':'종합뉴스','INSURANCE':'보험업계'}
     codes=packet.get('selected_profiles') or [s.get('profile_code') for s in body.get('sections',[])] or [body.get('profile_code')]
     topics=' · '.join(labels[c] for c in dict.fromkeys(codes) if c in labels)
@@ -118,7 +120,7 @@ def public_html(packet,*,canonical_url=''):
     sections=body.get('sections') or [{'profile_code':body.get('profile_code') or 'NEWS','profile_label':body.get('profile_label') or '브리핑','briefing_date':packet.get('briefing_date')}]
     from .weather import weather_html
     header_weather = weather_html(body['weather_forecast']) if body.get('weather_forecast') else ''
-    parts=[f'<div class="wrap reader-modern"><header><div class="reader-heading"><div class="reader-heading-copy"><span class="brand">HWARANG WORKSPACE</span><h1>오늘의 브리핑</h1><div class="reader-byline"><p class="meta">{e(identity)} · {e(packet.get('requested_date') or packet.get('briefing_date'))}</p><div class="controls"><button id="font" aria-pressed="false">큰 글자로 읽기</button></div></div></div><div class="reader-heading-weather">{header_weather}</div></div></header>']
+    parts=[f'<div class="wrap reader-modern"><header><div class="reader-heading"><div class="reader-heading-copy"><span class="brand">HWARANG WORKSPACE</span><h1>{e(title)}</h1><div class="reader-byline"><p class="meta">{e(identity)} · {e(packet.get('requested_date') or packet.get('briefing_date'))}</p><div class="controls"><button id="font" aria-pressed="false">큰 글자로 읽기</button></div></div></div><div class="reader-heading-weather">{header_weather}</div></div></header>']
     edition=packet.get('edition') or {}
     if edition.get('corrected_at'):
         parts.append('<p class="meta">정정 '+e(display_date(edition['corrected_at']))+' · '+e(edition.get('number'))+'판</p>')

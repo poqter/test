@@ -163,7 +163,7 @@ def render_public_entry(repo):
     packet=repo.public_share(token)
     if not packet:st.warning('이 공유 링크는 만료됐거나 공개가 중단됐습니다.');return True
     body=packet['body'];sender=packet.get('sender') or {}
-    st.title(body.get('profile_label') or '오늘의 브리핑')
+    st.title(body.get('profile_label') or '오늘의 뉴스 브리핑')
     st.caption(str(packet.get('briefing_date') or '')+' · '+str(sender.get('name') or '')+' '+str(sender.get('position') or ''))
     render_body(body)
     return True
