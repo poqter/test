@@ -185,7 +185,7 @@ def render_sidebar(allowed_ids: list[str], navigate: Callable[..., object], logo
                 _launch_widget(APP_BY_ID["sales_activity"], "영업활동 관리", key="hw_sidebar_sales", navigate=navigate)
             if "briefing" in allowed:
                 st.button(
-                    "브리핑 센터", icon=":material/newspaper:", key="hw_sidebar_briefing", use_container_width=True,
+                    "뉴스 브리핑", icon=":material/newspaper:", key="hw_sidebar_briefing", use_container_width=True,
                     type="primary" if st.session_state.get("active_app") == "briefing" else "secondary",
                     on_click=_navigate_once, args=(navigate, "briefing", None),
                 )
@@ -354,7 +354,7 @@ def render_home(allowed_ids, navigate, notice):
             info, action = st.columns([4,1.2], vertical_alignment='center')
             headline = info.empty()
             detail_slot = info.empty()
-            headline.markdown('**오늘의 브리핑 · 게시 상태 확인 중**')
+            headline.markdown('**오늘의 뉴스 브리핑 · 게시 상태 확인 중**')
             detail_slot.caption('최신 공개 자료를 확인하고 있습니다.')
             with action:
                 if _launch_widget(APP_BY_ID['briefing'], '브리핑 보기 →', key='brand_briefing_open', navigate=navigate):
@@ -365,7 +365,7 @@ def render_home(allowed_ids, navigate, notice):
                     status, detail = job.result(timeout=20)
                 except Exception:
                     pass
-            headline.markdown('**오늘의 브리핑 · '+status+'**')
+            headline.markdown('**오늘의 뉴스 브리핑 · '+status+'**')
             detail_slot.caption(detail or '브리핑센터에서 자료를 확인하세요.')
         with briefing_slot:
             briefing_status()
