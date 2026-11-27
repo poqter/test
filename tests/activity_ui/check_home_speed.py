@@ -15,7 +15,7 @@ try:
   expect(page.locator('.st-key-brand_feature_analysis')).to_be_visible()
   started=time.monotonic()
   expect(page.get_by_role('heading',name='자료·교육',exact=True)).to_be_visible()
-  expect(page.get_by_text('오늘의 브리핑 · 게시 상태 확인 중',exact=True)).to_be_visible()
+  expect(page.get_by_text('오늘의 뉴스 브리핑 · 게시 상태 확인 중',exact=True)).to_be_visible()
   collapse=page.get_by_test_id('stSidebarCollapseButton').locator('button')
   brand=page.locator('.sig-brand').bounding_box();box=collapse.bounding_box()
   assert box['y']>=brand['y'] and box['y']+box['height']<=brand['y']+brand['height'],(brand,box)
