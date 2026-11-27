@@ -56,7 +56,7 @@ def combine_bodies(bundles, selected_codes=None):
         sections += [{'profile_code':c, 'profile_label':labels[c], 'briefing_date':None, 'as_of':None, 'article_count':0} for c in PROFILE_ORDER if c in selected_codes and c not in present]
         sections.sort(key=lambda s: PROFILE_ORDER.index(s['profile_code']))
     return {'schema': 'hwarang-public-v2', 'profile_code': 'COMBINED',
-            'profile_label': '오늘의 브리핑', 'as_of': max(s['as_of'] or '' for s in sections),
+            'profile_label': '오늘의 뉴스 브리핑', 'as_of': max(s['as_of'] or '' for s in sections),
             'sections': sections, 'issues': issues, 'market_flow': flow, 'market_metrics': metrics, 'research': {},**extras}
 
 
