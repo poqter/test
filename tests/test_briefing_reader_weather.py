@@ -70,3 +70,11 @@ def test_province_fetch_uses_forecast_location_but_preserves_selected_region(mon
     assert request.call_args.kwargs['params']['code'] == '4111500000'
     assert result['region_code'] == '4100000000'
     w._fetch.cache_clear()
+
+
+def test_inline_issue_time_uses_short_forecast():
+    forecasts = ('초단기예보(현재부터 +6시간까지): <b>10.26.(월) 07:10</b><br />'
+                 '단기예보(현재부터 +<span>3</span>일까지): <b>10.26.(월) 05:00</b>')
+    doc = DOC.split('<dt>')[0] + forecasts
+    weather = parse_forecast(doc, '1100000000', '2026-10-26', now=NOW)
+    assert weather['issued_at'].endswith('05:00:00+09:00')
