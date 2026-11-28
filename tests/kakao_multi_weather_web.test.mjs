@@ -33,3 +33,20 @@ test('runtime rejects absent or mismatched region echo, never assumes Seoul',()=
  assert.throws(()=>parseWebWeather(doc+'?dongCode=5100000000#dong/5100000000',{day,now,forecast_code:'1100000000'}));
  assert.equal(parseWebWeather(doc+'?dongCode=1100000000#dong/1100000000',{day,now,forecast_code:'1100000000'}).low,11);
 });
+
+test('inline short forecast survives nested tags and is used for the Kakao message',async()=>{
+ const inline=doc.split('<dt>')[0]+'초단기예보(현재부터 +6시간까지): <b>10.26.(월) 07:10</b><br />'
+  +'단기예보(현재부터 +<span>3</span>일까지): <b>10.26.(월) 05:00</b>'
+  +'<script>\n  const dongCode = "1100000000";\n</script>';
+ const opts={day,now,forecast_code:'1100000000'};
+ const result=await fetchWebWeather(async()=>new Response(inline),opts);
+ assert.equal(result.issued_time,'05:00');
+ assert.match(briefing(day,[{id:'a',title:'상담'}],false,{...result,region_name:'서울특별시'}).join('\n'),/오후 비/);
+ for(const bad of [
+  inline.replace('단기예보(현재부터 +<span>3</span>일까지)','중기예보(현재부터 +<span>3</span>일까지)'),
+  inline.replace('10.26.(월) 05:00','10.24.(토) 05:00'),
+  inline.replace('10.26.(월) 05:00','10.26.(월) 09:00'),
+  inline.replaceAll('1100000000','5100000000')+'<a href="?dongCode=1100000000#old">다른 지역 링크</a>',
+  inline.replace('단기예보(현재부터 +<span>3</span>일까지): <b>10.26.(월) 05:00</b>','<!-- 단기예보(현재부터 +3일까지): 10.26.(월) 05:00 -->'),
+ ])assert.throws(()=>parseWebWeather(bad,opts));
+});

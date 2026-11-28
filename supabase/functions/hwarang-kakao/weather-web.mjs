@@ -4,9 +4,16 @@ const validDay=s=>/^\d{4}-\d{2}-\d{2}$/.test(s)&&Number.isFinite(Date.parse(s+'T
 export function parseWebWeather(document,{day,now=new Date(),forecast_code=undefined}) {
  const today=new Date(now.getTime()+9*3600000).toISOString().slice(0,10);
  if(typeof document!=='string'||!validDay(day)||day!==today)throw Error('Weather date unavailable');
- if(forecast_code!==undefined&&(!/^\d{10}$/.test(forecast_code)||!new RegExp('dongCode='+forecast_code+'(?:[&#"\\s]|$)').test(document)))throw Error('Weather region mismatch');
+ if(forecast_code!==undefined){
+  if(typeof forecast_code!=='string'||!/^\d{10}$/.test(forecast_code))throw Error('Weather region mismatch');
+  const declaredRegion=document.match(/^[ \t]*const[ \t]+dongCode[ \t]*=[ \t]*"(\d{10})"[ \t]*;[ \t]*\r?$/m)?.[1];
+  const echoedRegion=declaredRegion===undefined?new RegExp('dongCode='+forecast_code+'(?:[&#"\\s]|$)').test(document):declaredRegion===forecast_code;
+  if(!echoedRegion)throw Error('Weather region mismatch');
+ }
  const block=document.split(/<div\s+class="dfs-daily-slide"/).slice(1).find(b=>b.slice(0,250).includes(`data-date="${day}"`));
- const issue=document.match(/<dt>단기예보[^<]*<\/dt>\s*<dd>(\d{2})\.(\d{2})\.\([^)]*\)\s*(\d{2}):(\d{2})<\/dd>/);
+ const issue=document.match(/<dt>단기예보[^<]*<\/dt>\s*<dd>(\d{2})\.(\d{2})\.\([^)]*\)\s*(\d{2}):(\d{2})<\/dd>/) ||
+  document.replace(/<!--[\s\S]*?-->|<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi,' ').replace(/<[^>]+>/g,' ')
+   .match(/(?:^|[^가-힣])단기예보\s*\([^()]*\)\s*:\s*(\d{2})\.(\d{2})\.\([^)]*\)\s*(\d{2}):(\d{2})/);
  if(!block||!issue)throw Error('Weather structure changed');
  const [,month,date,hour,minute]=issue;
  if(Number(hour)>23||Number(minute)>59)throw Error('Invalid issue time');
